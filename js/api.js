@@ -479,6 +479,31 @@
      */
     onPendingOperationsChanged(listener) {
       return app().PendingOperationsService.subscribePendingOperations(listener);
+    },
+
+    /**
+     * Récupère les données de Pointage.
+     * @returns {Promise<Object>}
+     */
+    async getPointage() {
+      return Promise.resolve(app().PointageService.buildPointage());
+    },
+
+    /**
+     * Sauvegarde les rapprochements de pointage pour un mois donné.
+     * @returns {Promise<Array>}
+     */
+    async savePointageMatching(monthISO, newLinks) {
+      return Promise.resolve(app().PointageService.savePointageMatching(monthISO, newLinks));
+    },
+
+    /**
+     * S'abonne aux changements de pointage.
+     * @param {Function} listener
+     * @returns {Function} fonction de désabonnement
+     */
+    onPointageChanged(listener) {
+      return app().PointageService.subscribePointage(listener);
     }
   };
 

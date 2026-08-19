@@ -1582,6 +1582,38 @@ function deps() {
     return deps().BudgetStore.subscribe(listener);
   }
 
+  function buildPointage() {
+    const data = loadFullData();
+    return {
+      transactions: data?.bankImport?.transactions || [],
+      categories: data?.bankImport?.categories || [],
+      matchings: data?.bankImport?.matchings || [],
+      charges: data?.charges || [],
+      incomes: data?.incomes || [],
+      placements: data?.placements || [],
+      settings: data?.settings || {}
+    };
+  }
+
+  function savePointageMatching(monthISO, newLinks) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) currentData.bankImport = {};
+    const others = (currentData.bankImport.matchings || []).filter(m => m.month !== monthISO);
+    currentData.bankImport.matchings = [
+      ...others,
+      {
+        month: monthISO,
+        links: newLinks
+      }
+    ];
+    saveFullData(currentData);
+    return currentData.bankImport.matchings;
+  }
+
+  function subscribePointage(listener) {
+    return deps().BudgetStore.subscribe(listener);
+  }
+
   exports.BankImportService = {
     buildBankImport,
     updateBankImportMapping,
@@ -1608,6 +1640,12 @@ function deps() {
     importPendingCB,
     forceImportPendingOperation,
     subscribePendingOperations
+  };
+
+  exports.PointageService = {
+    buildPointage,
+    savePointageMatching,
+    subscribePointage
   };
 
   // Export des fonctions pour utilisation par api.js

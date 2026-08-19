@@ -6,7 +6,8 @@
 
   const {
     useState,
-    useMemo
+    useMemo,
+    useEffect
   } = React;
   const {
     C,
@@ -29,6 +30,53 @@
     update,
     openHelp
   }) {
+    const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
+    const [apiData, setApiData] = useState(null);
+    const [loading, setLoading] = useState(!data);
+
+    const loadDataFromApi = () => {
+      if (api && api.getPointage) {
+        api.getPointage().then(res => {
+          setApiData(res);
+          setLoading(false);
+        }).catch(err => {
+          console.error("Erreur chargement pointage via BudgetApi:", err);
+          setLoading(false);
+        });
+      } else if (data) {
+        setApiData({
+          transactions: data?.bankImport?.transactions || [],
+          categories: data?.bankImport?.categories || [],
+          matchings: data?.bankImport?.matchings || [],
+          charges: data?.charges || [],
+          incomes: data?.incomes || [],
+          placements: data?.placements || [],
+          settings: data?.settings || {}
+        });
+        setLoading(false);
+      }
+    };
+
+    useEffect(() => {
+      loadDataFromApi();
+      if (api && api.onPointageChanged) {
+        const unsub = api.onPointageChanged(() => {
+          loadDataFromApi();
+        });
+        return () => unsub && unsub();
+      }
+    }, []);
+
+    const sourceData = apiData || {
+      transactions: data?.bankImport?.transactions || [],
+      categories: data?.bankImport?.categories || [],
+      matchings: data?.bankImport?.matchings || [],
+      charges: data?.charges || [],
+      incomes: data?.incomes || [],
+      placements: data?.placements || [],
+      settings: data?.settings || {}
+    };
+
     const today = new Date();
     const [selYear, setSelYear] = useState(today.getFullYear());
     const [selMonth, setSelMonth] = useState(today.getMonth() + 1);
@@ -45,17 +93,17 @@
       month: "long",
       year: "numeric"
     });
-    const transactions = data?.bankImport?.transactions || [];
-    const categories = data?.bankImport?.categories || [];
-    const matchings = data?.bankImport?.matchings || [];
+    const transactions = sourceData.transactions || [];
+    const categories = sourceData.categories || [];
+    const matchings = sourceData.matchings || [];
 
     // Lignes de budget actives ce mois
     const budgetLines = useMemo(() => {
-      const inflationRate = Number(data?.settings?.inflationRate) || 0.02;
+      const inflationRate = Number(sourceData?.settings?.inflationRate) || 0.02;
       const lines = [];
       const calcCharge = exports.chargeMonthlyForYear || window.BudgetApp && window.BudgetApp.chargeMonthlyForYear || chargeMonthlyForYear;
       const calcIncome = exports.incomeMonthlyForYear || window.BudgetApp && window.BudgetApp.incomeMonthlyForYear || incomeMonthlyForYear;
-      (data?.charges || []).forEach(c => {
+      (sourceData?.charges || []).forEach(c => {
         const startOK = !c.start || monthISO >= c.start.slice(0, 7);
         const endOK = !c.end || monthISO <= c.end.slice(0, 7);
         if (!startOK || !endOK) return;
@@ -69,7 +117,7 @@
           categoryId: c.categoryId || null
         });
       });
-      (data?.incomes || []).forEach(inc => {
+      (sourceData?.incomes || []).forEach(inc => {
         const startOK = !inc.start || monthISO >= inc.start.slice(0, 7);
         const endOK = !inc.end || monthISO <= inc.end.slice(0, 7);
         if (!startOK || !endOK) return;
@@ -83,7 +131,7 @@
           categoryId: inc.categoryId || null
         });
       });
-      (data?.placements || []).forEach(p => {
+      (sourceData?.placements || []).forEach(p => {
         const m = Number(p.monthly) || 0;
         if (m <= 0) return;
         const fromOK = !p.monthlyFrom || monthISO >= p.monthlyFrom.slice(0, 7);
@@ -98,23 +146,27 @@
         });
       });
       return lines;
-    }, [data?.charges, data?.incomes, data?.placements, selYear, monthISO, data?.settings?.inflationRate]);
+    }, [sourceData?.charges, sourceData?.incomes, sourceData?.placements, selYear, monthISO, sourceData?.settings?.inflationRate]);
     const monthTxs = useMemo(() => transactions.filter(t => t.date && t.date.slice(0, 7) === monthISO), [transactions, monthISO]);
     const matching = useMemo(() => matchings.find(m => m.month === monthISO) || {
       month: monthISO,
       links: []
     }, [matchings, monthISO]);
-    const saveMatching = newLinks => {
-      update("bankImport", b => {
-        const others = (b?.matchings || []).filter(m => m.month !== monthISO);
-        return {
-          ...b,
-          matchings: [...others, {
-            month: monthISO,
-            links: newLinks
-          }]
-        };
-      });
+    const saveMatching = async newLinks => {
+      if (api && api.savePointageMatching) {
+        await api.savePointageMatching(monthISO, newLinks);
+      } else if (update) {
+        update("bankImport", b => {
+          const others = (b?.matchings || []).filter(m => m.month !== monthISO);
+          return {
+            ...b,
+            matchings: [...others, {
+              month: monthISO,
+              links: newLinks
+            }]
+          };
+        });
+      }
     };
     const activeLineIds = useMemo(() => new Set(budgetLines.map(b => b.id)), [budgetLines]);
     const pointedTxIds = useMemo(() => {
