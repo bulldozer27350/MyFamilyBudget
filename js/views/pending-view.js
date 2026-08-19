@@ -6,7 +6,8 @@
 
   const {
     useState,
-    useMemo
+    useMemo,
+    useEffect
   } = React;
   const {
     C,
@@ -21,6 +22,7 @@
     transactionDedupeKey,
     applyRulesToTransactions
   } = exports.parseCSVText ? exports : window.BudgetApp || {};
+  const api = exports.BudgetApi ? exports.BudgetApi : window.BudgetApp?.BudgetApi;
   const OP_TYPES = {
     cheque: {
       label: "Chèque",
@@ -111,15 +113,65 @@
     const [importSummary, setImportSummary] = useState(null);
     const [showIgnoredModal, setShowIgnoredModal] = useState(false);
 
+    // État asynchrone issu de la façade API
+    const [apiData, setApiData] = useState(null);
+    const [loading, setLoading] = useState(!data);
+
+    const loadDataFromApi = () => {
+      if (api && api.getPendingOperations) {
+        api.getPendingOperations().then(res => {
+          setApiData(res);
+          setLoading(false);
+        }).catch(err => {
+          console.error("Erreur chargement opérations en cours via BudgetApi:", err);
+          setLoading(false);
+        });
+      } else if (data) {
+        setApiData({
+          pendingOperations: data?.bankImport?.pendingOperations || [],
+          transactions: data?.bankImport?.transactions || [],
+          categories: data?.bankImport?.categories || [],
+          rules: data?.bankImport?.rules || [],
+          charges: data?.charges || [],
+          incomes: data?.incomes || [],
+          oneoff: data?.oneoff || [],
+          settings: data?.settings || {}
+        });
+        setLoading(false);
+      }
+    };
+
+    useEffect(() => {
+      loadDataFromApi();
+      if (api && api.onPendingOperationsChanged) {
+        const unsub = api.onPendingOperationsChanged(() => {
+          loadDataFromApi();
+        });
+        return () => unsub && unsub();
+      }
+    }, []);
+
     const monthISO = `${selYear}-${String(selMonth).padStart(2, "0")}`;
     const monthLabel = new Date(selYear, selMonth - 1, 1).toLocaleDateString("fr-FR", {
       month: "long",
       year: "numeric"
     });
     const isCurrentMonth = selYear === today.getFullYear() && selMonth === today.getMonth() + 1;
-    const pendingOperations = data?.bankImport?.pendingOperations || [];
-    const transactions = data?.bankImport?.transactions || [];
-    const categories = data?.bankImport?.categories || [];
+
+    const sourceData = apiData || {
+      pendingOperations: data?.bankImport?.pendingOperations || [],
+      transactions: data?.bankImport?.transactions || [],
+      categories: data?.bankImport?.categories || [],
+      rules: data?.bankImport?.rules || [],
+      charges: data?.charges || [],
+      incomes: data?.incomes || [],
+      oneoff: data?.oneoff || [],
+      settings: data?.settings || {}
+    };
+
+    const pendingOperations = sourceData.pendingOperations || [];
+    const transactions = sourceData.transactions || [];
+    const categories = sourceData.categories || [];
     const sortedCategories = useMemo(() => [...categories].sort((a, b) => (a.label || "").localeCompare(b.label || "", "fr")), [categories]);
     const navMonth = dir => {
       let m = selMonth + dir,
@@ -147,7 +199,7 @@
       });
       setTimeout(() => setToast(null), 6000);
     };
-    const startBalance = Number(data?.settings?.startBalance) || 0;
+    const startBalance = Number(sourceData?.settings?.startBalance) || 0;
     const cumulTxsMonth = useMemo(() => {
       return transactions.filter(t => t.date && t.date.slice(0, 7) <= monthISO).reduce((s, t) => s + (Number(t.amount) || 0), 0);
     }, [transactions, monthISO]);
@@ -206,7 +258,7 @@
     }, [currentDataset, filterType, searchText, sortKey, sortDir, categories]);
     const budgetPresets = useMemo(() => {
       const list = [];
-      (data?.charges || []).forEach(c => {
+      (sourceData.charges || []).forEach(c => {
         list.push({
           key: `charge_${c.id}`,
           label: `Charge : ${c.label} (${eur(c.monthly)}/m)`,
@@ -214,7 +266,7 @@
           kind: "charge"
         });
       });
-      (data?.incomes || []).forEach(i => {
+      (sourceData.incomes || []).forEach(i => {
         list.push({
           key: `income_${i.id}`,
           label: `Revenu : ${i.label} (${eur(i.monthly)}/m)`,
@@ -222,7 +274,7 @@
           kind: "income"
         });
       });
-      (data?.oneoff || []).forEach(o => {
+      (sourceData.oneoff || []).forEach(o => {
         list.push({
           key: `oneoff_${o.id}`,
           label: `Dépense ponctuelle : ${o.label} (${eur(o.amount)})`,
@@ -231,7 +283,7 @@
         });
       });
       return list;
-    }, [data?.charges, data?.incomes, data?.oneoff]);
+    }, [sourceData.charges, sourceData.incomes, sourceData.oneoff]);
     const handleSelectPreset = key => {
       setModalPreset(key);
       if (!key) return;
@@ -297,7 +349,7 @@
       });
       setShowAddModal(true);
     };
-    const handleSaveModal = e => {
+    const handleSaveModal = async e => {
       e.preventDefault();
       const amtNum = parseFloat(String(modalData.amount).replace(",", "."));
       if (isNaN(amtNum) || amtNum <= 0) {
@@ -310,41 +362,45 @@
       }
       const signedAmount = (modalData.isDebit ? -1 : 1) * Math.abs(amtNum);
       const opDate = modalData.date || (isCurrentMonth ? todayISO : `${monthISO}-01`);
+      const opPayload = {
+        date: opDate,
+        expectedDate: modalData.expectedDate || "",
+        type: modalData.type || "cheque",
+        refNumber: (modalData.refNumber || "").trim(),
+        label: modalData.label.trim(),
+        amount: signedAmount,
+        categoryId: modalData.categoryId || "",
+        notes: modalData.notes || ""
+      };
+
+      if (api && api.savePendingOperation) {
+        await api.savePendingOperation(opPayload, editingOp ? editingOp.id : undefined);
+      } else if (update) {
+        if (editingOp) {
+          update("bankImport", b => ({
+            ...b,
+            pendingOperations: (b.pendingOperations || []).map(op => op.id === editingOp.id ? {
+              ...op,
+              ...opPayload
+            } : op)
+          }));
+        } else {
+          update("bankImport", b => ({
+            ...b,
+            pendingOperations: [...(b.pendingOperations || []), {
+              id: uid(),
+              status: "pending",
+              linkedTxId: null,
+              clearedDate: null,
+              ...opPayload
+            }]
+          }));
+        }
+      }
+
       if (editingOp) {
-        update("bankImport", b => ({
-          ...b,
-          pendingOperations: (b.pendingOperations || []).map(op => op.id === editingOp.id ? {
-            ...op,
-            date: opDate,
-            expectedDate: modalData.expectedDate || "",
-            type: modalData.type || "cheque",
-            refNumber: (modalData.refNumber || "").trim(),
-            label: modalData.label.trim(),
-            amount: signedAmount,
-            categoryId: modalData.categoryId || "",
-            notes: modalData.notes || ""
-          } : op)
-        }));
         showToast("Opération modifiée avec succès.");
       } else {
-        const newOp = {
-          id: uid(),
-          date: opDate,
-          expectedDate: modalData.expectedDate || "",
-          type: modalData.type || "cheque",
-          refNumber: (modalData.refNumber || "").trim(),
-          label: modalData.label.trim(),
-          amount: signedAmount,
-          categoryId: modalData.categoryId || "",
-          status: "pending",
-          linkedTxId: null,
-          clearedDate: null,
-          notes: modalData.notes || ""
-        };
-        update("bankImport", b => ({
-          ...b,
-          pendingOperations: [...(b.pendingOperations || []), newOp]
-        }));
         const opMonthISO = opDate.slice(0, 7);
         if (opMonthISO !== monthISO) {
           const opParts = opMonthISO.split("-");
@@ -364,25 +420,33 @@
       }
       setShowAddModal(false);
     };
-    const handleDeleteOp = opId => {
+    const handleDeleteOp = async opId => {
       if (window.confirm("Supprimer définitivement cette opération engagée ?")) {
-        update("bankImport", b => ({
-          ...b,
-          pendingOperations: (b.pendingOperations || []).filter(op => op.id !== opId)
-        }));
+        if (api && api.deletePendingOperation) {
+          await api.deletePendingOperation(opId);
+        } else if (update) {
+          update("bankImport", b => ({
+            ...b,
+            pendingOperations: (b.pendingOperations || []).filter(op => op.id !== opId)
+          }));
+        }
         showToast("Opération supprimée.");
       }
     };
-    const handleUnlink = opId => {
-      update("bankImport", b => ({
-        ...b,
-        pendingOperations: (b.pendingOperations || []).map(op => op.id === opId ? {
-          ...op,
-          status: "pending",
-          linkedTxId: null,
-          clearedDate: null
-        } : op)
-      }));
+    const handleUnlink = async opId => {
+      if (api && api.unlinkPendingOperation) {
+        await api.unlinkPendingOperation(opId);
+      } else if (update) {
+        update("bankImport", b => ({
+          ...b,
+          pendingOperations: (b.pendingOperations || []).map(op => op.id === opId ? {
+            ...op,
+            status: "pending",
+            linkedTxId: null,
+            clearedDate: null
+          } : op)
+        }));
+      }
       showToast("Opération déliée (remise en circulation).");
     };
     const usedTxIds = useMemo(() => {
@@ -418,21 +482,34 @@
         return a.date < b.date ? 1 : -1;
       });
     }, [matchingOp, transactions, usedTxIds, matchingSearch]);
-    const handleLinkTransaction = tx => {
+    const handleLinkTransaction = async tx => {
       if (!matchingOp) return;
-      update("bankImport", b => ({
-        ...b,
-        pendingOperations: (b.pendingOperations || []).map(op => op.id === matchingOp.id ? {
-          ...op,
-          status: "cleared",
-          linkedTxId: tx.id,
-          clearedDate: tx.date
-        } : op)
-      }));
+      if (api && api.linkPendingOperation) {
+        await api.linkPendingOperation(matchingOp.id, tx.id, tx.date);
+      } else if (update) {
+        update("bankImport", b => ({
+          ...b,
+          pendingOperations: (b.pendingOperations || []).map(op => op.id === matchingOp.id ? {
+            ...op,
+            status: "cleared",
+            linkedTxId: tx.id,
+            clearedDate: tx.date
+          } : op)
+        }));
+      }
       showToast(`Opération rapprochée avec le débit du ${tx.date.split("-").reverse().join("/")}.`);
       setMatchingOp(null);
     };
-    const handleAutoMatch = () => {
+    const handleAutoMatch = async () => {
+      if (api && api.autoMatchPendingOperations) {
+        const res = await api.autoMatchPendingOperations();
+        if (res && res.matchCount > 0) {
+          showToast(`🎉 ${res.matchCount} opération(s) rapprochée(s) automatiquement !`);
+        } else {
+          showToast("ℹ️ Aucune nouvelle correspondance automatique évidente trouvée.");
+        }
+        return;
+      }
       let matchCount = 0;
       const currentlyLinked = new Set();
       pendingOperations.forEach(op => {
@@ -480,10 +557,12 @@
         return op;
       });
       if (matchCount > 0) {
-        update("bankImport", b => ({
-          ...b,
-          pendingOperations: updated
-        }));
+        if (update) {
+          update("bankImport", b => ({
+            ...b,
+            pendingOperations: updated
+          }));
+        }
         showToast(`🎉 ${matchCount} opération(s) rapprochée(s) automatiquement !`);
       } else {
         showToast("ℹ️ Aucune nouvelle correspondance automatique évidente trouvée.");
@@ -577,7 +656,7 @@
       }));
     };
 
-    const doImportPending = () => {
+    const doImportPending = async () => {
       if (!importRawRows || !importColRoles) return;
       const dateCol = importColRoles.indexOf("date");
       const labelCol = importColRoles.indexOf("label");
@@ -590,6 +669,34 @@
         return;
       }
 
+      if (api && api.importPendingCB) {
+        const summary = await api.importPendingCB(importRawRows, importColRoles, {
+          dateFormat: importDateFormat,
+          usePurchaseDate: importUsePurchaseDate
+        });
+        setImportSummary(summary);
+        if (summary.imported > 0) {
+          const firstOpDate = summary.firstOpDate;
+          const targetMonthISO = firstOpDate ? firstOpDate.slice(0, 7) : monthISO;
+          if (targetMonthISO !== monthISO) {
+            const parts = targetMonthISO.split("-");
+            const targetY = parseInt(parts[0], 10);
+            const targetM = parseInt(parts[1], 10);
+            const targetMonthName = new Date(targetY, targetM - 1, 1).toLocaleDateString("fr-FR", {
+              month: "long",
+              year: "numeric"
+            });
+            showToast(`🎉 ${summary.imported} opération(s) CB importée(s) (classées en ${targetMonthName}).`, `➔ Voir ${targetMonthName}`, () => {
+              setSelYear(targetY);
+              setSelMonth(targetM);
+            });
+          } else {
+            showToast(`🎉 ${summary.imported} opération(s) CB importée(s) avec succès !`);
+          }
+        }
+        return;
+      }
+
       // Comptabilisation des opérations en cours existantes pour la déduplication exacte
       const existingCounts = {};
       pendingOperations.forEach(op => {
@@ -599,7 +706,7 @@
 
       const fileKeyCounts = {};
       let imported = [], ignoredDuplicates = [];
-      const rules = data?.bankImport?.rules || [];
+      const rules = sourceData.rules || [];
 
       importRawRows.forEach(row => {
         const rawDate = row[dateCol];
@@ -653,10 +760,12 @@
       const autoCategorized = imported.filter(op => op.categoryId).length;
 
       if (imported.length > 0) {
-        update("bankImport", b => ({
-          ...b,
-          pendingOperations: [...(b.pendingOperations || []), ...imported]
-        }));
+        if (update) {
+          update("bankImport", b => ({
+            ...b,
+            pendingOperations: [...(b.pendingOperations || []), ...imported]
+          }));
+        }
       }
 
       setImportSummary({
@@ -687,13 +796,17 @@
       }
     };
 
-    const forceImportPendingDuplicate = op => {
-      const rules = data?.bankImport?.rules || [];
-      const categorizedOp = applyRulesToTransactions([op], rules)[0] || op;
-      update("bankImport", b => ({
-        ...b,
-        pendingOperations: [...(b.pendingOperations || []), categorizedOp]
-      }));
+    const forceImportPendingDuplicate = async op => {
+      if (api && api.forceImportPendingOperation) {
+        await api.forceImportPendingOperation(op);
+      } else if (update) {
+        const rules = sourceData.rules || [];
+        const categorizedOp = applyRulesToTransactions([op], rules)[0] || op;
+        update("bankImport", b => ({
+          ...b,
+          pendingOperations: [...(b.pendingOperations || []), categorizedOp]
+        }));
+      }
       setImportSummary(prev => prev ? {
         ...prev,
         imported: prev.imported + 1,

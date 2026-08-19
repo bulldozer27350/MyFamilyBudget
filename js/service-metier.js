@@ -1257,6 +1257,331 @@ function deps() {
     return deps().BudgetStore.subscribe(listener);
   }
 
+  /* =========================================================================
+   * Opérations en cours (Chèques, CB différées & Rapprochement bancaire)
+   * ========================================================================= */
+
+  /**
+   * Construit le modèle de lecture complet pour la vue Opérations en cours.
+   */
+  function buildPendingOperations() {
+    const data = loadFullData();
+    return {
+      pendingOperations: data?.bankImport?.pendingOperations || [],
+      transactions: data?.bankImport?.transactions || [],
+      categories: data?.bankImport?.categories || [],
+      rules: data?.bankImport?.rules || [],
+      charges: data?.charges || [],
+      incomes: data?.incomes || [],
+      oneoff: data?.oneoff || [],
+      settings: data?.settings || {}
+    };
+  }
+
+  /**
+   * Crée ou met à jour une opération en cours (chèque, CB, virement, etc.)
+   */
+  function savePendingOperation(opData, opId) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) currentData.bankImport = {};
+    if (!currentData.bankImport.pendingOperations) currentData.bankImport.pendingOperations = [];
+
+    const { uid } = deps();
+    const ops = [...currentData.bankImport.pendingOperations];
+    let savedOp = null;
+
+    if (opId) {
+      const idx = ops.findIndex(o => o.id === opId);
+      if (idx !== -1) {
+        ops[idx] = {
+          ...ops[idx],
+          ...opData,
+          id: opId
+        };
+        savedOp = ops[idx];
+      }
+    } else {
+      savedOp = {
+        id: uid ? uid() : `op_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        status: "pending",
+        linkedTxId: null,
+        clearedDate: null,
+        ...opData
+      };
+      ops.push(savedOp);
+    }
+
+    currentData.bankImport.pendingOperations = ops;
+    saveFullData(currentData);
+    return savedOp || ops;
+  }
+
+  /**
+   * Supprime une opération en cours.
+   */
+  function deletePendingOperation(opId) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport?.pendingOperations) return { success: true };
+    currentData.bankImport.pendingOperations = currentData.bankImport.pendingOperations.filter(o => o.id !== opId);
+    saveFullData(currentData);
+    return { success: true, opId };
+  }
+
+  /**
+   * Remet une opération rapprochée en circulation (statut pending).
+   */
+  function unlinkPendingOperation(opId) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport?.pendingOperations) return null;
+    let unlinked = null;
+    currentData.bankImport.pendingOperations = currentData.bankImport.pendingOperations.map(o => {
+      if (o.id === opId) {
+        unlinked = {
+          ...o,
+          status: "pending",
+          linkedTxId: null,
+          clearedDate: null
+        };
+        return unlinked;
+      }
+      return o;
+    });
+    saveFullData(currentData);
+    return unlinked;
+  }
+
+  /**
+   * Lie manuellement une opération en cours avec une transaction bancaire (rapprochement).
+   */
+  function linkPendingOperation(opId, txId, txDate) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport?.pendingOperations) return null;
+    let linked = null;
+    currentData.bankImport.pendingOperations = currentData.bankImport.pendingOperations.map(o => {
+      if (o.id === opId) {
+        linked = {
+          ...o,
+          status: "cleared",
+          linkedTxId: txId,
+          clearedDate: txDate
+        };
+        return linked;
+      }
+      return o;
+    });
+    saveFullData(currentData);
+    return linked;
+  }
+
+  /**
+   * Algorithme métier de rapprochement automatique entre opérations en cours et relevés bancaires.
+   */
+  function autoMatchPendingOperations() {
+    const currentData = loadFullData();
+    const pendingOps = currentData?.bankImport?.pendingOperations || [];
+    const transactions = currentData?.bankImport?.transactions || [];
+
+    let matchCount = 0;
+    const currentlyLinked = new Set();
+    pendingOps.forEach(op => {
+      if (op.linkedTxId) currentlyLinked.add(op.linkedTxId);
+    });
+
+    const updated = pendingOps.map(op => {
+      if (op.status === "cleared" && op.linkedTxId) return op;
+      const opTargetAmt = Number(op.amount) || 0;
+
+      // 1. Recherche par référence exacte dans le libellé si référence >= 3 caractères
+      if (op.refNumber && op.refNumber.length >= 3) {
+        const foundByRef = transactions.find(t =>
+          !currentlyLinked.has(t.id) &&
+          (t.label || "").toLowerCase().includes(op.refNumber.toLowerCase()) &&
+          Math.abs(Math.abs(Number(t.amount) || 0) - Math.abs(opTargetAmt)) < 0.01
+        );
+        if (foundByRef) {
+          currentlyLinked.add(foundByRef.id);
+          matchCount++;
+          return {
+            ...op,
+            status: "cleared",
+            linkedTxId: foundByRef.id,
+            clearedDate: foundByRef.date
+          };
+        }
+      }
+
+      // 2. Recherche par montant exact unique dans une fenêtre de 90 jours
+      const opDateMs = op.date ? new Date(op.date).getTime() : 0;
+      const exactCandidates = transactions.filter(t => {
+        if (currentlyLinked.has(t.id)) return false;
+        const txAmt = Number(t.amount) || 0;
+        if (Math.abs(Math.abs(txAmt) - Math.abs(opTargetAmt)) >= 0.01) return false;
+        if (opDateMs && t.date) {
+          const tDateMs = new Date(t.date).getTime();
+          const diffDays = Math.abs(tDateMs - opDateMs) / (1000 * 60 * 60 * 24);
+          if (diffDays > 90) return false;
+        }
+        return true;
+      });
+
+      if (exactCandidates.length === 1) {
+        const found = exactCandidates[0];
+        currentlyLinked.add(found.id);
+        matchCount++;
+        return {
+          ...op,
+          status: "cleared",
+          linkedTxId: found.id,
+          clearedDate: found.date
+        };
+      }
+
+      return op;
+    });
+
+    if (matchCount > 0) {
+      if (!currentData.bankImport) currentData.bankImport = {};
+      currentData.bankImport.pendingOperations = updated;
+      saveFullData(currentData);
+    }
+
+    return {
+      matchCount,
+      updatedOperations: updated
+    };
+  }
+
+  /**
+   * Importe des opérations CB différées depuis un fichier CSV parsé.
+   */
+  function importPendingCB(rawRows, colRoles, config) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) currentData.bankImport = {};
+    if (!currentData.bankImport.pendingOperations) currentData.bankImport.pendingOperations = [];
+    if (!currentData.bankImport.rules) currentData.bankImport.rules = [];
+
+    const { parseDateWithFormat, parseAmountText, transactionDedupeKey, applyRulesToTransactions, uid } = deps();
+
+    const dateCol = colRoles.indexOf("date");
+    const labelCol = colRoles.indexOf("label");
+    const amountCol = colRoles.indexOf("amount");
+
+    if (dateCol === -1 || labelCol === -1 || amountCol === -1) {
+      return {
+        error: "Il faut au minimum assigner les rôles Date, Libellé et Montant à une colonne."
+      };
+    }
+
+    const dateFormat = config?.dateFormat || "DD-MM-YYYY";
+    const usePurchaseDate = !!config?.usePurchaseDate;
+
+    const existingCounts = {};
+    currentData.bankImport.pendingOperations.forEach(op => {
+      const k = transactionDedupeKey(op);
+      existingCounts[k] = (existingCounts[k] || 0) + 1;
+    });
+
+    const fileKeyCounts = {};
+    let imported = [];
+    let ignoredDuplicates = [];
+
+    const parsePurchaseDateFromLabel = (label) => {
+      if (!label) return null;
+      const m = label.match(/DU\s+(\d{2})(\d{2})(\d{2,4})/i);
+      if (m) {
+        const d = parseInt(m[1], 10);
+        const mo = parseInt(m[2], 10);
+        let y = parseInt(m[3], 10);
+        if (y < 100) y = 2000 + y;
+        if (d >= 1 && d <= 31 && mo >= 1 && mo <= 12) {
+          return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        }
+      }
+      return null;
+    };
+
+    rawRows.forEach(row => {
+      const rawDate = row[dateCol];
+      let dateISO = parseDateWithFormat(rawDate, dateFormat) || parseDateWithFormat(rawDate, "DD/MM/YYYY") || parseDateWithFormat(rawDate, "YYYY-MM-DD");
+      if (!dateISO) return;
+
+      const rawLabel = (row[labelCol] || "").trim();
+      if (!rawLabel) return;
+
+      const amt = parseAmountText(row[amountCol]);
+      const purchaseDate = parsePurchaseDateFromLabel(rawLabel);
+      let finalOpDate = dateISO;
+      let expectedDebitDate = dateISO;
+
+      if (usePurchaseDate && purchaseDate) {
+        finalOpDate = purchaseDate;
+        expectedDebitDate = dateISO;
+      }
+
+      const op = {
+        id: uid(),
+        date: finalOpDate,
+        expectedDate: expectedDebitDate,
+        type: "cb",
+        refNumber: "",
+        label: rawLabel,
+        amount: amt,
+        categoryId: "",
+        status: "pending",
+        linkedTxId: null,
+        clearedDate: null,
+        notes: purchaseDate && !usePurchaseDate ? `Achat le ${purchaseDate.split("-").reverse().join("/")}` : ""
+      };
+
+      const key = transactionDedupeKey(op);
+      fileKeyCounts[key] = (fileKeyCounts[key] || 0) + 1;
+      const currentStored = existingCounts[key] || 0;
+
+      if (fileKeyCounts[key] <= currentStored) {
+        ignoredDuplicates.push(op);
+      } else {
+        existingCounts[key] = (existingCounts[key] || 0) + 1;
+        imported.push(op);
+      }
+    });
+
+    imported = applyRulesToTransactions(imported, currentData.bankImport.rules);
+    const autoCategorized = imported.filter(op => op.categoryId).length;
+
+    if (imported.length > 0) {
+      currentData.bankImport.pendingOperations = [...currentData.bankImport.pendingOperations, ...imported];
+      saveFullData(currentData);
+    }
+
+    return {
+      imported: imported.length,
+      duplicates: ignoredDuplicates.length,
+      autoCategorized,
+      ignoredDuplicates,
+      firstOpDate: imported.length > 0 ? imported[0].date : null
+    };
+  }
+
+  /**
+   * Force l'import d'une opération en doublon.
+   */
+  function forceImportPendingOperation(op) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) currentData.bankImport = {};
+    if (!currentData.bankImport.pendingOperations) currentData.bankImport.pendingOperations = [];
+    if (!currentData.bankImport.rules) currentData.bankImport.rules = [];
+
+    const { applyRulesToTransactions } = deps();
+    const categorizedOp = applyRulesToTransactions([op], currentData.bankImport.rules)[0] || op;
+    currentData.bankImport.pendingOperations.push(categorizedOp);
+    saveFullData(currentData);
+    return categorizedOp;
+  }
+
+  function subscribePendingOperations(listener) {
+    return deps().BudgetStore.subscribe(listener);
+  }
+
   exports.BankImportService = {
     buildBankImport,
     updateBankImportMapping,
@@ -1271,6 +1596,18 @@ function deps() {
     forceImportBankTransaction,
     importBankTransactions,
     subscribeBankImport
+  };
+
+  exports.PendingOperationsService = {
+    buildPendingOperations,
+    savePendingOperation,
+    deletePendingOperation,
+    unlinkPendingOperation,
+    linkPendingOperation,
+    autoMatchPendingOperations,
+    importPendingCB,
+    forceImportPendingOperation,
+    subscribePendingOperations
   };
 
   // Export des fonctions pour utilisation par api.js

@@ -395,6 +395,90 @@
      */
     onBankImportChanged(listener) {
       return app().BankImportService.subscribeBankImport(listener);
+    },
+
+    /**
+     * Récupère le modèle de lecture des opérations en cours (chèques émis, CB différées & rapprochement).
+     * @returns {Promise<Object>} Modèle de lecture
+     */
+    async getPendingOperations() {
+      return Promise.resolve(app().PendingOperationsService.buildPendingOperations());
+    },
+
+    /**
+     * Enregistre ou met à jour une opération en cours.
+     * @param {Object} opData Données de l'opération
+     * @param {string} [opId] Identifiant existant en cas de modification
+     * @returns {Promise<Array>} Liste mise à jour des opérations en cours
+     */
+    async savePendingOperation(opData, opId) {
+      return Promise.resolve(app().PendingOperationsService.savePendingOperation(opData, opId));
+    },
+
+    /**
+     * Supprime une opération en cours.
+     * @param {string} opId Identifiant de l'opération
+     * @returns {Promise<Array>} Liste mise à jour des opérations en cours
+     */
+    async deletePendingOperation(opId) {
+      return Promise.resolve(app().PendingOperationsService.deletePendingOperation(opId));
+    },
+
+    /**
+     * Remet une opération rapprochée en circulation (déliaison).
+     * @param {string} opId Identifiant de l'opération
+     * @returns {Promise<Array>} Liste mise à jour des opérations en cours
+     */
+    async unlinkPendingOperation(opId) {
+      return Promise.resolve(app().PendingOperationsService.unlinkPendingOperation(opId));
+    },
+
+    /**
+     * Lie manuellement une opération en cours à une transaction bancaire (rapprochement).
+     * @param {string} opId Identifiant de l'opération
+     * @param {string} txId Identifiant de la transaction bancaire
+     * @param {string} txDate Date de la transaction bancaire
+     * @returns {Promise<Array>} Liste mise à jour des opérations en cours
+     */
+    async linkPendingOperation(opId, txId, txDate) {
+      return Promise.resolve(app().PendingOperationsService.linkPendingOperation(opId, txId, txDate));
+    },
+
+    /**
+     * Déclenche l'algorithme de rapprochement automatique.
+     * @returns {Promise<{matchCount: number, updatedOperations: Array}>}
+     */
+    async autoMatchPendingOperations() {
+      return Promise.resolve(app().PendingOperationsService.autoMatchPendingOperations());
+    },
+
+    /**
+     * Importe des opérations CB différées depuis un relevé CSV.
+     * @param {Array} rawRows Lignes CSV
+     * @param {Array} colRoles Rôles assignés aux colonnes
+     * @param {Object} config Paramètres de format de date et d'extraction de date d'achat
+     * @returns {Promise<Object>} Résumé de l'import
+     */
+    async importPendingCB(rawRows, colRoles, config) {
+      return Promise.resolve(app().PendingOperationsService.importPendingCB(rawRows, colRoles, config));
+    },
+
+    /**
+     * Force l'import d'une opération en doublon.
+     * @param {Object} op Opération
+     * @returns {Promise<Object>} Opération importée
+     */
+    async forceImportPendingOperation(op) {
+      return Promise.resolve(app().PendingOperationsService.forceImportPendingOperation(op));
+    },
+
+    /**
+     * S'abonne aux changements des opérations en cours.
+     * @param {Function} listener
+     * @returns {Function} fonction de désabonnement
+     */
+    onPendingOperationsChanged(listener) {
+      return app().PendingOperationsService.subscribePendingOperations(listener);
     }
   };
 
