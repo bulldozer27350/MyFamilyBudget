@@ -5,7 +5,7 @@ server:
 
 spring:
   application:
-    name: my-family-budget-backend
+    name: server
   jackson:
     default-property-inclusion: non_null
     serialization:
@@ -14,4 +14,4 @@ spring:
 logging:
   level:
     root: INFO
-    com.myfamilybudget: DEBUG
+    com.moe.myfamilybudget: DEBUG

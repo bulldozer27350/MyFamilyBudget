@@ -1,0 +1,8 @@
+{
+  "name": "MyFamilyBudget",
+  "description": "Livre de comptes et gestion de budget familial multi-pages",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
