@@ -49,36 +49,13 @@ const {
 function ImpotsPage() {
   const store = useBudgetStore();
   const {
-    data,
-    loaded,
     status,
     useConstantEuros,
     setUseConstantEuros,
-    projections,
-    setCell,
-    addRow,
-    removeRow,
-    update,
     exportJSON,
     importJSON,
     resetData
   } = store;
-  if (!loaded || !data) {
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        minHeight: "100vh",
-        background: C?.paper || "#F6F3EC",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        color: C?.inkSoft || "#6B7278",
-        fontFamily: "sans-serif"
-      }
-    }, "Chargement…"));
-  }
   return /*#__PURE__*/React.createElement(AppLayout, {
     currentSection: "impots",
     status: status,
@@ -90,12 +67,6 @@ function ImpotsPage() {
   }, ({
     openHelp
   }) => /*#__PURE__*/React.createElement(ImpotsView, {
-    data: data,
-    setCell: setCell,
-    addRow: addRow,
-    removeRow: removeRow,
-    update: update,
-    taxPreview: projections.taxPreview,
     openHelp: openHelp
   }));
 }

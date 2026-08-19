@@ -6,7 +6,7 @@
  * sur un back-end Java Spring Boot, seule l'implémentation interne changera (fetch),
  * pas les composants.
  *
- * Fonctionnalités déjà migrées : Vue d'ensemble, Trésorerie, Patrimoine, Retraite.
+ * Fonctionnalités déjà migrées : Vue d'ensemble, Trésorerie, Patrimoine, Retraite, Impôts.
  */
 (function (exports) {
   'use strict';
@@ -176,6 +176,55 @@
           reject(error);
         }
       });
+    },
+
+    /**
+     * Impôts : foyer fiscal, barème progressif, simulateur PAS et ajustements réels.
+     * @returns {Promise<Object>} modèle de lecture de l'onglet Impôts
+     */
+    async getImpots() {
+      return Promise.resolve(app().ImpotsService.buildImpots());
+    },
+
+    /**
+     * Met à jour une cellule d'une ligne d'Impôts.
+     * @returns {Promise<void>}
+     */
+    async updateImpotsLigne(listKey, id, field, value) {
+      return Promise.resolve(app().ImpotsService.updateImpotsLigne(listKey, id, field, value));
+    },
+
+    /**
+     * Ajoute une ligne d'Impôts.
+     * @returns {Promise<void>}
+     */
+    async addImpotsLigne(listKey, rowFactory) {
+      return Promise.resolve(app().ImpotsService.addImpotsLigne(listKey, rowFactory));
+    },
+
+    /**
+     * Supprime une ligne d'Impôts.
+     * @returns {Promise<void>}
+     */
+    async removeImpotsLigne(listKey, id) {
+      return Promise.resolve(app().ImpotsService.removeImpotsLigne(listKey, id));
+    },
+
+    /**
+     * Met à jour les settings globaux liés aux impôts.
+     * @returns {Promise<void>}
+     */
+    async updateImpotsSettings(field, value) {
+      return Promise.resolve(app().ImpotsService.updateImpotsSettings(field, value));
+    },
+
+    /**
+     * S'abonne aux changements des données d'Impôts (saisie, autre onglet, import…).
+     * Sera remplacé par du polling ou du websocket côté back-end.
+     * @returns {Function} fonction de désabonnement
+     */
+    onImpotsChanged(listener) {
+      return app().ImpotsService.subscribeImpots(listener);
     }
   };
 

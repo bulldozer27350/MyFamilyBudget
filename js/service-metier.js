@@ -611,6 +611,117 @@ function deps() {
   }
 
   /**
+   * Construit le modèle de lecture de l'onglet Impôts à partir des données stockées.
+   * @returns {Object} modèle de lecture de l'onglet Impôts
+   */
+  function buildImpots() {
+    const {
+      computeFinancialProjections
+    } = deps();
+
+    const data = loadFullData();
+    const projections = computeFinancialProjections(data, false);
+    
+    return {
+      taxChildren: data?.taxChildren || [],
+      taxBrackets: data?.taxBrackets || [],
+      taxRateOverrides: data?.taxRateOverrides || [],
+      taxActualOverrides: data?.taxActualOverrides || [],
+      settings: data?.settings || {},
+      taxPreview: projections.taxPreview || []
+    };
+  }
+
+  /**
+   * Met à jour une cellule d'une ligne d'Impôts.
+   * @param {string} listKey - Clé de la liste (taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides)
+   * @param {string} id - ID de la ligne
+   * @param {string} field - Champ à modifier
+   * @param {*} value - Nouvelle valeur
+   */
+  function updateImpotsLigne(listKey, id, field, value) {
+    const IMPOTS_LISTS = ["taxChildren", "taxBrackets", "taxRateOverrides", "taxActualOverrides"];
+    if (!IMPOTS_LISTS.includes(listKey)) {
+      throw new Error("Liste Impôts inconnue : " + listKey);
+    }
+    const currentData = loadFullData();
+    const list = currentData[listKey] || [];
+    const rowIndex = list.findIndex(row => row.id === id);
+    if (rowIndex === -1) {
+      throw new Error("Ligne non trouvée : " + id);
+    }
+    list[rowIndex][field] = value;
+    currentData[listKey] = list;
+    saveFullData(currentData);
+  }
+
+  /**
+   * Ajoute une ligne d'Impôts.
+   * @param {string} listKey - Clé de la liste
+   * @param {Function} rowFactory - Fonction créant la nouvelle ligne
+   */
+  function addImpotsLigne(listKey, rowFactory) {
+    const IMPOTS_LISTS = ["taxChildren", "taxBrackets", "taxRateOverrides", "taxActualOverrides"];
+    if (!IMPOTS_LISTS.includes(listKey)) {
+      throw new Error("Liste Impôts inconnue : " + listKey);
+    }
+    const currentData = loadFullData();
+    const list = currentData[listKey] || [];
+    const newRow = rowFactory();
+    list.push(newRow);
+    currentData[listKey] = list;
+    saveFullData(currentData);
+  }
+
+  /**
+   * Supprime une ligne d'Impôts.
+   * @param {string} listKey - Clé de la liste
+   * @param {string} id - ID de la ligne à supprimer
+   */
+  function removeImpotsLigne(listKey, id) {
+    const IMPOTS_LISTS = ["taxChildren", "taxBrackets", "taxRateOverrides", "taxActualOverrides"];
+    if (!IMPOTS_LISTS.includes(listKey)) {
+      throw new Error("Liste Impôts inconnue : " + listKey);
+    }
+    const currentData = loadFullData();
+    const list = currentData[listKey] || [];
+    const filteredList = list.filter(row => row.id !== id);
+    currentData[listKey] = filteredList;
+    saveFullData(currentData);
+  }
+
+  /**
+   * Met à jour les settings globaux liés aux impôts.
+   * @param {string} field - Champ à modifier
+   * @param {*} value - Nouvelle valeur
+   */
+  function updateImpotsSettings(field, value) {
+    const currentData = loadFullData();
+    if (!currentData.settings) {
+      currentData.settings = {};
+    }
+    currentData.settings[field] = value;
+    saveFullData(currentData);
+  }
+
+  /**
+   * S'abonne aux changements des données d'Impôts.
+   * @returns {Function} fonction de désabonnement
+   */
+  function subscribeImpots(listener) {
+    return deps().BudgetStore.subscribe(listener);
+  }
+
+  exports.ImpotsService = {
+    buildImpots,
+    updateImpotsLigne,
+    addImpotsLigne,
+    removeImpotsLigne,
+    updateImpotsSettings,
+    subscribeImpots
+  };
+
+  /**
    * 
    * Construit le modèle de lecture de l'onglet Patrimoine à partir des données stockées.
    */

@@ -14,13 +14,102 @@
     EditableTable
   } = exports.SectionCard ? exports : window.BudgetApp || {};
   function ImpotsView({
-    data,
-    setCell,
-    addRow,
-    removeRow,
-    update,
-    taxPreview
+    openHelp
   }) {
+    const [impotsData, setImpotsData] = React.useState(null);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState(null);
+
+    // Charger les données via l'API asynchrone
+    React.useEffect(() => {
+      const loadImpotsData = async () => {
+        try {
+          setLoading(true);
+          const data = await BudgetApp.BudgetApi.getImpots();
+          setImpotsData(data);
+          setError(null);
+        } catch (err) {
+          console.error("Erreur de chargement des données impôts:", err);
+          setError(err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadImpotsData();
+
+      // S'abonner aux changements
+      const unsubscribe = BudgetApp.BudgetApi.onImpotsChanged(() => {
+        loadImpotsData();
+      });
+
+      return unsubscribe;
+    }, []);
+
+    // Gestionnaires d'événements
+    const handleSetCell = (listKey) => (id, field, value) => {
+      BudgetApp.BudgetApi.updateImpotsLigne(listKey, id, field, value).then(() => {
+        // Recharger les données après la mise à jour
+        BudgetApp.BudgetApi.getImpots().then(setImpotsData);
+      });
+    };
+
+    const handleAddRow = (listKey, rowFactory) => {
+      BudgetApp.BudgetApi.addImpotsLigne(listKey, rowFactory).then(() => {
+        // Recharger les données après l'ajout
+        BudgetApp.BudgetApi.getImpots().then(setImpotsData);
+      });
+    };
+
+    const handleRemoveRow = (listKey) => (id) => {
+      BudgetApp.BudgetApi.removeImpotsLigne(listKey, id).then(() => {
+        // Recharger les données après la suppression
+        BudgetApp.BudgetApi.getImpots().then(setImpotsData);
+      });
+    };
+
+    const handleUpdate = (field, value) => {
+      BudgetApp.BudgetApi.updateImpotsSettings(field, value).then(() => {
+        // Recharger les données après la mise à jour
+        BudgetApp.BudgetApi.getImpots().then(setImpotsData);
+      });
+    };
+
+    if (loading) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          minHeight: "100vh",
+          background: C?.paper || "#F6F3EC",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C?.inkSoft || "#6B7278",
+          fontFamily: "sans-serif"
+        }
+      }, "Chargement…"));
+    }
+
+    if (error) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          minHeight: "100vh",
+          background: C?.paper || "#F6F3EC",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: "red",
+          fontFamily: "sans-serif"
+        }
+      }, "Erreur de chargement des données impôts"));
+    }
+
+    const data = impotsData;
     const inputStyle = {
       border: `1px solid ${C?.line || "#DED6C4"}`,
       borderRadius: 7,
@@ -47,10 +136,7 @@
     }, "Âge de sortie du foyer fiscal des enfants"), /*#__PURE__*/React.createElement("input", {
       type: "number",
       value: data?.settings?.childExitAge ?? 21,
-      onChange: e => update("settings", s => ({
-        ...s,
-        childExitAge: e.target.value
-      })),
+      onChange: e => handleUpdate("childExitAge", e.target.value),
       style: inputStyle
     }), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -68,10 +154,7 @@
       type: "number",
       step: "0.1",
       value: (Number(data?.settings?.taxAbattement || 0.1) * 100).toFixed(1),
-      onChange: e => update("settings", s => ({
-        ...s,
-        taxAbattement: (parseFloat(e.target.value || 0) || 0) / 100
-      })),
+      onChange: e => handleUpdate("taxAbattement", (parseFloat(e.target.value || 0) || 0) / 100),
       style: inputStyle
     }), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -93,9 +176,9 @@
         type: "number"
       }],
       rows: data?.taxChildren || [],
-      onCell: setCell("taxChildren"),
-      onRemove: removeRow("taxChildren"),
-      onAdd: () => addRow("taxChildren", () => ({
+      onCell: handleSetCell("taxChildren"),
+      onRemove: handleRemoveRow("taxChildren"),
+      onAdd: () => handleAddRow("taxChildren", () => ({
         id: uid(),
         birthYear: new Date().getFullYear()
       }))
@@ -115,9 +198,9 @@
         align: "right"
       }],
       rows: data?.taxBrackets || [],
-      onCell: setCell("taxBrackets"),
-      onRemove: removeRow("taxBrackets"),
-      onAdd: () => addRow("taxBrackets", () => ({
+      onCell: handleSetCell("taxBrackets"),
+      onRemove: handleRemoveRow("taxBrackets"),
+      onAdd: () => handleAddRow("taxBrackets", () => ({
         id: uid(),
         upTo: "",
         rate: 0
@@ -166,7 +249,7 @@
         color: C?.inkSoft || "#6B7278",
         padding: "0 6px 6px"
       }
-    }, "Taux PAS"))), /*#__PURE__*/React.createElement("tbody", null, (taxPreview || []).map(row => /*#__PURE__*/React.createElement("tr", {
+    }, "Taux PAS"))), /*#__PURE__*/React.createElement("tbody", null, (data?.taxPreview || []).map(row => /*#__PURE__*/React.createElement("tr", {
       key: row.year,
       style: {
         borderTop: `1px solid ${C?.line || "#DED6C4"}`
@@ -218,9 +301,9 @@
         type: "text"
       }],
       rows: data?.taxRateOverrides || [],
-      onCell: setCell("taxRateOverrides"),
-      onRemove: removeRow("taxRateOverrides"),
-      onAdd: () => addRow("taxRateOverrides", () => ({
+      onCell: handleSetCell("taxRateOverrides"),
+      onRemove: handleRemoveRow("taxRateOverrides"),
+      onAdd: () => handleAddRow("taxRateOverrides", () => ({
         id: uid(),
         year: new Date().getFullYear(),
         rate: 0.1,
@@ -245,9 +328,9 @@
         type: "text"
       }],
       rows: data?.taxActualOverrides || [],
-      onCell: setCell("taxActualOverrides"),
-      onRemove: removeRow("taxActualOverrides"),
-      onAdd: () => addRow("taxActualOverrides", () => ({
+      onCell: handleSetCell("taxActualOverrides"),
+      onRemove: handleRemoveRow("taxActualOverrides"),
+      onAdd: () => handleAddRow("taxActualOverrides", () => ({
         id: uid(),
         year: new Date().getFullYear(),
         amount: 0,
