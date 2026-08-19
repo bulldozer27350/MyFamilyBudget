@@ -36,12 +36,99 @@
     cursor: "pointer"
   };
   function SettingsView({
-    data,
-    update,
-    retireYear,
-    years,
     openHelp
   }) {
+    const { useState, useEffect, useCallback } = React;
+    const [settingsData, setSettingsData] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    // Charger les données via l'API asynchrone
+    useEffect(() => {
+      async function loadSettings() {
+        try {
+          const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
+          if (api) {
+            const data = await api.getSettings();
+            setSettingsData(data);
+          }
+        } catch (error) {
+          console.error("Erreur lors du chargement des paramètres:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+      loadSettings();
+    }, []);
+
+    // S'abonner aux changements
+    useEffect(() => {
+      const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
+      if (api) {
+        const unsubscribe = api.onSettingsChanged(async () => {
+          const data = await api.getSettings();
+          setSettingsData(data);
+        });
+        return unsubscribe;
+      }
+    }, []);
+
+    // Fonction pour mettre à jour un champ des settings
+    const updateSettingsField = useCallback(async (field, value) => {
+      const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
+      if (api) {
+        await api.updateSettingsField(field, value);
+        // Recharger les données après la mise à jour
+        const data = await api.getSettings();
+        setSettingsData(data);
+      }
+    }, []);
+
+    // Fonction pour mettre à jour une catégorie d'actif
+    const updateAssetCategory = useCallback(async (id, field, value) => {
+      const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
+      if (api) {
+        await api.updateAssetCategory(id, field, value);
+        // Recharger les données après la mise à jour
+        const data = await api.getSettings();
+        setSettingsData(data);
+      }
+    }, []);
+
+    // Fonction pour ajouter une catégorie d'actif
+    const addAssetCategory = useCallback(async (row) => {
+      const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
+      if (api) {
+        await api.addAssetCategory(row);
+        // Recharger les données après l'ajout
+        const data = await api.getSettings();
+        setSettingsData(data);
+      }
+    }, []);
+
+    // Fonction pour supprimer une catégorie d'actif
+    const removeAssetCategory = useCallback(async (id) => {
+      const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
+      if (api) {
+        await api.removeAssetCategory(id);
+        // Recharger les données après la suppression
+        const data = await api.getSettings();
+        setSettingsData(data);
+      }
+    }, []);
+
+    if (loading) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          padding: 20,
+          textAlign: "center",
+          color: C?.inkSoft || "#6B7278"
+        }
+      }, "Chargement des paramètres...");
+    }
+
+    const data = settingsData;
+    const retireYear = data?.retireYear || 1985 + 64;
+    const years = data?.years || [retireYear];
     return /*#__PURE__*/React.createElement(SectionCard, {
       title: "Paramètres généraux"
     }, /*#__PURE__*/React.createElement("div", {
@@ -59,10 +146,7 @@
     }, "Année de naissance (parent référent)"), /*#__PURE__*/React.createElement("input", {
       type: "number",
       value: data?.settings?.birthYear ?? 1985,
-      onChange: e => update("settings", s => ({
-        ...s,
-        birthYear: e.target.value
-      })),
+      onChange: e => updateSettingsField("birthYear", e.target.value),
       style: inputStyle
     })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -73,10 +157,7 @@
     }, "Âge de départ à la retraite visé"), /*#__PURE__*/React.createElement("input", {
       type: "number",
       value: data?.settings?.retireAge ?? 64,
-      onChange: e => update("settings", s => ({
-        ...s,
-        retireAge: e.target.value
-      })),
+      onChange: e => updateSettingsField("retireAge", e.target.value),
       style: inputStyle
     })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -87,10 +168,7 @@
     }, "Simuler la retraite jusqu'à l'âge de"), /*#__PURE__*/React.createElement("input", {
       type: "number",
       value: data?.settings?.simulateUntilAge ?? 85,
-      onChange: e => update("settings", s => ({
-        ...s,
-        simulateUntilAge: e.target.value
-      })),
+      onChange: e => updateSettingsField("simulateUntilAge", e.target.value),
       style: inputStyle
     }), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -108,10 +186,7 @@
     }, "Trésorerie disponible de départ (€)"), /*#__PURE__*/React.createElement("input", {
       type: "number",
       value: data?.settings?.startBalance ?? 0,
-      onChange: e => update("settings", s => ({
-        ...s,
-        startBalance: e.target.value
-      })),
+      onChange: e => updateSettingsField("startBalance", e.target.value),
       style: inputStyle
     }), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -130,10 +205,7 @@
       type: "number",
       step: "0.1",
       value: (Number(data?.settings?.inflationRate) || 0.02) * 100,
-      onChange: e => update("settings", s => ({
-        ...s,
-        inflationRate: (parseFloat(e.target.value || 0) || 0) / 100
-      })),
+      onChange: e => updateSettingsField("inflationRate", (parseFloat(e.target.value || 0) || 0) / 100),
       style: inputStyle
     }))), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -199,10 +271,7 @@
         name: "pivotMode",
         value: "auto",
         checked: isAutoMode,
-        onChange: () => update("settings", s => ({
-          ...s,
-          pivotMode: "auto"
-        }))
+        onChange: () => updateSettingsField("pivotMode", "auto")
       }), /*#__PURE__*/React.createElement("span", null, "Automatique — solde calculé à partir des transactions bancaires importées")), /*#__PURE__*/React.createElement("label", {
         style: {
           display: "flex",
@@ -216,10 +285,7 @@
         name: "pivotMode",
         value: "manual",
         checked: !isAutoMode,
-        onChange: () => update("settings", s => ({
-          ...s,
-          pivotMode: "manual"
-        }))
+        onChange: () => updateSettingsField("pivotMode", "manual")
       }), /*#__PURE__*/React.createElement("span", null, "Manuel — utiliser la trésorerie de départ saisie ci-dessus"))), /*#__PURE__*/React.createElement("div", {
         style: {
           display: "flex",
@@ -237,20 +303,14 @@
       }, "Date Pivot"), /*#__PURE__*/React.createElement("input", {
         type: "date",
         value: data?.settings?.pivotDate || "",
-        onChange: e => update("settings", s => ({
-          ...s,
-          pivotDate: e.target.value
-        })),
+        onChange: e => updateSettingsField("pivotDate", e.target.value),
         style: {
           ...inputStyle,
           minWidth: 160
         }
       })), latestTx && /*#__PURE__*/React.createElement("button", {
         type: "button",
-        onClick: () => update("settings", s => ({
-          ...s,
-          pivotDate: latestTx
-        })),
+        onClick: () => updateSettingsField("pivotDate", latestTx),
         style: {
           ...btnSmStyle,
           background: C?.pineSoft || "#E3ECE8",
@@ -269,10 +329,7 @@
         year: 'numeric'
       }), ")"), isPivotActive && /*#__PURE__*/React.createElement("button", {
         type: "button",
-        onClick: () => update("settings", s => ({
-          ...s,
-          pivotDate: ""
-        })),
+        onClick: () => updateSettingsField("pivotDate", ""),
         style: {
           ...btnSmStyle,
           color: C?.brick || "#A8503C",
@@ -392,10 +449,7 @@
     }, /*#__PURE__*/React.createElement("input", {
       type: "checkbox",
       checked: !!data?.settings?.sweepEnabled,
-      onChange: e => update("settings", s => ({
-        ...s,
-        sweepEnabled: e.target.checked
-      }))
+      onChange: e => updateSettingsField("sweepEnabled", e.target.checked)
     }), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 12.5,
@@ -412,10 +466,7 @@
       type: "number",
       value: data?.settings?.cashCeiling ?? "",
       placeholder: "ex. 15000",
-      onChange: e => update("settings", s => ({
-        ...s,
-        cashCeiling: e.target.value
-      })),
+      onChange: e => updateSettingsField("cashCeiling", e.target.value),
       style: inputStyle
     })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -427,10 +478,7 @@
       type: "number",
       value: data?.settings?.cashFloor ?? "",
       placeholder: "ex. 3000",
-      onChange: e => update("settings", s => ({
-        ...s,
-        cashFloor: e.target.value
-      })),
+      onChange: e => updateSettingsField("cashFloor", e.target.value),
       style: inputStyle
     })))), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -493,17 +541,14 @@
         }]
       }],
       rows: data?.assetCategories || [],
-      onCell: (id, field, value) => update("assetCategories", list => list.map(r => r.id === id ? {
-        ...r,
-        [field]: value
-      } : r)),
-      onRemove: id => update("assetCategories", list => list.filter(r => r.id !== id)),
-      onAdd: () => update("assetCategories", list => [...(list || []), {
+      onCell: (id, field, value) => updateAssetCategory(id, field, value),
+      onRemove: id => removeAssetCategory(id),
+      onAdd: () => addAssetCategory({
         id: uid(),
         icon: "📁",
         name: "Nouvelle catégorie",
         bucket: "cash"
-      }])
+      })
     })));
   }
   exports.SettingsView = SettingsView;

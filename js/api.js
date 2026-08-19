@@ -6,7 +6,7 @@
  * sur un back-end Java Spring Boot, seule l'implémentation interne changera (fetch),
  * pas les composants.
  *
- * Fonctionnalités déjà migrées : Vue d'ensemble, Trésorerie, Patrimoine, Retraite, Impôts.
+ * Fonctionnalités déjà migrées : Vue d'ensemble, Trésorerie, Patrimoine, Retraite, Impôts, Paramètres.
  */
 (function (exports) {
   'use strict';
@@ -225,6 +225,55 @@
      */
     onImpotsChanged(listener) {
       return app().ImpotsService.subscribeImpots(listener);
+    },
+
+    /**
+     * Paramètres : settings généraux, date pivot, virement auto et catégories d'actifs.
+     * @returns {Promise<Object>} modèle de lecture de l'onglet Paramètres
+     */
+    async getSettings() {
+      return Promise.resolve(app().SettingsService.buildSettings());
+    },
+
+    /**
+     * Met à jour un champ des settings.
+     * @returns {Promise<void>}
+     */
+    async updateSettingsField(field, value) {
+      return Promise.resolve(app().SettingsService.updateSettingsField(field, value));
+    },
+
+    /**
+     * Met à jour une cellule d'une catégorie d'actif.
+     * @returns {Promise<void>}
+     */
+    async updateAssetCategory(id, field, value) {
+      return Promise.resolve(app().SettingsService.updateAssetCategory(id, field, value));
+    },
+
+    /**
+     * Ajoute une nouvelle catégorie d'actif.
+     * @returns {Promise<void>}
+     */
+    async addAssetCategory(row) {
+      return Promise.resolve(app().SettingsService.addAssetCategory(row));
+    },
+
+    /**
+     * Supprime une catégorie d'actif.
+     * @returns {Promise<void>}
+     */
+    async removeAssetCategory(id) {
+      return Promise.resolve(app().SettingsService.removeAssetCategory(id));
+    },
+
+    /**
+     * S'abonne aux changements des données de Paramètres (saisie, autre onglet, import…).
+     * Sera remplacé par du polling ou du websocket côté back-end.
+     * @returns {Function} fonction de désabonnement
+     */
+    onSettingsChanged(listener) {
+      return app().SettingsService.subscribeSettings(listener);
     }
   };
 

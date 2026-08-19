@@ -789,6 +789,110 @@ function deps() {
     subscribePatrimoine
   };
 
+  /**
+   * Construit le modèle de lecture de l'onglet Paramètres à partir des données stockées.
+   * @returns {Object} modèle de lecture de l'onglet Paramètres
+   */
+  function buildSettings() {
+    const data = loadFullData();
+    const birthYear = Number(data?.settings?.birthYear) || 1985;
+    const retireAge = Number(data?.settings?.retireAge) || 64;
+    const simulateUntilAge = Number(data?.settings?.simulateUntilAge) || 85;
+    const retireYear = birthYear + retireAge;
+    const years = [];
+    for (let y = retireYear; y <= birthYear + simulateUntilAge; y++) {
+      years.push(y);
+    }
+
+    return {
+      settings: data?.settings || {},
+      assetCategories: data?.assetCategories || [],
+      retireYear,
+      years,
+      bankImport: data?.bankImport || {}
+    };
+  }
+
+  /**
+   * Met à jour un champ des settings.
+   * @param {string} field - Champ à modifier
+   * @param {*} value - Nouvelle valeur
+   */
+  function updateSettingsField(field, value) {
+    const currentData = loadFullData();
+    if (!currentData.settings) {
+      currentData.settings = {};
+    }
+    currentData.settings[field] = value;
+    saveFullData(currentData);
+  }
+
+  /**
+   * Met à jour une cellule d'une ligne d'assetCategories.
+   * @param {string} id - ID de la ligne
+   * @param {string} field - Champ à modifier
+   * @param {*} value - Nouvelle valeur
+   */
+  function updateAssetCategory(id, field, value) {
+    const currentData = loadFullData();
+    const list = currentData.assetCategories || [];
+    const rowIndex = list.findIndex(row => row.id === id);
+    if (rowIndex === -1) {
+      throw new Error("Catégorie d'actif non trouvée : " + id);
+    }
+    list[rowIndex][field] = value;
+    currentData.assetCategories = list;
+    saveFullData(currentData);
+  }
+
+  /**
+   * Ajoute une nouvelle catégorie d'actif.
+   * @param {Object} row - Nouvelle ligne (optionnel)
+   */
+  function addAssetCategory(row) {
+    const currentData = loadFullData();
+    const uid = deps().uid;
+    const list = currentData.assetCategories || [];
+    const newRow = row || {
+      id: uid(),
+      icon: "📁",
+      name: "Nouvelle catégorie",
+      bucket: "cash"
+    };
+    list.push(newRow);
+    currentData.assetCategories = list;
+    saveFullData(currentData);
+  }
+
+  /**
+   * Supprime une catégorie d'actif.
+   * @param {string} id - ID de la ligne à supprimer
+   */
+  function removeAssetCategory(id) {
+    const currentData = loadFullData();
+    const list = currentData.assetCategories || [];
+    const filteredList = list.filter(row => row.id !== id);
+    currentData.assetCategories = filteredList;
+    saveFullData(currentData);
+  }
+
+  /**
+   * S'abonne aux changements des données de Paramètres.
+   * @returns {Function} fonction de désabonnement
+   */
+  function subscribeSettings(listener) {
+    return deps().BudgetStore.subscribe(listener);
+  }
+
+  exports.SettingsService = {
+    buildSettings,
+    updateSettingsField,
+    updateAssetCategory,
+    addAssetCategory,
+    removeAssetCategory,
+    subscribeSettings
+  };
+
   // Export des fonctions pour utilisation par api.js
   exports.getRetraiteDataFromService = getRetraiteDataFromService;
   exports.saveRetraiteDataToService = saveRetraiteDataToService;

@@ -26,6 +26,8 @@
   <script src="js/csv-parser.js"></script>
   <script src="js/calculations.js"></script>
   <script src="js/data-store.js"></script>
+  <script src="js/service-metier.js"></script>
+  <script src="js/api.js"></script>
   
   <!-- UI Components -->
   <script src="js/components/ui-base.js"></script>
@@ -41,57 +43,16 @@
 
   <script>
 const {
-  useBudgetStore,
   AppLayout,
   SettingsView,
   C
 } = BudgetApp;
 function SettingsPage() {
-  const store = useBudgetStore();
-  const {
-    data,
-    loaded,
-    status,
-    useConstantEuros,
-    setUseConstantEuros,
-    projections,
-    update,
-    exportJSON,
-    importJSON,
-    resetData
-  } = store;
-  if (!loaded || !data) {
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        minHeight: "100vh",
-        background: C?.paper || "#F6F3EC",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        color: C?.inkSoft || "#6B7278",
-        fontFamily: "sans-serif"
-      }
-    }, "Chargement…"));
-  }
-  const retireYear = (Number(data.settings?.birthYear) || 0) + (Number(data.settings?.retireAge) || 0);
   return /*#__PURE__*/React.createElement(AppLayout, {
-    currentSection: "settings",
-    status: status,
-    useConstantEuros: useConstantEuros,
-    setUseConstantEuros: setUseConstantEuros,
-    exportJSON: exportJSON,
-    importJSON: importJSON,
-    resetData: resetData
+    currentSection: "settings"
   }, ({
     openHelp
   }) => /*#__PURE__*/React.createElement(SettingsView, {
-    data: data,
-    update: update,
-    retireYear: retireYear,
-    years: projections.years,
     openHelp: openHelp
   }));
 }
