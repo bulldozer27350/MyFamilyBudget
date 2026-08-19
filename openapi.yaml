@@ -1,0 +1,615 @@
+openapi: 3.0.3
+info:
+  title: API Livre de Comptes (Gestion Budgétaire, Patrimoine & Retraite)
+  description: |
+    Spécification OpenAPI 3.0 pour le back-end Java Spring Boot de l'application Livre de Comptes.
+    Permet la migration progressive (Pattern Strangler Fig) depuis la SPA React vers une API REST.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Serveur Spring Boot local
+paths:
+
+  # ---------------------------------------------------------------------------
+  # VUE D'ENSEMBLE (OVERVIEW)
+  # ---------------------------------------------------------------------------
+  /overview:
+    get:
+      summary: Récupère la vue d'ensemble (KPIs, projections, jauges FIRE)
+      operationId: getOverview
+      tags:
+        - Vue d'ensemble
+      parameters:
+        - name: useConstantEuros
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Données synthétiques de la vue d'ensemble
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OverviewResponse'
+
+  # ---------------------------------------------------------------------------
+  # TRÉSORERIE (CASHFLOW)
+  # ---------------------------------------------------------------------------
+  /tresorerie:
+    get:
+      summary: Récupère les données de trésorerie (revenus, charges, dépenses, primes)
+      operationId: getTresorerie
+      tags:
+        - Trésorerie
+      parameters:
+        - name: useConstantEuros
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Données de trésorerie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TresorerieResponse'
+
+  /tresorerie/{listKey}:
+    post:
+      summary: Ajoute une nouvelle ligne dans une section de trésorerie
+      operationId: addTresorerieLigne
+      tags:
+        - Trésorerie
+      parameters:
+        - name: listKey
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [incomes, charges, oneoff, variableIncomes, variableOverrides]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Ligne ajoutée avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /tresorerie/{listKey}/{id}:
+    put:
+      summary: Met à jour une ligne de trésorerie
+      operationId: updateTresorerieLigne
+      tags:
+        - Trésorerie
+      parameters:
+        - name: listKey
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [incomes, charges, oneoff, variableIncomes, variableOverrides]
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                field:
+                  type: string
+                value:
+                  nullable: true
+      responses:
+        '200':
+          description: Ligne mise à jour
+    delete:
+      summary: Supprime une ligne de trésorerie
+      operationId: removeTresorerieLigne
+      tags:
+        - Trésorerie
+      parameters:
+        - name: listKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Ligne supprimée
+
+  /tresorerie/adjust:
+    post:
+      summary: Applique une suggestion d'ajustement budgétaire
+      operationId: applyTresorerieAjustement
+      tags:
+        - Trésorerie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lineId, kind, newMonthly]
+              properties:
+                lineId:
+                  type: string
+                kind:
+                  type: string
+                newMonthly:
+                  type: number
+      responses:
+        '200':
+          description: Ajustement appliqué
+
+  # ---------------------------------------------------------------------------
+  # PATRIMOINE
+  # ---------------------------------------------------------------------------
+  /patrimoine:
+    get:
+      summary: Récupère les données de patrimoine (placements, crédits, immo)
+      operationId: getPatrimoine
+      tags:
+        - Patrimoine
+      parameters:
+        - name: useConstantEuros
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Données de patrimoine
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatrimoineResponse'
+
+  /patrimoine/{listKey}:
+    post:
+      summary: Sauvegarde/Crée une ligne de patrimoine
+      operationId: savePatrimoineLigne
+      tags:
+        - Patrimoine
+      parameters:
+        - name: listKey
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [placements, transfers, credits, realEstate]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Ligne enregistrée
+
+  /patrimoine/{listKey}/{id}:
+    delete:
+      summary: Supprime une ligne de patrimoine
+      operationId: deletePatrimoineLigne
+      tags:
+        - Patrimoine
+      parameters:
+        - name: listKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Supprimé
+
+  /patrimoine/placements/{placementId}/historique:
+    post:
+      summary: Ajoute un point d'historique de valeur pour un placement
+      operationId: addPlacementHistoriquePoint
+      tags:
+        - Patrimoine
+      parameters:
+        - name: placementId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, value]
+              properties:
+                date:
+                  type: string
+                  format: date
+                value:
+                  type: number
+      responses:
+        '200':
+          description: Point ajouté
+
+  /patrimoine/placements/{placementId}/historique/{index}:
+    delete:
+      summary: Supprime un point d'historique de valeur
+      operationId: deletePlacementHistoriquePoint
+      tags:
+        - Patrimoine
+      parameters:
+        - name: placementId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Point supprimé
+
+  # ---------------------------------------------------------------------------
+  # RETRAITE
+  # ---------------------------------------------------------------------------
+  /retraite:
+    get:
+      summary: Récupère la simulation et la configuration retraite
+      operationId: getRetraite
+      tags:
+        - Retraite
+      responses:
+        '200':
+          description: Configuration et résultats de retraite
+          content:
+            application/json:
+              schema:
+                type: object
+    put:
+      summary: Sauvegarde la configuration retraite
+      operationId: saveRetraite
+      tags:
+        - Retraite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Configuration enregistrée
+
+  # ---------------------------------------------------------------------------
+  # IMPÔTS
+  # ---------------------------------------------------------------------------
+  /impots:
+    get:
+      summary: Récupère le simulateur d'impôts sur le revenu
+      operationId: getImpots
+      tags:
+        - Impôts
+      responses:
+        '200':
+          description: Données du simulateur d'impôts
+          content:
+            application/json:
+              schema:
+                type: object
+    put:
+      summary: Sauvegarde la configuration d'impôts
+      operationId: saveImpotsConfig
+      tags:
+        - Impôts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Enregistré
+
+  # ---------------------------------------------------------------------------
+  # PARAMÈTRES & APPLICATION
+  # ---------------------------------------------------------------------------
+  /settings:
+    get:
+      summary: Récupère les paramètres globaux (inflation, thèmes...)
+      operationId: getSettings
+      tags:
+        - Paramètres
+      responses:
+        '200':
+          description: Paramètres globaux
+          content:
+            application/json:
+              schema:
+                type: object
+    put:
+      summary: Sauvegarde les paramètres globaux
+      operationId: saveSettings
+      tags:
+        - Paramètres
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Paramètres mis à jour
+
+  /budget:
+    get:
+      summary: Exporte l'intégralité du modèle de données (Sauvegarde)
+      operationId: getBudgetFull
+      tags:
+        - Système
+      responses:
+        '200':
+          description: Modèle complet JSON
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /budget/import:
+    post:
+      summary: Importe un fichier JSON de sauvegarde complète
+      operationId: importJSON
+      tags:
+        - Système
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Import réussi
+
+  /budget/reset:
+    post:
+      summary: Réinitialise l'ensemble des données
+      operationId: resetData
+      tags:
+        - Système
+      responses:
+        '200':
+          description: Réinitialisé
+
+  # ---------------------------------------------------------------------------
+  # IMPORT BANCAIRE & RAPPROCHEMENT
+  # ---------------------------------------------------------------------------
+  /bank-import:
+    get:
+      summary: Récupère l'état de l'import bancaire (CSV, règles, transactions)
+      operationId: getBankImport
+      tags:
+        - Import Bancaire
+      responses:
+        '200':
+          description: Données d'import bancaire
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /bank-import/mapping:
+    put:
+      summary: Met à jour la correspondance des colonnes CSV
+      operationId: updateBankImportMapping
+      tags:
+        - Import Bancaire
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Mapping mis à jour
+
+  /bank-import/csv:
+    post:
+      summary: Réceptionne et traite un fichier CSV bancaire
+      operationId: importBankCSV
+      tags:
+        - Import Bancaire
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Traitement du CSV effectué
+
+  # ---------------------------------------------------------------------------
+  # OPÉRATIONS EN COURS (PENDING)
+  # ---------------------------------------------------------------------------
+  /pending-operations:
+    get:
+      summary: Récupère les opérations en cours à rapprocher
+      operationId: getPendingOperations
+      tags:
+        - Opérations en cours
+      responses:
+        '200':
+          description: Liste des opérations en cours
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /pending-operations/reconcile:
+    post:
+      summary: Effectue le rapprochement d'une opération en cours
+      operationId: reconcilePendingOperations
+      tags:
+        - Opérations en cours
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Opération rapprochée
+
+  /pending-operations/ignore:
+    post:
+      summary: Ignore une opération en cours
+      operationId: ignorePendingOperation
+      tags:
+        - Opérations en cours
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Ignorée
+
+  # ---------------------------------------------------------------------------
+  # POINTAGE (MATCHING)
+  # ---------------------------------------------------------------------------
+  /pointage:
+    get:
+      summary: Récupère l'état des liaisons du pointage mensuel
+      operationId: getPointage
+      tags:
+        - Pointage
+      responses:
+        '200':
+          description: Données de pointage
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /pointage/matchings/{monthISO}:
+    put:
+      summary: Enregistre le pointage d'un mois spécifique
+      operationId: savePointageMatching
+      tags:
+        - Pointage
+      parameters:
+        - name: monthISO
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "2026-05"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Pointage mis à jour
+
+  # ---------------------------------------------------------------------------
+  # ANALYSE
+  # ---------------------------------------------------------------------------
+  /analyse:
+    get:
+      summary: Récupère le comparatif Réel vs Prévisionnel et dérives
+      operationId: getAnalyse
+      tags:
+        - Analyse
+      responses:
+        '200':
+          description: Données d'analyse
+          content:
+            application/json:
+              schema:
+                type: object
+
+components:
+  schemas:
+    OverviewResponse:
+      type: object
+      properties:
+        kpis:
+          type: object
+        patrimoineNett:
+          type: number
+        tauxEpargne:
+          type: number
+        fireData:
+          type: object
+    TresorerieResponse:
+      type: object
+      properties:
+        incomes:
+          type: array
+          items:
+            type: object
+        charges:
+          type: array
+          items:
+            type: object
+        oneoff:
+          type: array
+          items:
+            type: object
+    PatrimoineResponse:
+      type: object
+      properties:
+        placements:
+          type: array
+          items:
+            type: object
+        transfers:
+          type: array
+          items:
+            type: object
+        credits:
+          type: array
+          items:
+            type: object
