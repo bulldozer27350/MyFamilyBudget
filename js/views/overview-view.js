@@ -14,8 +14,6 @@
     eur
   } = exports.C ? exports : window.BudgetApp || {};
   const {
-    computeRetirementProjection,
-    computePivotBalance,
     calculateDetailedFinancialTimeline,
     projectPlacementBalanceAt,
     classifyAllocation
@@ -964,75 +962,14 @@
     patrimoineActuel,
     retireYear,
     patrimoine,
-    cashflow,
+    pivotBalance,
+    retireCharges,
+    totalPensions,
+    retirePatrimoine,
+    fireRente,
+    financialOnlyRente,
     openHelp
   }) {
-    const retireDeflator = useMemo(() => {
-      const inflationRate = Number(data?.settings.inflationRate) || 0;
-      return useConstantEuros ? Math.pow(1 / (1 + inflationRate), retireYear - (years[0] || retireYear)) : 1;
-    }, [useConstantEuros, data?.settings.inflationRate, retireYear, years]);
-    const excludedLabels = useMemo(() => new Set((data?.placements || []).filter(p => p.excludedFromRetirement).map(p => p.label)), [data?.placements]);
-    const financialOnlyPatrimoine = useMemo(() => {
-      const idx = years.indexOf(retireYear);
-      if (idx === -1) return {
-        pess: 0,
-        corr: 0,
-        opti: 0
-      };
-      const nominal = (patrimoine?.perPlacement || []).reduce((acc, pp) => {
-        if (excludedLabels.has(pp.label)) return acc;
-        const row = pp.rows[idx] || {
-          pess: 0,
-          corr: 0,
-          opti: 0
-        };
-        return {
-          pess: acc.pess + row.pess,
-          corr: acc.corr + row.corr,
-          opti: acc.opti + row.opti
-        };
-      }, {
-        pess: 0,
-        corr: 0,
-        opti: 0
-      });
-      return {
-        pess: nominal.pess * retireDeflator,
-        corr: nominal.corr * retireDeflator,
-        opti: nominal.opti * retireDeflator
-      };
-    }, [patrimoine, years, retireYear, excludedLabels, retireDeflator]);
-    const financialOnlyRente = {
-      pess: financialOnlyPatrimoine.pess * 0.04 / 12,
-      corr: financialOnlyPatrimoine.corr * 0.04 / 12,
-      opti: financialOnlyPatrimoine.opti * 0.04 / 12
-    };
-    const realEstateAtRetire = useMemo(() => {
-      const currentYear = new Date().getFullYear();
-      return (data?.realEstate || []).reduce((s, r) => {
-        const elapsed = retireYear - (Number(r.valuationYear) || currentYear);
-        return s + (Number(r.currentValue) || 0) * Math.pow(1 + (Number(r.annualGrowthRate) || 0), Math.max(0, elapsed)) * retireDeflator;
-      }, 0);
-    }, [data?.realEstate, retireYear, retireDeflator]);
-    const retirePatrimoine = {
-      pess: financialOnlyPatrimoine.pess + realEstateAtRetire,
-      corr: financialOnlyPatrimoine.corr + realEstateAtRetire,
-      opti: financialOnlyPatrimoine.opti + realEstateAtRetire
-    };
-    const fireRente = {
-      pess: retirePatrimoine.pess * 0.04 / 12,
-      corr: retirePatrimoine.corr * 0.04 / 12,
-      opti: retirePatrimoine.opti * 0.04 / 12
-    };
-    const retireYearData = (cashflow || []).find(c => c.year === retireYear);
-    const retireCharges = retireYearData ? retireYearData.charges / 12 * retireDeflator : 0;
-    const totalPensions = useMemo(() => {
-      const nominal = (data?.retirement?.people || []).reduce((s, person) => {
-        const proj = computeRetirementProjection(data, person, retireYear);
-        return s + (proj.pensionTotaleMensuelle || 0);
-      }, 0);
-      return nominal * retireDeflator;
-    }, [data, retireYear, retireDeflator]);
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
@@ -1041,8 +978,7 @@
         flexWrap: "wrap"
       }
     }, (() => {
-      const pb = computePivotBalance(data);
-      if (pb !== null) {
+      if (pivotBalance !== null) {
         const pivotLabel = data.settings.pivotDate ? `Solde réel au ${new Date(data.settings.pivotDate + 'T12:00:00').toLocaleDateString('fr-FR', {
           day: 'numeric',
           month: 'short',
@@ -1050,7 +986,7 @@
         })}` : "Solde réel (Date Pivot)";
         return /*#__PURE__*/React.createElement(KPI, {
           label: pivotLabel,
-          value: eur(pb),
+          value: eur(pivotBalance),
           accent: C?.pine || "#2F5D50",
           sub: "📌 Date Pivot active"
         });

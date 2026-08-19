@@ -15,6 +15,8 @@ async function runTests() {
     'js/csv-parser.js',
     'js/calculations.js',
     'js/data-store.js',
+    'js/service-metier.js',
+    'js/api.js',
     'js/components/ui-base.js',
     'js/components/charts.js',
     'js/components/help-modal.js',
