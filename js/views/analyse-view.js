@@ -37,9 +37,46 @@
     data,
     openHelp
   }) {
-    const transactions = data?.bankImport?.transactions || [];
-    const categories = data?.bankImport?.categories || [];
-    const matchings = data?.bankImport?.matchings || [];
+    const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
+    const [apiData, setApiData] = useState(null);
+    const [loading, setLoading] = useState(!data);
+
+    const loadDataFromApi = () => {
+      if (api && api.getAnalyse) {
+        api.getAnalyse().then(res => {
+          setApiData(res);
+          setLoading(false);
+        }).catch(err => {
+          console.error("Erreur chargement analyse via BudgetApi:", err);
+          setLoading(false);
+        });
+      } else if (data) {
+        setApiData({
+          data,
+          bankImport: data?.bankImport || {},
+          charges: data?.charges || [],
+          incomes: data?.incomes || [],
+          placements: data?.placements || [],
+          settings: data?.settings || {}
+        });
+        setLoading(false);
+      }
+    };
+
+    useEffect(() => {
+      loadDataFromApi();
+      if (api && api.onAnalyseChanged) {
+        const unsub = api.onAnalyseChanged(() => {
+          loadDataFromApi();
+        });
+        return () => unsub && unsub();
+      }
+    }, []);
+
+    const rawData = apiData?.data || data;
+    const transactions = rawData?.bankImport?.transactions || [];
+    const categories = rawData?.bankImport?.categories || [];
+    const matchings = rawData?.bankImport?.matchings || [];
     const [monthsBack, setMonthsBack] = useState(12);
     const [driftSortKey, setDriftSortKey] = useState("ecart");
     const [driftSortDir, setDriftSortDir] = useState(-1);
@@ -92,7 +129,7 @@
       });
     }, [currentMonthISO]);
     const landingData = useMemo(() => {
-      const inflationRate = Number(data?.settings?.inflationRate) || 0.02;
+      const inflationRate = Number(rawData?.settings?.inflationRate) || 0.02;
       const currentYear = new Date().getFullYear();
       const currentMatching = matchings.find(m => m.month === currentMonthISO) || {
         links: []
@@ -134,27 +171,27 @@
           status
         });
       };
-      (data?.charges || []).forEach(c => processLine(c, "charge"));
-      (data?.incomes || []).forEach(i => processLine(i, "revenu"));
-      (data?.placements || []).forEach(p => processLine(p, "placement"));
+      (rawData?.charges || []).forEach(c => processLine(c, "charge"));
+      (rawData?.incomes || []).forEach(i => processLine(i, "revenu"));
+      (rawData?.placements || []).forEach(p => processLine(p, "placement"));
       return rows.sort((a, b) => b.budgeted - a.budgeted);
-    }, [data, matchings, transactions, currentMonthISO]);
+    }, [rawData, matchings, transactions, currentMonthISO]);
     const landingTotalBudget = landingData.reduce((s, r) => s + r.budgeted, 0);
     const landingTotalReel = landingData.reduce((s, r) => s + r.reel, 0);
     const monthlyCompareData = useMemo(() => {
-      const inflationRate = Number(data?.settings?.inflationRate) || 0.02;
+      const inflationRate = Number(rawData?.settings?.inflationRate) || 0.02;
       const txById = {};
       transactions.forEach(t => {
         txById[t.id] = t;
       });
       const lineKindMap = {};
-      (data?.charges || []).forEach(c => {
+      (rawData?.charges || []).forEach(c => {
         lineKindMap[c.id] = "charge";
       });
-      (data?.incomes || []).forEach(i => {
+      (rawData?.incomes || []).forEach(i => {
         lineKindMap[i.id] = "revenu";
       });
-      (data?.placements || []).forEach(p => {
+      (rawData?.placements || []).forEach(p => {
         lineKindMap[p.id] = "placement";
       });
       const calcCharge = exports.chargeMonthlyForYear || window.BudgetApp && window.BudgetApp.chargeMonthlyForYear || chargeMonthlyForYear;
@@ -169,13 +206,13 @@
       }
       return months.map(monthISO => {
         const year = Number(monthISO.slice(0, 4));
-        const budgeted = [...(data?.charges || []).map(c => {
+        const budgeted = [...(rawData?.charges || []).map(c => {
           const ok = (!c.start || monthISO >= c.start.slice(0, 7)) && (!c.end || monthISO <= c.end.slice(0, 7));
           return ok ? calcCharge(c, year, inflationRate) : 0;
-        }), ...(data?.incomes || []).map(inc => {
+        }), ...(rawData?.incomes || []).map(inc => {
           const ok = (!inc.start || monthISO >= inc.start.slice(0, 7)) && (!inc.end || monthISO <= inc.end.slice(0, 7));
           return ok ? calcIncome(inc, year) : 0;
-        }), ...(data?.placements || []).map(p => {
+        }), ...(rawData?.placements || []).map(p => {
           const m = Number(p.monthly) || 0;
           const ok = (!p.monthlyFrom || monthISO >= p.monthlyFrom.slice(0, 7)) && (!p.monthlyUntil || monthISO <= p.monthlyUntil.slice(0, 7));
           return m > 0 && ok ? m : 0;
@@ -204,7 +241,7 @@
           hasPointing: (monthMatching.links || []).some(l => (l.txIds || []).length > 0)
         };
       });
-    }, [data, matchings, transactions, monthsBack]);
+    }, [rawData, matchings, transactions, monthsBack]);
     const barChartRef = useRef(null);
     const barCanvasRef = useRef(null);
     useEffect(() => {
@@ -285,8 +322,8 @@
     }, [monthlyCompareData, activeTab]);
     const driftRows = useMemo(() => {
       const calcAvgs = exports.computeRealAverages || window.BudgetApp && window.BudgetApp.computeRealAverages || computeRealAverages;
-      const realAvgs = calcAvgs(data);
-      const inflationRate = Number(data?.settings?.inflationRate) || 0.02;
+      const realAvgs = calcAvgs(rawData);
+      const inflationRate = Number(rawData?.settings?.inflationRate) || 0.02;
       const currentYear = new Date().getFullYear();
       const rows = [];
       const calcCharge = exports.chargeMonthlyForYear || window.BudgetApp && window.BudgetApp.chargeMonthlyForYear || chargeMonthlyForYear;
@@ -318,11 +355,11 @@
           months: avg?.months || 0
         });
       };
-      (data?.charges || []).forEach(c => addLine(c, "charge"));
-      (data?.incomes || []).forEach(i => addLine(i, "revenu"));
-      (data?.placements || []).forEach(p => addLine(p, "placement"));
+      (rawData?.charges || []).forEach(c => addLine(c, "charge"));
+      (rawData?.incomes || []).forEach(i => addLine(i, "revenu"));
+      (rawData?.placements || []).forEach(p => addLine(p, "placement"));
       return rows;
-    }, [data]);
+    }, [rawData]);
     const displayDriftRows = useMemo(() => {
       let r = driftRows;
       if (driftSearch.trim()) {

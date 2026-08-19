@@ -1614,6 +1614,22 @@ function deps() {
     return deps().BudgetStore.subscribe(listener);
   }
 
+  function buildAnalyse() {
+    const data = loadFullData();
+    return {
+      data,
+      bankImport: data?.bankImport || {},
+      charges: data?.charges || [],
+      incomes: data?.incomes || [],
+      placements: data?.placements || [],
+      settings: data?.settings || {}
+    };
+  }
+
+  function subscribeAnalyse(listener) {
+    return deps().BudgetStore.subscribe(listener);
+  }
+
   exports.BankImportService = {
     buildBankImport,
     updateBankImportMapping,
@@ -1646,6 +1662,11 @@ function deps() {
     buildPointage,
     savePointageMatching,
     subscribePointage
+  };
+
+  exports.AnalyseService = {
+    buildAnalyse,
+    subscribeAnalyse
   };
 
   // Export des fonctions pour utilisation par api.js

@@ -504,6 +504,23 @@
      */
     onPointageChanged(listener) {
       return app().PointageService.subscribePointage(listener);
+    },
+
+    /**
+     * Récupère les données d'Analyse (Réel vs Prévisionnel, atterrissage, dérives).
+     * @returns {Promise<Object>}
+     */
+    async getAnalyse() {
+      return Promise.resolve(app().AnalyseService.buildAnalyse());
+    },
+
+    /**
+     * S'abonne aux changements d'Analyse.
+     * @param {Function} listener
+     * @returns {Function} fonction de désabonnement
+     */
+    onAnalyseChanged(listener) {
+      return app().AnalyseService.subscribeAnalyse(listener);
     }
   };
 
