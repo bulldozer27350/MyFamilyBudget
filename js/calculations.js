@@ -763,7 +763,15 @@
     })();
     const taxYearly = (() => {
       if (!data) return [];
-      const brackets = data.taxBrackets || [];
+      const brackets = (data.taxBrackets && data.taxBrackets.length > 0)
+        ? data.taxBrackets
+        : [
+            { id: "tb_1", upTo: 11294, rate: 0 },
+            { id: "tb_2", upTo: 28797, rate: 0.11 },
+            { id: "tb_3", upTo: 82341, rate: 0.30 },
+            { id: "tb_4", upTo: 177106, rate: 0.41 },
+            { id: "tb_5", upTo: "", rate: 0.45 }
+          ];
       const children = data.taxChildren || [];
       const exitAge = data.settings.childExitAge ?? 21;
       const abattement = Number(data.settings.taxAbattement) || 0;
@@ -902,7 +910,11 @@
         };
       });
     })();
-    const taxPreview = taxYearly.slice(0, 4);
+    const currentYear = new Date().getFullYear();
+    const futureTax = taxYearly.filter(t => t.year >= currentYear);
+    const taxPreview = futureTax.length > 0
+      ? futureTax.slice(0, 6)
+      : taxYearly.slice(-Math.min(6, taxYearly.length));
     return {
       years,
       taxYearly,

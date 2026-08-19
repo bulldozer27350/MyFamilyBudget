@@ -118,8 +118,14 @@
     }
 
     const data = impotsData;
-    const taxPreview = data?.taxPreview || [];
-    const currentTax = taxPreview.length > 0 ? taxPreview[0] : null;
+    const allTax = (data?.taxYearly && data.taxYearly.length > 0) ? data.taxYearly : (data?.taxPreview || []);
+    const currentYear = new Date().getFullYear();
+    const currentTax = allTax.find(t => t.year === currentYear)
+                    || allTax.find(t => t.year > currentYear)
+                    || (allTax.length > 0 ? allTax[0] : null);
+    const taxPreview = (data?.taxPreview && data.taxPreview.length > 0)
+      ? data.taxPreview
+      : allTax.filter(t => t.year >= currentYear).slice(0, 6);
 
     const inputStyle = {
       border: `1px solid ${C?.line || "#DED6C4"}`,
