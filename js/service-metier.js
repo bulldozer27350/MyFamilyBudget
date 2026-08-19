@@ -893,6 +893,361 @@ function deps() {
     subscribeSettings
   };
 
+  /**
+   * Construit le modèle de lecture de l'onglet Import Bancaire.
+   * @returns {Object} modèle de lecture de l'onglet Import
+   */
+  function buildBankImport() {
+    const data = loadFullData();
+    const bankImport = data?.bankImport || {};
+    
+    return {
+      columnMapping: bankImport.columnMapping || {
+        delimiter: ";",
+        dateFormat: "DD/MM/YYYY",
+        hasHeader: true,
+        dateCol: null,
+        labelCol: null,
+        typeCol: null,
+        amountCol: null
+      },
+      categories: bankImport.categories || [],
+      rules: bankImport.rules || [],
+      transactions: bankImport.transactions || []
+    };
+  }
+
+  /**
+   * Met à jour le mapping de colonnes pour l'import bancaire.
+   * @param {Object} newMapping - Nouveau mapping de colonnes
+   */
+  function updateBankImportMapping(newMapping) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    currentData.bankImport.columnMapping = {
+      ...currentData.bankImport.columnMapping,
+      ...newMapping
+    };
+    saveFullData(currentData);
+  }
+
+  /**
+   * Ajoute une nouvelle catégorie d'import bancaire.
+   * @param {Object} category - Nouvelle catégorie
+   */
+  function addBankImportCategory(category) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    if (!currentData.bankImport.categories) {
+      currentData.bankImport.categories = [];
+    }
+    const uid = deps().uid;
+    const newCategory = category || {
+      id: uid(),
+      label: "Nouvelle catégorie",
+      kind: "Dépense",
+      compressible: "Non"
+    };
+    currentData.bankImport.categories.push(newCategory);
+    saveFullData(currentData);
+  }
+
+  /**
+   * Met à jour une catégorie d'import bancaire.
+   * @param {string} id - ID de la catégorie
+   * @param {string} field - Champ à modifier
+   * @param {*} value - Nouvelle valeur
+   */
+  function updateBankImportCategory(id, field, value) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    if (!currentData.bankImport.categories) {
+      currentData.bankImport.categories = [];
+    }
+    const categories = currentData.bankImport.categories;
+    const categoryIndex = categories.findIndex(c => c.id === id);
+    if (categoryIndex === -1) {
+      throw new Error("Catégorie non trouvée : " + id);
+    }
+    categories[categoryIndex][field] = value;
+    currentData.bankImport.categories = categories;
+    saveFullData(currentData);
+  }
+
+  /**
+   * Supprime une catégorie d'import bancaire.
+   * @param {string} id - ID de la catégorie à supprimer
+   */
+  function removeBankImportCategory(id) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    if (!currentData.bankImport.categories) {
+      currentData.bankImport.categories = [];
+    }
+    currentData.bankImport.categories = currentData.bankImport.categories.filter(c => c.id !== id);
+    saveFullData(currentData);
+  }
+
+  /**
+   * Ajoute une nouvelle règle de catégorisation.
+   * @param {Object} rule - Nouvelle règle
+   */
+  function addBankImportRule(rule) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    if (!currentData.bankImport.rules) {
+      currentData.bankImport.rules = [];
+    }
+    const uid = deps().uid;
+    const newRule = rule || {
+      id: uid(),
+      matchText: "",
+      categoryId: currentData.bankImport.categories?.[0]?.id || ""
+    };
+    currentData.bankImport.rules.push(newRule);
+    saveFullData(currentData);
+  }
+
+  /**
+   * Met à jour une règle de catégorisation.
+   * @param {string} id - ID de la règle
+   * @param {string} field - Champ à modifier
+   * @param {*} value - Nouvelle valeur
+   */
+  function updateBankImportRule(id, field, value) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    if (!currentData.bankImport.rules) {
+      currentData.bankImport.rules = [];
+    }
+    const rules = currentData.bankImport.rules;
+    const ruleIndex = rules.findIndex(r => r.id === id);
+    if (ruleIndex === -1) {
+      throw new Error("Règle non trouvée : " + id);
+    }
+    rules[ruleIndex][field] = value;
+    currentData.bankImport.rules = rules;
+    saveFullData(currentData);
+  }
+
+  /**
+   * Supprime une règle de catégorisation.
+   * @param {string} id - ID de la règle à supprimer
+   */
+  function removeBankImportRule(id) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    if (!currentData.bankImport.rules) {
+      currentData.bankImport.rules = [];
+    }
+    currentData.bankImport.rules = currentData.bankImport.rules.filter(r => r.id !== id);
+    saveFullData(currentData);
+  }
+
+  /**
+   * Réapplique les règles aux transactions non catégorisées.
+   */
+  function recalculateBankImportRules() {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    const { applyRulesToTransactions } = deps();
+    currentData.bankImport.transactions = applyRulesToTransactions(
+      currentData.bankImport.transactions || [],
+      currentData.bankImport.rules || []
+    );
+    saveFullData(currentData);
+  }
+
+  /**
+   * Met à jour la catégorie d'une transaction et optionnellement crée une règle.
+   * @param {string} txId - ID de la transaction
+   * @param {string} categoryId - ID de la catégorie
+   * @param {string} ruleKeyword - Mot-clé pour la règle (optionnel)
+   */
+  function setBankImportTransactionCategory(txId, categoryId, ruleKeyword) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    if (!currentData.bankImport.transactions) {
+      currentData.bankImport.transactions = [];
+    }
+    if (!currentData.bankImport.rules) {
+      currentData.bankImport.rules = [];
+    }
+
+    let newRules = currentData.bankImport.rules;
+    if (ruleKeyword) {
+      const key = ruleKeyword.trim().toUpperCase();
+      const existing = currentData.bankImport.rules.find(r => r.matchText.trim().toUpperCase() === key);
+      const uid = deps().uid;
+      newRules = existing 
+        ? currentData.bankImport.rules.map(r => r.matchText.trim().toUpperCase() === key ? { ...r, categoryId } : r)
+        : [...currentData.bankImport.rules, { id: uid(), matchText: ruleKeyword.trim(), categoryId }];
+    }
+
+    const { applyRulesToTransactions } = deps();
+    const updatedTransactions = currentData.bankImport.transactions.map(t => 
+      t.id === txId ? { ...t, categoryId } : t
+    );
+    
+    currentData.bankImport.rules = newRules;
+    currentData.bankImport.transactions = applyRulesToTransactions(updatedTransactions, newRules);
+    saveFullData(currentData);
+  }
+
+  /**
+   * Force l'import d'une transaction marquée comme doublon.
+   * @param {Object} tx - Transaction à importer
+   */
+  function forceImportBankTransaction(tx) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    if (!currentData.bankImport.transactions) {
+      currentData.bankImport.transactions = [];
+    }
+    if (!currentData.bankImport.rules) {
+      currentData.bankImport.rules = [];
+    }
+
+    const { applyRulesToTransactions } = deps();
+    const categorizedTx = applyRulesToTransactions([tx], currentData.bankImport.rules)[0] || tx;
+    currentData.bankImport.transactions.push(categorizedTx);
+    saveFullData(currentData);
+  }
+
+  /**
+   * Importe des transactions depuis un fichier CSV traité.
+   * @param {Array} rawRows - Lignes du CSV déjà parsées
+   * @param {Object} colRoles - Rôles assignés aux colonnes
+   * @param {Object} mapping - Configuration de mapping
+   * @returns {Object} Résumé de l'import
+   */
+  function importBankTransactions(rawRows, colRoles, mapping) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    if (!currentData.bankImport.transactions) {
+      currentData.bankImport.transactions = [];
+    }
+    if (!currentData.bankImport.rules) {
+      currentData.bankImport.rules = [];
+    }
+
+    const { parseDateWithFormat, parseAmountText, transactionDedupeKey, applyRulesToTransactions, uid } = deps();
+    
+    const dateCol = colRoles.indexOf("date");
+    const labelCol = colRoles.indexOf("label");
+    const typeCol = colRoles.indexOf("type");
+    const amountCol = colRoles.indexOf("amount");
+
+    if (dateCol === -1 || labelCol === -1 || amountCol === -1) {
+      return {
+        error: "Il faut au minimum assigner les rôles Date, Libellé et Montant à une colonne."
+      };
+    }
+
+    const newMapping = {
+      ...mapping,
+      dateCol,
+      labelCol,
+      typeCol,
+      amountCol
+    };
+
+    const existingCounts = {};
+    currentData.bankImport.transactions.forEach(t => {
+      const k = transactionDedupeKey(t);
+      existingCounts[k] = (existingCounts[k] || 0) + 1;
+    });
+
+    const fileKeyCounts = {};
+    let imported = [];
+    let ignoredDuplicates = [];
+
+    rawRows.forEach(row => {
+      const dateISO = parseDateWithFormat(row[dateCol], mapping.dateFormat);
+      if (!dateISO) return;
+      
+      const t = {
+        id: uid(),
+        date: dateISO,
+        label: (row[labelCol] || "").trim(),
+        type: typeCol !== -1 ? (row[typeCol] || "").trim() : "",
+        amount: parseAmountText(row[amountCol]),
+        categoryId: ""
+      };
+
+      const key = transactionDedupeKey(t);
+      fileKeyCounts[key] = (fileKeyCounts[key] || 0) + 1;
+      const currentStored = existingCounts[key] || 0;
+      
+      if (fileKeyCounts[key] <= currentStored) {
+        ignoredDuplicates.push(t);
+      } else {
+        existingCounts[key] = (existingCounts[key] || 0) + 1;
+        imported.push(t);
+      }
+    });
+
+    imported = applyRulesToTransactions(imported, currentData.bankImport.rules);
+    const autoCategorized = imported.filter(t => t.categoryId).length;
+
+    currentData.bankImport.columnMapping = newMapping;
+    currentData.bankImport.transactions = [...currentData.bankImport.transactions, ...imported];
+    saveFullData(currentData);
+
+    return {
+      imported: imported.length,
+      duplicates: ignoredDuplicates.length,
+      autoCategorized,
+      ignoredDuplicates
+    };
+  }
+
+  /**
+   * S'abonne aux changements des données d'Import Bancaire.
+   * @returns {Function} fonction de désabonnement
+   */
+  function subscribeBankImport(listener) {
+    return deps().BudgetStore.subscribe(listener);
+  }
+
+  exports.BankImportService = {
+    buildBankImport,
+    updateBankImportMapping,
+    addBankImportCategory,
+    updateBankImportCategory,
+    removeBankImportCategory,
+    addBankImportRule,
+    updateBankImportRule,
+    removeBankImportRule,
+    recalculateBankImportRules,
+    setBankImportTransactionCategory,
+    forceImportBankTransaction,
+    importBankTransactions,
+    subscribeBankImport
+  };
+
   // Export des fonctions pour utilisation par api.js
   exports.getRetraiteDataFromService = getRetraiteDataFromService;
   exports.saveRetraiteDataToService = saveRetraiteDataToService;

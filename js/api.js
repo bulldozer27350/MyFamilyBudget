@@ -6,7 +6,7 @@
  * sur un back-end Java Spring Boot, seule l'implémentation interne changera (fetch),
  * pas les composants.
  *
- * Fonctionnalités déjà migrées : Vue d'ensemble, Trésorerie, Patrimoine, Retraite, Impôts, Paramètres.
+ * Fonctionnalités déjà migrées : Vue d'ensemble, Trésorerie, Patrimoine, Retraite, Impôts, Paramètres, Import Bancaire.
  */
 (function (exports) {
   'use strict';
@@ -274,6 +274,111 @@
      */
     onSettingsChanged(listener) {
       return app().SettingsService.subscribeSettings(listener);
+    },
+
+    /**
+     * Import Bancaire : mapping, catégories, règles et transactions.
+     * @returns {Promise<Object>} modèle de lecture de l'onglet Import
+     */
+    async getBankImport() {
+      return Promise.resolve(app().BankImportService.buildBankImport());
+    },
+
+    /**
+     * Met à jour le mapping de colonnes pour l'import bancaire.
+     * @returns {Promise<void>}
+     */
+    async updateBankImportMapping(newMapping) {
+      return Promise.resolve(app().BankImportService.updateBankImportMapping(newMapping));
+    },
+
+    /**
+     * Ajoute une nouvelle catégorie d'import bancaire.
+     * @returns {Promise<void>}
+     */
+    async addBankImportCategory(category) {
+      return Promise.resolve(app().BankImportService.addBankImportCategory(category));
+    },
+
+    /**
+     * Met à jour une catégorie d'import bancaire.
+     * @returns {Promise<void>}
+     */
+    async updateBankImportCategory(id, field, value) {
+      return Promise.resolve(app().BankImportService.updateBankImportCategory(id, field, value));
+    },
+
+    /**
+     * Supprime une catégorie d'import bancaire.
+     * @returns {Promise<void>}
+     */
+    async removeBankImportCategory(id) {
+      return Promise.resolve(app().BankImportService.removeBankImportCategory(id));
+    },
+
+    /**
+     * Ajoute une nouvelle règle de catégorisation.
+     * @returns {Promise<void>}
+     */
+    async addBankImportRule(rule) {
+      return Promise.resolve(app().BankImportService.addBankImportRule(rule));
+    },
+
+    /**
+     * Met à jour une règle de catégorisation.
+     * @returns {Promise<void>}
+     */
+    async updateBankImportRule(id, field, value) {
+      return Promise.resolve(app().BankImportService.updateBankImportRule(id, field, value));
+    },
+
+    /**
+     * Supprime une règle de catégorisation.
+     * @returns {Promise<void>}
+     */
+    async removeBankImportRule(id) {
+      return Promise.resolve(app().BankImportService.removeBankImportRule(id));
+    },
+
+    /**
+     * Réapplique les règles aux transactions non catégorisées.
+     * @returns {Promise<void>}
+     */
+    async recalculateBankImportRules() {
+      return Promise.resolve(app().BankImportService.recalculateBankImportRules());
+    },
+
+    /**
+     * Met à jour la catégorie d'une transaction et optionnellement crée une règle.
+     * @returns {Promise<void>}
+     */
+    async setBankImportTransactionCategory(txId, categoryId, ruleKeyword) {
+      return Promise.resolve(app().BankImportService.setBankImportTransactionCategory(txId, categoryId, ruleKeyword));
+    },
+
+    /**
+     * Force l'import d'une transaction marquée comme doublon.
+     * @returns {Promise<void>}
+     */
+    async forceImportBankTransaction(tx) {
+      return Promise.resolve(app().BankImportService.forceImportBankTransaction(tx));
+    },
+
+    /**
+     * Importe des transactions depuis un fichier CSV traité.
+     * @returns {Promise<Object>} Résumé de l'import
+     */
+    async importBankTransactions(rawRows, colRoles, mapping) {
+      return Promise.resolve(app().BankImportService.importBankTransactions(rawRows, colRoles, mapping));
+    },
+
+    /**
+     * S'abonne aux changements des données d'Import Bancaire (saisie, autre onglet, import…).
+     * Sera remplacé par du polling ou du websocket côté back-end.
+     * @returns {Function} fonction de désabonnement
+     */
+    onBankImportChanged(listener) {
+      return app().BankImportService.subscribeBankImport(listener);
     }
   };
 

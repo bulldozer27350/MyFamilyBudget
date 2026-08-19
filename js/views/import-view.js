@@ -6,7 +6,8 @@
 
   const {
     useState,
-    useMemo
+    useMemo,
+    useEffect
   } = React;
   const {
     C,
@@ -21,6 +22,9 @@
     ruleKeyFromLabel,
     applyRulesToTransactions
   } = exports.parseCSVText ? exports : window.BudgetApp || {};
+  const {
+    BudgetApi
+  } = exports.BudgetApi ? exports : window.BudgetApp || {};
   const {
     SectionCard,
     EditableTable
@@ -210,26 +214,46 @@
     }, "Aucune ligne ne correspond aux filtres.")) : filteredSorted.map(r => renderRow(r))))));
   }
   function ImportBankView({
-    data,
-    update,
-    setCell,
-    addRow,
-    removeRow,
     openHelp
   }) {
-    const mapping = data?.bankImport?.columnMapping || {};
-    const categories = data?.bankImport?.categories || [];
-    const rules = data?.bankImport?.rules || [];
-    const transactions = data?.bankImport?.transactions || [];
+    const [bankImportData, setBankImportData] = useState(null);
     const [rawRows, setRawRows] = useState(null);
     const [colRoles, setColRoles] = useState(null);
     const [fileName, setFileName] = useState("");
     const [importSummary, setImportSummary] = useState(null);
     const [showIgnoredModal, setShowIgnoredModal] = useState(false);
-    const updateMapping = fn => update("bankImport", b => ({
-      ...b,
-      columnMapping: fn(b.columnMapping)
-    }));
+    
+    // Charger les données d'import bancaire via l'API asynchrone
+    useEffect(() => {
+      const loadBankImportData = async () => {
+        try {
+          const result = await BudgetApi.getBankImport();
+          setBankImportData(result);
+        } catch (error) {
+          console.error("Erreur lors du chargement des données d'import:", error);
+        }
+      };
+      loadBankImportData();
+      
+      // S'abonner aux changements
+      const unsubscribe = BudgetApi.onBankImportChanged(() => {
+        loadBankImportData();
+      });
+      
+      return unsubscribe;
+    }, []);
+
+    const mapping = bankImportData?.columnMapping || {};
+    const categories = bankImportData?.categories || [];
+    const rules = bankImportData?.rules || [];
+    const transactions = bankImportData?.transactions || [];
+    
+    const updateMapping = fn => {
+      const newMapping = fn(mapping);
+      BudgetApi.updateBankImportMapping(newMapping).then(() => {
+        setBankImportData(prev => prev ? { ...prev, columnMapping: newMapping } : null);
+      });
+    };
     const sortedCategories = useMemo(() => [...categories].sort((a, b) => (a.label || "").localeCompare(b.label || "", "fr")), [categories]);
     const categoryOptions = [{
       value: "",
@@ -267,83 +291,41 @@
         return role !== "ignore" && r === role ? "ignore" : r;
       }));
     };
-    const doImport = () => {
+    const doImport = async () => {
       if (!rawRows || !colRoles) return;
-      const dateCol = colRoles.indexOf("date");
-      const labelCol = colRoles.indexOf("label");
-      const typeCol = colRoles.indexOf("type");
-      const amountCol = colRoles.indexOf("amount");
-      if (dateCol === -1 || labelCol === -1 || amountCol === -1) {
-        setImportSummary({
-          error: "Il faut au minimum assigner les rôles Date, Libellé et Montant à une colonne."
-        });
-        return;
-      }
-      const newMapping = {
-        ...mapping,
-        dateCol,
-        labelCol,
-        typeCol,
-        amountCol
-      };
-      const existingCounts = {};
-      transactions.forEach(t => {
-        const k = transactionDedupeKey(t);
-        existingCounts[k] = (existingCounts[k] || 0) + 1;
-      });
-      const fileKeyCounts = {};
-      let imported = [],
-        ignoredDuplicates = [];
-      rawRows.forEach(row => {
-        const dateISO = parseDateWithFormat(row[dateCol], mapping.dateFormat);
-        if (!dateISO) return;
-        const t = {
-          id: uid(),
-          date: dateISO,
-          label: (row[labelCol] || "").trim(),
-          type: typeCol !== -1 ? (row[typeCol] || "").trim() : "",
-          amount: parseAmountText(row[amountCol]),
-          categoryId: ""
-        };
-        const key = transactionDedupeKey(t);
-        fileKeyCounts[key] = (fileKeyCounts[key] || 0) + 1;
-        const currentStored = existingCounts[key] || 0;
-        if (fileKeyCounts[key] <= currentStored) {
-          ignoredDuplicates.push(t);
-        } else {
-          existingCounts[key] = (existingCounts[key] || 0) + 1;
-          imported.push(t);
+      try {
+        const result = await BudgetApi.importBankTransactions(rawRows, colRoles, mapping);
+        setImportSummary(result);
+        if (!result.error) {
+          setRawRows(null);
+          setColRoles(null);
+          setFileName("");
+          // Recharger les données après l'import
+          const updatedData = await BudgetApi.getBankImport();
+          setBankImportData(updatedData);
         }
-      });
-      imported = applyRulesToTransactions(imported, rules);
-      const autoCategorized = imported.filter(t => t.categoryId).length;
-      update("bankImport", b => ({
-        ...b,
-        columnMapping: newMapping,
-        transactions: [...b.transactions, ...imported]
-      }));
-      setImportSummary({
-        imported: imported.length,
-        duplicates: ignoredDuplicates.length,
-        autoCategorized,
-        ignoredDuplicates
-      });
-      setRawRows(null);
-      setColRoles(null);
-      setFileName("");
+      } catch (error) {
+        console.error("Erreur lors de l'import:", error);
+        setImportSummary({
+          error: "Erreur lors de l'import : " + error.message
+        });
+      }
     };
-    const forceImportDuplicate = tx => {
-      const categorizedTx = applyRulesToTransactions([tx], rules)[0] || tx;
-      update("bankImport", b => ({
-        ...b,
-        transactions: [...b.transactions, categorizedTx]
-      }));
-      setImportSummary(prev => prev ? {
-        ...prev,
-        imported: prev.imported + 1,
-        duplicates: Math.max(0, prev.duplicates - 1),
-        ignoredDuplicates: (prev.ignoredDuplicates || []).filter(t => t.id !== tx.id)
-      } : null);
+    const forceImportDuplicate = async tx => {
+      try {
+        await BudgetApi.forceImportBankTransaction(tx);
+        setImportSummary(prev => prev ? {
+          ...prev,
+          imported: prev.imported + 1,
+          duplicates: Math.max(0, prev.duplicates - 1),
+          ignoredDuplicates: (prev.ignoredDuplicates || []).filter(t => t.id !== tx.id)
+        } : null);
+        // Recharger les données après l'import forcé
+        const updatedData = await BudgetApi.getBankImport();
+        setBankImportData(updatedData);
+      } catch (error) {
+        console.error("Erreur lors de l'import forcé:", error);
+      }
     };
     const roleLabel = {
       date: "Date",
@@ -352,36 +334,23 @@
       amount: "Montant",
       ignore: "Ignorer"
     };
-    const recalculateRules = () => {
-      update("bankImport", b => ({
-        ...b,
-        transactions: applyRulesToTransactions(b.transactions, b.rules)
-      }));
+    const recalculateRules = async () => {
+      try {
+        await BudgetApi.recalculateBankImportRules();
+        const updatedData = await BudgetApi.getBankImport();
+        setBankImportData(updatedData);
+      } catch (error) {
+        console.error("Erreur lors du recalcul des règles:", error);
+      }
     };
-    const setTransactionCategory = (txId, categoryId, ruleKeyword) => {
-      update("bankImport", b => {
-        let newRules = b.rules;
-        if (ruleKeyword) {
-          const key = ruleKeyword.trim().toUpperCase();
-          const existing = b.rules.find(r => r.matchText.trim().toUpperCase() === key);
-          newRules = existing ? b.rules.map(r => r.matchText.trim().toUpperCase() === key ? {
-            ...r,
-            categoryId
-          } : r) : [...b.rules, {
-            id: uid(),
-            matchText: ruleKeyword.trim(),
-            categoryId
-          }];
-        }
-        return {
-          ...b,
-          rules: newRules,
-          transactions: applyRulesToTransactions(b.transactions.map(t => t.id === txId ? {
-            ...t,
-            categoryId
-          } : t), newRules)
-        };
-      });
+    const setTransactionCategory = async (txId, categoryId, ruleKeyword) => {
+      try {
+        await BudgetApi.setBankImportTransactionCategory(txId, categoryId, ruleKeyword);
+        const updatedData = await BudgetApi.getBankImport();
+        setBankImportData(updatedData);
+      } catch (error) {
+        console.error("Erreur lors de la mise à jour de la catégorie:", error);
+      }
     };
     const uncategorizedCount = transactions.filter(t => !t.categoryId).length;
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
@@ -838,14 +807,26 @@
         options: ["Non", "Oui"]
       }],
       rows: sortedCategories,
-      onCell: setCell("bankImport.categories"),
-      onRemove: removeRow("bankImport.categories"),
-      onAdd: () => addRow("bankImport.categories", () => ({
-        id: uid(),
-        label: "Nouvelle catégorie",
-        kind: "Dépense",
-        compressible: "Non"
-      }))
+      onCell: (id, field, value) => {
+        BudgetApi.updateBankImportCategory(id, field, value).then(() => {
+          BudgetApi.getBankImport().then(setBankImportData);
+        });
+      },
+      onRemove: (id) => {
+        BudgetApi.removeBankImportCategory(id).then(() => {
+          BudgetApi.getBankImport().then(setBankImportData);
+        });
+      },
+      onAdd: () => {
+        BudgetApi.addBankImportCategory({
+          id: uid(),
+          label: "Nouvelle catégorie",
+          kind: "Dépense",
+          compressible: "Non"
+        }).then(() => {
+          BudgetApi.getBankImport().then(setBankImportData);
+        });
+      }
     })), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Règles de catégorisation",
       subtitle: "Un mot-clé s'applique dès qu'il apparaît n'importe où dans le libellé bancaire."
@@ -869,13 +850,25 @@
         options: categoryOptions
       }],
       rows: rules,
-      onCell: setCell("bankImport.rules"),
-      onRemove: removeRow("bankImport.rules"),
-      onAdd: () => addRow("bankImport.rules", () => ({
-        id: uid(),
-        matchText: "",
-        categoryId: categories[0]?.id || ""
-      }))
+      onCell: (id, field, value) => {
+        BudgetApi.updateBankImportRule(id, field, value).then(() => {
+          BudgetApi.getBankImport().then(setBankImportData);
+        });
+      },
+      onRemove: (id) => {
+        BudgetApi.removeBankImportRule(id).then(() => {
+          BudgetApi.getBankImport().then(setBankImportData);
+        });
+      },
+      onAdd: () => {
+        BudgetApi.addBankImportRule({
+          id: uid(),
+          matchText: "",
+          categoryId: categories[0]?.id || ""
+        }).then(() => {
+          BudgetApi.getBankImport().then(setBankImportData);
+        });
+      }
     })), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Transactions",
       subtitle: `${transactions.length} transaction(s) importée(s)${uncategorizedCount ? ` — ${uncategorizedCount} non catégorisée(s)` : ""}.`

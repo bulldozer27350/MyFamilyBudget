@@ -26,6 +26,8 @@
   <script src="js/csv-parser.js"></script>
   <script src="js/calculations.js"></script>
   <script src="js/data-store.js"></script>
+  <script src="js/service-metier.js"></script>
+  <script src="js/api.js"></script>
   
   <!-- UI Components -->
   <script src="js/components/ui-base.js"></script>
@@ -41,59 +43,50 @@
 
   <script>
 const {
-  useBudgetStore,
+  BudgetStore,
   AppLayout,
   ImportBankView,
   C
 } = BudgetApp;
 function ImportPage() {
-  const store = useBudgetStore();
   const {
-    data,
-    loaded,
-    status,
-    useConstantEuros,
-    setUseConstantEuros,
-    setCell,
-    addRow,
-    removeRow,
-    update,
-    exportJSON,
-    importJSON,
-    resetData
-  } = store;
-  if (!loaded || !data) {
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        minHeight: "100vh",
-        background: C?.paper || "#F6F3EC",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        color: C?.inkSoft || "#6B7278",
-        fontFamily: "sans-serif"
-      }
-    }, "Chargement…"));
-  }
+    useState,
+    useEffect
+  } = React;
+  const [status, setStatus] = useState(() => BudgetStore.getStatus());
+  const [useConstantEuros, setUseConstantEuros] = useState(() => {
+    try {
+      return localStorage.getItem("budget_familial_constant_euros") === "true";
+    } catch {
+      return false;
+    }
+  });
+  
+  useEffect(() => {
+    const unsubscribe = BudgetStore.subscribe(() => {
+      setStatus(BudgetStore.getStatus());
+    });
+    return unsubscribe;
+  }, []);
+  
+  const setUseConstantEurosHandler = (val) => {
+    setUseConstantEuros(val);
+    try {
+      localStorage.setItem("budget_familial_constant_euros", String(val));
+    } catch (e) {}
+  };
+  
   return /*#__PURE__*/React.createElement(AppLayout, {
     currentSection: "import",
     status: status,
     useConstantEuros: useConstantEuros,
-    setUseConstantEuros: setUseConstantEuros,
-    exportJSON: exportJSON,
-    importJSON: importJSON,
-    resetData: resetData
+    setUseConstantEuros: setUseConstantEurosHandler,
+    exportJSON: () => BudgetStore.exportJSON(),
+    importJSON: (file, cb) => BudgetStore.importJSON(file, cb),
+    resetData: () => BudgetStore.resetData()
   }, ({
     openHelp
   }) => /*#__PURE__*/React.createElement(ImportBankView, {
-    data: data,
-    update: update,
-    setCell: setCell,
-    addRow: addRow,
-    removeRow: removeRow,
     openHelp: openHelp
   }));
 }
