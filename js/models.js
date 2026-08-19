@@ -34,7 +34,13 @@
     variableIncomes: [],
     variableOverrides: [],
     taxChildren: [],
-    taxBrackets: [],
+    taxBrackets: [
+      { id: "tb_1", upTo: 11294, rate: 0 },
+      { id: "tb_2", upTo: 28797, rate: 0.11 },
+      { id: "tb_3", upTo: 82341, rate: 0.30 },
+      { id: "tb_4", upTo: 177106, rate: 0.41 },
+      { id: "tb_5", upTo: "", rate: 0.45 }
+    ],
     taxRateOverrides: [],
     taxActualOverrides: [],
     placements: [],

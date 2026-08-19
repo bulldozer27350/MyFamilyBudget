@@ -240,24 +240,31 @@ function deps() {
   }
 
   /**
-   * Récupère les données complètes depuis le localStorage
+   * Récupère les données complètes depuis le BudgetStore ou localStorage
    * @returns {Object} Données complètes de l'application
    */
   function loadFullData() {
+    if (deps().BudgetStore && typeof deps().BudgetStore.getData === 'function') {
+      return deps().BudgetStore.getData();
+    }
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {};
+      return raw ? JSON.parse(raw) : (deps().DEFAULT_DATA || {});
     } catch (err) {
       console.error("Erreur de chargement localStorage :", err);
-      return {};
+      return deps().DEFAULT_DATA || {};
     }
   }
 
   /**
-   * Sauvegarde les données complètes dans le localStorage
+   * Sauvegarde les données complètes via BudgetStore ou dans le localStorage
    * @param {Object} data - Données complètes à sauvegarder
    */
   function saveFullData(data) {
+    if (deps().BudgetStore && typeof deps().BudgetStore.setData === 'function') {
+      deps().BudgetStore.setData(data);
+      return;
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (err) {
@@ -705,6 +712,23 @@ function deps() {
   }
 
   /**
+   * Réinitialise les tranches d'imposition au barème légal standard.
+   * @returns {void}
+   */
+  function resetDefaultTaxBrackets() {
+    const defaultBrackets = [
+      { id: "tb_1", upTo: 11294, rate: 0 },
+      { id: "tb_2", upTo: 28797, rate: 0.11 },
+      { id: "tb_3", upTo: 82341, rate: 0.30 },
+      { id: "tb_4", upTo: 177106, rate: 0.41 },
+      { id: "tb_5", upTo: "", rate: 0.45 }
+    ];
+    const currentData = loadFullData();
+    currentData.taxBrackets = defaultBrackets;
+    saveFullData(currentData);
+  }
+
+  /**
    * S'abonne aux changements des données d'Impôts.
    * @returns {Function} fonction de désabonnement
    */
@@ -718,6 +742,7 @@ function deps() {
     addImpotsLigne,
     removeImpotsLigne,
     updateImpotsSettings,
+    resetDefaultTaxBrackets,
     subscribeImpots
   };
 

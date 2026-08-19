@@ -156,6 +156,10 @@
       });
     },
 
+    async getRetraite() {
+      return this.getRetraiteData();
+    },
+
     /**
      * Sauvegarde les données de retraite
      * @param {Object} retirementData - Données de retraite à sauvegarder
@@ -176,6 +180,10 @@
           reject(error);
         }
       });
+    },
+
+    async saveRetraite(retirementData) {
+      return this.saveRetraiteData(retirementData);
     },
 
     /**
@@ -216,6 +224,14 @@
      */
     async updateImpotsSettings(field, value) {
       return Promise.resolve(app().ImpotsService.updateImpotsSettings(field, value));
+    },
+
+    /**
+     * Réinitialise les tranches au barème standard.
+     * @returns {Promise<void>}
+     */
+    async resetDefaultTaxBrackets() {
+      return Promise.resolve(app().ImpotsService.resetDefaultTaxBrackets());
     },
 
     /**
