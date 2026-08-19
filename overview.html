@@ -26,6 +26,10 @@
   <script src="js/csv-parser.js"></script>
   <script src="js/calculations.js"></script>
   <script src="js/data-store.js"></script>
+
+  <!-- Couche métier & façade API (Vue d'ensemble) -->
+  <script src="js/service-metier.js"></script>
+  <script src="js/api.js"></script>
   
   <!-- UI Components -->
   <script src="js/components/ui-base.js"></script>
@@ -42,24 +46,49 @@
   <script>
 const {
   useBudgetStore,
+  BudgetApi,
   AppLayout,
   OverviewView,
   C
 } = BudgetApp;
 function OverviewPage() {
+  const {
+    useState,
+    useEffect
+  } = React;
   const store = useBudgetStore();
   const {
-    data,
-    loaded,
     status,
     useConstantEuros,
     setUseConstantEuros,
-    projections,
     exportJSON,
     importJSON,
     resetData
   } = store;
-  if (!loaded || !data) {
+  const [overview, setOverview] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const fetchOverview = () => {
+      BudgetApi.getVueDensemble({
+        useConstantEuros
+      }).then(result => {
+        if (cancelled) return;
+        setOverview(result);
+        setLoaded(true);
+      }).catch(err => {
+        console.error("Erreur de chargement de la Vue d'ensemble :", err);
+        if (!cancelled) setLoaded(true);
+      });
+    };
+    fetchOverview();
+    const unsubscribe = BudgetApi.onVueDensembleChanged(fetchOverview);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [useConstantEuros]);
+  if (!loaded || !overview) {
     return /*#__PURE__*/React.createElement("div", {
       style: {
         minHeight: "100vh",
@@ -75,9 +104,6 @@ function OverviewPage() {
       }
     }, "Chargement…"));
   }
-  const retireYear = (Number(data.settings?.birthYear) || 0) + (Number(data.settings?.retireAge) || 0);
-  const patrimoineActuel = (data.placements || []).reduce((s, p) => s + (Number(p.balance) || 0), 0);
-  const fluxNetActuel = projections.cashflow[0]?.net || 0;
   return /*#__PURE__*/React.createElement(AppLayout, {
     currentSection: "overview",
     status: status,
@@ -89,14 +115,19 @@ function OverviewPage() {
   }, ({
     openHelp
   }) => /*#__PURE__*/React.createElement(OverviewView, {
-    data: data,
-    years: projections.years,
-    useConstantEuros: useConstantEuros,
-    fluxNetActuel: fluxNetActuel,
-    patrimoineActuel: patrimoineActuel,
-    retireYear: retireYear,
-    patrimoine: projections.patrimoine,
-    cashflow: projections.cashflow,
+    data: overview.data,
+    years: overview.years,
+    useConstantEuros: overview.useConstantEuros,
+    fluxNetActuel: overview.fluxNetActuel,
+    patrimoineActuel: overview.patrimoineActuel,
+    retireYear: overview.retireYear,
+    patrimoine: overview.patrimoine,
+    pivotBalance: overview.pivotBalance,
+    retireCharges: overview.retireCharges,
+    totalPensions: overview.totalPensions,
+    retirePatrimoine: overview.retirePatrimoine,
+    fireRente: overview.fireRente,
+    financialOnlyRente: overview.financialOnlyRente,
     openHelp: openHelp
   }));
 }

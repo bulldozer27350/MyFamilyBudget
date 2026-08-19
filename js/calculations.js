@@ -742,17 +742,12 @@
   }
 
   /**
-   * Hook personnalisé React calculant toutes les projections macro
+   * Calcul pur (hors React) de toutes les projections macro
    */
-  function useFinancialProjections(data, useConstantEuros) {
-    const {
-      useMemo
-    } = React;
-    const retireYear = useMemo(() => (Number(data?.settings.birthYear) || 1985) + (Number(data?.settings.retireAge) || 64), [data]);
-    const startYear = useMemo(() => {
-      return findEarliestYear(data);
-    }, [data]);
-    const years = useMemo(() => {
+  function computeFinancialProjections(data, useConstantEuros) {
+    const retireYear = (Number(data?.settings.birthYear) || 1985) + (Number(data?.settings.retireAge) || 64);
+    const startYear = findEarliestYear(data);
+    const years = (() => {
       if (!data) return [];
       const minEnd = retireYear + 3;
       const wantedEnd = (Number(data.settings.birthYear) || 1985) + (Number(data.settings.simulateUntilAge) || 0);
@@ -760,13 +755,13 @@
       const arr = [];
       for (let y = startYear; y <= end; y++) arr.push(y);
       return arr;
-    }, [data, retireYear, startYear]);
-    const effectiveIncomes = useMemo(() => {
+    })();
+    const effectiveIncomes = (() => {
       if (!data) return [];
       const lastYear = years.length ? years[years.length - 1] : retireYear;
       return [...(data.incomes || []), ...pensionIncomeRows(data, retireYear, lastYear)];
-    }, [data, years, retireYear]);
-    const taxYearly = useMemo(() => {
+    })();
+    const taxYearly = (() => {
       if (!data) return [];
       const brackets = data.taxBrackets || [];
       const children = data.taxChildren || [];
@@ -795,8 +790,8 @@
           withheld
         };
       });
-    }, [data, years, effectiveIncomes]);
-    const cashflow = useMemo(() => {
+    })();
+    const cashflow = (() => {
       if (!data) return [];
       const pivotBalanceValue = computePivotBalance(data);
       let balance = pivotBalanceValue !== null ? pivotBalanceValue : Number(data.settings.startBalance) || 0;
@@ -835,8 +830,8 @@
           balance
         };
       });
-    }, [data, years, taxYearly, effectiveIncomes]);
-    const patrimoine = useMemo(() => {
+    })();
+    const patrimoine = (() => {
       if (!data) return {
         perPlacement: [],
         totals: []
@@ -880,9 +875,9 @@
         perPlacement,
         totals
       };
-    }, [data, years, useConstantEuros]);
-    const previewYears = useMemo(() => years.slice(0, 4), [years]);
-    const variablePreview = useMemo(() => {
+    })();
+    const previewYears = years.slice(0, 4);
+    const variablePreview = (() => {
       if (!data) return [];
       return (data.variableIncomes || []).map(v => {
         const refRow = (data.incomes || []).find(r => r.label === v.refIncomeLabel);
@@ -906,8 +901,8 @@
           cells
         };
       });
-    }, [data, previewYears]);
-    const taxPreview = useMemo(() => taxYearly.slice(0, 4), [taxYearly]);
+    })();
+    const taxPreview = taxYearly.slice(0, 4);
     return {
       years,
       taxYearly,
@@ -917,6 +912,16 @@
       variablePreview,
       taxPreview
     };
+  }
+
+  /**
+   * Hook personnalisé React calculant toutes les projections macro
+   */
+  function useFinancialProjections(data, useConstantEuros) {
+    const {
+      useMemo
+    } = React;
+    return useMemo(() => computeFinancialProjections(data, useConstantEuros), [data, useConstantEuros]);
   }
 
   /* ============================== Moyennes Réelles (Pointage/Analyse) ============================== */
@@ -1024,6 +1029,7 @@
   exports.calculateDetailedFinancialTimeline = calculateDetailedFinancialTimeline;
   exports.projectPlacementBalanceAt = projectPlacementBalanceAt;
   exports.classifyAllocation = classifyAllocation;
+  exports.computeFinancialProjections = computeFinancialProjections;
   exports.useFinancialProjections = useFinancialProjections;
   exports.computeRealAverages = computeRealAverages;
   exports.getEarliestDate = getEarliestDate;
