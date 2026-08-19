@@ -1,0 +1,510 @@
+/**
+ * Vue Paramètres (SettingsView : Paramètres généraux, Date Pivot, Virement Auto & Catégories d'Actifs)
+ */
+(function (exports) {
+  'use strict';
+
+  const {
+    C,
+    uid
+  } = exports.C ? exports : window.BudgetApp || {};
+  const {
+    computePivotBalance,
+    latestTransactionDate
+  } = exports.computePivotBalance ? exports : window.BudgetApp || {};
+  const {
+    SectionCard,
+    EditableTable
+  } = exports.SectionCard ? exports : window.BudgetApp || {};
+  const {
+    HelpBadge
+  } = exports.HelpBadge ? exports : window.BudgetApp || {};
+  const inputStyle = {
+    border: `1px solid ${C?.line || "#DED6C4"}`,
+    borderRadius: 7,
+    padding: "8px 10px",
+    fontSize: 14,
+    width: 140
+  };
+  const btnSmStyle = {
+    fontSize: 11,
+    padding: "3px 8px",
+    borderRadius: 5,
+    border: `1px solid ${C?.line || "#DED6C4"}`,
+    background: C?.panelAlt || "#EFEAE0",
+    color: C?.ink || "#232A2E",
+    cursor: "pointer"
+  };
+  function SettingsView({
+    data,
+    update,
+    retireYear,
+    years,
+    openHelp
+  }) {
+    return /*#__PURE__*/React.createElement(SectionCard, {
+      title: "Paramètres généraux"
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 30,
+        flexWrap: "wrap"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 6
+      }
+    }, "Année de naissance (parent référent)"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: data?.settings?.birthYear ?? 1985,
+      onChange: e => update("settings", s => ({
+        ...s,
+        birthYear: e.target.value
+      })),
+      style: inputStyle
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 6
+      }
+    }, "Âge de départ à la retraite visé"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: data?.settings?.retireAge ?? 64,
+      onChange: e => update("settings", s => ({
+        ...s,
+        retireAge: e.target.value
+      })),
+      style: inputStyle
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 6
+      }
+    }, "Simuler la retraite jusqu'à l'âge de"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: data?.settings?.simulateUntilAge ?? 85,
+      onChange: e => update("settings", s => ({
+        ...s,
+        simulateUntilAge: e.target.value
+      })),
+      style: inputStyle
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C?.inkSoft || "#6B7278",
+        marginTop: 4,
+        maxWidth: 220
+      }
+    }, "Étend la projection au-delà du départ pour voir si le patrimoine tient dans la durée (pensions injectées automatiquement).")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 6
+      }
+    }, "Trésorerie disponible de départ (€)"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: data?.settings?.startBalance ?? 0,
+      onChange: e => update("settings", s => ({
+        ...s,
+        startBalance: e.target.value
+      })),
+      style: inputStyle
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C?.inkSoft || "#6B7278",
+        marginTop: 4,
+        maxWidth: 250
+      }
+    }, "Solde initial de référence.")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 6
+      }
+    }, "Taux d'inflation estimé (%)"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      step: "0.1",
+      value: (Number(data?.settings?.inflationRate) || 0.02) * 100,
+      onChange: e => update("settings", s => ({
+        ...s,
+        inflationRate: (parseFloat(e.target.value || 0) || 0) / 100
+      })),
+      style: inputStyle
+    }))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 18,
+        fontSize: 12.5,
+        color: C?.inkSoft || "#6B7278"
+      }
+    }, "Année de retraite calculée : ", /*#__PURE__*/React.createElement("strong", null, retireYear), " — projection affichée jusqu'en ", /*#__PURE__*/React.createElement("strong", null, years[years.length - 1]), "."), (() => {
+      const calcLatest = exports.latestTransactionDate || window.BudgetApp && window.BudgetApp.latestTransactionDate || latestTransactionDate;
+      const calcPivot = exports.computePivotBalance || window.BudgetApp && window.BudgetApp.computePivotBalance || computePivotBalance;
+      const latestTx = calcLatest(data);
+      const pivotBalance = calcPivot(data);
+      const txCount = (data?.bankImport?.transactions || []).filter(t => data?.settings?.pivotDate ? t.date <= data.settings.pivotDate : true).length;
+      const isPivotActive = !!data?.settings?.pivotDate;
+      const isAutoMode = data?.settings?.pivotMode === "auto";
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          marginTop: 20,
+          paddingTop: 18,
+          borderTop: `1px solid ${C?.line || "#DED6C4"}`
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontFamily: "'Newsreader', serif",
+          fontSize: 16,
+          color: C?.ink || "#232A2E",
+          fontWeight: 600,
+          marginBottom: 4,
+          display: "flex",
+          alignItems: "center",
+          gap: 8
+        }
+      }, "📌 Date Pivot — Point de bascule Réel → Prévisionnel"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12.5,
+          color: C?.inkSoft || "#6B7278",
+          marginBottom: 14
+        }
+      }, "Définit la date à laquelle le moteur bascule du réel constaté (transactions bancaires importées) vers la projection prévisionnelle."), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 16,
+          marginBottom: 16,
+          flexWrap: "wrap",
+          alignItems: "center"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: C?.inkSoft || "#6B7278",
+          fontWeight: 600
+        }
+      }, "Mode :"), /*#__PURE__*/React.createElement("label", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          cursor: "pointer",
+          fontSize: 12.5
+        }
+      }, /*#__PURE__*/React.createElement("input", {
+        type: "radio",
+        name: "pivotMode",
+        value: "auto",
+        checked: isAutoMode,
+        onChange: () => update("settings", s => ({
+          ...s,
+          pivotMode: "auto"
+        }))
+      }), /*#__PURE__*/React.createElement("span", null, "Automatique — solde calculé à partir des transactions bancaires importées")), /*#__PURE__*/React.createElement("label", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          cursor: "pointer",
+          fontSize: 12.5
+        }
+      }, /*#__PURE__*/React.createElement("input", {
+        type: "radio",
+        name: "pivotMode",
+        value: "manual",
+        checked: !isAutoMode,
+        onChange: () => update("settings", s => ({
+          ...s,
+          pivotMode: "manual"
+        }))
+      }), /*#__PURE__*/React.createElement("span", null, "Manuel — utiliser la trésorerie de départ saisie ci-dessus"))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 16,
+          flexWrap: "wrap",
+          alignItems: "flex-end",
+          marginBottom: 14
+        }
+      }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: C?.inkSoft || "#6B7278",
+          marginBottom: 6
+        }
+      }, "Date Pivot"), /*#__PURE__*/React.createElement("input", {
+        type: "date",
+        value: data?.settings?.pivotDate || "",
+        onChange: e => update("settings", s => ({
+          ...s,
+          pivotDate: e.target.value
+        })),
+        style: {
+          ...inputStyle,
+          minWidth: 160
+        }
+      })), latestTx && /*#__PURE__*/React.createElement("button", {
+        type: "button",
+        onClick: () => update("settings", s => ({
+          ...s,
+          pivotDate: latestTx
+        })),
+        style: {
+          ...btnSmStyle,
+          background: C?.pineSoft || "#E3ECE8",
+          color: C?.pine || "#2F5D50",
+          fontWeight: 600,
+          border: `1px solid ${C?.pine || "#2F5D50"}`,
+          padding: "7px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 6
+        },
+        title: `Dernier import : ${latestTx}`
+      }, "⚡ Caler sur le dernier import (", new Date(latestTx + 'T12:00:00').toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      }), ")"), isPivotActive && /*#__PURE__*/React.createElement("button", {
+        type: "button",
+        onClick: () => update("settings", s => ({
+          ...s,
+          pivotDate: ""
+        })),
+        style: {
+          ...btnSmStyle,
+          color: C?.brick || "#A8503C",
+          border: `1px solid ${C?.line || "#DED6C4"}`,
+          padding: "7px 12px"
+        }
+      }, "✕ Désactiver la Date Pivot")), isPivotActive && isAutoMode && /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "10px 16px",
+          borderRadius: 10,
+          marginBottom: 4,
+          background: C?.pineSoft || "#E3ECE8",
+          border: `1px solid ${C?.pine || "#2F5D50"}`,
+          fontSize: 12.5,
+          color: C?.pine || "#2F5D50",
+          fontWeight: 600
+        }
+      }, /*#__PURE__*/React.createElement("span", null, "✅ Solde réel constaté au ", new Date(data.settings.pivotDate + 'T12:00:00').toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      }), " :"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: 15,
+          color: C?.navy || "#28394A"
+        }
+      }, new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2
+      }).format(pivotBalance || 0)), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 400,
+          color: C?.inkSoft || "#6B7278"
+        }
+      }, "(", txCount, " transaction(s) prise(s) en compte)")), isPivotActive && !isAutoMode && /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "10px 16px",
+          borderRadius: 10,
+          marginBottom: 4,
+          background: C?.goldSoft || "#F0EAD3",
+          border: `1px solid ${C?.gold || "#93802E"}`,
+          fontSize: 12.5,
+          color: C?.gold || "#93802E",
+          fontWeight: 600
+        }
+      }, /*#__PURE__*/React.createElement("span", null, "📌 Date Pivot active (mode manuel) — solde de départ utilisé :"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: 15,
+          color: C?.navy || "#28394A"
+        }
+      }, new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2
+      }).format(Number(data?.settings?.startBalance) || 0))), !isPivotActive && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11.5,
+          color: C?.inkSoft || "#6B7278",
+          fontStyle: 'italic'
+        }
+      }, "Aucune Date Pivot configurée — le moteur utilise la trésorerie de départ saisie manuellement (", new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2
+      }).format(Number(data?.settings?.startBalance) || 0), ")."));
+    })(), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 20,
+        paddingTop: 18,
+        borderTop: `1px solid ${C?.line || "#DED6C4"}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Newsreader', serif",
+        fontSize: 16,
+        color: C?.ink || "#232A2E",
+        fontWeight: 600,
+        marginBottom: 4,
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "Virement automatique compte courant ↔ épargne"), openHelp && /*#__PURE__*/React.createElement(HelpBadge, {
+      sectionKey: "settings",
+      badgeId: "sweep_settings",
+      onClick: openHelp,
+      inline: true
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12.5,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 14
+      }
+    }, "En fin de mois, l'excédent au-dessus du seuil haut est versé vers les comptes marqués d'une priorité (page Placements). À tout moment, si la trésorerie passe sous le seuil bas, le manque est repris sur ces mêmes comptes."), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 30,
+        flexWrap: "wrap",
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("label", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        cursor: "pointer"
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      checked: !!data?.settings?.sweepEnabled,
+      onChange: e => update("settings", s => ({
+        ...s,
+        sweepEnabled: e.target.checked
+      }))
+    }), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12.5,
+        color: C?.ink || "#232A2E",
+        fontWeight: 600
+      }
+    }, "Activer le virement automatique")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 6
+      }
+    }, "Seuil haut — versement vers l'épargne (€)"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: data?.settings?.cashCeiling ?? "",
+      placeholder: "ex. 15000",
+      onChange: e => update("settings", s => ({
+        ...s,
+        cashCeiling: e.target.value
+      })),
+      style: inputStyle
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 6
+      }
+    }, "Seuil bas — retrait depuis l'épargne (€)"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: data?.settings?.cashFloor ?? "",
+      placeholder: "ex. 3000",
+      onChange: e => update("settings", s => ({
+        ...s,
+        cashFloor: e.target.value
+      })),
+      style: inputStyle
+    })))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 20,
+        paddingTop: 18,
+        borderTop: `1px solid ${C?.line || "#DED6C4"}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Newsreader', serif",
+        fontSize: 16,
+        color: C?.ink || "#232A2E",
+        fontWeight: 600,
+        marginBottom: 4
+      }
+    }, "Catégories d'actifs (Répartition d'actifs)"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12.5,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 14
+      }
+    }, "Chaque catégorie utilisable sur la page Placements est associée ici à l'une des 6 classes d'actif affichées dans \"Répartition d'actifs\" (Vue d'ensemble)."), /*#__PURE__*/React.createElement(EditableTable, {
+      columns: [{
+        key: "icon",
+        label: "Icône / Émoji",
+        type: "text",
+        align: "center",
+        placeholder: "ex. 📖"
+      }, {
+        key: "color",
+        label: "Couleur",
+        type: "color",
+        align: "center"
+      }, {
+        key: "name",
+        label: "Catégorie (telle que saisie page Placements)",
+        type: "text"
+      }, {
+        key: "bucket",
+        label: "Classe d'actif",
+        type: "select",
+        options: [{
+          value: "cash",
+          label: "Cash & Livrets réglementés"
+        }, {
+          value: "fondsEuros",
+          label: "Fonds en Euros (Sécurité)"
+        }, {
+          value: "immobilier",
+          label: "Immobilier (SCPI / SC)"
+        }, {
+          value: "actions",
+          label: "Actions Monde & Thématiques"
+        }, {
+          value: "obligations",
+          label: "Obligations (Taux)"
+        }, {
+          value: "epargneSalariale",
+          label: "Épargne Salariale & PER"
+        }]
+      }],
+      rows: data?.assetCategories || [],
+      onCell: (id, field, value) => update("assetCategories", list => list.map(r => r.id === id ? {
+        ...r,
+        [field]: value
+      } : r)),
+      onRemove: id => update("assetCategories", list => list.filter(r => r.id !== id)),
+      onAdd: () => update("assetCategories", list => [...(list || []), {
+        id: uid(),
+        icon: "📁",
+        name: "Nouvelle catégorie",
+        bucket: "cash"
+      }])
+    })));
+  }
+  exports.SettingsView = SettingsView;
+})(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);

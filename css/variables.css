@@ -1,0 +1,37 @@
+:root {
+  /* Palette de couleurs & Design tokens */
+  --color-paper: #F6F3EC;
+  --color-panel: #FFFFFF;
+  --color-panel-alt: #EFEAE0;
+  --color-ink: #232A2E;
+  --color-ink-soft: #6B7278;
+  --color-line: #DED6C4;
+  --color-pine: #2F5D50;
+  --color-pine-soft: #E3ECE8;
+  --color-brick: #A8503C;
+  --color-brick-soft: #F4E4DF;
+  --color-gold: #93802E;
+  --color-gold-soft: #F0EAD3;
+  --color-navy: #28394A;
+  --color-navy-dark: #1E2B38;
+  --color-navy-light: #46586A;
+  --color-navy-text-muted: #9FB0BE;
+  --color-navy-text-subtle: #7C8D9B;
+
+  /* Typographie */
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-sans: 'Source Sans Pro', 'Helvetica Neue', Arial, sans-serif;
+
+  /* Espacements & Rayons */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Ombres */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.15);
+}

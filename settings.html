@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paramètres - Livre de comptes</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  
+  <!-- React & Babel CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
+  <!-- Core Modules -->
+  <script src="js/tokens.js"></script>
+  <script src="js/help-content.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/csv-parser.js"></script>
+  <script src="js/calculations.js"></script>
+  <script src="js/data-store.js"></script>
+  
+  <!-- UI Components -->
+  <script src="js/components/ui-base.js"></script>
+  <script src="js/components/charts.js"></script>
+  <script src="js/components/help-modal.js"></script>
+  <script src="js/components/app-layout.js"></script>
+
+  <!-- Page View Component -->
+  <script src="js/views/settings-view.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+const {
+  useBudgetStore,
+  AppLayout,
+  SettingsView,
+  C
+} = BudgetApp;
+function SettingsPage() {
+  const store = useBudgetStore();
+  const {
+    data,
+    loaded,
+    status,
+    useConstantEuros,
+    setUseConstantEuros,
+    projections,
+    update,
+    exportJSON,
+    importJSON,
+    resetData
+  } = store;
+  if (!loaded || !data) {
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        minHeight: "100vh",
+        background: C?.paper || "#F6F3EC",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: C?.inkSoft || "#6B7278",
+        fontFamily: "sans-serif"
+      }
+    }, "Chargement…"));
+  }
+  const retireYear = (Number(data.settings?.birthYear) || 0) + (Number(data.settings?.retireAge) || 0);
+  return /*#__PURE__*/React.createElement(AppLayout, {
+    currentSection: "settings",
+    status: status,
+    useConstantEuros: useConstantEuros,
+    setUseConstantEuros: setUseConstantEuros,
+    exportJSON: exportJSON,
+    importJSON: importJSON,
+    resetData: resetData
+  }, ({
+    openHelp
+  }) => /*#__PURE__*/React.createElement(SettingsView, {
+    data: data,
+    update: update,
+    retireYear: retireYear,
+    years: projections.years,
+    openHelp: openHelp
+  }));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(SettingsPage, null));
+  </script>
+</body>
+</html>

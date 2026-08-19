@@ -1,0 +1,1127 @@
+/**
+ * Vue Analyse (AnalyseView : Analyse Réel vs Prévisionnel, Atterrissage du mois, Dérives par ligne, Historique)
+ */
+(function (exports) {
+  'use strict';
+
+  const {
+    useState,
+    useMemo,
+    useEffect,
+    useRef
+  } = React;
+  const {
+    C,
+    eur
+  } = exports.C ? exports : window.BudgetApp || {};
+  const {
+    chargeMonthlyForYear,
+    incomeMonthlyForYear,
+    computeRealAverages
+  } = exports.chargeMonthlyForYear ? exports : window.BudgetApp || {};
+  const {
+    SectionCard,
+    KPI
+  } = exports.SectionCard ? exports : window.BudgetApp || {};
+  const {
+    AllocationChartJS
+  } = exports.AllocationChartJS ? exports : window.BudgetApp || {};
+  const inputStyle = {
+    border: `1px solid ${C?.line || "#DED6C4"}`,
+    borderRadius: 7,
+    padding: "8px 10px",
+    fontSize: 14,
+    width: 140
+  };
+  function AnalyseView({
+    data,
+    openHelp
+  }) {
+    const transactions = data?.bankImport?.transactions || [];
+    const categories = data?.bankImport?.categories || [];
+    const matchings = data?.bankImport?.matchings || [];
+    const [monthsBack, setMonthsBack] = useState(12);
+    const [driftSortKey, setDriftSortKey] = useState("ecart");
+    const [driftSortDir, setDriftSortDir] = useState(-1);
+    const [driftSearch, setDriftSearch] = useState("");
+    const [activeTab, setActiveTab] = useState("overview");
+    const cutoffISO = useMemo(() => {
+      if (!monthsBack) return null;
+      const d = new Date();
+      d.setMonth(d.getMonth() - monthsBack);
+      return d.toISOString().slice(0, 10);
+    }, [monthsBack]);
+    const periodTx = useMemo(() => cutoffISO ? transactions.filter(t => t.date >= cutoffISO) : transactions, [transactions, cutoffISO]);
+    const byCategory = useMemo(() => {
+      const map = {};
+      periodTx.forEach(t => {
+        const cat = categories.find(c => c.id === t.categoryId);
+        if (cat && cat.kind === "Revenu") return;
+        const label = cat ? cat.label : "Non catégorisé";
+        map[label] = (map[label] || 0) + (-Number(t.amount) || 0);
+      });
+      return Object.entries(map).map(([label, amount]) => ({
+        label,
+        amount,
+        color: amount < 0 ? C?.pine || "#2F5D50" : label === "Non catégorisé" ? C?.inkSoft || "#6B7278" : C?.brick || "#A8503C"
+      })).filter(item => Math.abs(item.amount) > 0.01).sort((a, b) => b.amount - a.amount);
+    }, [periodTx, categories]);
+    const totalExpenses = useMemo(() => byCategory.reduce((s, c) => s + c.amount, 0), [byCategory]);
+    const totalIncome = periodTx.filter(t => {
+      const cat = categories.find(c => c.id === t.categoryId);
+      return cat && cat.kind === "Revenu" || t.amount > 0;
+    }).reduce((s, t) => s + (t.amount > 0 ? t.amount : 0), 0);
+    const nbMonths = Math.max(1, monthsBack || 1);
+    const uncategorized = periodTx.filter(t => !t.categoryId).length;
+    const compressibleTotal = useMemo(() => {
+      const compressibleIds = new Set(categories.filter(c => c.compressible === "Oui").map(c => c.id));
+      return periodTx.reduce((s, t) => {
+        if (compressibleIds.has(t.categoryId)) return s + (-Number(t.amount) || 0);
+        return s;
+      }, 0);
+    }, [periodTx, categories]);
+    const currentMonthISO = useMemo(() => {
+      const n = new Date();
+      return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
+    }, []);
+    const currentMonthLabel = useMemo(() => {
+      const [y, m] = currentMonthISO.split("-");
+      return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("fr-FR", {
+        month: "long",
+        year: "numeric"
+      });
+    }, [currentMonthISO]);
+    const landingData = useMemo(() => {
+      const inflationRate = Number(data?.settings?.inflationRate) || 0.02;
+      const currentYear = new Date().getFullYear();
+      const currentMatching = matchings.find(m => m.month === currentMonthISO) || {
+        links: []
+      };
+      const txById = {};
+      transactions.forEach(t => {
+        txById[t.id] = t;
+      });
+      const calcCharge = exports.chargeMonthlyForYear || window.BudgetApp && window.BudgetApp.chargeMonthlyForYear || chargeMonthlyForYear;
+      const calcIncome = exports.incomeMonthlyForYear || window.BudgetApp && window.BudgetApp.incomeMonthlyForYear || incomeMonthlyForYear;
+      const rows = [];
+      const processLine = (row, kind) => {
+        const budgeted = kind === "charge" ? calcCharge(row, currentYear, inflationRate) : kind === "revenu" ? calcIncome(row, currentYear) : Number(row.monthly) || 0;
+        if (budgeted <= 0) return;
+        const startStr = kind === "placement" ? row.monthlyFrom : row.start;
+        const endStr = kind === "placement" ? row.monthlyUntil : row.end;
+        const startOK = !startStr || currentMonthISO >= startStr.slice(0, 7);
+        const endOK = !endStr || currentMonthISO <= endStr.slice(0, 7);
+        if (!startOK || !endOK) return;
+        const link = (currentMatching.links || []).find(l => l.budgetLineId === row.id);
+        const reel = (link?.txIds || []).reduce((s, txId) => {
+          const tx = txById[txId];
+          if (!tx) return s;
+          const amt = Number(tx.amount) || 0;
+          return s + (kind === "revenu" ? amt : -amt);
+        }, 0);
+        const pct = Math.min(100, budgeted > 0 ? reel / budgeted * 100 : 0);
+        const diff = Math.abs(reel - budgeted);
+        const tolerance = Math.max(1, budgeted * 0.02);
+        const status = link && (link.txIds || []).length > 0 ? diff <= tolerance ? "match" : kind === "revenu" || kind === "placement" ? reel > budgeted ? "economy" : "over" : reel < budgeted ? "economy" : "over" : "pending";
+        const displayLabel = kind === "placement" ? `Épargne : ${row.label}` : row.label;
+        rows.push({
+          id: row.id,
+          label: displayLabel,
+          kind,
+          budgeted,
+          reel,
+          pct,
+          status
+        });
+      };
+      (data?.charges || []).forEach(c => processLine(c, "charge"));
+      (data?.incomes || []).forEach(i => processLine(i, "revenu"));
+      (data?.placements || []).forEach(p => processLine(p, "placement"));
+      return rows.sort((a, b) => b.budgeted - a.budgeted);
+    }, [data, matchings, transactions, currentMonthISO]);
+    const landingTotalBudget = landingData.reduce((s, r) => s + r.budgeted, 0);
+    const landingTotalReel = landingData.reduce((s, r) => s + r.reel, 0);
+    const monthlyCompareData = useMemo(() => {
+      const inflationRate = Number(data?.settings?.inflationRate) || 0.02;
+      const txById = {};
+      transactions.forEach(t => {
+        txById[t.id] = t;
+      });
+      const lineKindMap = {};
+      (data?.charges || []).forEach(c => {
+        lineKindMap[c.id] = "charge";
+      });
+      (data?.incomes || []).forEach(i => {
+        lineKindMap[i.id] = "revenu";
+      });
+      (data?.placements || []).forEach(p => {
+        lineKindMap[p.id] = "placement";
+      });
+      const calcCharge = exports.chargeMonthlyForYear || window.BudgetApp && window.BudgetApp.chargeMonthlyForYear || chargeMonthlyForYear;
+      const calcIncome = exports.incomeMonthlyForYear || window.BudgetApp && window.BudgetApp.incomeMonthlyForYear || incomeMonthlyForYear;
+      const nMonths = Math.min(monthsBack || 12, 24);
+      const months = [];
+      for (let i = nMonths - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() - i);
+        months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      }
+      return months.map(monthISO => {
+        const year = Number(monthISO.slice(0, 4));
+        const budgeted = [...(data?.charges || []).map(c => {
+          const ok = (!c.start || monthISO >= c.start.slice(0, 7)) && (!c.end || monthISO <= c.end.slice(0, 7));
+          return ok ? calcCharge(c, year, inflationRate) : 0;
+        }), ...(data?.incomes || []).map(inc => {
+          const ok = (!inc.start || monthISO >= inc.start.slice(0, 7)) && (!inc.end || monthISO <= inc.end.slice(0, 7));
+          return ok ? calcIncome(inc, year) : 0;
+        }), ...(data?.placements || []).map(p => {
+          const m = Number(p.monthly) || 0;
+          const ok = (!p.monthlyFrom || monthISO >= p.monthlyFrom.slice(0, 7)) && (!p.monthlyUntil || monthISO <= p.monthlyUntil.slice(0, 7));
+          return m > 0 && ok ? m : 0;
+        })].reduce((s, v) => s + v, 0);
+        const monthMatching = matchings.find(m => m.month === monthISO) || {
+          links: []
+        };
+        const reel = (monthMatching.links || []).reduce((s, l) => {
+          const kind = lineKindMap[l.budgetLineId] || "charge";
+          return s + (l.txIds || []).reduce((ss, txId) => {
+            const tx = txById[txId];
+            if (!tx) return ss;
+            const amt = Number(tx.amount) || 0;
+            return ss + (kind === "revenu" ? amt : -amt);
+          }, 0);
+        }, 0);
+        const label = new Date(Number(monthISO.slice(0, 4)), Number(monthISO.slice(5, 7)) - 1, 1).toLocaleDateString("fr-FR", {
+          month: "short",
+          year: "2-digit"
+        });
+        return {
+          monthISO,
+          label,
+          budgeted,
+          reel,
+          hasPointing: (monthMatching.links || []).some(l => (l.txIds || []).length > 0)
+        };
+      });
+    }, [data, matchings, transactions, monthsBack]);
+    const barChartRef = useRef(null);
+    const barCanvasRef = useRef(null);
+    useEffect(() => {
+      if (!barCanvasRef.current || monthlyCompareData.length === 0) return;
+      if (barChartRef.current) barChartRef.current.destroy();
+      const labels = monthlyCompareData.map(d => d.label);
+      barChartRef.current = new Chart(barCanvasRef.current.getContext("2d"), {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Budget Prévu",
+            data: monthlyCompareData.map(d => Math.round(d.budgeted)),
+            backgroundColor: "#2563EB33",
+            borderColor: "#2563EB",
+            borderWidth: 1.5,
+            borderRadius: 4
+          }, {
+            label: "Réel Constaté (pointé)",
+            data: monthlyCompareData.map(d => d.hasPointing ? Math.round(d.reel) : null),
+            backgroundColor: "#16A34A55",
+            borderColor: "#16A34A",
+            borderWidth: 1.5,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "top",
+              labels: {
+                font: {
+                  size: 12
+                },
+                padding: 14
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const v = ctx.raw;
+                  if (v == null) return `${ctx.dataset.label}: non pointé`;
+                  return `${ctx.dataset.label}: ${eur(v)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                font: {
+                  size: 11
+                }
+              }
+            },
+            y: {
+              grid: {
+                color: C?.line || "#DED6C4"
+              },
+              ticks: {
+                font: {
+                  size: 11
+                },
+                callback: v => eur(v)
+              }
+            }
+          }
+        }
+      });
+      return () => {
+        if (barChartRef.current) barChartRef.current.destroy();
+      };
+    }, [monthlyCompareData, activeTab]);
+    const driftRows = useMemo(() => {
+      const calcAvgs = exports.computeRealAverages || window.BudgetApp && window.BudgetApp.computeRealAverages || computeRealAverages;
+      const realAvgs = calcAvgs(data);
+      const inflationRate = Number(data?.settings?.inflationRate) || 0.02;
+      const currentYear = new Date().getFullYear();
+      const rows = [];
+      const calcCharge = exports.chargeMonthlyForYear || window.BudgetApp && window.BudgetApp.chargeMonthlyForYear || chargeMonthlyForYear;
+      const calcIncome = exports.incomeMonthlyForYear || window.BudgetApp && window.BudgetApp.incomeMonthlyForYear || incomeMonthlyForYear;
+      const addLine = (row, kind) => {
+        const avg = realAvgs[row.id];
+        const budgeted = kind === "charge" ? calcCharge(row, currentYear, inflationRate) : kind === "revenu" ? calcIncome(row, currentYear) : Number(row.monthly) || 0;
+        if (budgeted <= 0) return;
+        const avg3m = avg?.avg3m ?? null;
+        const avg12m = avg?.avg12m ?? null;
+        const ecart = avg3m !== null ? avg3m - budgeted : null;
+        const ecartPct = avg3m !== null && budgeted > 0 ? ecart / budgeted * 100 : null;
+        const tolerance = Math.max(1, budgeted * 0.02);
+        let status = "pending";
+        if (ecart !== null) {
+          if (Math.abs(ecart) <= tolerance) status = "match";else if (kind === "revenu" || kind === "placement") status = ecart > 0 ? "economy" : "over";else status = ecart < 0 ? "economy" : "over";
+        }
+        const displayLabel = kind === "placement" ? `Épargne : ${row.label}` : row.label;
+        rows.push({
+          id: row.id,
+          label: displayLabel,
+          kind,
+          budgeted,
+          avg3m,
+          avg12m,
+          ecart,
+          ecartPct,
+          status,
+          months: avg?.months || 0
+        });
+      };
+      (data?.charges || []).forEach(c => addLine(c, "charge"));
+      (data?.incomes || []).forEach(i => addLine(i, "revenu"));
+      (data?.placements || []).forEach(p => addLine(p, "placement"));
+      return rows;
+    }, [data]);
+    const displayDriftRows = useMemo(() => {
+      let r = driftRows;
+      if (driftSearch.trim()) {
+        const q = driftSearch.trim().toLowerCase();
+        r = r.filter(row => row.label.toLowerCase().includes(q));
+      }
+      return [...r].sort((a, b) => {
+        const av = a[driftSortKey] ?? -Infinity;
+        const bv = b[driftSortKey] ?? -Infinity;
+        return av < bv ? driftSortDir : av > bv ? -driftSortDir : 0;
+      });
+    }, [driftRows, driftSearch, driftSortKey, driftSortDir]);
+    const colDrift = key => {
+      if (driftSortKey === key) setDriftSortDir(-driftSortDir);else {
+        setDriftSortKey(key);
+        setDriftSortDir(-1);
+      }
+    };
+    const driftIcon = key => driftSortKey === key ? driftSortDir === 1 ? " ↑" : " ↓" : "";
+    const getStatusMeta = (status, kind = "charge") => {
+      if (status === "match") return {
+        label: "Conforme",
+        dot: "#2563EB",
+        bg: "#EFF6FF",
+        border: "#BFDBFE"
+      };
+      if (status === "pending") return {
+        label: "Non pointé",
+        dot: "#D97706",
+        bg: "#FFFBEB",
+        border: "#FDE68A"
+      };
+      if (status === "economy") {
+        return {
+          label: kind === "revenu" ? "Surplus (+)" : "Économie (-)",
+          dot: "#16A34A",
+          bg: "#F0FDF4",
+          border: "#BBF7D0"
+        };
+      }
+      if (status === "over") {
+        return {
+          label: kind === "revenu" ? "Déficit (-)" : "Dépassement (+)",
+          dot: "#DC2626",
+          bg: "#FEF2F2",
+          border: "#FECACA"
+        };
+      }
+      return {
+        label: status,
+        dot: "#666",
+        bg: "#fff",
+        border: "#ccc"
+      };
+    };
+    const hdrCell = (key, label, align = "left") => ({
+      onClick: () => colDrift(key),
+      style: {
+        padding: "9px 10px",
+        textAlign: align,
+        fontSize: 11,
+        fontWeight: 700,
+        color: driftSortKey === key ? C?.pine || "#2F5D50" : C?.inkSoft || "#6B7278",
+        background: C?.panelAlt || "#EFEAE0",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        borderBottom: `2px solid ${C?.line || "#DED6C4"}`,
+        userSelect: "none"
+      }
+    });
+    const TAB_STYLE = active => ({
+      padding: "7px 18px",
+      fontSize: 13,
+      fontWeight: 600,
+      cursor: "pointer",
+      borderBottom: active ? `2px solid ${C?.pine || "#2F5D50"}` : `2px solid transparent`,
+      color: active ? C?.pine || "#2F5D50" : C?.inkSoft || "#6B7278",
+      background: "none",
+      border: "none",
+      transition: "all 0.15s"
+    });
+    if (transactions.length === 0) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C?.inkSoft || "#6B7278",
+          fontSize: 13,
+          padding: 20
+        }
+      }, "Aucune transaction importée — rendez-vous dans l'onglet ", /*#__PURE__*/React.createElement("strong", null, "Import"), " pour commencer.");
+    }
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-end",
+        marginBottom: 20,
+        flexWrap: "wrap",
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Newsreader', serif",
+        fontSize: 24,
+        fontWeight: 600,
+        color: C?.ink || "#232A2E"
+      }
+    }, "Analyse Réel vs Prévisionnel"), openHelp && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => openHelp("analyse"),
+      style: {
+        background: "none",
+        border: `1px solid ${C?.pine || "#2F5D50"}`,
+        color: C?.pine || "#2F5D50",
+        borderRadius: "50%",
+        width: 22,
+        height: 22,
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      },
+      title: "Aide sur l'analyse"
+    }, "?")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12.5,
+        color: C?.inkSoft || "#6B7278",
+        marginTop: 3
+      }
+    }, "Comparaison entre les transactions bancaires et le prévisionnel.")), /*#__PURE__*/React.createElement("select", {
+      value: monthsBack,
+      onChange: e => setMonthsBack(Number(e.target.value)),
+      style: {
+        ...inputStyle,
+        width: 200,
+        cursor: "pointer"
+      }
+    }, /*#__PURE__*/React.createElement("option", {
+      value: 3
+    }, "3 derniers mois"), /*#__PURE__*/React.createElement("option", {
+      value: 6
+    }, "6 derniers mois"), /*#__PURE__*/React.createElement("option", {
+      value: 12
+    }, "12 derniers mois"), /*#__PURE__*/React.createElement("option", {
+      value: 0
+    }, "Toute la période"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        borderBottom: `1px solid ${C?.line || "#DED6C4"}`,
+        marginBottom: 22,
+        gap: 0
+      }
+    }, [{
+      key: "overview",
+      label: "📊 Vue Générale"
+    }, {
+      key: "landing",
+      label: "🎯 Atterrissage du Mois"
+    }, {
+      key: "monthly",
+      label: "📅 Historique Mensuel"
+    }, {
+      key: "drift",
+      label: "📉 Dérives par Ligne"
+    }].map(t => /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      key: t.key,
+      onClick: () => setActiveTab(t.key),
+      style: TAB_STYLE(activeTab === t.key)
+    }, t.label))), activeTab === "overview" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 14,
+        flexWrap: "wrap",
+        marginBottom: 18
+      }
+    }, /*#__PURE__*/React.createElement(KPI, {
+      label: "Dépenses (période)",
+      value: eur(totalExpenses),
+      accent: C?.brick || "#A8503C",
+      sub: `≈ ${eur(totalExpenses / nbMonths)} / mois`
+    }), /*#__PURE__*/React.createElement(KPI, {
+      label: "Revenus (période)",
+      value: eur(totalIncome),
+      accent: C?.pine || "#2F5D50",
+      sub: `≈ ${eur(totalIncome / nbMonths)} / mois`
+    }), /*#__PURE__*/React.createElement(KPI, {
+      label: "Postes réductibles",
+      value: eur(compressibleTotal),
+      accent: C?.gold || "#93802E",
+      sub: "Catégories marquées « réductible »"
+    }), uncategorized > 0 && /*#__PURE__*/React.createElement(KPI, {
+      label: "Non catégorisées",
+      value: uncategorized,
+      accent: C?.inkSoft || "#6B7278",
+      sub: "À classer dans l'onglet Import"
+    })), /*#__PURE__*/React.createElement(SectionCard, {
+      title: "Postes de dépense, du plus élevé au plus faible",
+      subtitle: "Somme des dépenses réelles par catégorie sur la période sélectionnée."
+    }, byCategory.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: C?.inkSoft || "#6B7278",
+        fontSize: 12.5
+      }
+    }, "Aucune dépense sur la période.") : /*#__PURE__*/React.createElement(AllocationChartJS, {
+      allocation: byCategory,
+      mode: "bars",
+      height: Math.max(200, byCategory.length * 34)
+    })), /*#__PURE__*/React.createElement(SectionCard, {
+      title: "Détail par catégorie",
+      subtitle: "Total sur la période, moyenne mensuelle, et poids dans le total des dépenses."
+    }, /*#__PURE__*/React.createElement("table", {
+      style: {
+        width: "100%",
+        borderCollapse: "collapse",
+        fontSize: 12.5
+      }
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+      style: {
+        borderBottom: `1px solid ${C?.line || "#DED6C4"}`
+      }
+    }, /*#__PURE__*/React.createElement("th", {
+      style: {
+        textAlign: "left",
+        padding: "6px 8px",
+        color: C?.inkSoft || "#6B7278",
+        fontSize: 11
+      }
+    }, "Catégorie"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        textAlign: "right",
+        padding: "6px 8px",
+        color: C?.inkSoft || "#6B7278",
+        fontSize: 11
+      }
+    }, "Total période"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        textAlign: "right",
+        padding: "6px 8px",
+        color: C?.inkSoft || "#6B7278",
+        fontSize: 11
+      }
+    }, "Moyenne / mois"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        textAlign: "right",
+        padding: "6px 8px",
+        color: C?.inkSoft || "#6B7278",
+        fontSize: 11
+      }
+    }, "% du total"))), /*#__PURE__*/React.createElement("tbody", null, byCategory.map(c => {
+      const cat = categories.find(cc => cc.label === c.label);
+      const isCredit = c.amount < 0;
+      return /*#__PURE__*/React.createElement("tr", {
+        key: c.label,
+        style: {
+          borderBottom: `1px solid ${C?.line || "#DED6C4"}`
+        }
+      }, /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "7px 8px"
+        }
+      }, c.label, cat?.compressible === "Oui" && /*#__PURE__*/React.createElement("span", {
+        style: {
+          marginLeft: 6,
+          fontSize: 10,
+          color: C?.gold || "#93802E",
+          fontWeight: 700
+        }
+      }, "RÉDUCTIBLE"), isCredit && /*#__PURE__*/React.createElement("span", {
+        style: {
+          marginLeft: 6,
+          fontSize: 10,
+          color: C?.pine || "#2F5D50",
+          fontWeight: 700,
+          background: C?.pineSoft || "#E3ECE8",
+          padding: "1px 5px",
+          borderRadius: 4
+        }
+      }, "GAIN / REMBOURSEMENT")), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "7px 8px",
+          textAlign: "right",
+          fontFamily: "'IBM Plex Mono', monospace",
+          color: isCredit ? C?.pine || "#2F5D50" : C?.ink || "#232A2E",
+          fontWeight: isCredit ? 600 : 400
+        }
+      }, eur(c.amount)), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "7px 8px",
+          textAlign: "right",
+          fontFamily: "'IBM Plex Mono', monospace",
+          color: isCredit ? C?.pine || "#2F5D50" : C?.ink || "#232A2E"
+        }
+      }, eur(c.amount / nbMonths)), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "7px 8px",
+          textAlign: "right",
+          color: C?.inkSoft || "#6B7278"
+        }
+      }, !isCredit && totalExpenses > 0 ? `${(c.amount / totalExpenses * 100).toFixed(1)} %` : "—"));
+    }))))), activeTab === "landing" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 16,
+        flexWrap: "wrap",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Newsreader', serif",
+        fontSize: 18,
+        fontWeight: 600,
+        color: C?.ink || "#232A2E",
+        textTransform: "capitalize"
+      }
+    }, "🎯 Atterrissage — ", currentMonthLabel), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C?.panel || "#FFFFFF",
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        borderRadius: 10,
+        padding: "10px 16px",
+        minWidth: 130
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 3
+      }
+    }, "Budget total du mois"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: 16,
+        fontWeight: 700,
+        color: C?.navy || "#28394A"
+      }
+    }, eur(landingTotalBudget))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C?.panel || "#FFFFFF",
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        borderRadius: 10,
+        padding: "10px 16px",
+        minWidth: 130
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 3
+      }
+    }, "Réel pointé"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: 16,
+        fontWeight: 700,
+        color: landingTotalReel > landingTotalBudget ? "#DC2626" : "#16A34A"
+      }
+    }, eur(landingTotalReel))))), landingData.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: C?.inkSoft || "#6B7278",
+        fontSize: 13
+      }
+    }, "Aucune ligne budgétaire active ce mois-ci.") : /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 10
+      }
+    }, landingData.map(row => {
+      const sm = getStatusMeta(row.status, row.kind);
+      const pct = Math.min(100, row.budgeted > 0 ? row.reel / row.budgeted * 100 : 0);
+      const barColor = row.status === "match" ? "#2563EB" : row.status === "economy" ? "#16A34A" : row.status === "over" ? "#DC2626" : C?.line || "#DED6C4";
+      return /*#__PURE__*/React.createElement("div", {
+        key: row.id,
+        style: {
+          background: C?.panel || "#FFFFFF",
+          border: `1px solid ${C?.line || "#DED6C4"}`,
+          borderRadius: 10,
+          padding: "12px 16px"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 8,
+          gap: 8
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flex: 1,
+          minWidth: 0
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          padding: "2px 7px",
+          borderRadius: 8,
+          fontSize: 10.5,
+          fontWeight: 700,
+          flexShrink: 0,
+          background: row.kind === "charge" ? C?.brickSoft || "#F4E4DF" : row.kind === "revenu" ? C?.pineSoft || "#E3ECE8" : C?.panelAlt || "#EFEAE0",
+          color: row.kind === "charge" ? C?.brick || "#A8503C" : row.kind === "revenu" ? C?.pine || "#2F5D50" : C?.navy || "#28394A",
+          border: row.kind === "placement" ? `1px solid ${C?.line || "#DED6C4"}` : "none"
+        }
+      }, row.kind === "charge" ? "Charge" : row.kind === "revenu" ? "Revenu" : "Épargne"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 600,
+          fontSize: 13,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        },
+        title: row.label
+      }, row.label)), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          flexShrink: 0
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: 13,
+          color: C?.inkSoft || "#6B7278"
+        }
+      }, eur(row.reel), " / ", eur(row.budgeted)), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          padding: "2px 8px",
+          borderRadius: 10,
+          fontSize: 11,
+          fontWeight: 700,
+          background: sm.bg,
+          border: `1px solid ${sm.border}`,
+          color: sm.dot
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: sm.dot
+        }
+      }), sm.label))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          height: 8,
+          background: C?.panelAlt || "#EFEAE0",
+          borderRadius: 4,
+          overflow: "hidden"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          height: "100%",
+          width: `${pct}%`,
+          background: barColor,
+          borderRadius: 4,
+          transition: "width 0.4s ease",
+          maxWidth: "100%"
+        }
+      })), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: 4,
+          fontSize: 10.5,
+          color: C?.inkSoft || "#6B7278"
+        }
+      }, /*#__PURE__*/React.createElement("span", null, pct.toFixed(1), "% consommé"), row.status !== "pending" && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: row.status === "over" ? "#DC2626" : row.status === "economy" ? "#16A34A" : "#2563EB",
+          fontWeight: 600
+        }
+      }, row.reel >= row.budgeted ? "+" : "", eur(row.reel - row.budgeted))));
+    }))), activeTab === "monthly" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Newsreader', serif",
+        fontSize: 18,
+        fontWeight: 600,
+        color: C?.ink || "#232A2E",
+        marginBottom: 16
+      }
+    }, "📅 Budget Prévu vs Réel Constaté — mois par mois"), monthlyCompareData.every(d => !d.hasPointing) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C?.goldSoft || "#F0EAD3",
+        border: `1px solid ${C?.gold || "#93802E"}`,
+        borderRadius: 10,
+        padding: "12px 16px",
+        fontSize: 12.5,
+        color: C?.gold || "#93802E",
+        marginBottom: 16
+      }
+    }, "💡 Aucun pointage enregistré sur cette période. Utilisez l'onglet ", /*#__PURE__*/React.createElement("strong", null, "Pointage"), " pour associer vos transactions bancaires aux lignes budgétaires."), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C?.panel || "#FFFFFF",
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        borderRadius: 12,
+        padding: "20px 16px",
+        height: 320
+      }
+    }, /*#__PURE__*/React.createElement("canvas", {
+      ref: barCanvasRef
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 18,
+        overflowX: "auto",
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        borderRadius: 10
+      }
+    }, /*#__PURE__*/React.createElement("table", {
+      style: {
+        width: "100%",
+        borderCollapse: "collapse",
+        fontSize: 12.5,
+        minWidth: 600
+      }
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+      style: {
+        borderBottom: `2px solid ${C?.line || "#DED6C4"}`
+      }
+    }, /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 12px",
+        textAlign: "left",
+        fontSize: 11,
+        fontWeight: 700,
+        color: C?.inkSoft || "#6B7278",
+        background: C?.panelAlt || "#EFEAE0"
+      }
+    }, "Mois"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 12px",
+        textAlign: "right",
+        fontSize: 11,
+        fontWeight: 700,
+        color: "#2563EB",
+        background: C?.panelAlt || "#EFEAE0"
+      }
+    }, "Budget Prévu"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 12px",
+        textAlign: "right",
+        fontSize: 11,
+        fontWeight: 700,
+        color: "#16A34A",
+        background: C?.panelAlt || "#EFEAE0"
+      }
+    }, "Réel Pointé"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 12px",
+        textAlign: "right",
+        fontSize: 11,
+        fontWeight: 700,
+        color: C?.inkSoft || "#6B7278",
+        background: C?.panelAlt || "#EFEAE0"
+      }
+    }, "Écart"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 12px",
+        textAlign: "center",
+        fontSize: 11,
+        fontWeight: 700,
+        color: C?.inkSoft || "#6B7278",
+        background: C?.panelAlt || "#EFEAE0"
+      }
+    }, "Statut"))), /*#__PURE__*/React.createElement("tbody", null, monthlyCompareData.map(row => {
+      const ecart = row.reel - row.budgeted;
+      const tolerance = Math.max(10, row.budgeted * 0.02);
+      const status = !row.hasPointing ? "pending" : Math.abs(ecart) <= tolerance ? "match" : ecart < 0 ? "economy" : "over";
+      const sm = getStatusMeta(status, "charge");
+      const ecartColor = status === "match" ? "#2563EB" : status === "economy" ? "#16A34A" : status === "over" ? "#DC2626" : C?.inkSoft || "#6B7278";
+      return /*#__PURE__*/React.createElement("tr", {
+        key: row.monthISO,
+        style: {
+          borderBottom: `1px solid ${C?.line || "#DED6C4"}`
+        }
+      }, /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "8px 12px",
+          fontWeight: 600,
+          textTransform: "capitalize"
+        }
+      }, row.label), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "8px 12px",
+          textAlign: "right",
+          fontFamily: "'IBM Plex Mono', monospace",
+          color: "#2563EB"
+        }
+      }, eur(row.budgeted)), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "8px 12px",
+          textAlign: "right",
+          fontFamily: "'IBM Plex Mono', monospace",
+          color: row.hasPointing ? "#16A34A" : C?.inkSoft || "#6B7278"
+        }
+      }, row.hasPointing ? eur(row.reel) : "—"), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "8px 12px",
+          textAlign: "right",
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontWeight: 600,
+          color: ecartColor
+        }
+      }, row.hasPointing ? `${ecart >= 0 ? "+" : ""}${eur(ecart)}` : "—"), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "8px 12px",
+          textAlign: "center"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          padding: "2px 9px",
+          borderRadius: 10,
+          fontSize: 11,
+          fontWeight: 700,
+          background: sm.bg,
+          border: `1px solid ${sm.border}`,
+          color: sm.dot
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: sm.dot
+        }
+      }), sm.label)));
+    }))))), activeTab === "drift" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 14,
+        flexWrap: "wrap",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Newsreader', serif",
+        fontSize: 18,
+        fontWeight: 600,
+        color: C?.ink || "#232A2E"
+      }
+    }, "📉 Dérives par ligne budgétaire"), /*#__PURE__*/React.createElement("input", {
+      value: driftSearch,
+      onChange: e => setDriftSearch(e.target.value),
+      placeholder: "🔍 Rechercher une ligne…",
+      style: {
+        ...inputStyle,
+        width: 220,
+        fontSize: 12.5
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        overflowX: "auto",
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        borderRadius: 10,
+        background: C?.panel || "#FFFFFF"
+      }
+    }, /*#__PURE__*/React.createElement("table", {
+      style: {
+        width: "100%",
+        borderCollapse: "collapse",
+        minWidth: 820,
+        fontSize: 12.5
+      }
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", hdrCell("status", "Statut"), "Statut", driftIcon("status")), /*#__PURE__*/React.createElement("th", hdrCell("kind", "Type"), "Type", driftIcon("kind")), /*#__PURE__*/React.createElement("th", hdrCell("label", "Libellé"), "Libellé", driftIcon("label")), /*#__PURE__*/React.createElement("th", hdrCell("budgeted", "Budget Actuel", "right"), "Budget Actuel", driftIcon("budgeted")), /*#__PURE__*/React.createElement("th", hdrCell("avg3m", "Moy. 3M", "right"), "Moy. Réelle 3M", driftIcon("avg3m")), /*#__PURE__*/React.createElement("th", hdrCell("avg12m", "Moy. 12M", "right"), "Moy. Réelle 12M", driftIcon("avg12m")), /*#__PURE__*/React.createElement("th", hdrCell("ecart", "Écart", "right"), "Écart (€ / %)", driftIcon("ecart")))), /*#__PURE__*/React.createElement("tbody", null, displayDriftRows.length === 0 && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+      colSpan: 7,
+      style: {
+        padding: 24,
+        textAlign: "center",
+        color: C?.inkSoft || "#6B7278"
+      }
+    }, "Aucune ligne budgétaire trouvée.")), displayDriftRows.map(row => {
+      const sm = getStatusMeta(row.status, row.kind);
+      const ecartColor = row.status === "match" ? "#2563EB" : row.status === "economy" ? "#16A34A" : row.status === "over" ? "#DC2626" : C?.inkSoft || "#6B7278";
+      const cellS = {
+        padding: "9px 10px",
+        borderBottom: `1px solid ${C?.line || "#DED6C4"}`,
+        verticalAlign: "middle"
+      };
+      return /*#__PURE__*/React.createElement("tr", {
+        key: row.id
+      }, /*#__PURE__*/React.createElement("td", {
+        style: cellS
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "3px 9px",
+          borderRadius: 12,
+          fontSize: 11,
+          fontWeight: 700,
+          background: sm.bg,
+          border: `1px solid ${sm.border}`,
+          color: sm.dot,
+          whiteSpace: "nowrap"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          background: sm.dot
+        }
+      }), sm.label)), /*#__PURE__*/React.createElement("td", {
+        style: cellS
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          padding: "2px 8px",
+          borderRadius: 8,
+          fontSize: 11,
+          fontWeight: 600,
+          background: row.kind === "charge" ? C?.brickSoft || "#F4E4DF" : row.kind === "revenu" ? C?.pineSoft || "#E3ECE8" : C?.panelAlt || "#EFEAE0",
+          color: row.kind === "charge" ? C?.brick || "#A8503C" : row.kind === "revenu" ? C?.pine || "#2F5D50" : C?.navy || "#28394A",
+          border: row.kind === "placement" ? `1px solid ${C?.line || "#DED6C4"}` : "none"
+        }
+      }, row.kind === "charge" ? "Charge" : row.kind === "revenu" ? "Revenu" : "Épargne")), /*#__PURE__*/React.createElement("td", {
+        style: {
+          ...cellS,
+          fontWeight: 600,
+          maxWidth: 220,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        },
+        title: row.label
+      }, row.label), /*#__PURE__*/React.createElement("td", {
+        style: {
+          ...cellS,
+          textAlign: "right",
+          fontFamily: "'IBM Plex Mono', monospace"
+        }
+      }, eur(row.budgeted)), /*#__PURE__*/React.createElement("td", {
+        style: {
+          ...cellS,
+          textAlign: "right",
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontWeight: row.avg3m !== null ? 700 : 400,
+          color: row.avg3m !== null ? "#2563EB" : C?.inkSoft || "#6B7278"
+        }
+      }, row.avg3m !== null ? eur(row.avg3m) : "—", row.months > 0 && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 10,
+          color: C?.inkSoft || "#6B7278",
+          fontWeight: 400
+        }
+      }, row.months, " mois")), /*#__PURE__*/React.createElement("td", {
+        style: {
+          ...cellS,
+          textAlign: "right",
+          fontFamily: "'IBM Plex Mono', monospace",
+          color: C?.inkSoft || "#6B7278"
+        }
+      }, row.avg12m !== null ? eur(row.avg12m) : "—"), /*#__PURE__*/React.createElement("td", {
+        style: {
+          ...cellS,
+          textAlign: "right",
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontWeight: 700,
+          color: ecartColor
+        }
+      }, row.ecart !== null ? /*#__PURE__*/React.createElement(React.Fragment, null, row.ecart >= 0 ? "+" : "", eur(row.ecart), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 10,
+          fontWeight: 400
+        }
+      }, row.ecartPct >= 0 ? "+" : "", row.ecartPct?.toFixed(1), "%")) : "—"));
+    })))), driftRows.filter(r => r.status === "pending").length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        color: C?.inkSoft || "#6B7278",
+        marginTop: 10,
+        fontStyle: "italic"
+      }
+    }, "💡 Les lignes «\xA0Non pointées\xA0» n'ont aucun pointage dans l'onglet ", /*#__PURE__*/React.createElement("strong", null, "Pointage"), ".")));
+  }
+  exports.AnalyseView = AnalyseView;
+})(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);
