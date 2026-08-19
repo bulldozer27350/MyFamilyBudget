@@ -46,11 +46,27 @@
       value: i.label,
       label: i.label
     }))], [data?.incomes]);
-    const updatePerson = fn => {
+    const updatePerson = async fn => {
+      // Mise à jour locale d'abord pour réactivité
       update("retirement", r => ({
         ...r,
         people: (r?.people || []).map(p => p.id === person.id ? fn(p) : p)
       }));
+      
+      // Sauvegarde via l'API asynchrone
+      try {
+        const api = window.BudgetApp?.BudgetApi;
+        if (api) {
+          const updatedPeople = (data?.retirement?.people || []).map(p => p.id === person.id ? fn(p) : p);
+          const updatedRetirement = {
+            ...data?.retirement,
+            people: updatedPeople
+          };
+          await api.saveRetraiteData(updatedRetirement);
+        }
+      } catch (error) {
+        console.error("Erreur lors de la mise à jour de la personne:", error);
+      }
     };
     return /*#__PURE__*/React.createElement("div", {
       style: {
@@ -305,8 +321,30 @@
   }) {
     const people = data?.retirement?.people || [];
     const [activeId, setActiveId] = useState(people[0]?.id || null);
+    const [loading, setLoading] = useState(false);
+    const [apiData, setApiData] = useState(null);
     const activePerson = people.find(p => p.id === activeId) || people[0] || null;
-    const addPerson = () => {
+
+    // Chargement des données via l'API asynchrone
+    React.useEffect(() => {
+      const loadRetraiteData = async () => {
+        setLoading(true);
+        try {
+          const api = window.BudgetApp?.BudgetApi;
+          if (api) {
+            const result = await api.getRetraiteData();
+            setApiData(result);
+          }
+        } catch (error) {
+          console.error("Erreur lors du chargement des données de retraite:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      loadRetraiteData();
+    }, [data?.retirement]);
+    const addPerson = async () => {
       const newPerson = {
         id: uid(),
         name: "Nouvelle personne",
@@ -319,19 +357,62 @@
         ratioPointsParEuro: 0.0051,
         salaryHistory: []
       };
+      
+      // Mise à jour locale d'abord pour réactivité
       update("retirement", r => ({
         ...r,
         people: [...(r?.people || []), newPerson]
       }));
       setActiveId(newPerson.id);
+      
+      // Sauvegarde via l'API asynchrone
+      try {
+        const api = window.BudgetApp?.BudgetApi;
+        if (api) {
+          const updatedRetirement = {
+            ...data?.retirement,
+            people: [...(data?.retirement?.people || []), newPerson]
+          };
+          await api.saveRetraiteData(updatedRetirement);
+        }
+      } catch (error) {
+        console.error("Erreur lors de l'ajout de la personne:", error);
+      }
     };
-    const removePerson = id => {
+    const removePerson = async id => {
+      // Mise à jour locale d'abord pour réactivité
       update("retirement", r => ({
         ...r,
         people: (r?.people || []).filter(p => p.id !== id)
       }));
       if (activeId === id) setActiveId(null);
+      
+      // Sauvegarde via l'API asynchrone
+      try {
+        const api = window.BudgetApp?.BudgetApi;
+        if (api) {
+          const updatedRetirement = {
+            ...data?.retirement,
+            people: (data?.retirement?.people || []).filter(p => p.id !== id)
+          };
+          await api.saveRetraiteData(updatedRetirement);
+        }
+      } catch (error) {
+        console.error("Erreur lors de la suppression de la personne:", error);
+      }
     };
+    if (loading) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "200px",
+          color: C?.inkSoft || "#6B7278"
+        }
+      }, "Chargement des données de retraite...");
+    }
+
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         background: C?.panelAlt || "#EFEAE0",

@@ -6,7 +6,7 @@
  * sur un back-end Java Spring Boot, seule l'implémentation interne changera (fetch),
  * pas les composants.
  *
- * Fonctionnalités déjà migrées : Vue d'ensemble, Trésorerie, Patrimoine.
+ * Fonctionnalités déjà migrées : Vue d'ensemble, Trésorerie, Patrimoine, Retraite.
  */
 (function (exports) {
   'use strict';
@@ -133,8 +133,54 @@
      */
     onPatrimoineChanged(listener) {
       return app().PatrimoineService.subscribePatrimoine(listener);
+    },
+
+    /**
+     * Récupère les données de retraite
+     * @returns {Promise<Object>} Données de retraite avec les projections calculées
+     */
+    async getRetraiteData() {
+      return new Promise((resolve, reject) => {
+        try {
+          // Utilise la fonction de service-metier.js
+          const getRetraiteDataFn = exports.getRetraiteDataFromService || window.BudgetApp?.getRetraiteDataFromService;
+          if (getRetraiteDataFn) {
+            // Enveloppe le traitement synchrone dans Promise.resolve()
+            resolve(Promise.resolve(getRetraiteDataFn()));
+          } else {
+            resolve({});
+          }
+        } catch (error) {
+          reject(error);
+        }
+      });
+    },
+
+    /**
+     * Sauvegarde les données de retraite
+     * @param {Object} retirementData - Données de retraite à sauvegarder
+     * @returns {Promise<void>}
+     */
+    async saveRetraiteData(retirementData) {
+      return new Promise((resolve, reject) => {
+        try {
+          // Utilise la fonction de service-metier.js
+          const saveRetraiteDataFn = exports.saveRetraiteDataToService || window.BudgetApp?.saveRetraiteDataToService;
+          if (saveRetraiteDataFn) {
+            // Enveloppe le traitement synchrone dans Promise.resolve()
+            Promise.resolve(saveRetraiteDataFn(retirementData)).then(() => resolve());
+          } else {
+            resolve();
+          }
+        } catch (error) {
+          reject(error);
+        }
+      });
     }
   };
 
+  // Export de computeRetirementProjection pour compatibilité avec retraite-view.js
+  exports.computeRetirementProjection = exports.computeRetirementProjection || window.BudgetApp?.computeRetirementProjection;
+  
   exports.BudgetApi = BudgetApi;
 })(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);

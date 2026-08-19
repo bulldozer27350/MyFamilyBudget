@@ -1,5 +1,5 @@
 /**
- * Service métier — Vue d'ensemble, Trésorerie & Patrimoine
+ * Service métier — Vue d'ensemble, Trésorerie, Patrimoine et Retraite
  *
  * Seule couche autorisée à accéder au stockage (localStorage via BudgetStore) et à
  * appliquer les règles métier des fonctionnalités migrées. Les composants React ne
@@ -8,7 +8,18 @@
 (function (exports) {
   'use strict';
 
-  function deps() {
+  const STORAGE_KEY = "budget_familial_data_v1";
+
+  // Constantes pour le calcul de retraite
+  const TRIMESTRES_REQUIS = 172;
+  const AGE_TAUX_PLEIN_AUTO = 67;
+  const DECOTE_PAR_TRIMESTRE = 0.00625;
+  const SURCOTE_PAR_TRIMESTRE = 0.0125;
+  const TAUX_PLEIN = 0.50;
+  const TAUX_MINORE_PLANCHER = 0.375;
+  const MAJORATION_3_ENFANTS = 0.10;
+
+function deps() {
     return typeof window !== 'undefined' ? window.BudgetApp || exports : exports;
   }
 
@@ -229,63 +240,41 @@
   }
 
   /**
-   * Construit le modèle de lecture de l'onglet Trésorerie à partir des données stockées.
+   * Récupère les données complètes depuis le localStorage
+   * @returns {Object} Données complètes de l'application
    */
-  function buildTresorerie(options) {
-    const { useConstantEuros = false } = options || {};
-    const {
-      BudgetStore,
-      computeFinancialProjections
-    } = deps();
-
-    const data = BudgetStore.getData();
-    const projections = computeFinancialProjections(data, useConstantEuros);
-    const retireYear = (Number(data?.settings?.birthYear) || 0) + (Number(data?.settings?.retireAge) || 0);
-
-    return {
-      incomes: data?.incomes || [],
-      charges: data?.charges || [],
-      oneoff: data?.oneoff || [],
-      variableIncomes: data?.variableIncomes || [],
-      variableOverrides: data?.variableOverrides || [],
-      incomeLabels: (data?.incomes || []).map(i => i.label),
-      variableIncomeLabels: (data?.variableIncomes || []).map(v => v.label),
-      categoryOptions: buildCategoryOptions(data),
-      suggestions: buildTresorerieSuggestions(data),
-      retireYear,
-      years: projections.years,
-      cashflow: projections.cashflow,
-      variablePreview: projections.variablePreview,
-      previewYears: projections.previewYears
-    };
-  }
-
-  function updateTresorerieLigne(listKey, id, field, value) {
-    if (!TRESORERIE_LISTS.includes(listKey) && listKey !== "placements") {
-      throw new Error("Liste Trésorerie inconnue : " + listKey);
+  function loadFullData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (err) {
+      console.error("Erreur de chargement localStorage :", err);
+      return {};
     }
-    deps().BudgetStore.setCell(listKey)(id, field, value);
   }
 
-  function addTresorerieLigne(listKey, options) {
-    if (!TRESORERIE_LISTS.includes(listKey)) {
-      throw new Error("Liste Trésorerie inconnue : " + listKey);
+  /**
+   * Sauvegarde les données complètes dans le localStorage
+   * @param {Object} data - Données complètes à sauvegarder
+   */
+  function saveFullData(data) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (err) {
+      console.error("Erreur de sauvegarde localStorage :", err);
     }
-    const model = buildTresorerie(options);
-    const data = deps().BudgetStore.getData();
-    deps().BudgetStore.addRow(listKey, () => newTresorerieRow(listKey, data, model.retireYear, model.years));
   }
 
-  function removeTresorerieLigne(listKey, id) {
-    if (!TRESORERIE_LISTS.includes(listKey)) {
-      throw new Error("Liste Trésorerie inconnue : " + listKey);
-    }
-    deps().BudgetStore.removeRow(listKey)(id);
-  }
-
-  function applyTresorerieAjustement(lineId, kind, newMonthly) {
-    const listKey = kind === "charge" ? "charges" : kind === "revenu" ? "incomes" : "placements";
-    updateTresorerieLigne(listKey, lineId, "monthly", String(newMonthly));
+  /**
+   * Calcule le PASS pour une année donnée
+   * @param {Object} data - Données complètes
+   * @param {number} year - Année
+   * @returns {number} Valeur du PASS
+   */
+  function passForYear(data, year) {
+    const base = Number(data.retirement?.pass2026) || 47100;
+    const growth = Number(data.retirement?.passGrowthRate) ?? 0.015;
+    return base * Math.pow(1 + growth, year - 2026);
   }
 
   function subscribeTresorerie(listener) {
@@ -361,6 +350,268 @@
   }
 
   /**
+   * Calcule la valeur du point Agirc-Arrco pour une année donnée
+   * @param {Object} data - Données complètes
+   * @param {number} year - Année
+   * @returns {number} Valeur du point
+   */
+  function agircPointValueForYear(data, year) {
+    const base = Number(data.retirement?.agircPointValue) || 1.4386;
+    const baseYear = yearOf(data.retirement?.agircPointDateGlobal) || 2025;
+    const growth = Number(data.retirement?.agircPointGrowthRate) ?? 0.01;
+    return base * Math.pow(1 + growth, Math.max(0, year - baseYear));
+  }
+
+  /**
+   * Calcule le salaire annuel projeté pour une personne et une année
+   * @param {Object} data - Données complètes
+   * @param {Object} person - Personne
+   * @param {number} year - Année
+   * @returns {number} Salaire annuel projeté
+   */
+  function projectedAnnualSalary(data, person, year) {
+    if (!person.incomeLabel) return 0;
+    const row = (data.incomes || []).find(r => r.label === person.incomeLabel);
+    if (!row) return 0;
+    return incomeAnnualForYear(row, year);
+  }
+
+  /**
+   * Calcule le nombre d'enfants
+   * @param {Object} data - Données complètes
+   * @returns {number} Nombre d'enfants
+   */
+  function nbEnfants(data) {
+    return (data.taxChildren || []).length;
+  }
+
+  /**
+   * Fonction utilitaire pour extraire l'année d'une date
+   * @param {string} dateStr - Date au format ISO
+   * @returns {number|null} Année ou null
+   */
+  function yearOf(dateStr) {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return null;
+    return date.getFullYear();
+  }
+
+  /**
+   * Calcule le revenu annuel pour une année donnée
+   * @param {Object} row - Ligne de revenu
+   * @param {number} year - Année
+   * @returns {number} Revenu annuel
+   */
+  function incomeAnnualForYear(row, year) {
+    const startYear = yearOf(row.start) ?? year;
+    const growth = Number(row.growthRate) || 0;
+    const yearsElapsed = Math.max(0, year - startYear);
+    const effectiveMonthly = (Number(row.monthly) || 0) * Math.pow(1 + growth, yearsElapsed);
+    return effectiveMonthly * monthsActiveInYear(row.start, row.end, year);
+  }
+
+  /**
+   * Calcule le nombre de mois actifs dans une année
+   * @param {string} startISO - Date de début ISO
+   * @param {string} endISO - Date de fin ISO
+   * @param {number} year - Année
+   * @returns {number} Nombre de mois actifs
+   */
+  function monthsActiveInYear(startISO, endISO, year) {
+    if (!startISO || !endISO) return 0;
+    const start = new Date(startISO);
+    const end = new Date(endISO);
+    const yStart = new Date(year, 0, 1);
+    const yEnd = new Date(year, 11, 31);
+    const s = start > yStart ? start : yStart;
+    const e = end < yEnd ? end : yEnd;
+    if (e < s) return 0;
+    return (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1;
+  }
+
+  /**
+   * Construit le modèle de lecture de l'onglet Trésorerie à partir des données stockées.
+   */
+  function buildTresorerie(options) {
+    const { useConstantEuros = false } = options || {};
+    const {
+      BudgetStore,
+      computeFinancialProjections
+    } = deps();
+
+    const data = BudgetStore.getData();
+    const projections = computeFinancialProjections(data, useConstantEuros);
+    const retireYear = (Number(data?.settings?.birthYear) || 0) + (Number(data?.settings?.retireAge) || 0);
+
+    return {
+      incomes: data?.incomes || [],
+      charges: data?.charges || [],
+      oneoff: data?.oneoff || [],
+      variableIncomes: data?.variableIncomes || [],
+      variableOverrides: data?.variableOverrides || [],
+      incomeLabels: (data?.incomes || []).map(i => i.label),
+      variableIncomeLabels: (data?.variableIncomes || []).map(v => v.label),
+      categoryOptions: buildCategoryOptions(data),
+      suggestions: buildTresorerieSuggestions(data),
+      retireYear,
+      years: projections.years,
+      cashflow: projections.cashflow,
+      variablePreview: projections.variablePreview,
+      previewYears: projections.previewYears
+    };
+  }
+
+  function updateTresorerieLigne(listKey, id, field, value) {
+    if (!TRESORERIE_LISTS.includes(listKey) && listKey !== "placements") {
+      throw new Error("Liste Trésorerie inconnue : " + listKey);
+    }
+    deps().BudgetStore.setCell(listKey)(id, field, value);
+  }
+
+  function addTresorerieLigne(listKey, options) {
+    if (!TRESORERIE_LISTS.includes(listKey)) {
+      throw new Error("Liste Trésorerie inconnue : " + listKey);
+    }
+    const model = buildTresorerie(options);
+    const data = deps().BudgetStore.getData();
+    deps().BudgetStore.addRow(listKey, () => newTresorerieRow(listKey, data, model.retireYear, model.years));
+  }
+
+  function removeTresorerieLigne(listKey, id) {
+    if (!TRESORERIE_LISTS.includes(listKey)) {
+      throw new Error("Liste Trésorerie inconnue : " + listKey);
+    }
+    deps().BudgetStore.removeRow(listKey)(id);
+  }
+
+  function applyTresorerieAjustement(lineId, kind, newMonthly) {
+    const listKey = kind === "charge" ? "charges" : kind === "revenu" ? "incomes" : "placements";
+    updateTresorerieLigne(listKey, lineId, "monthly", String(newMonthly));
+  }
+
+  /**
+   * Calcule la projection de retraite pour une personne
+   * @param {Object} data - Données complètes
+   * @param {Object} person - Personne
+   * @param {number} retireYear - Année de retraite
+   * @returns {Object} Projection de retraite
+   */
+  function computeRetirementProjection(data, person, retireYear) {
+    const birthYear = Number(person.birthYear) || Number(data.settings.birthYear) || 1985;
+    const trimestresValides = Number(person.trimestresValides) || 0;
+    const trimestresDateYear = yearOf(person.trimestresDate) || new Date().getFullYear() - 1;
+    let trimestresFuturs = 0;
+    for (let y = trimestresDateYear + 1; y <= retireYear; y++) {
+      if (projectedAnnualSalary(data, person, y) > 0) trimestresFuturs += 4;
+    }
+    const trimestresEstimesDepart = trimestresValides + trimestresFuturs;
+    const ageDepart = retireYear - birthYear;
+    const trimestresJusquTauxPleinAuto = Math.max(0, (AGE_TAUX_PLEIN_AUTO - ageDepart) * 4);
+    let tauxAppliqué = TAUX_PLEIN,
+      decote = 0,
+      surcote = 0;
+    if (trimestresEstimesDepart < TRIMESTRES_REQUIS) {
+      const manquants = TRIMESTRES_REQUIS - trimestresEstimesDepart;
+      const trimestresDecote = Math.min(manquants, trimestresJusquTauxPleinAuto);
+      decote = trimestresDecote * DECOTE_PAR_TRIMESTRE;
+      tauxAppliqué = Math.max(TAUX_PLEIN - decote, TAUX_MINORE_PLANCHER);
+    } else if (trimestresEstimesDepart > TRIMESTRES_REQUIS) {
+      surcote = (trimestresEstimesDepart - TRIMESTRES_REQUIS) * SURCOTE_PAR_TRIMESTRE;
+      tauxAppliqué = TAUX_PLEIN + surcote;
+    }
+    const historyYears = (person.salaryHistory || []).map(h => ({
+      year: Number(h.year),
+      salary: Number(h.salary) || 0
+    })).filter(h => h.salary > 0);
+    const futureYears = [];
+    for (let y = trimestresDateYear + 1; y <= retireYear - 1; y++) {
+      const s = projectedAnnualSalary(data, person, y);
+      if (s > 0) futureYears.push({
+        year: y,
+        salary: s
+      });
+    }
+    const byYear = new Map();
+    for (const h of historyYears) byYear.set(h.year, h.salary);
+    for (const f of futureYears) if (!byYear.has(f.year)) byYear.set(f.year, f.salary);
+    const allEntries = Array.from(byYear.entries()).map(([year, salary]) => ({
+      year,
+      salary
+    }));
+    allEntries.sort((a, b) => b.year - a.year);
+    const last25 = allEntries.slice(0, 25);
+    const cappedSalaries = last25.map(h => Math.min(h.salary, passForYear(data, h.year)));
+    const SAM = cappedSalaries.length ? cappedSalaries.reduce((s, v) => s + v, 0) / cappedSalaries.length : 0;
+    const majoration = nbEnfants(data) >= 3 ? 1 + MAJORATION_3_ENFANTS : 1;
+    const ratioTrimestres = Math.min(trimestresEstimesDepart, TRIMESTRES_REQUIS) / TRIMESTRES_REQUIS;
+    const pensionBaseAnnuelle = SAM * tauxAppliqué * ratioTrimestres * majoration;
+    const pointsActuels = Number(person.agircPoints) || 0;
+    const ratioPointsParEuro = Number(person.ratioPointsParEuro) || 0.0051;
+    const pointsFuturs = futureYears.reduce((s, h) => s + h.salary * ratioPointsParEuro, 0);
+    const pointsEstimes = pointsActuels + pointsFuturs;
+    const valeurPointDepart = agircPointValueForYear(data, retireYear);
+    const pensionComplementaireAnnuelle = pointsEstimes * valeurPointDepart * majoration;
+    return {
+      ageDepart,
+      trimestresValides,
+      trimestresEstimesDepart,
+      trimestresRequis: TRIMESTRES_REQUIS,
+      manqueTauxPlein: trimestresEstimesDepart < TRIMESTRES_REQUIS,
+      tauxAppliqué,
+      decote,
+      surcote,
+      SAM,
+      majoration,
+      pensionBaseAnnuelle,
+      pointsEstimes,
+      valeurPointDepart,
+      pensionComplementaireAnnuelle,
+      pensionTotaleAnnuelle: pensionBaseAnnuelle + pensionComplementaireAnnuelle,
+      pensionTotaleMensuelle: (pensionBaseAnnuelle + pensionComplementaireAnnuelle) / 12
+    };
+  }
+
+  /**
+   * Récupère les données de retraite avec les projections calculées
+   * @returns {Object} Données de retraite
+   */
+  function getRetraiteDataFromService() {
+    const data = loadFullData();
+    const retireYear = (Number(data.settings?.birthYear) || 1985) + (Number(data.settings?.retireAge) || 64);
+    
+    // Calculer les projections pour chaque personne
+    const peopleWithProjections = (data.retirement?.people || []).map(person => ({
+      ...person,
+      projection: computeRetirementProjection(data, person, retireYear)
+    }));
+
+    return {
+      retirement: {
+        ...data.retirement,
+        people: peopleWithProjections
+      },
+      retireYear,
+      incomes: data.incomes || [],
+      settings: data.settings || {}
+    };
+  }
+
+  /**
+   * Sauvegarde les données de retraite
+   * @param {Object} retirementData - Données de retraite à sauvegarder
+   */
+  function saveRetraiteDataToService(retirementData) {
+    const currentData = loadFullData();
+    const updatedData = {
+      ...currentData,
+      retirement: retirementData
+    };
+    saveFullData(updatedData);
+  }
+
+  /**
+   * 
    * Construit le modèle de lecture de l'onglet Patrimoine à partir des données stockées.
    */
   function buildPatrimoine(options) {
@@ -426,4 +677,10 @@
     removePatrimoineLigne,
     subscribePatrimoine
   };
+
+  // Export des fonctions pour utilisation par api.js
+  exports.getRetraiteDataFromService = getRetraiteDataFromService;
+  exports.saveRetraiteDataToService = saveRetraiteDataToService;
+  exports.computeRetirementProjection = computeRetirementProjection;
+
 })(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);
