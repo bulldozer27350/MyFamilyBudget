@@ -6,19 +6,12 @@
 
   const {
     useState,
-    useMemo
+    useEffect
   } = React;
   const {
     C,
-    eur,
-    uid
+    eur
   } = exports.C ? exports : window.BudgetApp || {};
-  const {
-    chargeEffectiveGrowth,
-    chargeMonthlyForYear,
-    incomeMonthlyForYear,
-    computeRealAverages
-  } = exports.chargeMonthlyForYear ? exports : window.BudgetApp || {};
   const {
     SectionCard,
     EditableTable
@@ -29,72 +22,72 @@
   const {
     HelpBadge
   } = exports.HelpBadge ? exports : window.BudgetApp || {};
+  const BudgetApi = exports.BudgetApi || window.BudgetApp && window.BudgetApp.BudgetApi;
   function CashflowView({
-    data,
-    setCell,
-    addRow,
-    removeRow,
-    retireYear,
-    years,
-    cashflow,
-    variablePreview,
-    previewYears,
+    useConstantEuros = false,
     openHelp
   }) {
     const [showAdjust, setShowAdjust] = useState(false);
-
-    // Calcul des suggestions d'ajustement prévisionnel vs réel
-    const realAverages = useMemo(() => {
-      const fn = exports.computeRealAverages || window.BudgetApp && window.BudgetApp.computeRealAverages || computeRealAverages;
-      return fn(data);
-    }, [data?.bankImport]);
-    const applyAdjustment = (lineId, kind, newMonthly) => {
-      const listKey = kind === "charge" ? "charges" : kind === "revenu" ? "incomes" : "placements";
-      setCell(listKey)(lineId, "monthly", String(newMonthly));
-    };
-    const suggestions = useMemo(() => {
-      const inflationRate = Number(data?.settings.inflationRate) || 0.02;
-      const currentYear = new Date().getFullYear();
-      const lines = [];
-      const addLine = (row, kind) => {
-        const avg = realAverages[row.id];
-        if (!avg || avg.avg3m === null) return;
-        const budgeted = kind === "charge" ? chargeMonthlyForYear(row, currentYear, inflationRate) : kind === "revenu" ? incomeMonthlyForYear(row, currentYear) : Number(row.monthly) || 0;
-        if (budgeted <= 0) return;
-        const ecart = avg.avg3m - budgeted;
-        const ecartPct = ecart / budgeted * 100;
-        if (Math.abs(ecart) >= 10 || Math.abs(ecartPct) >= 5) {
-          lines.push({
-            id: row.id,
-            label: kind === "placement" ? `Épargne : ${row.label}` : row.label,
-            kind,
-            budgeted,
-            avg3m: avg.avg3m,
-            avg12m: avg.avg12m,
-            ecart,
-            ecartPct,
-            months: avg.months,
-            suggested: Math.round(avg.avg3m * 100) / 100
-          });
-        }
+    const [model, setModel] = useState(null);
+    const [loaded, setLoaded] = useState(false);
+    useEffect(() => {
+      let cancelled = false;
+      const fetchTresorerie = () => {
+        BudgetApi.getTresorerie({
+          useConstantEuros
+        }).then(result => {
+          if (cancelled) return;
+          setModel(result);
+          setLoaded(true);
+        }).catch(err => {
+          console.error("Erreur de chargement de la Trésorerie :", err);
+          if (!cancelled) setLoaded(true);
+        });
       };
-      (data?.charges || []).forEach(c => addLine(c, "charge"));
-      (data?.incomes || []).forEach(i => addLine(i, "revenu"));
-      (data?.placements || []).forEach(p => addLine(p, "placement"));
-      return lines.sort((a, b) => Math.abs(b.ecart) - Math.abs(a.ecart));
-    }, [realAverages, data?.charges, data?.incomes, data?.placements, data?.settings.inflationRate]);
-    const sortedCategories = useMemo(() => {
-      return [...(data?.bankImport?.categories || [])].sort((a, b) => (a.label || "").localeCompare(b.label || "", "fr", {
-        sensitivity: "base"
-      }));
-    }, [data?.bankImport?.categories]);
-    const categoryOptions = useMemo(() => [{
-      value: "",
-      label: "— Non liée —"
-    }, ...sortedCategories.map(c => ({
-      value: c.id,
-      label: c.label
-    }))], [sortedCategories]);
+      fetchTresorerie();
+      const unsubscribe = BudgetApi.onTresorerieChanged(fetchTresorerie);
+      return () => {
+        cancelled = true;
+        unsubscribe();
+      };
+    }, [useConstantEuros]);
+    if (!loaded || !model) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C?.inkSoft || "#6B7278",
+          fontFamily: "sans-serif",
+          padding: 24
+        }
+      }, "Chargement…");
+    }
+    const {
+      incomes,
+      charges,
+      oneoff,
+      variableIncomes,
+      variableOverrides,
+      incomeLabels,
+      variableIncomeLabels,
+      categoryOptions,
+      suggestions,
+      cashflow,
+      variablePreview,
+      previewYears
+    } = model;
+    const onUpdateCell = (listKey, id, field, value) => {
+      BudgetApi.updateTresorerieLigne(listKey, id, field, value);
+    };
+    const onAddRow = listKey => {
+      BudgetApi.addTresorerieLigne(listKey, {
+        useConstantEuros
+      });
+    };
+    const onRemoveRow = (listKey, id) => {
+      BudgetApi.removeTresorerieLigne(listKey, id);
+    };
+    const onApplyAdjustment = (lineId, kind, newMonthly) => {
+      BudgetApi.applyTresorerieAjustement(lineId, kind, newMonthly);
+    };
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionCard, {
       title: /*#__PURE__*/React.createElement("span", null, "Évolution de la trésorerie (estimation simplifiée, sans virements automatiques)", openHelp && /*#__PURE__*/React.createElement(HelpBadge, {
         sectionKey: "cashflow",
@@ -314,7 +307,7 @@
         }
       }, /*#__PURE__*/React.createElement("button", {
         type: "button",
-        onClick: () => applyAdjustment(s.id, s.kind, s.suggested),
+        onClick: () => onApplyAdjustment(s.id, s.kind, s.suggested),
         style: {
           padding: '5px 12px',
           borderRadius: 7,
@@ -379,19 +372,10 @@
         label: "Notes",
         type: "text"
       }],
-      rows: data?.incomes || [],
-      onCell: setCell("incomes"),
-      onRemove: removeRow("incomes"),
-      onAdd: () => addRow("incomes", () => ({
-        id: uid(),
-        label: "Nouveau revenu",
-        monthly: 0,
-        start: "2026-01-01",
-        end: String(retireYear) + "-12-31",
-        growthRate: 0,
-        categoryId: "",
-        notes: ""
-      }))
+      rows: incomes || [],
+      onCell: (id, field, value) => onUpdateCell("incomes", id, field, value),
+      onRemove: id => onRemoveRow("incomes", id),
+      onAdd: () => onAddRow("incomes")
     })), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Charges récurrentes",
       subtitle: "Prêts, logement étudiant, frais courants, entretien — une charge sans taux saisi suit automatiquement l'inflation ; mettez 0 % pour la geler explicitement"
@@ -429,18 +413,10 @@
         label: "Notes",
         type: "text"
       }],
-      rows: data?.charges || [],
-      onCell: setCell("charges"),
-      onRemove: removeRow("charges"),
-      onAdd: () => addRow("charges", () => ({
-        id: uid(),
-        label: "Nouvelle charge",
-        monthly: 0,
-        start: "2026-01-01",
-        end: String(retireYear) + "-12-31",
-        categoryId: "",
-        notes: ""
-      }))
+      rows: charges || [],
+      onCell: (id, field, value) => onUpdateCell("charges", id, field, value),
+      onRemove: id => onRemoveRow("charges", id),
+      onAdd: () => onAddRow("charges")
     })), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Dépenses ponctuelles",
       subtitle: "Événements, achats, travaux à une date précise"
@@ -463,16 +439,10 @@
         label: "Notes",
         type: "text"
       }],
-      rows: data?.oneoff || [],
-      onCell: setCell("oneoff"),
-      onRemove: removeRow("oneoff"),
-      onAdd: () => addRow("oneoff", () => ({
-        id: uid(),
-        label: "Nouvelle dépense",
-        date: "2026-01-01",
-        amount: 0,
-        notes: ""
-      }))
+      rows: oneoff || [],
+      onCell: (id, field, value) => onUpdateCell("oneoff", id, field, value),
+      onRemove: id => onRemoveRow("oneoff", id),
+      onAdd: () => onAddRow("oneoff")
     })), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Primes, participation & intéressement",
       subtitle: "Chaque ligne = un taux appliqué à un revenu de référence. La prévision se recalcule automatiquement si ce revenu change."
@@ -489,7 +459,7 @@
         key: "refIncomeLabel",
         label: "Revenu de référence",
         type: "select",
-        options: (data?.incomes || []).map(i => i.label)
+        options: incomeLabels || []
       }, {
         key: "rate",
         label: "Taux (%)",
@@ -513,20 +483,10 @@
         label: "Notes",
         type: "text"
       }],
-      rows: data?.variableIncomes || [],
-      onCell: setCell("variableIncomes"),
-      onRemove: removeRow("variableIncomes"),
-      onAdd: () => addRow("variableIncomes", () => ({
-        id: uid(),
-        label: "Nouvelle prime",
-        type: "Prime",
-        refIncomeLabel: data?.incomes?.[0]?.label || "",
-        rate: 0.05,
-        startYear: years?.[0] || 2026,
-        endYear: retireYear,
-        taxable: "Oui",
-        notes: ""
-      }))
+      rows: variableIncomes || [],
+      onCell: (id, field, value) => onUpdateCell("variableIncomes", id, field, value),
+      onRemove: id => onRemoveRow("variableIncomes", id),
+      onAdd: () => onAddRow("variableIncomes")
     }), (variablePreview || []).length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 18
@@ -592,7 +552,7 @@
         key: "label",
         label: "Élément",
         type: "select",
-        options: (data?.variableIncomes || []).map(v => v.label)
+        options: variableIncomeLabels || []
       }, {
         key: "year",
         label: "Année",
@@ -612,17 +572,10 @@
         label: "Notes",
         type: "text"
       }],
-      rows: data?.variableOverrides || [],
-      onCell: setCell("variableOverrides"),
-      onRemove: removeRow("variableOverrides"),
-      onAdd: () => addRow("variableOverrides", () => ({
-        id: uid(),
-        label: data?.variableIncomes?.[0]?.label || "",
-        year: new Date().getFullYear(),
-        amount: 0,
-        taxable: "",
-        notes: ""
-      }))
+      rows: variableOverrides || [],
+      onCell: (id, field, value) => onUpdateCell("variableOverrides", id, field, value),
+      onRemove: id => onRemoveRow("variableOverrides", id),
+      onAdd: () => onAddRow("variableOverrides")
     })));
   }
   exports.CashflowView = CashflowView;

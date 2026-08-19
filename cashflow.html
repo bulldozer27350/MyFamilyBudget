@@ -26,6 +26,10 @@
   <script src="js/csv-parser.js"></script>
   <script src="js/calculations.js"></script>
   <script src="js/data-store.js"></script>
+
+  <!-- Couche métier & façade API (Trésorerie) -->
+  <script src="js/service-metier.js"></script>
+  <script src="js/api.js"></script>
   
   <!-- UI Components -->
   <script src="js/components/ui-base.js"></script>
@@ -43,42 +47,18 @@
 const {
   useBudgetStore,
   AppLayout,
-  CashflowView,
-  C
+  CashflowView
 } = BudgetApp;
 function CashflowPage() {
   const store = useBudgetStore();
   const {
-    data,
-    loaded,
     status,
     useConstantEuros,
     setUseConstantEuros,
-    projections,
-    setCell,
-    addRow,
-    removeRow,
     exportJSON,
     importJSON,
     resetData
   } = store;
-  if (!loaded || !data) {
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        minHeight: "100vh",
-        background: C?.paper || "#F6F3EC",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        color: C?.inkSoft || "#6B7278",
-        fontFamily: "sans-serif"
-      }
-    }, "Chargement…"));
-  }
-  const retireYear = (Number(data.settings?.birthYear) || 0) + (Number(data.settings?.retireAge) || 0);
   return /*#__PURE__*/React.createElement(AppLayout, {
     currentSection: "cashflow",
     status: status,
@@ -90,15 +70,7 @@ function CashflowPage() {
   }, ({
     openHelp
   }) => /*#__PURE__*/React.createElement(CashflowView, {
-    data: data,
-    setCell: setCell,
-    addRow: addRow,
-    removeRow: removeRow,
-    retireYear: retireYear,
-    years: projections.years,
-    cashflow: projections.cashflow,
-    variablePreview: projections.variablePreview,
-    previewYears: projections.previewYears,
+    useConstantEuros: useConstantEuros,
     openHelp: openHelp
   }));
 }

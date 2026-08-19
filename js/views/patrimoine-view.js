@@ -6,12 +6,12 @@
 
   const {
     useState,
-    useMemo
+    useMemo,
+    useEffect
   } = React;
   const {
     C,
-    eur,
-    uid
+    eur
   } = exports.C ? exports : window.BudgetApp || {};
   const {
     SectionCard,
@@ -25,6 +25,7 @@
   const {
     HelpBadge
   } = exports.HelpBadge ? exports : window.BudgetApp || {};
+  const BudgetApi = exports.BudgetApi || window.BudgetApp && window.BudgetApp.BudgetApi;
   const DEFAULT_BUCKET_ICONS = {
     cash: "📖",
     fondsEuros: "💶",
@@ -771,21 +772,58 @@
     }, isNew ? "✓ Créer le placement" : "✓ Enregistrer & Fermer"))));
   }
   function PatrimoineView({
-    data,
-    setCell,
-    addRow,
-    removeRow,
-    patrimoine,
+    useConstantEuros = false,
     openHelp
   }) {
     const [selectedPlacementId, setSelectedPlacementId] = useState(null);
     const [draftPlacement, setDraftPlacement] = useState(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isAddingNew, setIsAddingNew] = useState(false);
+    const [model, setModel] = useState(null);
+    const [loaded, setLoaded] = useState(false);
+    useEffect(() => {
+      let cancelled = false;
+      const fetchPatrimoine = () => {
+        BudgetApi.getPatrimoine({
+          useConstantEuros
+        }).then(result => {
+          if (cancelled) return;
+          setModel(result);
+          setLoaded(true);
+        }).catch(err => {
+          console.error("Erreur de chargement du Patrimoine :", err);
+          if (!cancelled) setLoaded(true);
+        });
+      };
+      fetchPatrimoine();
+      const unsubscribe = BudgetApi.onPatrimoineChanged(fetchPatrimoine);
+      return () => {
+        cancelled = true;
+        unsubscribe();
+      };
+    }, [useConstantEuros]);
+    const placements = model?.placements || [];
     const activePlacement = useMemo(() => {
       if (isAddingNew) return draftPlacement;
-      return (data?.placements || []).find(p => p.id === selectedPlacementId) || null;
-    }, [data?.placements, selectedPlacementId, isAddingNew, draftPlacement]);
+      return placements.find(p => p.id === selectedPlacementId) || null;
+    }, [placements, selectedPlacementId, isAddingNew, draftPlacement]);
+    if (!loaded || !model) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C?.inkSoft || "#6B7278",
+          fontFamily: "sans-serif",
+          padding: 24
+        }
+      }, "Chargement…");
+    }
+    const {
+      transfers,
+      loans,
+      realEstate,
+      assetCategories,
+      bankCategories,
+      patrimoine
+    } = model;
     const handleCardClick = id => {
       setSelectedPlacementId(id);
       setDraftPlacement(null);
@@ -793,32 +831,15 @@
       setIsDrawerOpen(true);
     };
     const handleAddNew = () => {
-      const newId = uid();
-      const newPlacement = {
-        id: newId,
-        label: "Nouveau placement",
-        category: (data?.assetCategories || [])[0]?.name || "",
-        balance: 0,
-        balanceDate: new Date().toISOString().slice(0, 10),
-        monthly: 0,
-        monthlyFrom: "",
-        monthlyUntil: "",
-        ratePess: 0.01,
-        rateCorr: 0.02,
-        rateOpti: 0.03,
-        sweepPriority: "",
-        sweepCap: "",
-        pauseTriggerBalance: "",
-        pausePriority: "",
-        notes: ""
-      };
-      setDraftPlacement(newPlacement);
-      setIsAddingNew(true);
-      setIsDrawerOpen(true);
+      BudgetApi.createPatrimoineLigne("placements").then(newPlacement => {
+        setDraftPlacement(newPlacement);
+        setIsAddingNew(true);
+        setIsDrawerOpen(true);
+      });
     };
     const handleSaveNew = () => {
       if (draftPlacement) {
-        addRow("placements", () => draftPlacement);
+        BudgetApi.addPatrimoineLigne("placements", draftPlacement);
       }
       setDraftPlacement(null);
       setIsAddingNew(false);
@@ -836,7 +857,7 @@
           [field]: value
         }));
       } else {
-        setCell("placements")(id, field, value);
+        BudgetApi.updatePatrimoineLigne("placements", id, field, value);
       }
     };
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionCard, {
@@ -874,10 +895,10 @@
         gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
         gap: 12
       }
-    }, (data?.placements || []).map(p => /*#__PURE__*/React.createElement(PlacementCard, {
+    }, placements.map(p => /*#__PURE__*/React.createElement(PlacementCard, {
       key: p.id,
       p: p,
-      categories: data?.assetCategories,
+      categories: assetCategories,
       onClick: () => handleCardClick(p.id)
     }))), /*#__PURE__*/React.createElement("button", {
       type: "button",
@@ -906,14 +927,14 @@
       }
     }, "💡 ", /*#__PURE__*/React.createElement("em", null, "La catégorie détermine dans quelle classe d'actif ce placement compte sur la page Vue d'ensemble. Cliquez sur n'importe quel placement ci-dessus pour configurer les virements automatiques, plafonds et seuils d'alerte."))), /*#__PURE__*/React.createElement(PlacementDrawer, {
       placement: activePlacement,
-      categories: data?.assetCategories,
-      bankCategories: data?.bankImport?.categories,
+      categories: assetCategories,
+      bankCategories: bankCategories,
       isOpen: isDrawerOpen,
       onClose: () => setIsDrawerOpen(false),
       onSaveNew: handleSaveNew,
       onCancelNew: handleCancelNew,
       onCell: handleCellChange,
-      onRemove: removeRow("placements"),
+      onRemove: id => BudgetApi.removePatrimoineLigne("placements", id),
       isNew: isAddingNew
     }), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Transferts depuis un placement vers le compte courant",
@@ -923,7 +944,7 @@
         key: "placement",
         label: "Placement",
         type: "select",
-        options: (data?.placements || []).map(p => p.label)
+        options: placements.map(p => p.label)
       }, {
         key: "date",
         label: "Date",
@@ -938,16 +959,10 @@
         label: "Notes",
         type: "text"
       }],
-      rows: data?.transfers || [],
-      onCell: setCell("transfers"),
-      onRemove: removeRow("transfers"),
-      onAdd: () => addRow("transfers", () => ({
-        id: uid(),
-        placement: data?.placements?.[0]?.label || "",
-        date: "2026-01-01",
-        amount: 0,
-        notes: ""
-      }))
+      rows: transfers,
+      onCell: (id, field, value) => BudgetApi.updatePatrimoineLigne("transfers", id, field, value),
+      onRemove: id => BudgetApi.removePatrimoineLigne("transfers", id),
+      onAdd: () => BudgetApi.addPatrimoineLigne("transfers")
     })), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Crédits & Passif Immobilier",
       subtitle: "Capital Restant Dû, taux et mensualités pour l'amortissement"
@@ -985,19 +1000,10 @@
         label: "Date fin prévue",
         type: "date"
       }],
-      rows: data?.loans || [],
-      onCell: setCell("loans"),
-      onRemove: removeRow("loans"),
-      onAdd: () => addRow("loans", () => ({
-        id: uid(),
-        label: "Nouveau crédit",
-        crd: 0,
-        rate: 0,
-        monthly: 0,
-        insurance: 0,
-        startDate: "2026-01-01",
-        endDate: "2046-01-01"
-      }))
+      rows: loans,
+      onCell: (id, field, value) => BudgetApi.updatePatrimoineLigne("loans", id, field, value),
+      onRemove: id => BudgetApi.removePatrimoineLigne("loans", id),
+      onAdd: () => BudgetApi.addPatrimoineLigne("loans")
     })), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Actif Immobilier Physique",
       subtitle: "Résidence principale, terrains, nu-propriété — la valorisation annuelle est intégrée au patrimoine net et à la jauge FIRE"
@@ -1029,18 +1035,10 @@
         label: "Notes",
         type: "text"
       }],
-      rows: data?.realEstate || [],
-      onCell: setCell("realEstate"),
-      onRemove: removeRow("realEstate"),
-      onAdd: () => addRow("realEstate", () => ({
-        id: uid(),
-        label: "Nouveau bien",
-        type: "Résidence principale",
-        currentValue: 0,
-        valuationYear: new Date().getFullYear(),
-        annualGrowthRate: 0.01,
-        notes: ""
-      }))
+      rows: realEstate,
+      onCell: (id, field, value) => BudgetApi.updatePatrimoineLigne("realEstate", id, field, value),
+      onRemove: id => BudgetApi.removePatrimoineLigne("realEstate", id),
+      onAdd: () => BudgetApi.addPatrimoineLigne("realEstate")
     })));
   }
   exports.PatrimoineView = PatrimoineView;
