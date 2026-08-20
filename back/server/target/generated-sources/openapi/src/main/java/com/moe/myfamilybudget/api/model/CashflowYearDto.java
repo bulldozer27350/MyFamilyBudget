@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.dto;
+package com.moe.myfamilybudget.api.model;
 
 import java.math.BigDecimal;
 

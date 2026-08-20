@@ -1,7 +1,8 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
-import com.moe.myfamilybudget.server.internal.api.OverviewService;
-import com.moe.myfamilybudget.server.internal.dto.*;
+import com.moe.myfamilybudget.api.model.BudgetDataDto;
+import com.moe.myfamilybudget.api.model.OverviewResponseDto;
+import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
 import com.moe.myfamilybudget.server.internal.model.*;
 import org.springframework.stereotype.Service;
 
@@ -12,7 +13,7 @@ import java.time.YearMonth;
 import java.util.*;
 
 @Service
-public class OverviewServiceImpl implements OverviewService {
+public class OverviewServiceImpl {
 
     private static final int TRIMESTRES_REQUIS = 172;
     private static final int AGE_TAUX_PLEIN_AUTO = 67;
@@ -22,12 +23,28 @@ public class OverviewServiceImpl implements OverviewService {
     private static final BigDecimal TAUX_MINORE_PLANCHER = new BigDecimal("0.375");
     private static final BigDecimal MAJORATION_3_ENFANTS = new BigDecimal("0.10");
 
-    @Override
-    public OverviewResponseDto buildOverview(BudgetDataModel data, boolean useConstantEuros) {
-        if (data == null) {
-            throw new IllegalArgumentException("BudgetDataModel cannot be null");
-        }
+    private final OverviewMapper mapper;
 
+    public OverviewServiceImpl(OverviewMapper mapper) {
+        this.mapper = mapper;
+    }
+
+    @Override
+    public OverviewResponseDto buildOverview(BudgetDataDto parameters, boolean useConstantEuros) {
+        checkParameters(parameters);
+        BudgetDataModel internalData = mapper.toInternalModel(parameters);
+
+        OverviewResultModel internalResult = computeOverview(internalData, useConstantEuros);
+        return mapper.toDto(internalResult);
+    }
+
+    private void checkParameters(BudgetDataDto parameters) {
+        if (parameters == null) {
+            throw new IllegalArgumentException("BudgetDataDto cannot be null");
+        }
+    }
+
+    private OverviewResultModel computeOverview(BudgetDataModel data, boolean useConstantEuros) {
         SettingsModel settings = data.settings() != null ? data.settings() : new SettingsModel(
             1985, 64, 85, BigDecimal.ZERO, null, null, BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015")
         );
@@ -47,16 +64,16 @@ public class OverviewServiceImpl implements OverviewService {
             retireDeflator = BigDecimal.ONE;
         }
 
-        TripleAmountDto financialOnlyPatrimoine = computeFinancialOnlyPatrimoine(data, projections.patrimoine(), years, retireYear, retireDeflator);
+        TripleAmountModel financialOnlyPatrimoine = computeFinancialOnlyPatrimoine(data, projections.patrimoine(), years, retireYear, retireDeflator);
         BigDecimal realEstateAtRetire = computeRealEstateAtRetire(data, retireYear, retireDeflator);
 
-        TripleAmountDto retirePatrimoine = new TripleAmountDto(
+        TripleAmountModel retirePatrimoine = new TripleAmountModel(
             financialOnlyPatrimoine.pess().add(realEstateAtRetire),
             financialOnlyPatrimoine.corr().add(realEstateAtRetire),
             financialOnlyPatrimoine.opti().add(realEstateAtRetire)
         );
 
-        Optional<CashflowYearDto> retireYearData = projections.cashflow().stream().filter(c -> c.year() == retireYear).findFirst();
+        Optional<CashflowYearModel> retireYearData = projections.cashflow().stream().filter(c -> c.year() == retireYear).findFirst();
         BigDecimal retireCharges = retireYearData.map(c -> c.charges().divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP).multiply(retireDeflator))
             .orElse(BigDecimal.ZERO);
 
@@ -70,13 +87,13 @@ public class OverviewServiceImpl implements OverviewService {
         }
         totalPensions = totalPensions.multiply(retireDeflator);
 
-        BigDecimal patrimonioActuel = data.getEffectivePlacements().stream()
+        BigDecimal patrimoineActuel = data.getEffectivePlacements().stream()
             .map(PlacementModel::getEffectiveBalance)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal fluxNetActuel = projections.cashflow().isEmpty() ? BigDecimal.ZERO : projections.cashflow().get(0).net();
 
-        return new OverviewResponseDto(
+        return new OverviewResultModel(
             data,
             years,
             projections.cashflow(),
@@ -84,7 +101,7 @@ public class OverviewServiceImpl implements OverviewService {
             useConstantEuros,
             retireYear,
             computePivotBalance(data),
-            patrimonioActuel,
+            patrimoineActuel,
             fluxNetActuel,
             retireCharges,
             totalPensions,
@@ -94,19 +111,19 @@ public class OverviewServiceImpl implements OverviewService {
         );
     }
 
-    private TripleAmountDto fourPercentRule(TripleAmountDto patrimoine) {
+    private TripleAmountModel fourPercentRule(TripleAmountModel patrimoine) {
         BigDecimal factor = new BigDecimal("0.04").divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP);
-        return new TripleAmountDto(
+        return new TripleAmountModel(
             patrimoine.pess().multiply(factor),
             patrimoine.corr().multiply(factor),
             patrimoine.opti().multiply(factor)
         );
     }
 
-    private TripleAmountDto computeFinancialOnlyPatrimoine(BudgetDataModel data, PatrimoineProjectionsDto patrimoine, List<Integer> years, int retireYear, BigDecimal deflator) {
+    private TripleAmountModel computeFinancialOnlyPatrimoine(BudgetDataModel data, PatrimoineProjectionsModel patrimoine, List<Integer> years, int retireYear, BigDecimal deflator) {
         int idx = years.indexOf(retireYear);
         if (idx == -1) {
-            return new TripleAmountDto(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+            return new TripleAmountModel(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         }
 
         Set<String> excludedLabels = new HashSet<>();
@@ -120,19 +137,19 @@ public class OverviewServiceImpl implements OverviewService {
         BigDecimal corr = BigDecimal.ZERO;
         BigDecimal opti = BigDecimal.ZERO;
 
-        for (PatrimoinePerPlacementDto pp : patrimoine.perPlacement()) {
+        for (PatrimoinePerPlacementModel pp : patrimoine.perPlacement()) {
             if (excludedLabels.contains(pp.label())) {
                 continue;
             }
             if (idx < pp.rows().size()) {
-                PatrimoineYearDto row = pp.rows().get(idx);
+                PatrimoineYearModel row = pp.rows().get(idx);
                 pess = pess.add(row.pess());
                 corr = corr.add(row.corr());
                 opti = opti.add(row.opti());
             }
         }
 
-        return new TripleAmountDto(
+        return new TripleAmountModel(
             pess.multiply(deflator),
             corr.multiply(deflator),
             opti.multiply(deflator)
@@ -174,10 +191,10 @@ public class OverviewServiceImpl implements OverviewService {
         return base.add(sum);
     }
 
-    public record FinancialProjections(
+    private record FinancialProjections(
         List<Integer> years,
-        List<CashflowYearDto> cashflow,
-        PatrimoineProjectionsDto patrimoine
+        List<CashflowYearModel> cashflow,
+        PatrimoineProjectionsModel patrimoine
     ) {}
 
     private FinancialProjections computeFinancialProjections(BudgetDataModel data, boolean useConstantEuros) {
@@ -204,7 +221,7 @@ public class OverviewServiceImpl implements OverviewService {
         BigDecimal pivotBalanceValue = computePivotBalance(data);
         BigDecimal balance = pivotBalanceValue != null ? pivotBalanceValue : settings.getEffectiveStartBalance();
 
-        List<CashflowYearDto> cashflow = new ArrayList<>();
+        List<CashflowYearModel> cashflow = new ArrayList<>();
         for (int idx = 0; idx < years.size(); idx++) {
             int year = years.get(idx);
 
@@ -254,10 +271,10 @@ public class OverviewServiceImpl implements OverviewService {
 
             balance = balance.add(net);
 
-            cashflow.add(new CashflowYearDto(year, income, variableIncome, savings, charges, oneoff, transfersY, impots, regularisation, net, balance));
+            cashflow.add(new CashflowYearModel(year, income, variableIncome, savings, charges, oneoff, transfersY, impots, regularisation, net, balance));
         }
 
-        PatrimoineProjectionsDto patrimoine = computePatrimoineProjections(data, years, useConstantEuros, settings.getEffectiveInflationRate());
+        PatrimoineProjectionsModel patrimoine = computePatrimoineProjections(data, years, useConstantEuros, settings.getEffectiveInflationRate());
 
         return new FinancialProjections(years, cashflow, patrimoine);
     }
@@ -314,8 +331,8 @@ public class OverviewServiceImpl implements OverviewService {
         return result;
     }
 
-    private PatrimoineProjectionsDto computePatrimoineProjections(BudgetDataModel data, List<Integer> years, boolean useConstantEuros, BigDecimal inflationRate) {
-        List<PatrimoinePerPlacementDto> perPlacement = new ArrayList<>();
+    private PatrimoineProjectionsModel computePatrimoineProjections(BudgetDataModel data, List<Integer> years, boolean useConstantEuros, BigDecimal inflationRate) {
+        List<PatrimoinePerPlacementModel> perPlacement = new ArrayList<>();
 
         for (PlacementModel p : data.getEffectivePlacements()) {
             BigDecimal pess = p.getEffectiveBalance();
@@ -327,7 +344,7 @@ public class OverviewServiceImpl implements OverviewService {
 
             Integer monthlyUntilYear = yearOf(p.monthlyUntil());
 
-            List<PatrimoineYearDto> rows = new ArrayList<>();
+            List<PatrimoineYearModel> rows = new ArrayList<>();
             for (int year : years) {
                 BigDecimal withdraw = BigDecimal.ZERO;
                 for (TransferModel t : data.getEffectiveTransfers()) {
@@ -343,12 +360,12 @@ public class OverviewServiceImpl implements OverviewService {
                 corr = corr.multiply(BigDecimal.ONE.add(p.getEffectiveRateCorr())).add(monthlyContrib).subtract(withdraw);
                 opti = opti.multiply(BigDecimal.ONE.add(p.getEffectiveRateOpti())).add(monthlyContrib).subtract(withdraw);
 
-                rows.add(new PatrimoineYearDto(year, pess, corr, opti));
+                rows.add(new PatrimoineYearModel(year, pess, corr, opti));
             }
-            perPlacement.add(new PatrimoinePerPlacementDto(p.label(), rows));
+            perPlacement.add(new PatrimoinePerPlacementModel(p.label(), rows));
         }
 
-        List<PatrimoineYearDto> totals = new ArrayList<>();
+        List<PatrimoineYearModel> totals = new ArrayList<>();
         int startYear = years.isEmpty() ? 2026 : years.get(0);
 
         for (int idx = 0; idx < years.size(); idx++) {
@@ -360,17 +377,17 @@ public class OverviewServiceImpl implements OverviewService {
             BigDecimal totalCorr = BigDecimal.ZERO;
             BigDecimal totalOpti = BigDecimal.ZERO;
 
-            for (PatrimoinePerPlacementDto pp : perPlacement) {
-                PatrimoineYearDto row = pp.rows().get(idx);
+            for (PatrimoinePerPlacementModel pp : perPlacement) {
+                PatrimoineYearModel row = pp.rows().get(idx);
                 totalPess = totalPess.add(row.pess());
                 totalCorr = totalCorr.add(row.corr());
                 totalOpti = totalOpti.add(row.opti());
             }
 
-            totals.add(new PatrimoineYearDto(year, totalPess.multiply(deflator), totalCorr.multiply(deflator), totalOpti.multiply(deflator)));
+            totals.add(new PatrimoineYearModel(year, totalPess.multiply(deflator), totalCorr.multiply(deflator), totalOpti.multiply(deflator)));
         }
 
-        return new PatrimoineProjectionsDto(perPlacement, totals);
+        return new PatrimoineProjectionsModel(perPlacement, totals);
     }
 
     private List<IncomeModel> pensionIncomeRows(BudgetDataModel data, int retireYear, int lastYear) {
@@ -656,7 +673,7 @@ public class OverviewServiceImpl implements OverviewService {
             if (v.startYear() != null && year < v.startYear()) continue;
             if (v.endYear() != null && year > v.endYear()) continue;
 
-            Optional<IncomeModel> refRow = data.getEffectiveIncomes().stream().filter(r => v.refIncomeLabel() != null && v.refIncomeLabel().equalsIgnoreCase(r.label())).findFirst();
+            Optional<IncomeModel> refRow = data.getEffectiveIncomes().stream().filter(r -> v.refIncomeLabel() != null && v.refIncomeLabel().equalsIgnoreCase(r.label())).findFirst();
             BigDecimal refAnnual = refRow.map(r -> incomeAnnualForYear(r, year)).orElse(BigDecimal.ZERO);
             BigDecimal forecast = refAnnual.multiply(v.getEffectiveRate());
 

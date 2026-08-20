@@ -1,8 +1,8 @@
-package com.moe.myfamilybudget.server.internal.dto;
+package com.moe.myfamilybudget.server.internal.model;
 
 import java.math.BigDecimal;
 
-public record PatrimoineYearDto(
+public record PatrimoineYearModel(
     int year,
     BigDecimal pess,
     BigDecimal corr,

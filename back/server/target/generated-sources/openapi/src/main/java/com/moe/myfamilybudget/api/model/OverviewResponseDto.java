@@ -1,11 +1,10 @@
-package com.moe.myfamilybudget.server.internal.dto;
+package com.moe.myfamilybudget.api.model;
 
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import java.math.BigDecimal;
 import java.util.List;
 
 public record OverviewResponseDto(
-    BudgetDataModel data,
+    BudgetDataDto data,
     List<Integer> years,
     List<CashflowYearDto> cashflow,
     PatrimoineProjectionsDto patrimoine,

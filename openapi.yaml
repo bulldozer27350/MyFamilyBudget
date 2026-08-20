@@ -18,7 +18,7 @@ paths:
       summary: Récupère la vue d'ensemble (KPIs, projections, jauges FIRE)
       operationId: getOverview
       tags:
-        - Vue d'ensemble
+        - Overview
       parameters:
         - name: useConstantEuros
           in: query
@@ -32,7 +32,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OverviewResponse'
+                $ref: '#/components/schemas/OverviewResponseDto'
 
   # ---------------------------------------------------------------------------
   # TRÉSORERIE (CASHFLOW)
@@ -572,44 +572,474 @@ paths:
 
 components:
   schemas:
-    OverviewResponse:
+    OverviewResponseDto:
       type: object
       properties:
-        kpis:
-          type: object
-        patrimoineNett:
+        data:
+          $ref: '#/components/schemas/BudgetDataDto'
+        years:
+          type: array
+          items:
+            type: integer
+        cashflow:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashflowYearDto'
+        patrimoine:
+          $ref: '#/components/schemas/PatrimoineProjectionsDto'
+        useConstantEuros:
+          type: boolean
+        retireYear:
+          type: integer
+        pivotBalance:
           type: number
-        tauxEpargne:
+        patrimoineActuel:
           type: number
-        fireData:
-          type: object
-    TresorerieResponse:
+        fluxNetActuel:
+          type: number
+        retireCharges:
+          type: number
+        totalPensions:
+          type: number
+        retirePatrimoine:
+          $ref: '#/components/schemas/TripleAmountDto'
+        fireRente:
+          $ref: '#/components/schemas/TripleAmountDto'
+        financialOnlyRente:
+          $ref: '#/components/schemas/TripleAmountDto'
+
+    BudgetDataDto:
+      type: object
+      properties:
+        settings:
+          $ref: '#/components/schemas/SettingsDto'
+        incomes:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncomeDto'
+        charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChargeDto'
+        placements:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlacementDto'
+        realEstate:
+          type: array
+          items:
+            $ref: '#/components/schemas/RealEstateDto'
+        retirement:
+          $ref: '#/components/schemas/RetirementDto'
+        taxChildren:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxChildDto'
+        taxBrackets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxBracketDto'
+        taxRateOverrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxRateOverrideDto'
+        taxActualOverrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxActualOverrideDto'
+        oneoff:
+          type: array
+          items:
+            $ref: '#/components/schemas/OneOffExpenseDto'
+        transfers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferDto'
+        variableIncomes:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariableIncomeDto'
+        variableOverrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariableOverrideDto'
+        bankImport:
+          $ref: '#/components/schemas/BankImportDto'
+
+    SettingsDto:
+      type: object
+      properties:
+        birthYear:
+          type: integer
+        retireAge:
+          type: integer
+        simulateUntilAge:
+          type: integer
+        inflationRate:
+          type: number
+        pivotDate:
+          type: string
+        pivotMode:
+          type: string
+        startBalance:
+          type: number
+        childExitAge:
+          type: integer
+        taxAbattement:
+          type: number
+        pass2026:
+          type: number
+        passGrowthRate:
+          type: number
+
+    IncomeDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        monthly:
+          type: number
+        start:
+          type: string
+        end:
+          type: string
+        growthRate:
+          type: number
+        categoryId:
+          type: string
+        notes:
+          type: string
+
+    ChargeDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        monthly:
+          type: number
+        start:
+          type: string
+        end:
+          type: string
+        growthRate:
+          type: number
+        categoryId:
+          type: string
+        notes:
+          type: string
+
+    PlacementDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        category:
+          type: string
+        balance:
+          type: number
+        balanceDate:
+          type: string
+        monthly:
+          type: number
+        monthlyFrom:
+          type: string
+        monthlyUntil:
+          type: string
+        ratePess:
+          type: number
+        rateCorr:
+          type: number
+        rateOpti:
+          type: number
+        excludedFromRetirement:
+          type: boolean
+        notes:
+          type: string
+
+    RealEstateDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+        currentValue:
+          type: number
+        valuationYear:
+          type: integer
+        annualGrowthRate:
+          type: number
+        notes:
+          type: string
+
+    RetirementDto:
+      type: object
+      properties:
+        people:
+          type: array
+          items:
+            $ref: '#/components/schemas/RetirementPersonDto'
+        pass2026:
+          type: number
+        passGrowthRate:
+          type: number
+        agircPointValue:
+          type: number
+        agircPointDateGlobal:
+          type: string
+        agircPointGrowthRate:
+          type: number
+
+    RetirementPersonDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        birthYear:
+          type: integer
+        incomeLabel:
+          type: string
+        trimestresValides:
+          type: integer
+        trimestresDate:
+          type: string
+        salaryHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalaryHistoryDto'
+        agircPoints:
+          type: number
+        ratioPointsParEuro:
+          type: number
+
+    SalaryHistoryDto:
+      type: object
+      properties:
+        year:
+          type: integer
+        salary:
+          type: number
+
+    TaxChildDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        birthYear:
+          type: integer
+
+    TaxBracketDto:
+      type: object
+      properties:
+        id:
+          type: string
+        upTo:
+          type: number
+        rate:
+          type: number
+
+    TaxRateOverrideDto:
+      type: object
+      properties:
+        year:
+          type: integer
+        rate:
+          type: number
+
+    TaxActualOverrideDto:
+      type: object
+      properties:
+        year:
+          type: integer
+        amount:
+          type: number
+
+    OneOffExpenseDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        date:
+          type: string
+        amount:
+          type: number
+        notes:
+          type: string
+
+    TransferDto:
+      type: object
+      properties:
+        id:
+          type: string
+        placement:
+          type: string
+        date:
+          type: string
+        amount:
+          type: number
+        notes:
+          type: string
+
+    VariableIncomeDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        refIncomeLabel:
+          type: string
+        rate:
+          type: number
+        startYear:
+          type: integer
+        endYear:
+          type: integer
+        taxable:
+          type: string
+
+    VariableOverrideDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        year:
+          type: integer
+        amount:
+          type: number
+        taxable:
+          type: string
+
+    BankTransactionDto:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        label:
+          type: string
+        amount:
+          type: number
+
+    BankImportDto:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankTransactionDto'
+
+    CashflowYearDto:
+      type: object
+      properties:
+        year:
+          type: integer
+        income:
+          type: number
+        variableIncome:
+          type: number
+        savings:
+          type: number
+        charges:
+          type: number
+        oneoff:
+          type: number
+        transfersY:
+          type: number
+        impots:
+          type: number
+        regularisation:
+          type: number
+        net:
+          type: number
+        balance:
+          type: number
+
+    PatrimoineYearDto:
+      type: object
+      properties:
+        year:
+          type: integer
+        pess:
+          type: number
+        corr:
+          type: number
+        opti:
+          type: number
+
+    PatrimoinePerPlacementDto:
+      type: object
+      properties:
+        label:
+          type: string
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatrimoineYearDto'
+
+    PatrimoineProjectionsDto:
+      type: object
+      properties:
+        perPlacement:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatrimoinePerPlacementDto'
+        totals:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatrimoineYearDto'
+
+    TripleAmountDto:
+      type: object
+      properties:
+        pess:
+          type: number
+        corr:
+          type: number
+        opti:
+          type: number
+
+    TresorerieResponseDto:
       type: object
       properties:
         incomes:
           type: array
           items:
-            type: object
+            $ref: '#/components/schemas/IncomeDto'
         charges:
           type: array
           items:
-            type: object
+            $ref: '#/components/schemas/ChargeDto'
         oneoff:
           type: array
           items:
-            type: object
-    PatrimoineResponse:
+            $ref: '#/components/schemas/OneOffExpenseDto'
+
+    PatrimoineResponseDto:
       type: object
       properties:
         placements:
           type: array
           items:
-            type: object
+            $ref: '#/components/schemas/PlacementDto'
         transfers:
           type: array
           items:
-            type: object
-        credits:
-          type: array
-          items:
-            type: object
+            $ref: '#/components/schemas/TransferDto'
