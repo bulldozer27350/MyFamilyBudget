@@ -78,12 +78,16 @@ class RetraiteServiceImplTest {
 
         savePayload.put("people", List.of(personPayload));
 
-        ResponseEntity<Object> response = service.saveRetraite(savePayload);
+        ResponseEntity<Void> response = service.saveRetraite(savePayload);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
+        // Verification de l'etat persiste via getRetraite()
+        ResponseEntity<Object> getResponse = service.getRetraite();
+        assertEquals(HttpStatus.OK, getResponse.getStatusCode());
+
         @SuppressWarnings("unchecked")
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        Map<String, Object> responseBody = (Map<String, Object>) getResponse.getBody();
         assertNotNull(responseBody);
 
         @SuppressWarnings("unchecked")

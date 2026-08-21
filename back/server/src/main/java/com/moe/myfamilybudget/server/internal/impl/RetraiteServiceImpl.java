@@ -50,16 +50,14 @@ public class RetraiteServiceImpl implements RetraiteApi {
     }
 
     @Override
-    public ResponseEntity<Object> saveRetraite(Object body) {
+    public ResponseEntity<Void> saveRetraite(Object body) {
         if (body instanceof Map<?, ?> map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> typedMap = (Map<String, Object>) map;
             RetirementModel model = retraiteMapper.toRetirementModelFromMap(typedMap);
             persistenceManager.updateRetirement(model);
         }
-        RetraiteResultModel resultModel = buildRetraiteResult();
-        Map<String, Object> response = retraiteMapper.toResponseMap(resultModel);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok().build();
     }
 
     public RetraiteResultModel buildRetraiteResult() {
