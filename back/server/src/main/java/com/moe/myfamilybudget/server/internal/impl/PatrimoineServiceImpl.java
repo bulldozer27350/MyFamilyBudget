@@ -1,19 +1,30 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
-import com.moe.myfamilybudget.api.controller.PatrimoineApi;
-import com.moe.myfamilybudget.api.model.PatrimoineResponseDto;
-import com.moe.myfamilybudget.server.internal.mapper.PatrimoineMapper;
-import com.moe.myfamilybudget.server.internal.model.*;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RestController;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.moe.myfamilybudget.api.controller.PatrimoineApi;
+import com.moe.myfamilybudget.api.model.AddPlacementHistoriquePointRequest;
+import com.moe.myfamilybudget.api.model.PatrimoineResponseDto;
+import com.moe.myfamilybudget.server.internal.mapper.PatrimoineMapper;
+import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.ChargeModel;
+import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
+import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
+import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
+import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.server.internal.model.TransferModel;
+import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 @RestController
 public class PatrimoineServiceImpl implements PatrimoineApi {
@@ -36,10 +47,10 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
 
     @Override
     @SuppressWarnings("unchecked")
-    public ResponseEntity<Object> savePatrimoineLigne(String listKey, Object body) {
+    public ResponseEntity<Void> savePatrimoineLigne(String listKey, Object body) {
         Map<String, Object> map = (body instanceof Map) ? (Map<String, Object>) body : null;
-        Map<String, Object> saved = this.persistenceManager.savePatrimoineRow(listKey, map);
-        return ResponseEntity.ok(saved);
+        this.persistenceManager.savePatrimoineRow(listKey, map);
+        return ResponseEntity.ok().build();
     }
 
     @Override
@@ -50,10 +61,10 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
 
     @Override
     @SuppressWarnings("unchecked")
-    public ResponseEntity<Object> addPlacementHistoriquePoint(String placementId, Object body) {
+    public ResponseEntity<Void> addPlacementHistoriquePoint(String placementId, AddPlacementHistoriquePointRequest body) {
         Map<String, Object> map = (body instanceof Map) ? (Map<String, Object>) body : null;
-        Map<String, Object> point = this.persistenceManager.addPlacementHistoriquePoint(placementId, map);
-        return ResponseEntity.ok(point);
+        this.persistenceManager.addPlacementHistoriquePoint(placementId, map);
+        return ResponseEntity.ok().build();
     }
 
     @Override
@@ -68,7 +79,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         );
 
         int startYear = findEarliestYear(data);
-        int endYear = settings.getEffectiveBirthYear() + settings.getEffectiveEndAge();
+        int endYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
         if (endYear < startYear) {
             endYear = startYear + 40;
         }
