@@ -580,7 +580,7 @@ public class OverviewMapper {
         List<BankImportModel.BankTransactionModel> txs = dto.getTransactions() != null ? dto.getTransactions().stream()
                 .map(t -> new BankImportModel.BankTransactionModel(t.getId(), t.getDate(), t.getLabel(), t.getAmount()))
                 .collect(Collectors.toList()) : List.of();
-        return new BankImportModel(txs);
+        return new BankImportModel(txs, List.of(), List.of());
     }
 
     private BankImportDto toBankImportDto(BankImportModel m) {

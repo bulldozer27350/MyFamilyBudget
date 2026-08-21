@@ -148,15 +148,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [lineId, kind, newMonthly]
-              properties:
-                lineId:
-                  type: string
-                kind:
-                  type: string
-                newMonthly:
-                  type: number
+              $ref: '#/components/schemas/TresorerieAjustementRequestDto'
       responses:
         '200':
           description: Ajustement applique
@@ -1016,6 +1008,69 @@ components:
         opti:
           type: number
 
+    CategoryOptionDto:
+      type: object
+      properties:
+        value:
+          type: string
+        label:
+          type: string
+
+    TresorerieSuggestionDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        kind:
+          type: string
+        budgeted:
+          type: number
+        avg3m:
+          type: number
+        avg12m:
+          type: number
+        ecart:
+          type: number
+        ecartPct:
+          type: number
+        months:
+          type: integer
+        suggested:
+          type: number
+
+    VariablePreviewCellDto:
+      type: object
+      properties:
+        year:
+          type: integer
+        amount:
+          type: number
+        isReal:
+          type: boolean
+
+    VariablePreviewDto:
+      type: object
+      properties:
+        label:
+          type: string
+        cells:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariablePreviewCellDto'
+
+    TresorerieAjustementRequestDto:
+      type: object
+      required: [lineId, kind, newMonthly]
+      properties:
+        lineId:
+          type: string
+        kind:
+          type: string
+        newMonthly:
+          type: number
+
     TresorerieResponseDto:
       type: object
       properties:
@@ -1031,6 +1086,48 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OneOffExpenseDto'
+        variableIncomes:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariableIncomeDto'
+        variableOverrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariableOverrideDto'
+        incomeLabels:
+          type: array
+          items:
+            type: string
+        variableIncomeLabels:
+          type: array
+          items:
+            type: string
+        categoryOptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryOptionDto'
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TresorerieSuggestionDto'
+        retireYear:
+          type: integer
+        years:
+          type: array
+          items:
+            type: integer
+        cashflow:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashflowYearDto'
+        variablePreview:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariablePreviewDto'
+        previewYears:
+          type: array
+          items:
+            type: integer
 
     PatrimoineResponseDto:
       type: object
