@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Component;
+
 import com.moe.myfamilybudget.server.internal.model.AutoMatchResultModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportSummaryModel;
@@ -16,6 +18,7 @@ import com.moe.myfamilybudget.server.internal.model.PendingImportSummaryModel;
  * Mapper responsible for converting between OpenAPI DTOs / Request Maps
  * and internal domain BankImportModel records.
  */
+@Component
 public class StatementBankImportMapper {
 
     public Map<String, Object> toBankImportResponseMap(BankImportModel model) {

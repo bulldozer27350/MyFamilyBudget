@@ -22,8 +22,8 @@ class StatementBankImportServiceImplIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        persistenceManager = PersistenceManager.getInstance();
-        persistenceManager.resetBudgetData();
+        persistenceManager = new PersistenceManager();
+        persistenceManager.init();
         StatementBankImportMapper mapper = new StatementBankImportMapper();
         service = new StatementBankImportServiceImpl(persistenceManager, mapper);
         pendingService = new PendingOperationsServiceImpl(persistenceManager, mapper);

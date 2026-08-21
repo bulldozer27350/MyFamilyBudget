@@ -29,11 +29,6 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
     private final PersistenceManager persistenceManager;
     private final StatementBankImportMapper mapper;
 
-    public StatementBankImportServiceImpl() {
-        this.persistenceManager = PersistenceManager.getInstance();
-        this.mapper = new StatementBankImportMapper();
-    }
-
     public StatementBankImportServiceImpl(PersistenceManager persistenceManager, StatementBankImportMapper mapper) {
         this.persistenceManager = persistenceManager;
         this.mapper = mapper;

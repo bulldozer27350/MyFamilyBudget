@@ -22,8 +22,8 @@ class StatementBankImportServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        persistenceManager = PersistenceManager.getInstance();
-        persistenceManager.resetBudgetData();
+        persistenceManager = new PersistenceManager();
+        persistenceManager.init();
         StatementBankImportMapper mapper = new StatementBankImportMapper();
         service = new StatementBankImportServiceImpl(persistenceManager, mapper);
         pendingService = new PendingOperationsServiceImpl(persistenceManager, mapper);
@@ -66,6 +66,17 @@ class StatementBankImportServiceImplTest {
     @Test
     @DisplayName("importBankCSV imports transactions from CSV multipart file")
     void testImportBankCSV() {
+        // First, set up the column mapping
+        Map<String, Object> mapping = Map.of(
+                "delimiter", ";",
+                "dateFormat", "DD/MM/YYYY",
+                "hasHeader", true,
+                "dateCol", 0,
+                "labelCol", 1,
+                "amountCol", 2
+        );
+        service.updateBankImportMapping(mapping);
+
         String csvContent = "Date;Libelle;Montant\n15/01/2026;Achat Carrefour;-45.50\n";
         MockMultipartFile file = new MockMultipartFile("file", "statement.csv", "text/csv", csvContent.getBytes());
 

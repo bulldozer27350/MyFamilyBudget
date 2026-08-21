@@ -26,11 +26,6 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
     private final PersistenceManager persistenceManager;
     private final StatementBankImportMapper mapper;
 
-    public PendingOperationsServiceImpl() {
-        this.persistenceManager = PersistenceManager.getInstance();
-        this.mapper = new StatementBankImportMapper();
-    }
-
     public PendingOperationsServiceImpl(PersistenceManager persistenceManager, StatementBankImportMapper mapper) {
         this.persistenceManager = persistenceManager;
         this.mapper = mapper;
