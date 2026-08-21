@@ -633,6 +633,85 @@ public class PersistenceManager {
     }
 
     /**
+     * Met à jour la configuration d'impôts.
+     */
+    public void updateTaxConfig(List<TaxChildModel> children, List<TaxBracketModel> brackets,
+                                List<TaxRateOverrideModel> rateOverrides, List<TaxActualOverrideModel> actualOverrides) {
+        currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            return new BudgetDataModel(
+                    base.settings(),
+                    base.incomes(),
+                    base.charges(),
+                    base.placements(),
+                    base.realEstate(),
+                    base.retirement(),
+                    children != null ? children : base.taxChildren(),
+                    brackets != null ? brackets : base.taxBrackets(),
+                    rateOverrides != null ? rateOverrides : base.taxRateOverrides(),
+                    actualOverrides != null ? actualOverrides : base.taxActualOverrides(),
+                    base.oneoff(),
+                    base.transfers(),
+                    base.variableIncomes(),
+                    base.variableOverrides(),
+                    base.bankImport()
+            );
+        });
+    }
+
+    /**
+     * Met à jour un paramètre lié aux impôts dans Settings.
+     */
+    public void updateTaxSettings(String field, Object value) {
+        if (field == null) return;
+        currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            SettingsModel s = base.getEffectiveSettings();
+            SettingsModel updated = new SettingsModel(
+                    "birthYear".equals(field) ? toInteger(value, 1985) : s.birthYear(),
+                    "retireAge".equals(field) ? toInteger(value, 64) : s.retireAge(),
+                    "simulateUntilAge".equals(field) ? toInteger(value, 85) : s.simulateUntilAge(),
+                    "inflationRate".equals(field) ? toBigDecimal(value, new BigDecimal("0.02")) : s.inflationRate(),
+                    "pivotDate".equals(field) ? (value != null ? String.valueOf(value) : "") : s.pivotDate(),
+                    "pivotMode".equals(field) ? (value != null ? String.valueOf(value) : "") : s.pivotMode(),
+                    "pivotBalanceManual".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : s.pivotBalanceManual(),
+                    "childExitAge".equals(field) ? toInteger(value, 21) : s.childExitAge(),
+                    "taxAbattement".equals(field) ? toBigDecimal(value, new BigDecimal("0.10")) : s.taxAbattement(),
+                    "pass2026".equals(field) ? toBigDecimal(value, new BigDecimal("47100")) : s.pass2026(),
+                    "passGrowthRate".equals(field) ? toBigDecimal(value, new BigDecimal("0.015")) : s.passGrowthRate()
+            );
+            return new BudgetDataModel(
+                    updated, base.incomes(), base.charges(), base.placements(), base.realEstate(),
+                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
+                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
+                    base.variableOverrides(), base.bankImport()
+            );
+        });
+    }
+
+    /**
+     * Réinitialise les tranches d'impôt par défaut.
+     */
+    public void resetDefaultTaxBrackets() {
+        currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            List<TaxBracketModel> defaultBrackets = List.of(
+                    new TaxBracketModel("tb_1", new BigDecimal("11294"), BigDecimal.ZERO),
+                    new TaxBracketModel("tb_2", new BigDecimal("28797"), new BigDecimal("0.11")),
+                    new TaxBracketModel("tb_3", new BigDecimal("82341"), new BigDecimal("0.30")),
+                    new TaxBracketModel("tb_4", new BigDecimal("177106"), new BigDecimal("0.41")),
+                    new TaxBracketModel("tb_5", null, new BigDecimal("0.45"))
+            );
+            return new BudgetDataModel(
+                    base.settings(), base.incomes(), base.charges(), base.placements(), base.realEstate(),
+                    base.retirement(), base.taxChildren(), defaultBrackets, base.taxRateOverrides(),
+                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
+                    base.variableOverrides(), base.bankImport()
+            );
+        });
+    }
+
+    /**
      * Supprime une ligne de patrimoine (placements, transfers, realEstate).
      */
     public void deletePatrimoineRow(String listKey, String id) {
