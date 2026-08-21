@@ -86,6 +86,21 @@ const { BudgetApi } = sandbox.window.BudgetApp;
   const settings = await BudgetApi.getSettings();
   console.log("✓ Settings OK");
 
+  console.log("Testing BudgetApi.getPointage...");
+  const pointage = await BudgetApi.getPointage();
+  if (!pointage || !Array.isArray(pointage.transactions)) {
+    throw new Error("Invalid pointage data");
+  }
+  console.log("✓ Pointage OK");
+
+  console.log("Testing BudgetApi.savePointageMatching...");
+  await BudgetApi.savePointageMatching("2026-05", [{ budgetLineId: "c1", txIds: ["tx1"] }]);
+  const pointageAfterSave = await BudgetApi.getPointage();
+  if (!pointageAfterSave.matchings.some(m => m.month === "2026-05")) {
+    throw new Error("Failed to save pointage matching");
+  }
+  console.log("✓ Save pointage matching OK");
+
   console.log("Testing BudgetApi.getBudgetFull & importJSON & resetData...");
   const fullBudget = await BudgetApi.getBudgetFull();
   if (!fullBudget || !fullBudget.settings) {
