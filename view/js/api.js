@@ -15,6 +15,13 @@
     return typeof window !== 'undefined' ? window.BudgetApp || exports : exports;
   }
 
+  /**
+   * Adresse et port du serveur Back-end Spring Boot (conformément au contrat OpenAPI).
+   * Par défaut : 'http://localhost:8080/api/v1' (ou configurable via window.API_BASE_URL).
+   * Le serveur Express (view/server.js) relaie également ces requêtes sur le port 3000 vers http://localhost:8080.
+   */
+  const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8080/api/v1';
+
   const BudgetApi = {
     /**
      * Vue d'ensemble : KPIs, projections (trésorerie, patrimoine) et jauges FIRE.
@@ -24,7 +31,7 @@
     async getVueDensemble(options) {
       if (typeof fetch !== 'undefined') {
         try {
-          const res = await fetch('/overview');
+          const res = await fetch(API_BASE_URL + '/overview');
           if (res.ok) return await res.json();
         } catch (e) {}
       }
@@ -49,7 +56,7 @@
       if (typeof fetch !== 'undefined') {
         try {
           const query = options?.useConstantEuros ? '?useConstantEuros=true' : '';
-          const res = await fetch('/tresorerie' + query);
+          const res = await fetch(API_BASE_URL + '/tresorerie' + query);
           if (res.ok) return await res.json();
         } catch (e) {}
       }
@@ -64,7 +71,7 @@
       const p = Promise.resolve(app().TresorerieService.updateTresorerieLigne(listKey, id, field, value));
       if (typeof fetch !== 'undefined') {
         try {
-          await fetch('/tresorerie/' + encodeURIComponent(listKey), {
+          await fetch(API_BASE_URL + '/tresorerie/' + encodeURIComponent(listKey), {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, field, value })
@@ -82,7 +89,7 @@
       const p = Promise.resolve(app().TresorerieService.addTresorerieLigne(listKey, options));
       if (typeof fetch !== 'undefined') {
         try {
-          await fetch('/tresorerie/' + encodeURIComponent(listKey), {
+          await fetch(API_BASE_URL + '/tresorerie/' + encodeURIComponent(listKey), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(options || {})
@@ -100,7 +107,7 @@
       const p = Promise.resolve(app().TresorerieService.removeTresorerieLigne(listKey, id));
       if (typeof fetch !== 'undefined') {
         try {
-          await fetch('/tresorerie/' + encodeURIComponent(listKey) + '/' + encodeURIComponent(id), {
+          await fetch(API_BASE_URL + '/tresorerie/' + encodeURIComponent(listKey) + '/' + encodeURIComponent(id), {
             method: 'DELETE'
           });
         } catch (e) {}
@@ -116,7 +123,7 @@
       const p = Promise.resolve(app().TresorerieService.applyTresorerieAjustement(lineId, kind, newMonthly));
       if (typeof fetch !== 'undefined') {
         try {
-          await fetch('/tresorerie/adjust', {
+          await fetch(API_BASE_URL + '/tresorerie/adjust', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ lineId, kind, newMonthly })
@@ -144,7 +151,7 @@
       if (typeof fetch !== 'undefined') {
         try {
           const query = options?.useConstantEuros ? '?useConstantEuros=true' : '';
-          const res = await fetch('/patrimoine' + query);
+          const res = await fetch(API_BASE_URL + '/patrimoine' + query);
           if (res.ok) return await res.json();
         } catch (e) {}
       }
@@ -572,7 +579,7 @@
       if (typeof fetch !== 'undefined') {
         try {
           const query = monthsBack !== undefined && monthsBack !== null ? '?monthsBack=' + monthsBack : '';
-          const res = await fetch('/analyse' + query);
+          const res = await fetch(API_BASE_URL + '/analyse' + query);
           if (res.ok) return await res.json();
         } catch (e) {}
       }
@@ -606,7 +613,7 @@
       app().BudgetStore.setData(data);
       if (typeof fetch !== 'undefined') {
         try {
-          await fetch('/budget/import', {
+          await fetch(API_BASE_URL + '/budget/import', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -627,7 +634,7 @@
       app().BudgetStore.setData(defaultData);
       if (typeof fetch !== 'undefined') {
         try {
-          await fetch('/budget/reset', { method: 'POST' });
+          await fetch(API_BASE_URL + '/budget/reset', { method: 'POST' });
         } catch (e) {
           // Mode client seul / hors-ligne
         }
