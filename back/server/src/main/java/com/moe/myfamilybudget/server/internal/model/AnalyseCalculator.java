@@ -29,7 +29,7 @@ public final class AnalyseCalculator {
             data = new BudgetDataModel(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         }
         if (bankImport == null) {
-            bankImport = new BankImportModel(null, null, null, null, null);
+            bankImport = new BankImportModel(null, null, null, null, null, null);
         }
 
         int mBack = (monthsBack != null && monthsBack >= 0) ? monthsBack : 12;

@@ -8,6 +8,11 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransactionModel;
+import com.moe.myfamilybudget.server.internal.model.BankImportModel.CategoryModel;
+import com.moe.myfamilybudget.server.internal.model.BankImportModel.MatchingLinkModel;
+import com.moe.myfamilybudget.server.internal.model.BankImportModel.MatchingModel;
+
 class AnalyseCalculatorTest {
 
     @Test
@@ -38,15 +43,15 @@ class AnalyseCalculatorTest {
                 null
         );
 
-        BankImportModel.CategoryModel cat1 = new BankImportModel.CategoryModel("cat1", "Logement", "Dépense", "#A8503C", "Oui");
-        BankImportModel.CategoryModel cat2 = new BankImportModel.CategoryModel("cat2", "Salaire", "Revenu", "#2F5D50", "Non");
+        CategoryModel cat1 = new CategoryModel("cat1", "Logement", "Dépense", "Oui");
+        CategoryModel cat2 = new CategoryModel("cat2", "Salaire", "Revenu", "Non");
 
-        BankImportModel.BankTransactionModel tx1 = new BankImportModel.BankTransactionModel(
+        BankTransactionModel tx1 = new BankTransactionModel(
                 "tx1", "2026-08-05", "Loyer août", new BigDecimal("-1000"), "cat1", "done", null
         );
 
-        BankImportModel.MatchingLinkModel link1 = new BankImportModel.MatchingLinkModel("c1", List.of("tx1"));
-        BankImportModel.MatchingModel matching = new BankImportModel.MatchingModel("2026-08", List.of(link1));
+        MatchingLinkModel link1 = new MatchingLinkModel("c1", List.of("tx1"));
+        MatchingModel matching = new MatchingModel("2026-08", List.of(link1));
 
         BankImportModel bankImport = new BankImportModel(
                 null,
