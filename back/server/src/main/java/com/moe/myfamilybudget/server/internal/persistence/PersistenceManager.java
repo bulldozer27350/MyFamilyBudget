@@ -620,6 +620,19 @@ public class PersistenceManager {
     }
 
     /**
+     * Maintient et sauvegarde la configuration de retraite.
+     */
+    public void updateRetirement(RetirementModel retirement) {
+        currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
+                    base.realEstate(), retirement, base.taxChildren(), base.taxBrackets(),
+                    base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
+                    base.variableIncomes(), base.variableOverrides(), base.bankImport());
+        });
+    }
+
+    /**
      * Supprime une ligne de patrimoine (placements, transfers, realEstate).
      */
     public void deletePatrimoineRow(String listKey, String id) {
