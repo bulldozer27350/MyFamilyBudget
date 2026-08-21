@@ -22,6 +22,12 @@
      * @returns {Promise<Object>} modèle de lecture de la Vue d'ensemble
      */
     async getVueDensemble(options) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await fetch('/overview');
+          if (res.ok) return await res.json();
+        } catch (e) {}
+      }
       return Promise.resolve(app().OverviewService.buildOverview(options));
     },
 
@@ -40,6 +46,13 @@
      * @returns {Promise<Object>} modèle de lecture de l'onglet Trésorerie
      */
     async getTresorerie(options) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const query = options?.useConstantEuros ? '?useConstantEuros=true' : '';
+          const res = await fetch('/tresorerie' + query);
+          if (res.ok) return await res.json();
+        } catch (e) {}
+      }
       return Promise.resolve(app().TresorerieService.buildTresorerie(options));
     },
 
@@ -48,7 +61,17 @@
      * @returns {Promise<void>}
      */
     async updateTresorerieLigne(listKey, id, field, value) {
-      return Promise.resolve(app().TresorerieService.updateTresorerieLigne(listKey, id, field, value));
+      const p = Promise.resolve(app().TresorerieService.updateTresorerieLigne(listKey, id, field, value));
+      if (typeof fetch !== 'undefined') {
+        try {
+          await fetch('/tresorerie/' + encodeURIComponent(listKey), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, field, value })
+          });
+        } catch (e) {}
+      }
+      return p;
     },
 
     /**
@@ -56,7 +79,17 @@
      * @returns {Promise<void>}
      */
     async addTresorerieLigne(listKey, options) {
-      return Promise.resolve(app().TresorerieService.addTresorerieLigne(listKey, options));
+      const p = Promise.resolve(app().TresorerieService.addTresorerieLigne(listKey, options));
+      if (typeof fetch !== 'undefined') {
+        try {
+          await fetch('/tresorerie/' + encodeURIComponent(listKey), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(options || {})
+          });
+        } catch (e) {}
+      }
+      return p;
     },
 
     /**
@@ -64,7 +97,15 @@
      * @returns {Promise<void>}
      */
     async removeTresorerieLigne(listKey, id) {
-      return Promise.resolve(app().TresorerieService.removeTresorerieLigne(listKey, id));
+      const p = Promise.resolve(app().TresorerieService.removeTresorerieLigne(listKey, id));
+      if (typeof fetch !== 'undefined') {
+        try {
+          await fetch('/tresorerie/' + encodeURIComponent(listKey) + '/' + encodeURIComponent(id), {
+            method: 'DELETE'
+          });
+        } catch (e) {}
+      }
+      return p;
     },
 
     /**
@@ -72,7 +113,17 @@
      * @returns {Promise<void>}
      */
     async applyTresorerieAjustement(lineId, kind, newMonthly) {
-      return Promise.resolve(app().TresorerieService.applyTresorerieAjustement(lineId, kind, newMonthly));
+      const p = Promise.resolve(app().TresorerieService.applyTresorerieAjustement(lineId, kind, newMonthly));
+      if (typeof fetch !== 'undefined') {
+        try {
+          await fetch('/tresorerie/adjust', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lineId, kind, newMonthly })
+          });
+        } catch (e) {}
+      }
+      return p;
     },
 
     /**
@@ -90,6 +141,13 @@
      * @returns {Promise<Object>} modèle de lecture de l'onglet Patrimoine
      */
     async getPatrimoine(options) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const query = options?.useConstantEuros ? '?useConstantEuros=true' : '';
+          const res = await fetch('/patrimoine' + query);
+          if (res.ok) return await res.json();
+        } catch (e) {}
+      }
       return Promise.resolve(app().PatrimoineService.buildPatrimoine(options));
     },
 
@@ -510,7 +568,14 @@
      * Récupère les données d'Analyse (Réel vs Prévisionnel, atterrissage, dérives).
      * @returns {Promise<Object>}
      */
-    async getAnalyse() {
+    async getAnalyse(monthsBack) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const query = monthsBack !== undefined && monthsBack !== null ? '?monthsBack=' + monthsBack : '';
+          const res = await fetch('/analyse' + query);
+          if (res.ok) return await res.json();
+        } catch (e) {}
+      }
       return Promise.resolve(app().AnalyseService.buildAnalyse());
     },
 
