@@ -1,29 +1,48 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
-import com.moe.myfamilybudget.api.model.TresorerieAjustementRequestDto;
-import com.moe.myfamilybudget.api.model.TresorerieResponseDto;
-import com.moe.myfamilybudget.server.internal.mapper.TresorerieMapper;
-import com.moe.myfamilybudget.server.internal.model.*;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import com.moe.myfamilybudget.api.model.TresorerieAjustementRequestDto;
+import com.moe.myfamilybudget.api.model.TresorerieResponseDto;
+import com.moe.myfamilybudget.api.model.UpdateTresorerieLigneRequestDto;
+import com.moe.myfamilybudget.server.internal.mapper.TresorerieMapper;
+import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.ChargeModel;
+import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.server.internal.model.TresorerieResultModel;
+import com.moe.myfamilybudget.server.internal.model.TresorerieSuggestionModel;
+import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
+import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.moe.myfamilybudget.server.internal.model.VariablePreviewCellModel;
+import com.moe.myfamilybudget.server.internal.model.VariablePreviewModel;
+import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 class TresorerieServiceImplTest {
 
     private TresorerieServiceImpl service;
     private TresorerieMapper mapper;
+    private PersistenceManager persistenceManager;
 
     @BeforeEach
     void setUp() {
         mapper = new TresorerieMapper();
-        service = new TresorerieServiceImpl(mapper);
+        persistenceManager = new PersistenceManager();
+        service = new TresorerieServiceImpl(mapper, persistenceManager);
     }
 
     @Test
@@ -150,15 +169,15 @@ class TresorerieServiceImplTest {
     @Test
     void crudAndAdjustEndpoints_workAsExpected() {
         ResponseEntity<Object> addRes = service.addTresorerieLigne("incomes", Map.of());
-        assertEquals(HttpStatus.OK, addRes.getStatusCode());
+        assertEquals(HttpStatus.CREATED, addRes.getStatusCode());
 
-        ResponseEntity<Object> updateRes = service.updateTresorerieLigne("charges", "ch_1", Map.of());
+        ResponseEntity<Void> updateRes = service.updateTresorerieLigne("charges", "ch_1", new UpdateTresorerieLigneRequestDto());
         assertEquals(HttpStatus.OK, updateRes.getStatusCode());
 
         ResponseEntity<Void> removeRes = service.removeTresorerieLigne("charges", "ch_1");
         assertEquals(HttpStatus.NO_CONTENT, removeRes.getStatusCode());
 
-        ResponseEntity<Object> adjustRes = service.applyTresorerieAjustement(
+        ResponseEntity<Void> adjustRes = service.applyTresorerieAjustement(
                 new TresorerieAjustementRequestDto("ch_1", "charge", BigDecimal.valueOf(1050))
         );
         assertEquals(HttpStatus.OK, adjustRes.getStatusCode());

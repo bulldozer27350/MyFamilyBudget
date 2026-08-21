@@ -16,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.OverviewApi;
-import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
@@ -66,21 +65,6 @@ public class OverviewServiceImpl implements OverviewApi{
         BudgetDataModel internalData = this.persistenceManager.getBudgetData();
         OverviewResultModel internalResult = computeOverview(internalData, Boolean.TRUE.equals(useConstantEuros));
         return ResponseEntity.ok(this.mapper.toDto(internalResult));
-    }
-    
-    @Override
-    public ResponseEntity<OverviewResponseDto> buildOverview(BudgetDataDto parameters, Boolean useConstantEuros) {
-        checkParameters(parameters);
-        BudgetDataModel internalData = this.mapper.toInternalModel(parameters);
-
-        OverviewResultModel internalResult = computeOverview(internalData, Boolean.TRUE.equals(useConstantEuros));
-        return ResponseEntity.ok(this.mapper.toDto(internalResult));
-    }
-
-    private void checkParameters(BudgetDataDto parameters) {
-        if (parameters == null) {
-            throw new IllegalArgumentException("BudgetDataDto cannot be null");
-        }
     }
 
     private OverviewResultModel computeOverview(BudgetDataModel data, boolean useConstantEuros) {
@@ -604,7 +588,6 @@ public class OverviewServiceImpl implements OverviewApi{
     private BigDecimal agircPointValueForYear(BudgetDataModel data, int year) {
         BigDecimal base = (data.retirement() != null) ? data.retirement().getEffectiveAgircPointValue() : new BigDecimal("1.4386");
         Integer baseYear = (data.retirement() != null) ? yearOf(data.retirement().agircPointDateGlobal()) : 2025;
-        if (baseYear == null) baseYear = 2025;
 
         BigDecimal growth = (data.retirement() != null) ? data.retirement().getEffectiveAgircPointGrowthRate() : new BigDecimal("0.01");
         int elapsed = Math.max(0, year - baseYear);

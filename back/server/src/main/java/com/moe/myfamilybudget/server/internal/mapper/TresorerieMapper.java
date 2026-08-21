@@ -35,7 +35,10 @@ public class TresorerieMapper {
 
     public CategoryOptionDto toCategoryOptionDto(CategoryOptionModel m) {
         if (m == null) return null;
-        return new CategoryOptionDto(m.value(), m.label());
+        CategoryOptionDto dto = new CategoryOptionDto();
+        dto.setValue(m.value());
+        dto.setLabel(m.label());
+        return dto;
     }
 
     public CategoryOptionModel toCategoryOptionModel(CategoryOptionDto dto) {
@@ -61,7 +64,11 @@ public class TresorerieMapper {
 
     public VariablePreviewCellDto toVariablePreviewCellDto(VariablePreviewCellModel m) {
         if (m == null) return null;
-        return new VariablePreviewCellDto(m.year(), m.amount(), m.isReal());
+        VariablePreviewCellDto dto = new VariablePreviewCellDto();
+        dto.setYear(m.year());
+        dto.setAmount(m.amount());
+        dto.setIsReal(m.isReal());
+        return dto;
     }
 
     public VariablePreviewDto toVariablePreviewDto(VariablePreviewModel m) {
@@ -69,7 +76,10 @@ public class TresorerieMapper {
         List<VariablePreviewCellDto> cells = m.cells() != null ? m.cells().stream()
                 .map(this::toVariablePreviewCellDto)
                 .collect(Collectors.toList()) : List.of();
-        return new VariablePreviewDto(m.label(), cells);
+        VariablePreviewDto dto = new VariablePreviewDto();
+        dto.setLabel(m.label());
+        dto.setCells(cells);
+        return dto;
     }
 
     public CashflowYearDto toCashflowYearDto(CashflowYearModel m) {

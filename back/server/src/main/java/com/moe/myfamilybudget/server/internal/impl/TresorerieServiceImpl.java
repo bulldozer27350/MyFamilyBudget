@@ -1,20 +1,48 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
-import com.moe.myfamilybudget.api.controller.TresorerieApi;
-import com.moe.myfamilybudget.api.model.TresorerieAjustementRequestDto;
-import com.moe.myfamilybudget.api.model.TresorerieResponseDto;
-import com.moe.myfamilybudget.server.internal.mapper.TresorerieMapper;
-import com.moe.myfamilybudget.server.internal.model.*;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RestController;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.Collator;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.moe.myfamilybudget.api.controller.TresorerieApi;
+import com.moe.myfamilybudget.api.model.TresorerieAjustementRequestDto;
+import com.moe.myfamilybudget.api.model.TresorerieResponseDto;
+import com.moe.myfamilybudget.server.internal.mapper.TresorerieMapper;
+import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.CashflowYearModel;
+import com.moe.myfamilybudget.server.internal.model.CategoryOptionModel;
+import com.moe.myfamilybudget.server.internal.model.ChargeModel;
+import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.server.internal.model.RealAverageModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
+import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
+import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.server.internal.model.TransferModel;
+import com.moe.myfamilybudget.server.internal.model.TresorerieResultModel;
+import com.moe.myfamilybudget.server.internal.model.TresorerieSuggestionModel;
+import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
+import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.moe.myfamilybudget.server.internal.model.VariablePreviewCellModel;
+import com.moe.myfamilybudget.server.internal.model.VariablePreviewModel;
+import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 @RestController
 public class TresorerieServiceImpl implements TresorerieApi {
@@ -84,8 +112,8 @@ public class TresorerieServiceImpl implements TresorerieApi {
     }
 
     @Override
-    public ResponseEntity<Object> addTresorerieLigne(String listKey, Map<String, Object> body) {
-        Map<String, Object> created = this.persistenceManager.addTresorerieRow(listKey, body);
+    public ResponseEntity<Object> addTresorerieLigne(String listKey, Object body) {
+        Map<String, Object> created = this.persistenceManager.addTresorerieRow(listKey, (Map<String, Object>)body);
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(created);
     }
 
