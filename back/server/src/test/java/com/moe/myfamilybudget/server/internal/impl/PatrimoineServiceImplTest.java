@@ -3,6 +3,7 @@ package com.moe.myfamilybudget.server.internal.impl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
@@ -14,8 +15,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.api.model.AddPlacementHistoriquePointRequest;
 import com.moe.myfamilybudget.api.model.PatrimoineResponseDto;
 import com.moe.myfamilybudget.api.model.PlacementDto;
+import com.moe.myfamilybudget.api.model.RealEstateDto;
+import com.moe.myfamilybudget.api.model.TransferDto;
 import com.moe.myfamilybudget.server.internal.mapper.PatrimoineMapper;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
@@ -34,8 +38,12 @@ class PatrimoineServiceImplTest {
         service = new PatrimoineServiceImpl(mapper, persistenceManager);
     }
 
+    // -------------------------------------------------------------------------
+    // GET /patrimoine
+    // -------------------------------------------------------------------------
+
     @Test
-    void getPatrimoine_returnsValidResponse() {
+    void getPatrimoine_returnsValidResponse_nominal() {
         ResponseEntity<PatrimoineResponseDto> response = service.getPatrimoine(false);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -44,12 +52,29 @@ class PatrimoineServiceImplTest {
         assertNotNull(response.getBody().getTransfers());
         assertNotNull(response.getBody().getRealEstate());
         assertNotNull(response.getBody().getPatrimoine());
+        assertNotNull(response.getBody().getPatrimoine().getTotals());
         assertFalse(response.getBody().getPatrimoine().getTotals().isEmpty());
     }
 
     @Test
+    void getPatrimoine_returnsValidResponse_constantEuros() {
+        ResponseEntity<PatrimoineResponseDto> response = service.getPatrimoine(true);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertNotNull(response.getBody().getPatrimoine());
+        assertFalse(response.getBody().getPatrimoine().getTotals().isEmpty());
+    }
+
+    // -------------------------------------------------------------------------
+    // POST & DELETE /patrimoine/placements
+    // -------------------------------------------------------------------------
+
+    @Test
     void savePatrimoineLigne_placements_createsAndUpdates() {
+        String testId = "plc_test_1";
         Map<String, Object> body = new HashMap<>();
+        body.put("id", testId);
         body.put("label", "Mon PEA");
         body.put("category", "Bourse");
         body.put("balance", new BigDecimal("10000"));
@@ -57,112 +82,229 @@ class PatrimoineServiceImplTest {
         body.put("monthly", new BigDecimal("500"));
         body.put("rateCorr", new BigDecimal("0.05"));
 
-        ResponseEntity<Object> createResp = service.savePatrimoineLigne("placements", body);
+        // 1. Création
+        ResponseEntity<Void> createResp = service.savePatrimoineLigne("placements", body);
         assertEquals(HttpStatus.OK, createResp.getStatusCode());
-        assertNotNull(createResp.getBody());
-        assertTrue(createResp.getBody() instanceof Map);
+        assertNull(createResp.getBody());
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> created = (Map<String, Object>) createResp.getBody();
-        String id = (String) created.get("id");
-        assertNotNull(id);
-
+        // 2. Vérification création
         ResponseEntity<PatrimoineResponseDto> getResp = service.getPatrimoine(false);
-        boolean found = getResp.getBody().getPlacements().stream().anyMatch(p -> "Mon PEA".equals(p.getLabel()));
-        assertTrue(found);
+        PlacementDto created = getResp.getBody().getPlacements().stream()
+                .filter(p -> testId.equals(p.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(created);
+        assertEquals("Mon PEA", created.getLabel());
+        assertEquals(new BigDecimal("10000"), created.getBalance());
 
-        // Update placement
-        body.put("id", id);
+        // 3. Mise à jour
         body.put("label", "Mon Super PEA");
-        service.savePatrimoineLigne("placements", body);
+        body.put("balance", new BigDecimal("12000"));
+        ResponseEntity<Void> updateResp = service.savePatrimoineLigne("placements", body);
+        assertEquals(HttpStatus.OK, updateResp.getStatusCode());
 
+        // 4. Vérification mise à jour
         ResponseEntity<PatrimoineResponseDto> updatedResp = service.getPatrimoine(false);
-        boolean foundUpdated = updatedResp.getBody().getPlacements().stream().anyMatch(p -> "Mon Super PEA".equals(p.getLabel()));
-        assertTrue(foundUpdated);
+        PlacementDto updated = updatedResp.getBody().getPlacements().stream()
+                .filter(p -> testId.equals(p.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(updated);
+        assertEquals("Mon Super PEA", updated.getLabel());
+        assertEquals(new BigDecimal("12000"), updated.getBalance());
     }
 
     @Test
-    void savePatrimoineLigne_transfers_createsAndDeletes() {
+    void deletePatrimoineLigne_placements_deletesSuccessfully() {
+        String testId = "plc_del_1";
         Map<String, Object> body = new HashMap<>();
+        body.put("id", testId);
+        body.put("label", "Placement Temporaire");
+        body.put("balance", new BigDecimal("1000"));
+
+        service.savePatrimoineLigne("placements", body);
+
+        // Vérification présence
+        ResponseEntity<PatrimoineResponseDto> getResp = service.getPatrimoine(false);
+        assertTrue(getResp.getBody().getPlacements().stream().anyMatch(p -> testId.equals(p.getId())));
+
+        // Suppression
+        ResponseEntity<Void> deleteResp = service.deletePatrimoineLigne("placements", testId);
+        assertEquals(HttpStatus.NO_CONTENT, deleteResp.getStatusCode());
+
+        // Vérification absence
+        ResponseEntity<PatrimoineResponseDto> afterDeleteResp = service.getPatrimoine(false);
+        assertFalse(afterDeleteResp.getBody().getPlacements().stream().anyMatch(p -> testId.equals(p.getId())));
+    }
+
+    // -------------------------------------------------------------------------
+    // POST & DELETE /patrimoine/transfers
+    // -------------------------------------------------------------------------
+
+    @Test
+    void savePatrimoineLigne_transfers_createsAndUpdates() {
+        String transferId = "tr_test_1";
+        Map<String, Object> body = new HashMap<>();
+        body.put("id", transferId);
         body.put("placement", "Mon PEA");
         body.put("date", "2028-06-01");
         body.put("amount", new BigDecimal("3000"));
         body.put("notes", "Achat voiture");
 
-        ResponseEntity<Object> createResp = service.savePatrimoineLigne("transfers", body);
+        // 1. Création
+        ResponseEntity<Void> createResp = service.savePatrimoineLigne("transfers", body);
         assertEquals(HttpStatus.OK, createResp.getStatusCode());
+        assertNull(createResp.getBody());
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> created = (Map<String, Object>) createResp.getBody();
-        String id = (String) created.get("id");
-        assertNotNull(id);
-
+        // 2. Vérification présence
         ResponseEntity<PatrimoineResponseDto> getResp = service.getPatrimoine(false);
-        boolean found = getResp.getBody().getTransfers().stream().anyMatch(t -> id.equals(t.getId()));
-        assertTrue(found);
+        TransferDto created = getResp.getBody().getTransfers().stream()
+                .filter(t -> transferId.equals(t.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(created);
+        assertEquals("Mon PEA", created.getPlacement());
+        assertEquals(new BigDecimal("3000"), created.getAmount());
 
-        // Delete transfer
-        ResponseEntity<Void> deleteResp = service.deletePatrimoineLigne("transfers", id);
-        assertEquals(HttpStatus.NO_CONTENT, deleteResp.getStatusCode());
+        // 3. Mise à jour
+        body.put("amount", new BigDecimal("4500"));
+        service.savePatrimoineLigne("transfers", body);
 
-        ResponseEntity<PatrimoineResponseDto> afterDeleteResp = service.getPatrimoine(false);
-        boolean stillPresent = afterDeleteResp.getBody().getTransfers().stream().anyMatch(t -> id.equals(t.getId()));
-        assertFalse(stillPresent);
+        ResponseEntity<PatrimoineResponseDto> updatedResp = service.getPatrimoine(false);
+        TransferDto updated = updatedResp.getBody().getTransfers().stream()
+                .filter(t -> transferId.equals(t.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(updated);
+        assertEquals(new BigDecimal("4500"), updated.getAmount());
     }
 
     @Test
-    void savePatrimoineLigne_realEstate_createsAndDeletes() {
+    void deletePatrimoineLigne_transfers_deletesSuccessfully() {
+        String transferId = "tr_del_1";
         Map<String, Object> body = new HashMap<>();
+        body.put("id", transferId);
+        body.put("placement", "Mon PEA");
+        body.put("date", "2028-06-01");
+        body.put("amount", new BigDecimal("3000"));
+
+        service.savePatrimoineLigne("transfers", body);
+
+        // Suppression
+        ResponseEntity<Void> deleteResp = service.deletePatrimoineLigne("transfers", transferId);
+        assertEquals(HttpStatus.NO_CONTENT, deleteResp.getStatusCode());
+
+        // Vérification absence
+        ResponseEntity<PatrimoineResponseDto> afterDeleteResp = service.getPatrimoine(false);
+        assertFalse(afterDeleteResp.getBody().getTransfers().stream().anyMatch(t -> transferId.equals(t.getId())));
+    }
+
+    // -------------------------------------------------------------------------
+    // POST & DELETE /patrimoine/realEstate
+    // -------------------------------------------------------------------------
+
+    @Test
+    void savePatrimoineLigne_realEstate_createsAndUpdates() {
+        String reId = "re_test_1";
+        Map<String, Object> body = new HashMap<>();
+        body.put("id", reId);
         body.put("label", "Maison Principale");
         body.put("type", "Résidence Principale");
         body.put("currentValue", new BigDecimal("350000"));
         body.put("valuationYear", 2026);
         body.put("annualGrowthRate", new BigDecimal("0.02"));
 
-        ResponseEntity<Object> createResp = service.savePatrimoineLigne("realEstate", body);
+        // 1. Création
+        ResponseEntity<Void> createResp = service.savePatrimoineLigne("realEstate", body);
         assertEquals(HttpStatus.OK, createResp.getStatusCode());
+        assertNull(createResp.getBody());
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> created = (Map<String, Object>) createResp.getBody();
-        String id = (String) created.get("id");
-        assertNotNull(id);
-
+        // 2. Vérification présence
         ResponseEntity<PatrimoineResponseDto> getResp = service.getPatrimoine(false);
-        boolean found = getResp.getBody().getRealEstate().stream().anyMatch(r -> id.equals(r.getId()));
-        assertTrue(found);
+        RealEstateDto created = getResp.getBody().getRealEstate().stream()
+                .filter(r -> reId.equals(r.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(created);
+        assertEquals("Maison Principale", created.getLabel());
+        assertEquals(new BigDecimal("350000"), created.getCurrentValue());
 
-        // Delete real estate
-        ResponseEntity<Void> deleteResp = service.deletePatrimoineLigne("realEstate", id);
+        // 3. Mise à jour
+        body.put("currentValue", new BigDecimal("380000"));
+        service.savePatrimoineLigne("realEstate", body);
+
+        ResponseEntity<PatrimoineResponseDto> updatedResp = service.getPatrimoine(false);
+        RealEstateDto updated = updatedResp.getBody().getRealEstate().stream()
+                .filter(r -> reId.equals(r.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(updated);
+        assertEquals(new BigDecimal("380000"), updated.getCurrentValue());
+    }
+
+    @Test
+    void deletePatrimoineLigne_realEstate_deletesSuccessfully() {
+        String reId = "re_del_1";
+        Map<String, Object> body = new HashMap<>();
+        body.put("id", reId);
+        body.put("label", "Appartement Locatif");
+        body.put("currentValue", new BigDecimal("120000"));
+
+        service.savePatrimoineLigne("realEstate", body);
+
+        // Suppression
+        ResponseEntity<Void> deleteResp = service.deletePatrimoineLigne("realEstate", reId);
         assertEquals(HttpStatus.NO_CONTENT, deleteResp.getStatusCode());
 
+        // Vérification absence
         ResponseEntity<PatrimoineResponseDto> afterDeleteResp = service.getPatrimoine(false);
-        boolean stillPresent = afterDeleteResp.getBody().getRealEstate().stream().anyMatch(r -> id.equals(r.getId()));
-        assertFalse(stillPresent);
+        assertFalse(afterDeleteResp.getBody().getRealEstate().stream().anyMatch(r -> reId.equals(r.getId())));
     }
 
+    // -------------------------------------------------------------------------
+    // HISTORIQUE DE VALORISATION PLACEMENT
+    // -------------------------------------------------------------------------
+
     @Test
-    void addPlacementHistoriquePoint_andDelete() {
-        // Create placement first
+    void addPlacementHistoriquePoint_updatesPlacementBalance() {
+        String plcId = "plc_hist_1";
         Map<String, Object> plc = new HashMap<>();
+        plc.put("id", plcId);
         plc.put("label", "Assurance Vie");
         plc.put("balance", new BigDecimal("5000"));
-        ResponseEntity<Object> createPlc = service.savePatrimoineLigne("placements", plc);
-        @SuppressWarnings("unchecked")
-        String plcId = (String) ((Map<String, Object>) createPlc.getBody()).get("id");
+        service.savePatrimoineLigne("placements", plc);
 
-        Map<String, Object> point = new HashMap<>();
-        point.put("date", "2026-06-30");
-        point.put("value", new BigDecimal("5200"));
+        AddPlacementHistoriquePointRequest point = new AddPlacementHistoriquePointRequest("2026-06-30", new BigDecimal("5200"));
 
-        ResponseEntity<Object> pointResp = service.addPlacementHistoriquePoint(plcId, point);
+        ResponseEntity<Void> pointResp = service.addPlacementHistoriquePoint(plcId, point);
         assertEquals(HttpStatus.OK, pointResp.getStatusCode());
+        assertNull(pointResp.getBody());
 
-        ResponseEntity<Void> delResp = service.deletePlacementHistoriquePoint(plcId, 0);
-        assertEquals(HttpStatus.NO_CONTENT, delResp.getStatusCode());
+        // Vérification de la mise à jour de valorisation
+        ResponseEntity<PatrimoineResponseDto> resp = service.getPatrimoine(false);
+        PlacementDto updated = resp.getBody().getPlacements().stream()
+                .filter(p -> plcId.equals(p.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(updated);
+        assertEquals(new BigDecimal("5200"), updated.getBalance());
+        assertEquals("2026-06-30", updated.getBalanceDate());
     }
 
     @Test
-    void computePatrimoineProjections_constantEuros() {
+    void deletePlacementHistoriquePoint_returnsNoContent() {
+        String plcId = "plc_hist_2";
+        ResponseEntity<Void> delResp = service.deletePlacementHistoriquePoint(plcId, 0);
+        assertEquals(HttpStatus.NO_CONTENT, delResp.getStatusCode());
+        assertNull(delResp.getBody());
+    }
+
+    // -------------------------------------------------------------------------
+    // CALCULS PROJECTIONS PATRIMOINE
+    // -------------------------------------------------------------------------
+
+    @Test
+    void computePatrimoineProjections_nominalAndConstantEuros() {
         PatrimoineProjectionsModel projNominal = service.computePatrimoineProjections(persistenceManager.getBudgetData(), false);
         PatrimoineProjectionsModel projReal = service.computePatrimoineProjections(persistenceManager.getBudgetData(), true);
 
@@ -170,5 +312,6 @@ class PatrimoineServiceImplTest {
         assertNotNull(projReal);
         assertFalse(projNominal.totals().isEmpty());
         assertFalse(projReal.totals().isEmpty());
+        assertEquals(projNominal.totals().size(), projReal.totals().size());
     }
 }

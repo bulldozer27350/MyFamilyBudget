@@ -60,10 +60,13 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public ResponseEntity<Void> addPlacementHistoriquePoint(String placementId, AddPlacementHistoriquePointRequest body) {
-        Map<String, Object> map = (body instanceof Map) ? (Map<String, Object>) body : null;
-        this.persistenceManager.addPlacementHistoriquePoint(placementId, map);
+        if (body != null) {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("date", body.getDate());
+            map.put("value", body.getValue());
+            this.persistenceManager.addPlacementHistoriquePoint(placementId, map);
+        }
         return ResponseEntity.ok().build();
     }
 
