@@ -1,19 +1,49 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
-import com.moe.myfamilybudget.api.model.BudgetDataDto;
-import com.moe.myfamilybudget.api.model.OverviewResponseDto;
-import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
-import com.moe.myfamilybudget.server.internal.model.*;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
-@Service
-public class OverviewServiceImpl {
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.moe.myfamilybudget.api.controller.OverviewApi;
+import com.moe.myfamilybudget.api.model.BudgetDataDto;
+import com.moe.myfamilybudget.api.model.OverviewResponseDto;
+import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
+import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.CashflowYearModel;
+import com.moe.myfamilybudget.server.internal.model.ChargeModel;
+import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.server.internal.model.OverviewResultModel;
+import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
+import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
+import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
+import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
+import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
+import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.server.internal.model.TransferModel;
+import com.moe.myfamilybudget.server.internal.model.TripleAmountModel;
+import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
+import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+
+@RestController
+public class OverviewServiceImpl implements OverviewApi{
 
     private static final int TRIMESTRES_REQUIS = 172;
     private static final int AGE_TAUX_PLEIN_AUTO = 67;
@@ -28,14 +58,13 @@ public class OverviewServiceImpl {
     public OverviewServiceImpl(OverviewMapper mapper) {
         this.mapper = mapper;
     }
-
-    @Override
-    public OverviewResponseDto buildOverview(BudgetDataDto parameters, boolean useConstantEuros) {
+    
+    public ResponseEntity<OverviewResponseDto> buildOverview(BudgetDataDto parameters, Boolean useConstantEuros) {
         checkParameters(parameters);
-        BudgetDataModel internalData = mapper.toInternalModel(parameters);
+        BudgetDataModel internalData = this.mapper.toInternalModel(parameters);
 
         OverviewResultModel internalResult = computeOverview(internalData, useConstantEuros);
-        return mapper.toDto(internalResult);
+        return ResponseEntity.ok(this.mapper.toDto(internalResult));
     }
 
     private void checkParameters(BudgetDataDto parameters) {
@@ -771,4 +800,10 @@ public class OverviewServiceImpl {
             return null;
         }
     }
+
+    @Override
+    public ResponseEntity<OverviewResponseDto> getOverview(Boolean useConstantEuros) {
+        return this.buildOverview(new BudgetDataDto(), Boolean.TRUE.equals(useConstantEuros));
+    }
+
 }
