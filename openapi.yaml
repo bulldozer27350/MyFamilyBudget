@@ -557,13 +557,21 @@ paths:
       operationId: getAnalyse
       tags:
         - Analyse
+      parameters:
+        - name: monthsBack
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 12
+            description: Nombre de mois à analyser (3, 6, 12, 0 pour toute la période)
       responses:
         '200':
           description: Donnees d'analyse
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/AnalyseResponseDto'
 
 components:
   schemas:
@@ -940,6 +948,49 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BankTransactionDto'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankImportCategoryDto'
+        matchings:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankImportMatchingDto'
+
+    BankImportCategoryDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        kind:
+          type: string
+          enum: [Revenu, Dépense]
+        compressible:
+          type: string
+          enum: [Oui, Non]
+
+    BankImportMatchingDto:
+      type: object
+      properties:
+        month:
+          type: string
+          description: Mois au format ISO (YYYY-MM)
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankImportMatchingLinkDto'
+
+    BankImportMatchingLinkDto:
+      type: object
+      properties:
+        budgetLineId:
+          type: string
+        txIds:
+          type: array
+          items:
+            type: string
 
     CashflowYearDto:
       type: object
@@ -1159,3 +1210,141 @@ components:
             $ref: '#/components/schemas/RealEstateDto'
         patrimoine:
           $ref: '#/components/schemas/PatrimoineProjectionsDto'
+
+    AnalyseResponseDto:
+      type: object
+      properties:
+        kpis:
+          $ref: '#/components/schemas/AnalyseKpiDto'
+        landingData:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyseLandingRowDto'
+        driftRows:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyseDriftRowDto'
+        monthlyCompareData:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyseMonthlyCompareDto'
+        categorySummaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyseCategorySummaryDto'
+        currentMonthISO:
+          type: string
+          description: Mois courant au format ISO (YYYY-MM)
+        currentMonthLabel:
+          type: string
+          description: Libellé du mois courant en français
+
+    AnalyseKpiDto:
+      type: object
+      properties:
+        totalExpenses:
+          type: number
+          description: Total des dépenses sur la période
+        totalIncome:
+          type: number
+          description: Total des revenus sur la période
+        nbMonths:
+          type: integer
+          description: Nombre de mois analysés
+        uncategorizedCount:
+          type: integer
+          description: Nombre de transactions non catégorisées
+        compressibleTotal:
+          type: number
+          description: Total des dépenses compressibles
+
+    AnalyseLandingRowDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        kind:
+          type: string
+          enum: [charge, revenu, placement]
+        budgeted:
+          type: number
+          description: Montant budgeté
+        reel:
+          type: number
+          description: Montant réel constaté
+        pct:
+          type: number
+          description: Pourcentage de réalisation (réel / budgeté * 100)
+        status:
+          type: string
+          enum: [match, pending, economy, over]
+          description: Statut de la ligne
+
+    AnalyseDriftRowDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        kind:
+          type: string
+          enum: [charge, revenu, placement]
+        budgeted:
+          type: number
+          description: Montant budgeté
+        avg3m:
+          type: number
+          nullable: true
+          description: Moyenne réelle sur 3 mois
+        avg12m:
+          type: number
+          nullable: true
+          description: Moyenne réelle sur 12 mois
+        ecart:
+          type: number
+          nullable: true
+          description: Écart entre moyenne 3 mois et budgeté
+        ecartPct:
+          type: number
+          nullable: true
+          description: Écart en pourcentage
+        status:
+          type: string
+          enum: [match, pending, economy, over]
+          description: Statut de la dérive
+        months:
+          type: integer
+          description: Nombre de mois de données disponibles
+
+    AnalyseMonthlyCompareDto:
+      type: object
+      properties:
+        monthISO:
+          type: string
+          description: Mois au format ISO (YYYY-MM)
+        label:
+          type: string
+          description: Libellé du mois en format court
+        budgeted:
+          type: number
+          description: Total budgeté pour le mois
+        reel:
+          type: number
+          description: Total réel constaté pour le mois
+        hasPointing:
+          type: boolean
+          description: Indique si le mois a des pointages
+
+    AnalyseCategorySummaryDto:
+      type: object
+      properties:
+        label:
+          type: string
+        amount:
+          type: number
+        color:
+          type: string
+          description: Code couleur pour l'affichage
