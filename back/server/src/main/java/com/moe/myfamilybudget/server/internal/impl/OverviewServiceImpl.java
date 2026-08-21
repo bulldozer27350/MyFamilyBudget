@@ -54,16 +54,26 @@ public class OverviewServiceImpl implements OverviewApi{
     private static final BigDecimal MAJORATION_3_ENFANTS = new BigDecimal("0.10");
 
     private final OverviewMapper mapper;
+    private final com.moe.myfamilybudget.server.internal.persistence.PersistenceManager persistenceManager;
 
-    public OverviewServiceImpl(OverviewMapper mapper) {
+    public OverviewServiceImpl(OverviewMapper mapper, com.moe.myfamilybudget.server.internal.persistence.PersistenceManager persistenceManager) {
         this.mapper = mapper;
+        this.persistenceManager = persistenceManager;
+    }
+
+    @Override
+    public ResponseEntity<OverviewResponseDto> getOverview(Boolean useConstantEuros) {
+        BudgetDataModel internalData = this.persistenceManager.getBudgetData();
+        OverviewResultModel internalResult = computeOverview(internalData, Boolean.TRUE.equals(useConstantEuros));
+        return ResponseEntity.ok(this.mapper.toDto(internalResult));
     }
     
+    @Override
     public ResponseEntity<OverviewResponseDto> buildOverview(BudgetDataDto parameters, Boolean useConstantEuros) {
         checkParameters(parameters);
         BudgetDataModel internalData = this.mapper.toInternalModel(parameters);
 
-        OverviewResultModel internalResult = computeOverview(internalData, useConstantEuros);
+        OverviewResultModel internalResult = computeOverview(internalData, Boolean.TRUE.equals(useConstantEuros));
         return ResponseEntity.ok(this.mapper.toDto(internalResult));
     }
 

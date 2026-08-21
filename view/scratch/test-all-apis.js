@@ -86,6 +86,18 @@ const { BudgetApi } = sandbox.window.BudgetApp;
   const settings = await BudgetApi.getSettings();
   console.log("✓ Settings OK");
 
+  console.log("Testing BudgetApi.getBudgetFull & importJSON & resetData...");
+  const fullBudget = await BudgetApi.getBudgetFull();
+  if (!fullBudget || !fullBudget.settings) {
+    throw new Error("Invalid full budget data");
+  }
+  await BudgetApi.importJSON(fullBudget);
+  const resetBudget = await BudgetApi.resetData();
+  if (!resetBudget || !resetBudget.settings) {
+    throw new Error("Invalid reset budget data");
+  }
+  console.log("✓ Full budget export/import/reset OK");
+
   console.log("\nALL API TESTS PASSED SUCCESSFULLY! 🎉");
 })().catch(err => {
   console.error("TEST FAILED:", err);

@@ -97,7 +97,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [incomes, charges, oneoff, variableIncomes, variableOverrides]
+            enum: [incomes, charges, oneoff, variableIncomes, variableOverrides, placements]
         - name: id
           in: path
           required: true
@@ -108,12 +108,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                field:
-                  type: string
-                value:
-                  nullable: true
+              $ref: '#/components/schemas/UpdateTresorerieLigneRequestDto'
       responses:
         '200':
           description: Ligne mise à jour
@@ -375,7 +370,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/BudgetDataDto'
 
   /budget/import:
     post:
@@ -388,10 +383,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
+              $ref: '#/components/schemas/BudgetDataDto'
       responses:
         '200':
           description: Import reussi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetDataDto'
 
   /budget/reset:
     post:
@@ -402,6 +401,10 @@ paths:
       responses:
         '200':
           description: Reinitialise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetDataDto'
 
   # ---------------------------------------------------------------------------
   # IMPORT BANCAIRE & RAPPROCHEMENT
@@ -1059,6 +1062,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/VariablePreviewCellDto'
+
+    UpdateTresorerieLigneRequestDto:
+      type: object
+      required: [field]
+      properties:
+        field:
+          type: string
+        value:
+          nullable: true
+          description: Nouvelle valeur du champ (chaine, nombre, booleen...)
 
     TresorerieAjustementRequestDto:
       type: object

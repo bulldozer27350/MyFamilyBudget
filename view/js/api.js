@@ -521,6 +521,53 @@
      */
     onAnalyseChanged(listener) {
       return app().AnalyseService.subscribeAnalyse(listener);
+    },
+
+    /**
+     * Exporte l'intégralité du modèle de données (Sauvegarde).
+     * @returns {Promise<Object>}
+     */
+    async getBudgetFull() {
+      return Promise.resolve(app().BudgetStore.getData());
+    },
+
+    /**
+     * Importe un jeu de données JSON complet dans le store front et vers le back-end PersistenceManager.
+     * @param {Object|string} jsonData
+     * @returns {Promise<Object>}
+     */
+    async importJSON(jsonData) {
+      const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+      app().BudgetStore.setData(data);
+      if (typeof fetch !== 'undefined') {
+        try {
+          await fetch('/budget/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+        } catch (e) {
+          // Mode client seul / hors-ligne
+        }
+      }
+      return data;
+    },
+
+    /**
+     * Réinitialise l'ensemble des données aux valeurs par défaut.
+     * @returns {Promise<Object>}
+     */
+    async resetData() {
+      const defaultData = JSON.parse(JSON.stringify(app().DEFAULT_DATA || {}));
+      app().BudgetStore.setData(defaultData);
+      if (typeof fetch !== 'undefined') {
+        try {
+          await fetch('/budget/reset', { method: 'POST' });
+        } catch (e) {
+          // Mode client seul / hors-ligne
+        }
+      }
+      return defaultData;
     }
   };
 

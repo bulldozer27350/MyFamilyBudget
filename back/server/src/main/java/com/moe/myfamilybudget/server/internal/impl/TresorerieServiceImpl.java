@@ -28,17 +28,16 @@ public class TresorerieServiceImpl implements TresorerieApi {
     private static final BigDecimal MAJORATION_3_ENFANTS = new BigDecimal("0.10");
 
     private final TresorerieMapper mapper;
+    private final PersistenceManager persistenceManager;
 
-    public TresorerieServiceImpl(TresorerieMapper mapper) {
+    public TresorerieServiceImpl(TresorerieMapper mapper, PersistenceManager persistenceManager) {
         this.mapper = mapper;
+        this.persistenceManager = persistenceManager;
     }
 
     @Override
     public ResponseEntity<TresorerieResponseDto> getTresorerie(Boolean useConstantEuros) {
-        BudgetDataModel data = new BudgetDataModel(
-                new SettingsModel(1985, 64, 85, BigDecimal.ZERO, null, null, BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015")),
-                List.of(), List.of(), List.of(), List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null
-        );
+        BudgetDataModel data = this.persistenceManager.getBudgetData();
         TresorerieResultModel result = computeTresorerie(data, Boolean.TRUE.equals(useConstantEuros));
         return ResponseEntity.ok(this.mapper.toTresorerieResponseDto(result));
     }
@@ -86,22 +85,31 @@ public class TresorerieServiceImpl implements TresorerieApi {
 
     @Override
     public ResponseEntity<Object> addTresorerieLigne(String listKey, Map<String, Object> body) {
-        return ResponseEntity.ok(Map.of("status", "added", "listKey", listKey));
+        Map<String, Object> created = this.persistenceManager.addTresorerieRow(listKey, body);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(created);
     }
 
     @Override
-    public ResponseEntity<Object> updateTresorerieLigne(String listKey, String id, Map<String, Object> body) {
-        return ResponseEntity.ok(Map.of("status", "updated", "listKey", listKey, "id", id));
+    public ResponseEntity<Void> updateTresorerieLigne(String listKey, String id, com.moe.myfamilybudget.api.model.UpdateTresorerieLigneRequestDto body) {
+        if (body != null) {
+            this.persistenceManager.updateTresorerieRow(listKey, id, body.getField(), body.getValue());
+        }
+        return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<Void> removeTresorerieLigne(String listKey, String id) {
+        this.persistenceManager.removeTresorerieRow(listKey, id);
         return ResponseEntity.noContent().build();
     }
 
     @Override
-    public ResponseEntity<Object> applyTresorerieAjustement(TresorerieAjustementRequestDto request) {
-        return ResponseEntity.ok(Map.of("status", "adjusted", "lineId", request.getLineId()));
+    public ResponseEntity<Void> applyTresorerieAjustement(TresorerieAjustementRequestDto request) {
+        if (request != null && request.getLineId() != null && request.getKind() != null && request.getNewMonthly() != null) {
+            BigDecimal newMonthly = BigDecimal.valueOf(request.getNewMonthly().doubleValue());
+            this.persistenceManager.applyTresorerieAjustement(request.getLineId(), request.getKind(), newMonthly);
+        }
+        return ResponseEntity.ok().build();
     }
 
     // --- Logique Métier Purity Java 21 / BigDecimal ---

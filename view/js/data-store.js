@@ -171,6 +171,13 @@
         try {
           const parsed = JSON.parse(ev.target.result);
           this.setData(parsed);
+          if (typeof fetch !== "undefined") {
+            fetch("/budget/import", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(parsed)
+            }).catch(() => {});
+          }
           if (callback) callback(true, "Données importées avec succès");
         } catch (err) {
           alert("Fichier JSON invalide.");
@@ -183,6 +190,9 @@
       if (typeof window !== "undefined" && window.confirm("Réinitialiser toutes les données aux valeurs d'exemple ?")) {
         const defaultData = getDefaultData();
         this.setData(defaultData);
+        if (typeof fetch !== "undefined") {
+          fetch("/budget/reset", { method: "POST" }).catch(() => {});
+        }
       }
     },
     subscribe(listener) {
