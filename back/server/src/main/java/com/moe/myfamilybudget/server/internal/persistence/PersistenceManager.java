@@ -677,7 +677,7 @@ public class PersistenceManager {
                     "inflationRate".equals(field) ? toBigDecimal(value, new BigDecimal("0.02")) : s.inflationRate(),
                     "pivotDate".equals(field) ? (value != null ? String.valueOf(value) : "") : s.pivotDate(),
                     "pivotMode".equals(field) ? (value != null ? String.valueOf(value) : "") : s.pivotMode(),
-                    "pivotBalanceManual".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : s.pivotBalanceManual(),
+                    ("startBalance".equals(field) || "pivotBalanceManual".equals(field)) ? toBigDecimal(value, BigDecimal.ZERO) : s.startBalance(),
                     "childExitAge".equals(field) ? toInteger(value, 21) : s.childExitAge(),
                     "taxAbattement".equals(field) ? toBigDecimal(value, new BigDecimal("0.10")) : s.taxAbattement(),
                     "pass2026".equals(field) ? toBigDecimal(value, new BigDecimal("47100")) : s.pass2026(),

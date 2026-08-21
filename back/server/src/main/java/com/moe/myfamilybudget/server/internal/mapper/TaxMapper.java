@@ -92,7 +92,7 @@ public class TaxMapper {
             settingsMap.put("inflationRate", s.inflationRate());
             settingsMap.put("pivotDate", s.pivotDate());
             settingsMap.put("pivotMode", s.pivotMode());
-            settingsMap.put("pivotBalanceManual", s.pivotBalanceManual());
+            settingsMap.put("startBalance", s.startBalance());
             settingsMap.put("childExitAge", s.childExitAge());
             settingsMap.put("taxAbattement", s.taxAbattement());
             settingsMap.put("pass2026", s.pass2026());
