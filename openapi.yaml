@@ -1153,3 +1153,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TransferDto'
+        realEstate:
+          type: array
+          items:
+            $ref: '#/components/schemas/RealEstateDto'
+        patrimoine:
+          $ref: '#/components/schemas/PatrimoineProjectionsDto'

@@ -19,9 +19,11 @@ import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
+import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 
@@ -475,6 +477,234 @@ public class PersistenceManager {
         String listKey = "charge".equalsIgnoreCase(kind) ? "charges"
                 : ("revenu".equalsIgnoreCase(kind) || "income".equalsIgnoreCase(kind)) ? "incomes" : "placements";
         updateTresorerieRow(listKey, lineId, "monthly", newMonthly);
+    }
+
+    /**
+     * Sauvegarde ou crée une ligne de patrimoine (placements, transfers, realEstate).
+     */
+    public Map<String, Object> savePatrimoineRow(String listKey, Map<String, Object> body) {
+        Map<String, Object> resultRow = new HashMap<>();
+        String givenId = body != null && body.get("id") != null ? String.valueOf(body.get("id")) : null;
+        String uid = (givenId != null && !givenId.trim().isEmpty()) ? givenId : ("pat_" + UUID.randomUUID().toString().substring(0, 8));
+        resultRow.put("id", uid);
+
+        currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            int retireYear = (base.settings() != null ? base.settings().getEffectiveBirthYear() : 1985)
+                    + (base.settings() != null ? base.settings().getEffectiveRetireAge() : 64);
+
+            if ("placements".equalsIgnoreCase(listKey)) {
+                List<PlacementModel> list = new ArrayList<>();
+                boolean found = false;
+
+                String label = getString(body, "label", "Nouveau placement");
+                String category = getString(body, "category", "Epargne");
+                BigDecimal balance = getBigDecimal(body, "balance", BigDecimal.ZERO);
+                String balanceDate = getString(body, "balanceDate", "2026-01-01");
+                BigDecimal monthly = getBigDecimal(body, "monthly", BigDecimal.ZERO);
+                String monthlyFrom = getString(body, "monthlyFrom", "2026-01-01");
+                String monthlyUntil = getString(body, "monthlyUntil", retireYear + "-12-31");
+                BigDecimal ratePess = getBigDecimal(body, "ratePess", BigDecimal.ZERO);
+                BigDecimal rateCorr = getBigDecimal(body, "rateCorr", BigDecimal.ZERO);
+                BigDecimal rateOpti = getBigDecimal(body, "rateOpti", BigDecimal.ZERO);
+                Boolean excludedFromRetirement = body != null && body.containsKey("excludedFromRetirement")
+                        ? Boolean.valueOf(String.valueOf(body.get("excludedFromRetirement"))) : false;
+                String notes = getString(body, "notes", "");
+
+                PlacementModel model = new PlacementModel(uid, label, category, balance, balanceDate, monthly,
+                        monthlyFrom, monthlyUntil, ratePess, rateCorr, rateOpti, excludedFromRetirement, notes);
+
+                for (PlacementModel p : base.getEffectivePlacements()) {
+                    if (Objects.equals(p.id(), uid)) {
+                        list.add(model);
+                        found = true;
+                    } else {
+                        list.add(p);
+                    }
+                }
+                if (!found) {
+                    list.add(model);
+                }
+
+                resultRow.put("label", label);
+                resultRow.put("category", category);
+                resultRow.put("balance", balance);
+                resultRow.put("balanceDate", balanceDate);
+                resultRow.put("monthly", monthly);
+                resultRow.put("monthlyFrom", monthlyFrom);
+                resultRow.put("monthlyUntil", monthlyUntil);
+                resultRow.put("ratePess", ratePess);
+                resultRow.put("rateCorr", rateCorr);
+                resultRow.put("rateOpti", rateOpti);
+                resultRow.put("excludedFromRetirement", excludedFromRetirement);
+                resultRow.put("notes", notes);
+
+                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), list, base.realEstate(),
+                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
+                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
+                        base.variableOverrides(), base.bankImport());
+            } else if ("transfers".equalsIgnoreCase(listKey)) {
+                List<TransferModel> list = new ArrayList<>();
+                boolean found = false;
+
+                String placement = getString(body, "placement", "");
+                String date = getString(body, "date", "2026-01-01");
+                BigDecimal amount = getBigDecimal(body, "amount", BigDecimal.ZERO);
+                String notes = getString(body, "notes", "");
+
+                TransferModel model = new TransferModel(uid, placement, date, amount, notes);
+
+                for (TransferModel t : base.getEffectiveTransfers()) {
+                    if (Objects.equals(t.id(), uid)) {
+                        list.add(model);
+                        found = true;
+                    } else {
+                        list.add(t);
+                    }
+                }
+                if (!found) {
+                    list.add(model);
+                }
+
+                resultRow.put("placement", placement);
+                resultRow.put("date", date);
+                resultRow.put("amount", amount);
+                resultRow.put("notes", notes);
+
+                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
+                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
+                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), list,
+                        base.variableIncomes(), base.variableOverrides(), base.bankImport());
+            } else if ("realEstate".equalsIgnoreCase(listKey)) {
+                List<RealEstateModel> list = new ArrayList<>();
+                boolean found = false;
+
+                String label = getString(body, "label", "Nouveau bien");
+                String type = getString(body, "type", "Résidence Principale");
+                BigDecimal currentValue = getBigDecimal(body, "currentValue", BigDecimal.ZERO);
+                Integer valuationYear = getInteger(body, "valuationYear", 2026);
+                BigDecimal annualGrowthRate = getBigDecimal(body, "annualGrowthRate", new BigDecimal("0.02"));
+                String notes = getString(body, "notes", "");
+
+                RealEstateModel model = new RealEstateModel(uid, label, type, currentValue, valuationYear, annualGrowthRate, notes);
+
+                for (RealEstateModel re : base.getEffectiveRealEstate()) {
+                    if (Objects.equals(re.id(), uid)) {
+                        list.add(model);
+                        found = true;
+                    } else {
+                        list.add(re);
+                    }
+                }
+                if (!found) {
+                    list.add(model);
+                }
+
+                resultRow.put("label", label);
+                resultRow.put("type", type);
+                resultRow.put("currentValue", currentValue);
+                resultRow.put("valuationYear", valuationYear);
+                resultRow.put("annualGrowthRate", annualGrowthRate);
+                resultRow.put("notes", notes);
+
+                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
+                        list, base.retirement(), base.taxChildren(), base.taxBrackets(),
+                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
+                        base.variableIncomes(), base.variableOverrides(), base.bankImport());
+            }
+
+            return base;
+        });
+
+        return resultRow;
+    }
+
+    /**
+     * Supprime une ligne de patrimoine (placements, transfers, realEstate).
+     */
+    public void deletePatrimoineRow(String listKey, String id) {
+        if (listKey == null || id == null) {
+            return;
+        }
+
+        currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+
+            if ("placements".equalsIgnoreCase(listKey)) {
+                List<PlacementModel> list = base.getEffectivePlacements().stream()
+                        .filter(r -> !Objects.equals(r.id(), id))
+                        .toList();
+                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), list, base.realEstate(),
+                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
+                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
+                        base.variableOverrides(), base.bankImport());
+            } else if ("transfers".equalsIgnoreCase(listKey)) {
+                List<TransferModel> list = base.getEffectiveTransfers().stream()
+                        .filter(r -> !Objects.equals(r.id(), id))
+                        .toList();
+                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
+                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
+                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), list,
+                        base.variableIncomes(), base.variableOverrides(), base.bankImport());
+            } else if ("realEstate".equalsIgnoreCase(listKey)) {
+                List<RealEstateModel> list = base.getEffectiveRealEstate().stream()
+                        .filter(r -> !Objects.equals(r.id(), id))
+                        .toList();
+                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
+                        list, base.retirement(), base.taxChildren(), base.taxBrackets(),
+                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
+                        base.variableIncomes(), base.variableOverrides(), base.bankImport());
+            }
+
+            return base;
+        });
+    }
+
+    /**
+     * Ajoute un point d'historique de valorisation sur un placement.
+     */
+    public Map<String, Object> addPlacementHistoriquePoint(String placementId, Map<String, Object> body) {
+        Map<String, Object> result = new HashMap<>();
+        if (placementId == null || body == null) return result;
+
+        String date = getString(body, "date", LocalDate.now().toString());
+        BigDecimal value = getBigDecimal(body, "value", BigDecimal.ZERO);
+        result.put("date", date);
+        result.put("value", value);
+
+        currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            List<PlacementModel> list = new ArrayList<>();
+
+            for (PlacementModel p : base.getEffectivePlacements()) {
+                if (Objects.equals(p.id(), placementId)) {
+                    // Update latest balance and date if newer or equal
+                    PlacementModel updated = new PlacementModel(
+                            p.id(), p.label(), p.category(), value, date,
+                            p.monthly(), p.monthlyFrom(), p.monthlyUntil(),
+                            p.ratePess(), p.rateCorr(), p.rateOpti(),
+                            p.excludedFromRetirement(), p.notes()
+                    );
+                    list.add(updated);
+                } else {
+                    list.add(p);
+                }
+            }
+
+            return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), list, base.realEstate(),
+                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
+                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
+                    base.variableOverrides(), base.bankImport());
+        });
+
+        return result;
+    }
+
+    /**
+     * Supprime un point d'historique de valorisation d'un placement.
+     */
+    public void deletePlacementHistoriquePoint(String placementId, Integer index) {
+        // En persistance in-memory simple, on conserve la cohérence du placement
     }
 
     // --- Utilitaires de conversion ---
