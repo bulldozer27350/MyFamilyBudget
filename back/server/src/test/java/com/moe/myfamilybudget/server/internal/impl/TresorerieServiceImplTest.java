@@ -263,9 +263,16 @@ class TresorerieServiceImplTest {
         String id = (String) ((Map<String, Object>) addResp.getBody()).get("id");
 
         // Mise à jour du libellé
-        service.updateTresorerieLigne("incomes", id, new UpdateTresorerieLigneRequestDto("label", "Consulting Senior"));
+        UpdateTresorerieLigneRequestDto dto = new UpdateTresorerieLigneRequestDto();
+        dto.setField("label");
+        dto.setValue("Consulting Senior");
+        service.updateTresorerieLigne("incomes", id, dto);
         // Mise à jour du montant mensuel
-        service.updateTresorerieLigne("incomes", id, new UpdateTresorerieLigneRequestDto("monthly", 3200));
+        
+        dto = new UpdateTresorerieLigneRequestDto();
+        dto.setField("monthly");
+        dto.setValue(new BigDecimal("3200"));
+        service.updateTresorerieLigne("incomes", id, dto);
 
         ResponseEntity<TresorerieResponseDto> getResp = service.getTresorerie(false);
         IncomeDto updated = getResp.getBody().getIncomes().stream()
@@ -285,9 +292,16 @@ class TresorerieServiceImplTest {
         ResponseEntity<Object> addResp = service.addTresorerieLigne("charges", body);
         @SuppressWarnings("unchecked")
         String id = (String) ((Map<String, Object>) addResp.getBody()).get("id");
+        UpdateTresorerieLigneRequestDto dto = new UpdateTresorerieLigneRequestDto();
+        dto.setField("monthly");
+        dto.setValue(new BigDecimal("95"));
 
-        service.updateTresorerieLigne("charges", id, new UpdateTresorerieLigneRequestDto("monthly", 95));
-        service.updateTresorerieLigne("charges", id, new UpdateTresorerieLigneRequestDto("notes", "Nouvelle formule"));
+        service.updateTresorerieLigne("charges", id, dto);
+        
+        dto = new UpdateTresorerieLigneRequestDto();
+        dto.setField("notes");
+        dto.setValue("Nouvelle formule");
+        service.updateTresorerieLigne("charges", id, dto);
 
         ResponseEntity<TresorerieResponseDto> getResp = service.getTresorerie(false);
         ChargeDto updated = getResp.getBody().getCharges().stream()
@@ -308,9 +322,16 @@ class TresorerieServiceImplTest {
         ResponseEntity<Object> addResp = service.addTresorerieLigne("oneoff", body);
         @SuppressWarnings("unchecked")
         String id = (String) ((Map<String, Object>) addResp.getBody()).get("id");
+        UpdateTresorerieLigneRequestDto dto = new UpdateTresorerieLigneRequestDto();
+        dto.setField("amount");
+        dto.setValue(new BigDecimal("6500"));
 
-        service.updateTresorerieLigne("oneoff", id, new UpdateTresorerieLigneRequestDto("amount", 6500));
-        service.updateTresorerieLigne("oneoff", id, new UpdateTresorerieLigneRequestDto("date", "2027-05-15"));
+        service.updateTresorerieLigne("oneoff", id, dto);
+        
+        dto = new UpdateTresorerieLigneRequestDto();
+        dto.setField("date");
+        dto.setValue("2027-05-15");
+        service.updateTresorerieLigne("oneoff", id, dto);
 
         ResponseEntity<TresorerieResponseDto> getResp = service.getTresorerie(false);
         OneOffExpenseDto updated = getResp.getBody().getOneoff().stream()
@@ -330,9 +351,16 @@ class TresorerieServiceImplTest {
         ResponseEntity<Object> addResp = service.addTresorerieLigne("variableIncomes", body);
         @SuppressWarnings("unchecked")
         String id = (String) ((Map<String, Object>) addResp.getBody()).get("id");
+        UpdateTresorerieLigneRequestDto dto = new UpdateTresorerieLigneRequestDto();
+        dto.setField("rate");
+        dto.setValue(new BigDecimal("0.08"));
 
-        service.updateTresorerieLigne("variableIncomes", id, new UpdateTresorerieLigneRequestDto("rate", 0.08));
-        service.updateTresorerieLigne("variableIncomes", id, new UpdateTresorerieLigneRequestDto("startYear", 2027));
+        service.updateTresorerieLigne("variableIncomes", id, dto);
+        
+        dto = new UpdateTresorerieLigneRequestDto();
+        dto.setField("startYear");
+        dto.setValue(2027);
+        service.updateTresorerieLigne("variableIncomes", id, dto);
 
         ResponseEntity<TresorerieResponseDto> getResp = service.getTresorerie(false);
         VariableIncomeDto updated = getResp.getBody().getVariableIncomes().stream()
