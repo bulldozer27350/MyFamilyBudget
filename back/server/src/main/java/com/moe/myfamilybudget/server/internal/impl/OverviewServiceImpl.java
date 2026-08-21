@@ -810,10 +810,4 @@ public class OverviewServiceImpl implements OverviewApi{
             return null;
         }
     }
-
-    @Override
-    public ResponseEntity<OverviewResponseDto> getOverview(Boolean useConstantEuros) {
-        return this.buildOverview(new BudgetDataDto(), Boolean.TRUE.equals(useConstantEuros));
-    }
-
 }

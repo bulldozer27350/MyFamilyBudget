@@ -172,26 +172,22 @@ public class PersistenceManager {
             } else if ("variableIncomes".equalsIgnoreCase(listKey)) {
                 List<VariableIncomeModel> list = new ArrayList<>(base.getEffectiveVariableIncomes());
                 String label = getString(body, "label", "Nouvelle prime");
-                String type = getString(body, "type", "Prime");
                 String firstIncomeLabel = !base.getEffectiveIncomes().isEmpty() ? base.getEffectiveIncomes().get(0).label() : "";
                 String refIncomeLabel = getString(body, "refIncomeLabel", firstIncomeLabel);
                 BigDecimal rate = getBigDecimal(body, "rate", new BigDecimal("0.05"));
                 Integer startYear = getInteger(body, "startYear", 2026);
                 Integer endYear = getInteger(body, "endYear", retireYear);
                 String taxable = getString(body, "taxable", "Oui");
-                String notes = getString(body, "notes", "");
 
-                VariableIncomeModel created = new VariableIncomeModel(uid, label, type, refIncomeLabel, rate, startYear, endYear, taxable, notes);
+                VariableIncomeModel created = new VariableIncomeModel(uid, label, refIncomeLabel, rate, startYear, endYear, taxable);
                 list.add(created);
 
                 resultRow.put("label", label);
-                resultRow.put("type", type);
                 resultRow.put("refIncomeLabel", refIncomeLabel);
                 resultRow.put("rate", rate);
                 resultRow.put("startYear", startYear);
                 resultRow.put("endYear", endYear);
                 resultRow.put("taxable", taxable);
-                resultRow.put("notes", notes);
 
                 return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
                         base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
@@ -204,21 +200,56 @@ public class PersistenceManager {
                 Integer year = getInteger(body, "year", LocalDate.now().getYear());
                 BigDecimal amount = getBigDecimal(body, "amount", BigDecimal.ZERO);
                 String taxable = getString(body, "taxable", "");
-                String notes = getString(body, "notes", "");
 
-                VariableOverrideModel created = new VariableOverrideModel(uid, label, year, amount, taxable, notes);
+                VariableOverrideModel created = new VariableOverrideModel(uid, label, year, amount, taxable);
                 list.add(created);
 
                 resultRow.put("label", label);
                 resultRow.put("year", year);
                 resultRow.put("amount", amount);
                 resultRow.put("taxable", taxable);
-                resultRow.put("notes", notes);
 
                 return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
                         base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
                         base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
                         base.variableIncomes(), list, base.bankImport());
+            } else if ("placements".equalsIgnoreCase(listKey)) {
+                List<PlacementModel> list = new ArrayList<>(base.getEffectivePlacements());
+                String label = getString(body, "label", "Nouveau placement");
+                String category = getString(body, "category", "Epargne");
+                BigDecimal balance = getBigDecimal(body, "balance", BigDecimal.ZERO);
+                String balanceDate = getString(body, "balanceDate", "2026-01-01");
+                BigDecimal monthly = getBigDecimal(body, "monthly", BigDecimal.ZERO);
+                String monthlyFrom = getString(body, "monthlyFrom", "2026-01-01");
+                String monthlyUntil = getString(body, "monthlyUntil", retireYear + "-12-31");
+                BigDecimal ratePess = getBigDecimal(body, "ratePess", BigDecimal.ZERO);
+                BigDecimal rateCorr = getBigDecimal(body, "rateCorr", BigDecimal.ZERO);
+                BigDecimal rateOpti = getBigDecimal(body, "rateOpti", BigDecimal.ZERO);
+                Boolean excludedFromRetirement = body != null && body.containsKey("excludedFromRetirement")
+                        ? Boolean.valueOf(String.valueOf(body.get("excludedFromRetirement"))) : false;
+                String notes = getString(body, "notes", "");
+
+                PlacementModel created = new PlacementModel(uid, label, category, balance, balanceDate, monthly,
+                        monthlyFrom, monthlyUntil, ratePess, rateCorr, rateOpti, excludedFromRetirement, notes);
+                list.add(created);
+
+                resultRow.put("label", label);
+                resultRow.put("category", category);
+                resultRow.put("balance", balance);
+                resultRow.put("balanceDate", balanceDate);
+                resultRow.put("monthly", monthly);
+                resultRow.put("monthlyFrom", monthlyFrom);
+                resultRow.put("monthlyUntil", monthlyUntil);
+                resultRow.put("ratePess", ratePess);
+                resultRow.put("rateCorr", rateCorr);
+                resultRow.put("rateOpti", rateOpti);
+                resultRow.put("excludedFromRetirement", excludedFromRetirement);
+                resultRow.put("notes", notes);
+
+                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), list, base.realEstate(),
+                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
+                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
+                        base.variableOverrides(), base.bankImport());
             }
             return base;
         });
@@ -307,13 +338,11 @@ public class PersistenceManager {
                         list.add(new VariableIncomeModel(
                                 r.id(),
                                 "label".equals(field) ? (value != null ? String.valueOf(value) : "") : r.label(),
-                                "type".equals(field) ? (value != null ? String.valueOf(value) : "") : r.type(),
                                 "refIncomeLabel".equals(field) ? (value != null ? String.valueOf(value) : "") : r.refIncomeLabel(),
                                 "rate".equals(field) ? toBigDecimal(value, new BigDecimal("0.05")) : r.rate(),
                                 "startYear".equals(field) ? toInteger(value, 2026) : r.startYear(),
                                 "endYear".equals(field) ? toInteger(value, 2049) : r.endYear(),
-                                "taxable".equals(field) ? (value != null ? String.valueOf(value) : "") : r.taxable(),
-                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes()
+                                "taxable".equals(field) ? (value != null ? String.valueOf(value) : "") : r.taxable()
                         ));
                     } else {
                         list.add(r);
@@ -332,8 +361,7 @@ public class PersistenceManager {
                                 "label".equals(field) ? (value != null ? String.valueOf(value) : "") : r.label(),
                                 "year".equals(field) ? toInteger(value, LocalDate.now().getYear()) : r.year(),
                                 "amount".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.amount(),
-                                "taxable".equals(field) ? (value != null ? String.valueOf(value) : "") : r.taxable(),
-                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes()
+                                "taxable".equals(field) ? (value != null ? String.valueOf(value) : "") : r.taxable()
                         ));
                     } else {
                         list.add(r);
@@ -359,12 +387,8 @@ public class PersistenceManager {
                                 "ratePess".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.ratePess(),
                                 "rateCorr".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.rateCorr(),
                                 "rateOpti".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.rateOpti(),
-                                "sweepPriority".equals(field) ? (value != null ? String.valueOf(value) : "") : r.sweepPriority(),
-                                "sweepCap".equals(field) ? (value != null ? String.valueOf(value) : "") : r.sweepCap(),
-                                "pauseTriggerBalance".equals(field) ? (value != null ? String.valueOf(value) : "") : r.pauseTriggerBalance(),
-                                "pausePriority".equals(field) ? (value != null ? String.valueOf(value) : "") : r.pausePriority(),
-                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes(),
-                                r.valueHistory()
+                                "excludedFromRetirement".equals(field) ? (value instanceof Boolean b ? b : Boolean.parseBoolean(String.valueOf(value))) : r.excludedFromRetirement(),
+                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes()
                         ));
                     } else {
                         list.add(r);
@@ -431,6 +455,14 @@ public class PersistenceManager {
                         base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
                         base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
                         base.variableIncomes(), list, base.bankImport());
+            } else if ("placements".equalsIgnoreCase(listKey)) {
+                List<PlacementModel> list = base.getEffectivePlacements().stream()
+                        .filter(r -> !Objects.equals(r.id(), id))
+                        .toList();
+                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), list, base.realEstate(),
+                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
+                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
+                        base.variableOverrides(), base.bankImport());
             }
 
             return base;
@@ -506,22 +538,24 @@ public class PersistenceManager {
         SettingsModel settings = new SettingsModel(
                 1985,
                 64,
-                90,
+                85,
+                new BigDecimal("0.02"),
+                "",
+                "manual",
                 BigDecimal.ZERO,
                 21,
                 new BigDecimal("0.10"),
-                new BigDecimal("0.02"),
-                "",
-                "manual"
+                new BigDecimal("47100"),
+                new BigDecimal("0.015")
         );
 
         RetirementModel retirement = new RetirementModel(
+                Collections.emptyList(),
                 new BigDecimal("47100"),
                 new BigDecimal("0.015"),
                 new BigDecimal("1.4386"),
                 "2025-11-01",
-                new BigDecimal("0.01"),
-                Collections.emptyList()
+                new BigDecimal("0.01")
         );
 
         List<TaxBracketModel> taxBrackets = List.of(
@@ -533,8 +567,6 @@ public class PersistenceManager {
         );
 
         BankImportModel bankImport = new BankImportModel(
-                Collections.emptyList(),
-                Collections.emptyList(),
                 Collections.emptyList(),
                 Collections.emptyList(),
                 Collections.emptyList()
