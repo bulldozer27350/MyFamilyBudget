@@ -1,0 +1,577 @@
+package com.moe.myfamilybudget.server.internal.model;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+/**
+ * Pure domain calculator for Bank Import and Pending Operations logic.
+ * Independent of Spring, OpenAPI DTOs, and external frameworks.
+ */
+public final class BankImportCalculator {
+
+    private BankImportCalculator() {
+        // Utility class
+    }
+
+    /**
+     * Parses raw CSV text into rows of cell strings, handling delimiter, quotes, and CRLF.
+     */
+    public static List<List<String>> parseCSVText(String text, String delimiter) {
+        if (text == null || text.isBlank()) {
+            return Collections.emptyList();
+        }
+        String sep = (delimiter != null && !delimiter.isEmpty()) ? delimiter : ";";
+        List<List<String>> rows = new ArrayList<>();
+        List<String> row = new ArrayList<>();
+        StringBuilder field = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (inQuotes) {
+                if (c == '"') {
+                    if (i + 1 < text.length() && text.charAt(i + 1) == '"') {
+                        field.append('"');
+                        i++;
+                    } else {
+                        inQuotes = false;
+                    }
+                } else {
+                    field.append(c);
+                }
+            } else if (c == '"') {
+                inQuotes = true;
+            } else if (text.startsWith(sep, i)) {
+                row.add(field.toString());
+                field.setLength(0);
+                i += sep.length() - 1;
+            } else if (c == '\n') {
+                row.add(field.toString());
+                rows.add(row);
+                row = new ArrayList<>();
+                field.setLength(0);
+            } else if (c == '\r') {
+                // Ignore carriage return
+            } else {
+                field.append(c);
+            }
+        }
+        if (field.length() > 0 || !row.isEmpty()) {
+            row.add(field.toString());
+            rows.add(row);
+        }
+
+        return rows.stream()
+                .filter(r -> r.stream().anyMatch(cell -> cell != null && !cell.trim().isEmpty()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Parses a date string according to format (e.g., DD/MM/YYYY) into ISO YYYY-MM-DD.
+     */
+    public static String parseDateWithFormat(String str, String format) {
+        if (str == null || str.isBlank()) return null;
+        String cleaned = str.trim();
+        String fmt = (format != null && !format.isBlank()) ? format : "DD/MM/YYYY";
+
+        String[] parts = cleaned.split("[/\\-\\.]");
+        String[] order = fmt.split("[/\\-\\.]");
+
+        if (parts.length != 3 || order.length != 3) return null;
+
+        Integer d = null, m = null, y = null;
+        for (int idx = 0; idx < 3; idx++) {
+            try {
+                int v = Integer.parseInt(parts[idx].trim());
+                char tokenChar = order[idx].trim().toUpperCase().charAt(0);
+                if (tokenChar == 'D') d = v;
+                else if (tokenChar == 'M') m = v;
+                else if (tokenChar == 'Y') y = v < 100 ? 2000 + v : v;
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        if (d == null || m == null || y == null) return null;
+        if (d < 1 || d > 31 || m < 1 || m > 12) return null;
+
+        return String.format("%04d-%02d-%02d", y, m, d);
+    }
+
+    /**
+     * Parses an amount string into BigDecimal with RoundingMode.HALF_UP.
+     */
+    public static BigDecimal parseAmountText(String str) {
+        if (str == null || str.isBlank()) return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        String s = str.trim().replaceAll("[€\\s]", "");
+        if (s.isEmpty()) return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+        if (s.contains(",") && s.contains(".")) {
+            if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+                s = s.replace(".", "").replace(",", ".");
+            } else {
+                s = s.replace(",", "");
+            }
+        } else if (s.contains(",")) {
+            s = s.replace(",", ".");
+        }
+
+        try {
+            return new BigDecimal(s).setScale(2, RoundingMode.HALF_UP);
+        } catch (NumberFormatException e) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+    }
+
+    /**
+     * Generates a deduplication key for transactions or pending operations.
+     */
+    public static String transactionDedupeKey(String date, String label, BigDecimal amount) {
+        String d = date != null ? date : "";
+        String l = label != null ? label.trim().toLowerCase() : "";
+        BigDecimal amt = amount != null ? amount : BigDecimal.ZERO;
+        long roundedCents = amt.multiply(new BigDecimal("100")).setScale(0, RoundingMode.HALF_UP).longValue();
+        return d + "|" + l + "|" + roundedCents;
+    }
+
+    /**
+     * Derives a rule keyword from a label.
+     */
+    public static String ruleKeyFromLabel(String label) {
+        if (label == null) return "";
+        return label.replaceAll("[0-9]", "").replaceAll("\\s+", " ").trim().toUpperCase();
+    }
+
+    /**
+     * Applies matching categorization rules to transactions.
+     */
+    public static List<BankImportModel.BankTransactionModel> applyRulesToTransactions(
+            List<BankImportModel.BankTransactionModel> transactions,
+            List<BankImportModel.BankImportRuleModel> rules
+    ) {
+        if (transactions == null) return Collections.emptyList();
+        List<BankImportModel.BankImportRuleModel> activeRules = rules != null ? rules.stream()
+                .filter(r -> r.matchText() != null && !r.matchText().trim().isEmpty())
+                .toList() : Collections.emptyList();
+
+        List<BankImportModel.BankTransactionModel> result = new ArrayList<>();
+        for (BankImportModel.BankTransactionModel t : transactions) {
+            if (t.categoryId() != null && !t.categoryId().isBlank()) {
+                result.add(t);
+                continue;
+            }
+            String labelUpper = (t.label() != null ? t.label() : "").toUpperCase();
+            Optional<BankImportModel.BankImportRuleModel> match = activeRules.stream()
+                    .filter(r -> labelUpper.contains(r.matchText().trim().toUpperCase()))
+                    .findFirst();
+
+            if (match.isPresent()) {
+                result.add(new BankImportModel.BankTransactionModel(
+                        t.id(), t.date(), t.label(), t.type(), t.amount(), match.get().categoryId()
+                ));
+            } else {
+                result.add(t);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Applies matching categorization rules to pending operations.
+     */
+    public static List<BankImportModel.PendingOperationModel> applyRulesToPendingOperations(
+            List<BankImportModel.PendingOperationModel> operations,
+            List<BankImportModel.BankImportRuleModel> rules
+    ) {
+        if (operations == null) return Collections.emptyList();
+        List<BankImportModel.BankImportRuleModel> activeRules = rules != null ? rules.stream()
+                .filter(r -> r.matchText() != null && !r.matchText().trim().isEmpty())
+                .toList() : Collections.emptyList();
+
+        List<BankImportModel.PendingOperationModel> result = new ArrayList<>();
+        for (BankImportModel.PendingOperationModel op : operations) {
+            if (op.categoryId() != null && !op.categoryId().isBlank()) {
+                result.add(op);
+                continue;
+            }
+            String labelUpper = (op.label() != null ? op.label() : "").toUpperCase();
+            Optional<BankImportModel.BankImportRuleModel> match = activeRules.stream()
+                    .filter(r -> labelUpper.contains(r.matchText().trim().toUpperCase()))
+                    .findFirst();
+
+            if (match.isPresent()) {
+                result.add(new BankImportModel.PendingOperationModel(
+                        op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
+                        op.label(), op.amount(), match.get().categoryId(), op.status(),
+                        op.linkedTxId(), op.clearedDate(), op.notes()
+                ));
+            } else {
+                result.add(op);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Imports bank transactions from CSV rows, handles deduplication, and applies categorization rules.
+     */
+    public static BankImportSummaryModel importTransactions(
+            List<List<String>> rawRows,
+            List<String> colRoles,
+            BankImportModel.BankColumnMappingModel mapping,
+            List<BankImportModel.BankTransactionModel> existingTxs,
+            List<BankImportModel.BankImportRuleModel> rules
+    ) {
+        if (colRoles == null) {
+            throw new IllegalArgumentException("Les rôles de colonnes ne peuvent pas être null.");
+        }
+        int dateCol = colRoles.indexOf("date");
+        int labelCol = colRoles.indexOf("label");
+        int typeCol = colRoles.indexOf("type");
+        int amountCol = colRoles.indexOf("amount");
+
+        if (dateCol == -1 || labelCol == -1 || amountCol == -1) {
+            throw new IllegalArgumentException("Il faut au minimum assigner les rôles Date, Libellé et Montant à une colonne.");
+        }
+
+        BankImportModel.BankColumnMappingModel updatedMapping = new BankImportModel.BankColumnMappingModel(
+                mapping != null ? mapping.delimiter() : ";",
+                mapping != null ? mapping.dateFormat() : "DD/MM/YYYY",
+                mapping != null ? mapping.hasHeader() : true,
+                dateCol, labelCol, typeCol >= 0 ? typeCol : null, amountCol
+        );
+
+        Map<String, Integer> existingCounts = new HashMap<>();
+        if (existingTxs != null) {
+            for (BankImportModel.BankTransactionModel t : existingTxs) {
+                String k = transactionDedupeKey(t.date(), t.label(), t.amount());
+                existingCounts.put(k, existingCounts.getOrDefault(k, 0) + 1);
+            }
+        }
+
+        Map<String, Integer> fileKeyCounts = new HashMap<>();
+        List<BankImportModel.BankTransactionModel> imported = new ArrayList<>();
+        List<BankImportModel.BankTransactionModel> ignoredDuplicates = new ArrayList<>();
+
+        if (rawRows != null) {
+            String dateFormat = mapping != null ? mapping.dateFormat() : "DD/MM/YYYY";
+            for (List<String> row : rawRows) {
+                if (dateCol >= row.size() || labelCol >= row.size() || amountCol >= row.size()) continue;
+
+                String dateISO = parseDateWithFormat(row.get(dateCol), dateFormat);
+                if (dateISO == null) continue;
+
+                String label = row.get(labelCol) != null ? row.get(labelCol).trim() : "";
+                String type = (typeCol >= 0 && typeCol < row.size()) ? row.get(typeCol).trim() : "";
+                BigDecimal amount = parseAmountText(row.get(amountCol));
+
+                BankImportModel.BankTransactionModel t = new BankImportModel.BankTransactionModel(
+                        java.util.UUID.randomUUID().toString().substring(0, 8),
+                        dateISO, label, type, amount, ""
+                );
+
+                String key = transactionDedupeKey(t.date(), t.label(), t.amount());
+                fileKeyCounts.put(key, fileKeyCounts.getOrDefault(key, 0) + 1);
+                int stored = existingCounts.getOrDefault(key, 0);
+
+                if (fileKeyCounts.get(key) <= stored) {
+                    ignoredDuplicates.add(t);
+                } else {
+                    existingCounts.put(key, stored + 1);
+                    imported.add(t);
+                }
+            }
+        }
+
+        List<BankImportModel.BankTransactionModel> categorized = applyRulesToTransactions(imported, rules);
+        int autoCategorized = (int) categorized.stream()
+                .filter(t -> t.categoryId() != null && !t.categoryId().isBlank())
+                .count();
+
+        return new BankImportSummaryModel(
+                categorized.size(),
+                ignoredDuplicates.size(),
+                autoCategorized,
+                ignoredDuplicates,
+                categorized,
+                updatedMapping
+        );
+    }
+
+    /**
+     * Auto-reconciles pending operations against bank transactions.
+     */
+    public static AutoMatchResultModel autoMatchPendingOperations(
+            List<BankImportModel.PendingOperationModel> pendingOps,
+            List<BankImportModel.BankTransactionModel> transactions
+    ) {
+        if (pendingOps == null) {
+            return new AutoMatchResultModel(0, Collections.emptyList());
+        }
+        List<BankImportModel.BankTransactionModel> txs = transactions != null ? transactions : Collections.emptyList();
+
+        int matchCount = 0;
+        Set<String> currentlyLinked = new HashSet<>();
+        for (BankImportModel.PendingOperationModel op : pendingOps) {
+            if (op.linkedTxId() != null && !op.linkedTxId().isBlank()) {
+                currentlyLinked.add(op.linkedTxId());
+            }
+        }
+
+        List<BankImportModel.PendingOperationModel> updatedOps = new ArrayList<>();
+        for (BankImportModel.PendingOperationModel op : pendingOps) {
+            if ("cleared".equalsIgnoreCase(op.status()) && op.linkedTxId() != null && !op.linkedTxId().isBlank()) {
+                updatedOps.add(op);
+                continue;
+            }
+
+            BigDecimal targetAmt = op.amount() != null ? op.amount() : BigDecimal.ZERO;
+            boolean matched = false;
+
+            // 1. Search by exact refNumber (>= 3 chars)
+            if (op.refNumber() != null && op.refNumber().trim().length() >= 3) {
+                String refLower = op.refNumber().trim().toLowerCase();
+                Optional<BankImportModel.BankTransactionModel> foundByRef = txs.stream()
+                        .filter(t -> !currentlyLinked.contains(t.id()))
+                        .filter(t -> (t.label() != null ? t.label().toLowerCase() : "").contains(refLower))
+                        .filter(t -> t.amount().abs().subtract(targetAmt.abs()).abs().compareTo(new BigDecimal("0.01")) < 0)
+                        .findFirst();
+
+                if (foundByRef.isPresent()) {
+                    BankImportModel.BankTransactionModel found = foundByRef.get();
+                    currentlyLinked.add(found.id());
+                    matchCount++;
+                    updatedOps.add(new BankImportModel.PendingOperationModel(
+                            op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
+                            op.label(), op.amount(), op.categoryId(), "cleared", found.id(),
+                            found.date(), op.notes()
+                    ));
+                    matched = true;
+                }
+            }
+
+            if (matched) continue;
+
+            // 2. Search by unique exact amount within 90 days window
+            LocalDate opDate = parseLocalDate(op.date());
+            List<BankImportModel.BankTransactionModel> candidates = txs.stream()
+                    .filter(t -> !currentlyLinked.contains(t.id()))
+                    .filter(t -> t.amount().abs().subtract(targetAmt.abs()).abs().compareTo(new BigDecimal("0.01")) < 0)
+                    .filter(t -> {
+                        if (opDate == null) return true;
+                        LocalDate tDate = parseLocalDate(t.date());
+                        if (tDate == null) return true;
+                        long diffDays = Math.abs(ChronoUnit.DAYS.between(opDate, tDate));
+                        return diffDays <= 90;
+                    })
+                    .toList();
+
+            if (candidates.size() == 1) {
+                BankImportModel.BankTransactionModel found = candidates.get(0);
+                currentlyLinked.add(found.id());
+                matchCount++;
+                updatedOps.add(new BankImportModel.PendingOperationModel(
+                        op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
+                        op.label(), op.amount(), op.categoryId(), "cleared", found.id(),
+                        found.date(), op.notes()
+                ));
+            } else {
+                updatedOps.add(op);
+            }
+        }
+
+        return new AutoMatchResultModel(matchCount, updatedOps);
+    }
+
+    /**
+     * Parses purchase date from deferred CB transaction label.
+     */
+    public static String parsePurchaseDateFromLabel(String label) {
+        if (label == null || label.isBlank()) return null;
+        Pattern p = Pattern.compile("DU\\s+(\\d{2})(\\d{2})(\\d{2,4})", Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(label);
+        if (m.find()) {
+            try {
+                int d = Integer.parseInt(m.group(1));
+                int mo = Integer.parseInt(m.group(2));
+                int y = Integer.parseInt(m.group(3));
+                if (y < 100) y = 2000 + y;
+                if (d >= 1 && d <= 31 && mo >= 1 && mo <= 12) {
+                    return String.format("%04d-%02d-%02d", y, mo, d);
+                }
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Imports deferred CB pending operations from parsed CSV rows.
+     */
+    public static PendingImportSummaryModel importPendingCB(
+            List<List<String>> rawRows,
+            List<String> colRoles,
+            String dateFormat,
+            boolean usePurchaseDate,
+            List<BankImportModel.PendingOperationModel> existingOps,
+            List<BankImportModel.BankImportRuleModel> rules
+    ) {
+        if (colRoles == null) {
+            throw new IllegalArgumentException("Les rôles de colonnes ne peuvent pas être null.");
+        }
+        int dateCol = colRoles.indexOf("date");
+        int labelCol = colRoles.indexOf("label");
+        int amountCol = colRoles.indexOf("amount");
+
+        if (dateCol == -1 || labelCol == -1 || amountCol == -1) {
+            throw new IllegalArgumentException("Il faut au minimum assigner les rôles Date, Libellé et Montant à une colonne.");
+        }
+
+        Map<String, Integer> existingCounts = new HashMap<>();
+        if (existingOps != null) {
+            for (BankImportModel.PendingOperationModel op : existingOps) {
+                String k = transactionDedupeKey(op.date(), op.label(), op.amount());
+                existingCounts.put(k, existingCounts.getOrDefault(k, 0) + 1);
+            }
+        }
+
+        Map<String, Integer> fileKeyCounts = new HashMap<>();
+        List<BankImportModel.PendingOperationModel> imported = new ArrayList<>();
+        List<BankImportModel.PendingOperationModel> ignoredDuplicates = new ArrayList<>();
+
+        String fmt = (dateFormat != null && !dateFormat.isBlank()) ? dateFormat : "DD-MM-YYYY";
+
+        if (rawRows != null) {
+            for (List<String> row : rawRows) {
+                if (dateCol >= row.size() || labelCol >= row.size() || amountCol >= row.size()) continue;
+
+                String rawDate = row.get(dateCol);
+                String dateISO = parseDateWithFormat(rawDate, fmt);
+                if (dateISO == null) dateISO = parseDateWithFormat(rawDate, "DD/MM/YYYY");
+                if (dateISO == null) dateISO = parseDateWithFormat(rawDate, "YYYY-MM-DD");
+                if (dateISO == null) continue;
+
+                String rawLabel = row.get(labelCol) != null ? row.get(labelCol).trim() : "";
+                if (rawLabel.isEmpty()) continue;
+
+                BigDecimal amt = parseAmountText(row.get(amountCol));
+                String purchaseDate = parsePurchaseDateFromLabel(rawLabel);
+
+                String finalOpDate = dateISO;
+                String expectedDebitDate = dateISO;
+                if (usePurchaseDate && purchaseDate != null) {
+                    finalOpDate = purchaseDate;
+                    expectedDebitDate = dateISO;
+                }
+
+                String notes = "";
+                if (purchaseDate != null && !usePurchaseDate) {
+                    String[] pParts = purchaseDate.split("-");
+                    if (pParts.length == 3) {
+                        notes = "Achat le " + pParts[2] + "/" + pParts[1] + "/" + pParts[0];
+                    }
+                }
+
+                BankImportModel.PendingOperationModel op = new BankImportModel.PendingOperationModel(
+                        java.util.UUID.randomUUID().toString().substring(0, 8),
+                        finalOpDate, expectedDebitDate, "cb", "", rawLabel,
+                        amt, "", "pending", null, null, notes
+                );
+
+                String key = transactionDedupeKey(op.date(), op.label(), op.amount());
+                fileKeyCounts.put(key, fileKeyCounts.getOrDefault(key, 0) + 1);
+                int stored = existingCounts.getOrDefault(key, 0);
+
+                if (fileKeyCounts.get(key) <= stored) {
+                    ignoredDuplicates.add(op);
+                } else {
+                    existingCounts.put(key, stored + 1);
+                    imported.add(op);
+                }
+            }
+        }
+
+        List<BankImportModel.PendingOperationModel> categorized = applyRulesToPendingOperations(imported, rules);
+        int autoCategorized = (int) categorized.stream()
+                .filter(op -> op.categoryId() != null && !op.categoryId().isBlank())
+                .count();
+
+        String firstOpDate = !categorized.isEmpty() ? categorized.get(0).date() : null;
+
+        return new PendingImportSummaryModel(
+                categorized.size(),
+                ignoredDuplicates.size(),
+                autoCategorized,
+                ignoredDuplicates,
+                firstOpDate,
+                categorized
+        );
+    }
+
+    /**
+     * Categorizes a transaction and optionally creates/updates a matching rule.
+     */
+    public static CategorizeResultModel categorizeTransaction(
+            String txId,
+            String categoryId,
+            String ruleKeyword,
+            List<BankImportModel.BankTransactionModel> transactions,
+            List<BankImportModel.BankImportRuleModel> rules
+    ) {
+        if (transactions == null) {
+            return new CategorizeResultModel(Collections.emptyList(), rules != null ? rules : Collections.emptyList());
+        }
+
+        List<BankImportModel.BankImportRuleModel> currentRules = rules != null ? new ArrayList<>(rules) : new ArrayList<>();
+        if (ruleKeyword != null && !ruleKeyword.trim().isBlank()) {
+            String key = ruleKeyword.trim().toUpperCase();
+            boolean found = false;
+            for (int i = 0; i < currentRules.size(); i++) {
+                BankImportModel.BankImportRuleModel r = currentRules.get(i);
+                if (r.matchText() != null && r.matchText().trim().toUpperCase().equals(key)) {
+                    currentRules.set(i, new BankImportModel.BankImportRuleModel(r.id(), ruleKeyword.trim(), categoryId));
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                currentRules.add(new BankImportModel.BankImportRuleModel(
+                        java.util.UUID.randomUUID().toString().substring(0, 8),
+                        ruleKeyword.trim(),
+                        categoryId
+                ));
+            }
+        }
+
+        List<BankImportModel.BankTransactionModel> updated = transactions.stream()
+                .map(t -> t.id().equals(txId)
+                        ? new BankImportModel.BankTransactionModel(t.id(), t.date(), t.label(), t.type(), t.amount(), categoryId)
+                        : t)
+                .collect(Collectors.toList());
+
+        List<BankImportModel.BankTransactionModel> finalTxs = applyRulesToTransactions(updated, currentRules);
+        return new CategorizeResultModel(finalTxs, currentRules);
+    }
+
+    private static LocalDate parseLocalDate(String str) {
+        if (str == null || str.isBlank()) return null;
+        try {
+            return LocalDate.parse(str.trim());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+}

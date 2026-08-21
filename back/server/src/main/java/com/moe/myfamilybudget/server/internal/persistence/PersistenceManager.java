@@ -870,6 +870,29 @@ public class PersistenceManager {
         // En persistance in-memory simple, on conserve la cohérence du placement
     }
 
+    /**
+     * Obtient les données d'import bancaire.
+     */
+    public BankImportModel getBankImport() {
+        return getBudgetData().bankImport();
+    }
+
+    /**
+     * Met à jour les données d'import bancaire.
+     */
+    public void updateBankImport(BankImportModel bankImport) {
+        if (bankImport == null) return;
+        currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            return new BudgetDataModel(
+                    base.settings(), base.incomes(), base.charges(), base.placements(), base.realEstate(),
+                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
+                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
+                    base.variableOverrides(), bankImport, base.getEffectiveAssetCategories()
+            );
+        });
+    }
+
     // --- Utilitaires de conversion ---
 
     private String getString(Map<String, Object> map, String key, String defaultValue) {
