@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.model;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public record BudgetDataModel(
@@ -17,8 +18,46 @@ public record BudgetDataModel(
     List<TransferModel> transfers,
     List<VariableIncomeModel> variableIncomes,
     List<VariableOverrideModel> variableOverrides,
-    BankImportModel bankImport
+    BankImportModel bankImport,
+    List<AssetCategoryModel> assetCategories
 ) {
+    public BudgetDataModel(
+        SettingsModel settings,
+        List<IncomeModel> incomes,
+        List<ChargeModel> charges,
+        List<PlacementModel> placements,
+        List<RealEstateModel> realEstate,
+        RetirementModel retirement,
+        List<TaxChildModel> taxChildren,
+        List<TaxBracketModel> taxBrackets,
+        List<TaxRateOverrideModel> taxRateOverrides,
+        List<TaxActualOverrideModel> taxActualOverrides,
+        List<OneOffExpenseModel> oneoff,
+        List<TransferModel> transfers,
+        List<VariableIncomeModel> variableIncomes,
+        List<VariableOverrideModel> variableOverrides,
+        BankImportModel bankImport
+    ) {
+        this(settings, incomes, charges, placements, realEstate, retirement, taxChildren,
+             taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers,
+             variableIncomes, variableOverrides, bankImport, List.of());
+    }
+
+    public SettingsModel getEffectiveSettings() {
+        if (settings != null) {
+            return settings;
+        }
+        return new SettingsModel(
+            1985, 64, 85, new BigDecimal("0.02"), "", "manual",
+            BigDecimal.ZERO, 21, new BigDecimal("0.10"),
+            new BigDecimal("47100"), new BigDecimal("0.015")
+        );
+    }
+
+    public List<AssetCategoryModel> getEffectiveAssetCategories() {
+        return assetCategories != null ? assetCategories : List.of();
+    }
+
     public List<IncomeModel> getEffectiveIncomes() {
         return incomes != null ? incomes : List.of();
     }
@@ -44,11 +83,11 @@ public record BudgetDataModel(
             return taxBrackets;
         }
         return List.of(
-            new TaxBracketModel("tb_1", new java.math.BigDecimal("11294"), java.math.BigDecimal.ZERO),
-            new TaxBracketModel("tb_2", new java.math.BigDecimal("28797"), new java.math.BigDecimal("0.11")),
-            new TaxBracketModel("tb_3", new java.math.BigDecimal("82341"), new java.math.BigDecimal("0.30")),
-            new TaxBracketModel("tb_4", new java.math.BigDecimal("177106"), new java.math.BigDecimal("0.41")),
-            new TaxBracketModel("tb_5", null, new java.math.BigDecimal("0.45"))
+            new TaxBracketModel("tb_1", new BigDecimal("11294"), BigDecimal.ZERO),
+            new TaxBracketModel("tb_2", new BigDecimal("28797"), new BigDecimal("0.11")),
+            new TaxBracketModel("tb_3", new BigDecimal("82341"), new BigDecimal("0.30")),
+            new TaxBracketModel("tb_4", new BigDecimal("177106"), new BigDecimal("0.41")),
+            new TaxBracketModel("tb_5", null, new BigDecimal("0.45"))
         );
     }
 

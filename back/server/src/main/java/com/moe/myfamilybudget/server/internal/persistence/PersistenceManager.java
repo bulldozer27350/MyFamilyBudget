@@ -684,7 +684,75 @@ public class PersistenceManager {
                     updated, base.incomes(), base.charges(), base.placements(), base.realEstate(),
                     base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
                     base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                    base.variableOverrides(), base.bankImport()
+                    base.variableOverrides(), base.bankImport(), base.getEffectiveAssetCategories()
+            );
+        });
+    }
+
+    /**
+     * Met à jour une cellule d'une catégorie d'actif.
+     */
+    public void updateAssetCategory(String id, String field, Object value) {
+        if (id == null || field == null) return;
+        currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            List<AssetCategoryModel> list = new ArrayList<>(base.getEffectiveAssetCategories());
+            List<AssetCategoryModel> updatedList = new ArrayList<>();
+            for (AssetCategoryModel c : list) {
+                if (Objects.equals(c.id(), id)) {
+                    AssetCategoryModel updated = new AssetCategoryModel(
+                            c.id(),
+                            "icon".equals(field) ? String.valueOf(value) : c.icon(),
+                            "name".equals(field) ? String.valueOf(value) : c.name(),
+                            "bucket".equals(field) ? String.valueOf(value) : c.bucket()
+                    );
+                    updatedList.add(updated);
+                } else {
+                    updatedList.add(c);
+                }
+            }
+            return new BudgetDataModel(
+                    base.settings(), base.incomes(), base.charges(), base.placements(), base.realEstate(),
+                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
+                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
+                    base.variableOverrides(), base.bankImport(), updatedList
+            );
+        });
+    }
+
+    /**
+     * Ajoute une nouvelle catégorie d'actif.
+     */
+    public void addAssetCategory(AssetCategoryModel category) {
+        if (category == null) return;
+        currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            List<AssetCategoryModel> list = new ArrayList<>(base.getEffectiveAssetCategories());
+            list.add(category);
+            return new BudgetDataModel(
+                    base.settings(), base.incomes(), base.charges(), base.placements(), base.realEstate(),
+                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
+                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
+                    base.variableOverrides(), base.bankImport(), list
+            );
+        });
+    }
+
+    /**
+     * Supprime une catégorie d'actif par ID.
+     */
+    public void removeAssetCategory(String id) {
+        if (id == null) return;
+        currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            List<AssetCategoryModel> list = base.getEffectiveAssetCategories().stream()
+                    .filter(c -> !Objects.equals(c.id(), id))
+                    .toList();
+            return new BudgetDataModel(
+                    base.settings(), base.incomes(), base.charges(), base.placements(), base.realEstate(),
+                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
+                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
+                    base.variableOverrides(), base.bankImport(), list
             );
         });
     }
