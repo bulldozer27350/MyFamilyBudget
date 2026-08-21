@@ -47,7 +47,7 @@ class AnalyseCalculatorTest {
         CategoryModel cat2 = new CategoryModel("cat2", "Salaire", "Revenu", "Non");
 
         BankTransactionModel tx1 = new BankTransactionModel(
-                "tx1", "2026-08-05", "Loyer août", new BigDecimal("-1000"), "cat1", "done", null
+                "tx1", "2026-08-05", "Loyer août", "cb", new BigDecimal("-1000"), "cat1"
         );
 
         MatchingLinkModel link1 = new MatchingLinkModel("c1", List.of("tx1"));
@@ -58,6 +58,7 @@ class AnalyseCalculatorTest {
                 List.of(cat1, cat2),
                 List.of(),
                 List.of(tx1),
+                List.of(),
                 List.of(matching)
         );
 
