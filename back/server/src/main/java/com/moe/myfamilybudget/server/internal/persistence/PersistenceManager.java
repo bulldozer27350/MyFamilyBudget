@@ -22,7 +22,10 @@ import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
+import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
+import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
@@ -666,7 +669,7 @@ public class PersistenceManager {
         if (field == null) return;
         currentBudget.updateAndGet(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
-            SettingsModel s = base.getEffectiveSettings();
+            SettingsModel s = base.settings();
             SettingsModel updated = new SettingsModel(
                     "birthYear".equals(field) ? toInteger(value, 1985) : s.birthYear(),
                     "retireAge".equals(field) ? toInteger(value, 64) : s.retireAge(),
