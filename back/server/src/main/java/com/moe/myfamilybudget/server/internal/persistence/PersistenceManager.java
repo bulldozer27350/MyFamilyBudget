@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.stereotype.Component;
 
+import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
