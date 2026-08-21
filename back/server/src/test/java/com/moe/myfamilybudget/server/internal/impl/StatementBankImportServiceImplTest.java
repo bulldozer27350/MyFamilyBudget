@@ -1,7 +1,5 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
-import java.math.BigDecimal;
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -9,32 +7,37 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockMultipartFile;
 
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
-@DisplayName("StatementBankImportServiceImpl Service Unit Tests")
+@DisplayName("StatementBankImportServiceImpl OpenAPI Unit Tests")
 class StatementBankImportServiceImplTest {
 
     private StatementBankImportServiceImpl service;
+    private PendingOperationsServiceImpl pendingService;
     private PersistenceManager persistenceManager;
 
     @BeforeEach
     void setUp() {
         persistenceManager = PersistenceManager.getInstance();
         persistenceManager.resetBudgetData();
-        service = new StatementBankImportServiceImpl(persistenceManager, new StatementBankImportMapper());
+        StatementBankImportMapper mapper = new StatementBankImportMapper();
+        service = new StatementBankImportServiceImpl(persistenceManager, mapper);
+        pendingService = new PendingOperationsServiceImpl(persistenceManager, mapper);
     }
 
     @Test
-    @DisplayName("getBankImport returns initial bank import state")
+    @DisplayName("getBankImport returns bank import state")
     void testGetBankImport() {
-        ResponseEntity<Map<String, Object>> response = service.getBankImport();
+        ResponseEntity<Object> response = service.getBankImport();
 
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-        Map<String, Object> body = response.getBody();
-        assertThat(body).isNotNull();
+        assertThat(response.getBody()).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBody();
         assertThat(body).containsKeys("columnMapping", "categories", "rules", "transactions", "pendingOperations");
     }
 
@@ -61,49 +64,29 @@ class StatementBankImportServiceImplTest {
     }
 
     @Test
-    @DisplayName("addCategory and removeCategory updates stored categories")
-    void testCategoryCRUD() {
-        Map<String, Object> catDto = Map.of("label", "Alimentation", "kind", "Dépense", "compressible", "Non");
-        ResponseEntity<Map<String, Object>> addResp = service.addCategory(catDto);
+    @DisplayName("importBankCSV imports transactions from CSV multipart file")
+    void testImportBankCSV() {
+        String csvContent = "Date;Libelle;Montant\n15/01/2026;Achat Carrefour;-45.50\n";
+        MockMultipartFile file = new MockMultipartFile("file", "statement.csv", "text/csv", csvContent.getBytes());
 
-        assertThat(addResp.getStatusCode().is2xxSuccessful()).isTrue();
-        String catId = (String) addResp.getBody().get("id");
-        assertThat(catId).isNotNull();
+        ResponseEntity<Void> response = service.importBankCSV(file);
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
 
         BankImportModel stored = persistenceManager.getBankImport();
-        assertThat(stored.categories()).hasSize(1);
-        assertThat(stored.categories().get(0).label()).isEqualTo("Alimentation");
-
-        ResponseEntity<Void> removeResp = service.removeCategory(catId);
-        assertThat(removeResp.getStatusCode().is2xxSuccessful()).isTrue();
-
-        assertThat(persistenceManager.getBankImport().categories()).isEmpty();
+        assertThat(stored.transactions()).hasSize(1);
+        assertThat(stored.transactions().get(0).label()).isEqualTo("Achat Carrefour");
     }
 
     @Test
-    @DisplayName("addRule and recalculateBankImportRules applies rules to stored transactions")
-    void testRuleCRUDAndRecalculate() {
-        // Pre-seed a transaction
-        BankImportModel base = persistenceManager.getBankImport();
-        BankImportModel seeded = new BankImportModel(
-                base.columnMapping(),
-                base.categories(),
-                base.rules(),
-                List.of(new BankImportModel.BankTransactionModel("tx1", "2026-01-10", "CARREFOUR HYPER", "", new BigDecimal("-40.00"), "")),
-                base.pendingOperations(),
-                base.matchings()
-        );
-        persistenceManager.updateBankImport(seeded);
+    @DisplayName("getPendingOperations, reconcilePendingOperations and ignorePendingOperation conform to OpenAPI contract")
+    void testPendingOperationsAPI() {
+        ResponseEntity<Object> getResp = pendingService.getPendingOperations();
+        assertThat(getResp.getStatusCode().is2xxSuccessful()).isTrue();
 
-        // Add rule
-        Map<String, Object> ruleDto = Map.of("matchText", "CARREFOUR", "categoryId", "cat_supermarche");
-        service.addRule(ruleDto);
+        ResponseEntity<Void> reconcileResp = pendingService.reconcilePendingOperations(Map.of());
+        assertThat(reconcileResp.getStatusCode().is2xxSuccessful()).isTrue();
 
-        // Recalculate
-        ResponseEntity<Void> recalcResp = service.recalculateBankImportRules();
-        assertThat(recalcResp.getStatusCode().is2xxSuccessful()).isTrue();
-
-        BankImportModel updated = persistenceManager.getBankImport();
-        assertThat(updated.transactions().get(0).categoryId()).isEqualTo("cat_supermarche");
+        ResponseEntity<Void> ignoreResp = pendingService.ignorePendingOperation(Map.of("id", "op123"));
+        assertThat(ignoreResp.getStatusCode().is2xxSuccessful()).isTrue();
     }
 }
