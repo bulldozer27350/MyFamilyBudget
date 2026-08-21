@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -274,7 +275,9 @@ class PatrimoineServiceImplTest {
         plc.put("balance", new BigDecimal("5000"));
         service.savePatrimoineLigne("placements", plc);
 
-        AddPlacementHistoriquePointRequest point = new AddPlacementHistoriquePointRequest("2026-06-30", new BigDecimal("5200"));
+        AddPlacementHistoriquePointRequest point = new AddPlacementHistoriquePointRequest();
+        point.setDate(LocalDate.of(2026, 6, 30));//2026-06-30
+        point.setValue(new BigDecimal("5200"));
 
         ResponseEntity<Void> pointResp = service.addPlacementHistoriquePoint(plcId, point);
         assertEquals(HttpStatus.OK, pointResp.getStatusCode());
