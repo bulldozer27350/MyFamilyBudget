@@ -23,6 +23,6 @@ public record PointageModel(
         if (charges == null) charges = Collections.emptyList();
         if (incomes == null) incomes = Collections.emptyList();
         if (placements == null) placements = Collections.emptyList();
-        if (settings == null) settings = new SettingsModel(null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        if (settings == null) settings = new SettingsModel(null, null, null, null, null, null, null, null, null, null, null);
     }
 }

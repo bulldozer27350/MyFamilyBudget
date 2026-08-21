@@ -75,7 +75,7 @@ public final class PointageCalculator {
                 boolean untilOK = p.monthlyUntil() == null || p.monthlyUntil().isBlank() || monthISO.compareTo(toMonthISO(p.monthlyUntil())) <= 0;
                 if (!fromOK || !untilOK) continue;
 
-                activeLines.add(new PointageBudgetLineModel(p.id(), "Épargne : " + p.label(), "placement", m, p.categoryId()));
+                activeLines.add(new PointageBudgetLineModel(p.id(), "Épargne : " + p.label(), "placement", m, p.category()));
             }
         }
 

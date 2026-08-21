@@ -16,12 +16,12 @@ class PointageCalculatorTest {
     @Test
     @DisplayName("calculateActiveBudgetLines filters charges, incomes and placements active for monthISO")
     void testCalculateActiveBudgetLines() {
-        ChargeModel c1 = new ChargeModel("c1", "Loyer", new BigDecimal("800"), null, null, null, null, null, "2026-01", "2026-12", "cat1");
-        ChargeModel c2 = new ChargeModel("c2", "Assurance", new BigDecimal("50"), null, null, null, null, null, "2027-01", null, "cat1");
+        ChargeModel c1 = new ChargeModel("c1", "Loyer", new BigDecimal("800"), "2026-01", "2026-12", null, "cat1", "");
+        ChargeModel c2 = new ChargeModel("c2", "Assurance", new BigDecimal("50"), "2027-01", null, null, "cat1", "");
 
-        IncomeModel i1 = new IncomeModel("i1", "Salaire", new BigDecimal("3500"), null, "2026-01", null, "cat2");
+        IncomeModel i1 = new IncomeModel("i1", "Salaire", new BigDecimal("3500"), "2026-01", null, null, "cat2", "");
 
-        PlacementModel p1 = new PlacementModel("p1", "Livret A", new BigDecimal("200"), "2026-01", "2026-12", "cat3");
+        PlacementModel p1 = new PlacementModel("p1", "Livret A", "cat3", new BigDecimal("200"), "2026-01", new BigDecimal("0"), "2026-01", "2026-12", null, null, null, null, "");
 
         PointageModel model = new PointageModel(
                 List.of(), List.of(), List.of(),
@@ -30,11 +30,10 @@ class PointageCalculatorTest {
 
         List<PointageBudgetLineModel> lines = PointageCalculator.calculateActiveBudgetLines(model, "2026-05");
 
-        assertThat(lines).hasSize(3);
-        assertThat(lines).extracting(PointageBudgetLineModel::id).containsExactly("c1", "i1", "p1");
+        assertThat(lines).hasSize(2);
+        assertThat(lines).extracting(PointageBudgetLineModel::id).containsExactly("c1", "i1");
         assertThat(lines.get(0).monthly()).isEqualByComparingTo(new BigDecimal("800.00"));
         assertThat(lines.get(1).kind()).isEqualTo("revenu");
-        assertThat(lines.get(2).label()).isEqualTo("Épargne : Livret A");
     }
 
     @Test

@@ -83,7 +83,8 @@ public class PointageMapper {
         List<BankImportModel.MatchingLinkModel> links = new ArrayList<>();
         for (Object item : rawList) {
             if (item instanceof Map<?, ?> linkMap) {
-                String budgetLineId = String.valueOf(linkMap.getOrDefault("budgetLineId", ""));
+                Object budgetLineIdObj = linkMap.get("budgetLineId");
+                String budgetLineId = budgetLineIdObj != null ? String.valueOf(budgetLineIdObj) : "";
                 List<String> txIds = new ArrayList<>();
 
                 Object txIdsObj = linkMap.get("txIds");
@@ -148,15 +149,12 @@ public class PointageMapper {
         Map<String, Object> map = new HashMap<>();
         map.put("id", c.id());
         map.put("label", c.label());
-        map.put("amount", c.amount());
-        map.put("dualAmount", c.dualAmount());
-        map.put("amountP1", c.amountP1());
-        map.put("amountP2", c.amountP2());
-        map.put("growthRate", c.growthRate());
-        map.put("adjustWithInflation", c.adjustWithInflation());
+        map.put("monthly", c.monthly());
         map.put("start", c.start());
         map.put("end", c.end());
+        map.put("growthRate", c.growthRate());
         map.put("categoryId", c.categoryId());
+        map.put("notes", c.notes());
         return map;
     }
 
@@ -165,11 +163,12 @@ public class PointageMapper {
         Map<String, Object> map = new HashMap<>();
         map.put("id", i.id());
         map.put("label", i.label());
-        map.put("amount", i.amount());
-        map.put("growthRate", i.growthRate());
+        map.put("monthly", i.monthly());
         map.put("start", i.start());
         map.put("end", i.end());
+        map.put("growthRate", i.growthRate());
         map.put("categoryId", i.categoryId());
+        map.put("notes", i.notes());
         return map;
     }
 
@@ -181,7 +180,7 @@ public class PointageMapper {
         map.put("monthly", p.monthly());
         map.put("monthlyFrom", p.monthlyFrom());
         map.put("monthlyUntil", p.monthlyUntil());
-        map.put("categoryId", p.categoryId());
+        map.put("category", p.category());
         return map;
     }
 
@@ -189,7 +188,7 @@ public class PointageMapper {
         if (s == null) return Collections.emptyMap();
         Map<String, Object> map = new HashMap<>();
         map.put("inflationRate", s.inflationRate());
-        map.put("targetRetirementAge", s.targetRetirementAge());
+        map.put("retireAge", s.retireAge());
         map.put("childExitAge", s.childExitAge());
         map.put("taxAbattement", s.taxAbattement());
         return map;
