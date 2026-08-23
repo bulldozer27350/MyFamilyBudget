@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.moe.myfamilybudget.api.model.AssetCategoryDto;
 import com.moe.myfamilybudget.api.model.BankImportDto;
 import com.moe.myfamilybudget.api.model.BankTransactionDto;
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
@@ -31,6 +32,7 @@ import com.moe.myfamilybudget.api.model.TransferDto;
 import com.moe.myfamilybudget.api.model.TripleAmountDto;
 import com.moe.myfamilybudget.api.model.VariableIncomeDto;
 import com.moe.myfamilybudget.api.model.VariableOverrideDto;
+import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.CashflowYearModel;
@@ -102,10 +104,13 @@ public class OverviewMapper {
                 ? dto.getVariableOverrides().stream().map(this::toVariableOverrideModel).collect(Collectors.toList())
                 : List.of();
         BankImportModel bankImport = toBankImportModel(dto.getBankImport());
+        List<AssetCategoryModel> assetCategories = dto.getAssetCategories() != null
+                ? dto.getAssetCategories().stream().map(this::toAssetCategoryModel).collect(Collectors.toList())
+                : List.of();
 
         return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren,
                 taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes,
-                variableOverrides, bankImport);
+                variableOverrides, bankImport, assetCategories);
     }
 
     public BudgetDataDto toBudgetDataDto(BudgetDataModel model) {
@@ -151,6 +156,9 @@ public class OverviewMapper {
                 : List.of());
         dto.setVariableOverrides(model.variableOverrides() != null
                 ? model.variableOverrides().stream().map(this::toVariableOverrideDto).collect(Collectors.toList())
+                : List.of());
+        dto.setAssetCategories(model.assetCategories() != null
+                ? model.assetCategories().stream().map(this::toAssetCategoryDto).collect(Collectors.toList())
                 : List.of());
         return dto;
     }
@@ -596,6 +604,25 @@ public class OverviewMapper {
         }).collect(Collectors.toList()) : List.of();
         BankImportDto dto = new BankImportDto();
         dto.setTransactions(txs);
+        return dto;
+    }
+    
+    private AssetCategoryModel toAssetCategoryModel(AssetCategoryDto dto) {
+        if (dto == null) {
+            return null;
+        }
+        return new AssetCategoryModel(dto.getId(), dto.getIcon(), dto.getName(), dto.getBucket());
+    }
+
+    private AssetCategoryDto toAssetCategoryDto(AssetCategoryModel model) {
+        if (model == null) {
+            return null;
+        }
+        AssetCategoryDto dto = new AssetCategoryDto();
+        dto.setId(model.id());
+        dto.setIcon(model.icon());
+        dto.setName(model.name());
+        dto.setBucket(model.bucket());
         return dto;
     }
 }

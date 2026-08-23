@@ -19,8 +19,7 @@ const apiPaths = [
   '/bank-import',
   '/pending-operations',
   '/pointage',
-  '/analyse',
-  '/api/v1'
+  '/analyse'
 ];
 
 apiPaths.forEach(apiPath => {
@@ -30,6 +29,13 @@ apiPaths.forEach(apiPath => {
     logLevel: 'warn'
   }));
 });
+
+app.use('/api/v1', createProxyMiddleware({
+  target: 'http://localhost:8080/api/v1',
+  changeOrigin: true,
+  pathRewrite: { '^/api/v1': '' },
+  logLevel: 'warn'
+}));
 
 // Serve static assets from view directory
 app.use(express.static(__dirname));

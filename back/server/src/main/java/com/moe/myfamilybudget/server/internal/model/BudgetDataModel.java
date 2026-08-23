@@ -21,6 +21,15 @@ public record BudgetDataModel(
     BankImportModel bankImport,
     List<AssetCategoryModel> assetCategories
 ) {
+ // Thread-safe static reference to preserve custom asset categories across record copies/updates.
+    private static final java.util.concurrent.atomic.AtomicReference<List<AssetCategoryModel>> activeCategories =
+        new java.util.concurrent.atomic.AtomicReference<>(List.of());
+
+    public BudgetDataModel {
+        if (assetCategories != null) {
+            activeCategories.set(assetCategories);
+        }
+    }
     public BudgetDataModel(
         SettingsModel settings,
         List<IncomeModel> incomes,
@@ -40,7 +49,8 @@ public record BudgetDataModel(
     ) {
         this(settings, incomes, charges, placements, realEstate, retirement, taxChildren,
              taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers,
-             variableIncomes, variableOverrides, bankImport, List.of());
+             variableIncomes, variableOverrides, bankImport,
+             activeCategories.get() != null ? activeCategories.get() : List.of());
     }
 
     public SettingsModel getEffectiveSettings() {

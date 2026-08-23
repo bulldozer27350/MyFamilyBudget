@@ -15,3 +15,7 @@ logging:
   level:
     root: INFO
     com.moe.myfamilybudget: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.web.servlet: DEBUG
+    org.springframework.web.servlet.mvc.method.annotation: DEBUG
+    org.springframework.web.filter.CommonsRequestLoggingFilter: DEBUG

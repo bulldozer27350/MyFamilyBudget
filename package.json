@@ -1,16 +1,22 @@
-{
+﻿{
   "name": "my-family-budget",
   "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "node view/server.js",
-    "build": "node -e 'console.log(\"Build complete\")'",
+    "build": "node -e \"console.log('Build complete')\"",
     "lint": "node view/scratch/test-all-apis.js",
     "test": "node view/scratch/test-all-apis.js",
-    "start": "node view/server.js"
+    "start": "node view/server.js",
+    "test:e2e": "node tests/e2e/setup.js"
   },
   "dependencies": {
     "express": "^4.21.2",
     "http-proxy-middleware": "^4.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0",
+    "wait-on": "^7.2.0",
+    "cross-env": "^7.0.3"
   }
 }

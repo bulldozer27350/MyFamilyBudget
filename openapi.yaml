@@ -668,6 +668,10 @@ components:
             $ref: '#/components/schemas/VariableOverrideDto'
         bankImport:
           $ref: '#/components/schemas/BankImportDto'
+        assetCategories:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetCategoryDto'
 
     SettingsDto:
       type: object
@@ -966,7 +970,7 @@ components:
           type: string
         kind:
           type: string
-          enum: [Revenu, Dépense]
+          enum: [Revenu, Dépense, "Les deux"]
         compressible:
           type: string
           enum: [Oui, Non]
@@ -1210,6 +1214,26 @@ components:
             $ref: '#/components/schemas/RealEstateDto'
         patrimoine:
           $ref: '#/components/schemas/PatrimoineProjectionsDto'
+        assetCategories:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetCategoryDto'
+        bankCategories:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankImportCategoryDto'
+
+    AssetCategoryDto:
+      type: object
+      properties:
+        id:
+          type: string
+        icon:
+          type: string
+        name:
+          type: string
+        bucket:
+          type: string
 
     AnalyseResponseDto:
       type: object

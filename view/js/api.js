@@ -171,7 +171,22 @@
      * @returns {Promise<void>}
      */
     async updatePatrimoineLigne(listKey, id, field, value) {
-      return Promise.resolve(app().PatrimoineService.updatePatrimoineLigne(listKey, id, field, value));
+      await app().PatrimoineService.updatePatrimoineLigne(listKey, id, field, value);
+      if (typeof fetch !== 'undefined' && listKey !== "loans") {
+        try {
+          const list = app().BudgetStore.getData()[listKey] || [];
+          const row = list.find(r => r.id === id);
+          if (row) {
+            await fetch(API_BASE_URL + '/patrimoine/' + encodeURIComponent(listKey), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(row)
+            });
+          }
+        } catch (e) {
+          console.error("Failed to sync updated patrimoine line to backend", e);
+        }
+      }
     },
 
     /**
@@ -180,7 +195,25 @@
      * @returns {Promise<void>}
      */
     async addPatrimoineLigne(listKey, row) {
-      return Promise.resolve(app().PatrimoineService.addPatrimoineLigne(listKey, row));
+      await app().PatrimoineService.addPatrimoineLigne(listKey, row);
+      if (typeof fetch !== 'undefined' && listKey !== "loans") {
+        try {
+          let targetRow = row;
+          if (!targetRow) {
+            const list = app().BudgetStore.getData()[listKey] || [];
+            targetRow = list[list.length - 1];
+          }
+          if (targetRow) {
+            await fetch(API_BASE_URL + '/patrimoine/' + encodeURIComponent(listKey), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(targetRow)
+            });
+          }
+        } catch (e) {
+          console.error("Failed to sync new patrimoine line to backend", e);
+        }
+      }
     },
 
     /**
@@ -188,7 +221,16 @@
      * @returns {Promise<void>}
      */
     async removePatrimoineLigne(listKey, id) {
-      return Promise.resolve(app().PatrimoineService.removePatrimoineLigne(listKey, id));
+      await app().PatrimoineService.removePatrimoineLigne(listKey, id);
+      if (typeof fetch !== 'undefined' && listKey !== "loans") {
+        try {
+          await fetch(API_BASE_URL + '/patrimoine/' + encodeURIComponent(listKey) + '/' + encodeURIComponent(id), {
+            method: 'DELETE'
+          });
+        } catch (e) {
+          console.error("Failed to sync deleted patrimoine line to backend", e);
+        }
+      }
     },
 
     /**
@@ -313,7 +355,14 @@
      * @returns {Promise<Object>} modèle de lecture de l'onglet Paramètres
      */
     async getSettings() {
-      return Promise.resolve(app().SettingsService.buildSettings());
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await fetch(API_BASE_URL + '/settings');
+          if (res.ok) return await res.json();
+        } catch (e) {
+          console.error("Failed to fetch settings from backend, falling back to local store", e);
+        }
+      }
     },
 
     /**
@@ -321,6 +370,17 @@
      * @returns {Promise<void>}
      */
     async updateSettingsField(field, value) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          await fetch(API_BASE_URL + '/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field, value })
+          });
+        } catch (e) {
+          console.error("Failed to update settings field on backend", e);
+        }
+      }
       return Promise.resolve(app().SettingsService.updateSettingsField(field, value));
     },
 
@@ -329,6 +389,17 @@
      * @returns {Promise<void>}
      */
     async updateAssetCategory(id, field, value) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          await fetch(API_BASE_URL + '/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: "updateAssetCategory", id, field, value })
+          });
+        } catch (e) {
+          console.error("Failed to update asset category on backend", e);
+        }
+      }
       return Promise.resolve(app().SettingsService.updateAssetCategory(id, field, value));
     },
 
@@ -337,6 +408,17 @@
      * @returns {Promise<void>}
      */
     async addAssetCategory(row) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          await fetch(API_BASE_URL + '/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: "addAssetCategory", row })
+          });
+        } catch (e) {
+          console.error("Failed to add asset category on backend", e);
+        }
+      }
       return Promise.resolve(app().SettingsService.addAssetCategory(row));
     },
 
@@ -345,6 +427,17 @@
      * @returns {Promise<void>}
      */
     async removeAssetCategory(id) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          await fetch(API_BASE_URL + '/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: "removeAssetCategory", id })
+          });
+        } catch (e) {
+          console.error("Failed to remove asset category on backend", e);
+        }
+      }
       return Promise.resolve(app().SettingsService.removeAssetCategory(id));
     },
 
