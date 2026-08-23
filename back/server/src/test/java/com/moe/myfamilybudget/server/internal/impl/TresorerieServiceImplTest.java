@@ -3,7 +3,6 @@ package com.moe.myfamilybudget.server.internal.impl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
@@ -16,11 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import com.moe.myfamilybudget.api.model.CategoryOptionDto;
 import com.moe.myfamilybudget.api.model.ChargeDto;
 import com.moe.myfamilybudget.api.model.IncomeDto;
 import com.moe.myfamilybudget.api.model.OneOffExpenseDto;
-import com.moe.myfamilybudget.api.model.PlacementDto;
 import com.moe.myfamilybudget.api.model.TresorerieAjustementRequestDto;
 import com.moe.myfamilybudget.api.model.TresorerieResponseDto;
 import com.moe.myfamilybudget.api.model.UpdateTresorerieLigneRequestDto;

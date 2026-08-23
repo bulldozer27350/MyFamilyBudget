@@ -1,0 +1,131 @@
+﻿{
+  "settings": {
+    "birthYear": 1990,
+    "retireAge": 64,
+    "simulateUntilAge": 85,
+    "inflationRate": 0.02,
+    "pivotDate": "2026-01-01",
+    "pivotMode": "manual",
+    "startBalance": 5000,
+    "childExitAge": 21,
+    "taxAbattement": 0,
+    "pass2026": 47100,
+    "passGrowthRate": 0.015
+  },
+  "incomes": [
+    {
+      "id": "inc_1",
+      "label": "Salaire",
+      "monthly": 3000,
+      "start": "2026-01-01",
+      "end": "2053-12-31",
+      "growthRate": 0.01,
+      "categoryId": "",
+      "notes": ""
+    }
+  ],
+  "charges": [
+    {
+      "id": "chg_1",
+      "label": "Loyer",
+      "monthly": 900,
+      "start": "2026-01-01",
+      "end": "2053-12-31",
+      "growthRate": 0.02,
+      "categoryId": "",
+      "notes": ""
+    }
+  ],
+  "placements": [
+    {
+      "id": "plc_1",
+      "label": "PEA",
+      "category": "Actions",
+      "balance": 10000,
+      "balanceDate": "2026-01-01",
+      "monthly": 200,
+      "monthlyFrom": "2026-01-01",
+      "monthlyUntil": "2053-12-31",
+      "ratePess": 0.02,
+      "rateCorr": 0.04,
+      "rateOpti": 0.07,
+      "excludedFromRetirement": false,
+      "notes": ""
+    }
+  ],
+  "realEstate": [
+    {
+      "id": "re_1",
+      "label": "Residence Principale",
+      "type": "Residence principale",
+      "currentValue": 250000,
+      "valuationYear": 2026,
+      "annualGrowthRate": 0.015,
+      "notes": ""
+    }
+  ],
+  "retirement": {
+    "people": [
+      {
+        "id": "p_1",
+        "name": "Alice",
+        "birthYear": 1990,
+        "incomeLabel": "Salaire",
+        "trimestresValides": 140,
+        "trimestresDate": "2025-12-31",
+        "salaryHistory": [
+          { "year": 2023, "salary": 34000 },
+          { "year": 2024, "salary": 35000 },
+          { "year": 2025, "salary": 36000 }
+        ],
+        "agircPoints": 2500,
+        "ratioPointsParEuro": 0.0051
+      }
+    ],
+    "pass2026": 47100,
+    "passGrowthRate": 0.015,
+    "agircPointValue": 1.4386,
+    "agircPointDateGlobal": "2025-01-01",
+    "agircPointGrowthRate": 0.01
+  },
+  "taxChildren": [],
+  "taxBrackets": [],
+  "taxRateOverrides": [],
+  "taxActualOverrides": [],
+  "oneoff": [
+    {
+      "id": "oo_1",
+      "label": "Achat voiture",
+      "date": "2026-06-01",
+      "amount": 15000,
+      "notes": ""
+    }
+  ],
+  "transfers": [],
+  "variableIncomes": [
+    {
+      "id": "vi_1",
+      "label": "Prime annuelle",
+      "refIncomeLabel": "Salaire",
+      "rate": 0.10,
+      "startYear": 2026,
+      "endYear": 2053,
+      "taxable": "Oui"
+    }
+  ],
+  "variableOverrides": [
+    {
+      "id": "vo_1",
+      "label": "Prime annuelle",
+      "year": 2026,
+      "amount": 5000,
+      "taxable": "Oui"
+    }
+  ],
+  "bankImport": {
+    "transactions": [],
+    "categories": [],
+    "matchings": []
+  },
+  "assetCategories": []
+}
