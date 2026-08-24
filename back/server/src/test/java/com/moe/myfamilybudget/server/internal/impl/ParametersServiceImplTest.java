@@ -1,21 +1,22 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
-import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
+import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 class ParametersServiceImplTest {
 
