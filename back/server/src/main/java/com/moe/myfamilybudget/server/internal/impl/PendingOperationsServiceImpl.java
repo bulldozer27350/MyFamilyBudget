@@ -14,6 +14,7 @@ import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.AutoMatchResultModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 /**
@@ -38,10 +39,9 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
     @Override
     public ResponseEntity<Object> getPendingOperations() {
         BankImportModel current = persistenceManager.getBankImport();
-        List<Map<String, Object>> opsList = current.pendingOperations().stream()
-                .map(mapper::toPendingOperationMap)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(Map.of("pendingOperations", opsList));
+        BudgetDataModel budgetData = persistenceManager.getBudgetData();
+        Map<String, Object> responseMap = mapper.toPendingOperationsResponseMap(current, budgetData);
+        return ResponseEntity.ok(responseMap);
     }
 
     @Override
@@ -81,6 +81,106 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
             BankImportModel updated = new BankImportModel(
                     current.columnMapping(), current.categories(), current.rules(),
                     current.transactions(), updatedOps, current.matchings()
+            );
+            persistenceManager.updateBankImport(updated);
+        }
+
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Object> importPendingCB(Object body) {
+        Map<String, Object> map = toMap(body);
+        List<List<String>> rawRows = new java.util.ArrayList<>();
+        if (map.get("rawRows") instanceof List<?> list) {
+            for (Object r : list) {
+                if (r instanceof List<?> rowList) {
+                    rawRows.add(rowList.stream().map(c -> c != null ? c.toString() : "").collect(Collectors.toList()));
+                }
+            }
+        }
+
+        List<String> colRoles = new java.util.ArrayList<>();
+        if (map.get("colRoles") instanceof List<?> rolesList) {
+            for (Object role : rolesList) {
+                colRoles.add(role != null ? role.toString() : "ignore");
+            }
+        }
+
+        Map<String, Object> configMap = map.get("config") instanceof Map<?, ?> cMap ? (Map<String, Object>) cMap : Collections.emptyMap();
+        String dateFormat = String.valueOf(configMap.getOrDefault("dateFormat", map.getOrDefault("dateFormat", "DD-MM-YYYY")));
+        boolean usePurchaseDate = Boolean.parseBoolean(String.valueOf(configMap.getOrDefault("usePurchaseDate", map.getOrDefault("usePurchaseDate", false))));
+
+        BankImportModel current = persistenceManager.getBankImport();
+        com.moe.myfamilybudget.server.internal.model.PendingImportSummaryModel summary = BankImportCalculator.importPendingCB(
+                rawRows,
+                colRoles,
+                dateFormat,
+                usePurchaseDate,
+                current.pendingOperations(),
+                current.rules()
+        );
+
+        if (!summary.newOperations().isEmpty()) {
+            List<BankImportModel.PendingOperationModel> allPending = new java.util.ArrayList<>(current.pendingOperations());
+            allPending.addAll(summary.newOperations());
+            BankImportModel updated = new BankImportModel(
+                    current.columnMapping(), current.categories(), current.rules(),
+                    current.transactions(), allPending, current.matchings()
+            );
+            persistenceManager.updateBankImport(updated);
+        }
+
+        return ResponseEntity.ok(mapper.toPendingImportSummaryMap(summary));
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Void> mergePendingOperation(Object body) {
+        Map<String, Object> map = toMap(body);
+        String manualOpId = String.valueOf(map.getOrDefault("manualOpId", map.getOrDefault("id", "")));
+        Map<String, Object> bankOpMap = map.get("bankOp") instanceof Map<?, ?> m ? (Map<String, Object>) m : map;
+        BankImportModel.PendingOperationModel bankOp = mapper.toPendingOperationModel(bankOpMap);
+
+        if (manualOpId != null && !manualOpId.isBlank()) {
+            BankImportModel current = persistenceManager.getBankImport();
+            List<BankImportModel.PendingOperationModel> mergedList = BankImportCalculator.mergePendingOperation(
+                    manualOpId,
+                    bankOp,
+                    current.pendingOperations()
+            );
+
+            BankImportModel updated = new BankImportModel(
+                    current.columnMapping(), current.categories(), current.rules(),
+                    current.transactions(), mergedList, current.matchings()
+            );
+            persistenceManager.updateBankImport(updated);
+        }
+
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> forceImportPendingOperation(Object body) {
+        Map<String, Object> map = toMap(body);
+        BankImportModel.PendingOperationModel op = mapper.toPendingOperationModel(map);
+
+        if (op != null) {
+            BankImportModel current = persistenceManager.getBankImport();
+            List<BankImportModel.PendingOperationModel> rulesApplied = BankImportCalculator.applyRulesToPendingOperations(
+                    List.of(op), current.rules()
+            );
+            BankImportModel.PendingOperationModel opToAdd = !rulesApplied.isEmpty() ? rulesApplied.get(0) : op;
+
+            List<BankImportModel.PendingOperationModel> updatedList = new java.util.ArrayList<>(current.pendingOperations());
+            // Filter out any existing with same ID if any
+            updatedList.removeIf(existing -> existing.id().equals(opToAdd.id()));
+            updatedList.add(opToAdd);
+
+            BankImportModel updated = new BankImportModel(
+                    current.columnMapping(), current.categories(), current.rules(),
+                    current.transactions(), updatedList, current.matchings()
             );
             persistenceManager.updateBankImport(updated);
         }

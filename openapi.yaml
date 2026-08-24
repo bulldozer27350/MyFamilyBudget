@@ -508,6 +508,58 @@ paths:
         '200':
           description: Ignoree
 
+  /pending-operations/import-cb:
+    post:
+      summary: Importe des operations CB differees depuis un releve CSV
+      operationId: importPendingCB
+      tags:
+        - Operations en cours
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Resume de l'import des operations CB
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /pending-operations/merge:
+    post:
+      summary: Fusionne une operation manuelle avec une operation du releve
+      operationId: mergePendingOperation
+      tags:
+        - Operations en cours
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Operation fusionnee
+
+  /pending-operations/force:
+    post:
+      summary: Force l'import d'une operation ignoree ou candidate
+      operationId: forceImportPendingOperation
+      tags:
+        - Operations en cours
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Operation importee de force
+
   # ---------------------------------------------------------------------------
   # POINTAGE (MATCHING)
   # ---------------------------------------------------------------------------

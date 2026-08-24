@@ -101,6 +101,28 @@ const { BudgetApi } = sandbox.window.BudgetApp;
   }
   console.log("✓ Save pointage matching OK");
 
+  console.log("Testing BudgetApi.getPendingOperations...");
+  const pending = await BudgetApi.getPendingOperations();
+  if (!pending || !Array.isArray(pending.pendingOperations)) {
+    throw new Error("Invalid pending operations data");
+  }
+  console.log("✓ Pending Operations OK");
+
+  console.log("Testing BudgetApi.importPendingCB...");
+  const importSummary = await BudgetApi.importPendingCB(
+    [["15/01/2026", "CB TEST RESTAURANT", "-25.00"]],
+    ["date", "label", "amount"],
+    { dateFormat: "DD/MM/YYYY", usePurchaseDate: false }
+  );
+  if (!importSummary || importSummary.imported !== 1) {
+    throw new Error("Failed to import pending operation");
+  }
+  const pendingAfterImport = await BudgetApi.getPendingOperations();
+  if (!pendingAfterImport.pendingOperations.some(op => op.label.includes("CB TEST RESTAURANT"))) {
+    throw new Error("Imported pending operation not found in getPendingOperations result");
+  }
+  console.log("✓ Import Pending CB OK");
+
   console.log("Testing BudgetApi.getBudgetFull & importJSON & resetData...");
   const fullBudget = await BudgetApi.getBudgetFull();
   if (!fullBudget || !fullBudget.settings) {

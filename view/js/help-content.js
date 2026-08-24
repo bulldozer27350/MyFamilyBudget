@@ -243,13 +243,16 @@
           `
       }, {
         id: "import_cb",
-        title: "Import des encours de CB différées & Auto-catégorisation",
+        title: "Import des encours de CB différées & Détection intelligente des doublons",
         content: `
             - **Bouton « 📥 Importer encours CB »** : Permet de charger directement un fichier CSV exporté depuis votre banque contenant le relevé d'encours de vos cartes à débit différé.
             - **Détection automatique du format** : Le séparateur (\`;\`, \`,\`, tabulation) et les colonnes (*Date*, *Libellé*, *Montant*) sont détectés automatiquement avec prévisualisation.
             - **Gestion des dates** : Vous pouvez choisir d'enregistrer l'opération à la date de débit fin de mois ou d'extraire la date réelle d'achat présente dans le libellé bancaire (ex. *FACTURE CARTE DU 290726*).
             - **Règles de catégorisation partagées** : Les règles créées dans l'onglet *Import* sont appliquées immédiatement pour classer vos dépenses (ex. courses, carburant, abonnements).
-            - **Dédoublonnage intelligent** : Les opérations déjà importées sont détectées et ignorées pour éviter tout doublon dans le calcul de votre solde disponible réel.
+            - **Dédoublonnage intelligent & Fusion des saisies manuelles** :
+              - Les opérations strictement identiques (même date, libellé, montant) sont automatiquement ignorées.
+              - **Rattrapage & Fusion** : Si vous aviez préalablement saisi une dépense manuellement, l'outil détecte les correspondances candidates sur la **date de la dépense (à ±1 jour près)** et le **montant (à ±10 € près)**, sans exiger un libellé identique.
+              - Une boîte de dialogue vous propose alors de **fusionner** la ligne (les informations officielles du relevé font foi tout en **conservant votre catégorie manuelle**), de l'**importer comme nouvelle opération** ou de l'**ignorer**.
           `
       }, {
         id: "rapprochement",

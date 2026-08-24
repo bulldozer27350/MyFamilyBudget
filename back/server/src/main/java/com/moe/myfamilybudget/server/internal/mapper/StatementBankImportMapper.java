@@ -12,7 +12,12 @@ import org.springframework.stereotype.Component;
 import com.moe.myfamilybudget.server.internal.model.AutoMatchResultModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportSummaryModel;
+import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.ChargeModel;
+import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PendingImportSummaryModel;
+import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 
 /**
  * Mapper responsible for converting between OpenAPI DTOs / Request Maps
@@ -173,6 +178,14 @@ public class StatementBankImportMapper {
         map.put("autoCategorized", summary.autoCategorized());
         map.put("ignoredDuplicates", summary.ignoredDuplicates() != null ? summary.ignoredDuplicates().stream().map(this::toPendingOperationMap).collect(Collectors.toList()) : Collections.emptyList());
         map.put("firstOpDate", summary.firstOpDate());
+        map.put("duplicateCandidates", summary.duplicateCandidates() != null
+                ? summary.duplicateCandidates().stream().map(dc -> Map.of(
+                        "incomingOp", toPendingOperationMap(dc.incomingOp()),
+                        "matchingManualOps", dc.matchingManualOps() != null
+                                ? dc.matchingManualOps().stream().map(this::toPendingOperationMap).collect(Collectors.toList())
+                                : Collections.emptyList()
+                )).collect(Collectors.toList())
+                : Collections.emptyList());
         return map;
     }
 
@@ -181,6 +194,108 @@ public class StatementBankImportMapper {
         Map<String, Object> map = new HashMap<>();
         map.put("matchCount", result.matchCount());
         map.put("updatedOperations", result.updatedOperations() != null ? result.updatedOperations().stream().map(this::toPendingOperationMap).collect(Collectors.toList()) : Collections.emptyList());
+        return map;
+    }
+
+    public Map<String, Object> toPendingOperationsResponseMap(BankImportModel bankImport, BudgetDataModel budgetData) {
+        if (bankImport == null) return Collections.emptyMap();
+        Map<String, Object> map = new HashMap<>();
+
+        map.put("pendingOperations", bankImport.pendingOperations() != null
+                ? bankImport.pendingOperations().stream().map(this::toPendingOperationMap).collect(Collectors.toList())
+                : Collections.emptyList());
+
+        map.put("transactions", bankImport.transactions() != null
+                ? bankImport.transactions().stream().map(this::toTransactionMap).collect(Collectors.toList())
+                : Collections.emptyList());
+
+        map.put("categories", bankImport.categories() != null
+                ? bankImport.categories().stream().map(this::toCategoryMap).collect(Collectors.toList())
+                : Collections.emptyList());
+
+        map.put("rules", bankImport.rules() != null
+                ? bankImport.rules().stream().map(this::toRuleMap).collect(Collectors.toList())
+                : Collections.emptyList());
+
+        if (budgetData != null) {
+            map.put("charges", budgetData.getEffectiveCharges() != null
+                    ? budgetData.getEffectiveCharges().stream().map(this::toChargeMap).collect(Collectors.toList())
+                    : Collections.emptyList());
+
+            map.put("incomes", budgetData.getEffectiveIncomes() != null
+                    ? budgetData.getEffectiveIncomes().stream().map(this::toIncomeMap).collect(Collectors.toList())
+                    : Collections.emptyList());
+
+            map.put("oneoff", budgetData.getEffectiveOneoff() != null
+                    ? budgetData.getEffectiveOneoff().stream().map(this::toOneOffMap).collect(Collectors.toList())
+                    : Collections.emptyList());
+
+            map.put("settings", budgetData.getEffectiveSettings() != null
+                    ? toSettingsMap(budgetData.getEffectiveSettings())
+                    : Collections.emptyMap());
+        } else {
+            map.put("charges", Collections.emptyList());
+            map.put("incomes", Collections.emptyList());
+            map.put("oneoff", Collections.emptyList());
+            map.put("settings", Collections.emptyMap());
+        }
+
+        return map;
+    }
+
+    public Map<String, Object> toChargeMap(ChargeModel c) {
+        if (c == null) return Collections.emptyMap();
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", c.id());
+        map.put("label", c.label());
+        map.put("monthly", c.monthly());
+        map.put("start", c.start());
+        map.put("end", c.end());
+        map.put("growthRate", c.growthRate());
+        map.put("categoryId", c.categoryId());
+        map.put("notes", c.notes());
+        return map;
+    }
+
+    public Map<String, Object> toIncomeMap(IncomeModel i) {
+        if (i == null) return Collections.emptyMap();
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", i.id());
+        map.put("label", i.label());
+        map.put("monthly", i.monthly());
+        map.put("start", i.start());
+        map.put("end", i.end());
+        map.put("growthRate", i.growthRate());
+        map.put("categoryId", i.categoryId());
+        map.put("notes", i.notes());
+        return map;
+    }
+
+    public Map<String, Object> toOneOffMap(OneOffExpenseModel o) {
+        if (o == null) return Collections.emptyMap();
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", o.id());
+        map.put("label", o.label());
+        map.put("date", o.date());
+        map.put("amount", o.amount());
+        map.put("notes", o.notes());
+        return map;
+    }
+
+    public Map<String, Object> toSettingsMap(SettingsModel s) {
+        if (s == null) return Collections.emptyMap();
+        Map<String, Object> map = new HashMap<>();
+        map.put("birthYear", s.birthYear());
+        map.put("retireAge", s.retireAge());
+        map.put("simulateUntilAge", s.simulateUntilAge());
+        map.put("inflationRate", s.inflationRate());
+        map.put("pivotDate", s.pivotDate());
+        map.put("pivotMode", s.pivotMode());
+        map.put("startBalance", s.startBalance());
+        map.put("childExitAge", s.childExitAge());
+        map.put("taxAbattement", s.taxAbattement());
+        map.put("pass2026", s.pass2026());
+        map.put("passGrowthRate", s.passGrowthRate());
         return map;
     }
 

@@ -560,6 +560,22 @@
      * @returns {Promise<Object>} Modèle de lecture
      */
     async getPendingOperations() {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await fetch(API_BASE_URL + '/pending-operations');
+          if (res.ok) {
+            const data = await res.json();
+            const localFallback = (typeof app === 'function' && app().PendingOperationsService)
+              ? app().PendingOperationsService.buildPendingOperations()
+              : {};
+            return {
+              ...localFallback,
+              ...data,
+              pendingOperations: data.pendingOperations || localFallback.pendingOperations || []
+            };
+          }
+        } catch (e) {}
+      }
       return Promise.resolve(app().PendingOperationsService.buildPendingOperations());
     },
 
@@ -579,6 +595,15 @@
      * @returns {Promise<Array>} Liste mise à jour des opérations en cours
      */
     async deletePendingOperation(opId) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          await fetch(API_BASE_URL + '/pending-operations/ignore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: opId, operationId: opId })
+          });
+        } catch (e) {}
+      }
       return Promise.resolve(app().PendingOperationsService.deletePendingOperation(opId));
     },
 
@@ -607,6 +632,22 @@
      * @returns {Promise<{matchCount: number, updatedOperations: Array}>}
      */
     async autoMatchPendingOperations() {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await fetch(API_BASE_URL + '/pending-operations/reconcile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+          if (res.ok) {
+            const updated = await this.getPendingOperations();
+            return {
+              matchCount: 0,
+              updatedOperations: updated.pendingOperations || []
+            };
+          }
+        } catch (e) {}
+      }
       return Promise.resolve(app().PendingOperationsService.autoMatchPendingOperations());
     },
 
@@ -618,7 +659,40 @@
      * @returns {Promise<Object>} Résumé de l'import
      */
     async importPendingCB(rawRows, colRoles, config) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await fetch(API_BASE_URL + '/pending-operations/import-cb', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawRows, colRoles, config })
+          });
+          if (res.ok) return await res.json();
+        } catch (e) {}
+      }
       return Promise.resolve(app().PendingOperationsService.importPendingCB(rawRows, colRoles, config));
+    },
+
+    /**
+     * Fusionne une opération manuelle avec une opération issue du relevé bancaire.
+     * @param {string} manualOpId Identifiant de l'opération manuelle
+     * @param {Object} bankOp Données de l'opération bancaire
+     * @returns {Promise<void>}
+     */
+    async mergePendingOperation(manualOpId, bankOp) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await fetch(API_BASE_URL + '/pending-operations/merge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ manualOpId, bankOp })
+          });
+          if (res.ok) return;
+        } catch (e) {}
+      }
+      if (app().PendingOperationsService && app().PendingOperationsService.mergePendingOperation) {
+        return Promise.resolve(app().PendingOperationsService.mergePendingOperation(manualOpId, bankOp));
+      }
+      return Promise.resolve();
     },
 
     /**
@@ -627,6 +701,16 @@
      * @returns {Promise<Object>} Opération importée
      */
     async forceImportPendingOperation(op) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await fetch(API_BASE_URL + '/pending-operations/force', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(op)
+          });
+          if (res.ok) return;
+        } catch (e) {}
+      }
       return Promise.resolve(app().PendingOperationsService.forceImportPendingOperation(op));
     },
 

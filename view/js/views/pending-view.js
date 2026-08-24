@@ -112,20 +112,23 @@
     const [importUsePurchaseDate, setImportUsePurchaseDate] = useState(false);
     const [importSummary, setImportSummary] = useState(null);
     const [showIgnoredModal, setShowIgnoredModal] = useState(false);
+    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
     // État asynchrone issu de la façade API
     const [apiData, setApiData] = useState(null);
     const [loading, setLoading] = useState(!data);
 
-    const loadDataFromApi = () => {
+    const loadDataFromApi = async () => {
       if (api && api.getPendingOperations) {
-        api.getPendingOperations().then(res => {
+        try {
+          const res = await api.getPendingOperations();
           setApiData(res);
           setLoading(false);
-        }).catch(err => {
+          return res;
+        } catch (err) {
           console.error("Erreur chargement opérations en cours via BudgetApi:", err);
           setLoading(false);
-        });
+        }
       } else if (data) {
         setApiData({
           pendingOperations: data?.bankImport?.pendingOperations || [],
@@ -149,7 +152,7 @@
         });
         return () => unsub && unsub();
       }
-    }, []);
+    }, [data]);
 
     const monthISO = `${selYear}-${String(selMonth).padStart(2, "0")}`;
     const monthLabel = new Date(selYear, selMonth - 1, 1).toLocaleDateString("fr-FR", {
@@ -375,6 +378,7 @@
 
       if (api && api.savePendingOperation) {
         await api.savePendingOperation(opPayload, editingOp ? editingOp.id : undefined);
+        await loadDataFromApi();
       } else if (update) {
         if (editingOp) {
           update("bankImport", b => ({
@@ -424,6 +428,7 @@
       if (window.confirm("Supprimer définitivement cette opération engagée ?")) {
         if (api && api.deletePendingOperation) {
           await api.deletePendingOperation(opId);
+          await loadDataFromApi();
         } else if (update) {
           update("bankImport", b => ({
             ...b,
@@ -436,6 +441,7 @@
     const handleUnlink = async opId => {
       if (api && api.unlinkPendingOperation) {
         await api.unlinkPendingOperation(opId);
+        await loadDataFromApi();
       } else if (update) {
         update("bankImport", b => ({
           ...b,
@@ -486,6 +492,7 @@
       if (!matchingOp) return;
       if (api && api.linkPendingOperation) {
         await api.linkPendingOperation(matchingOp.id, tx.id, tx.date);
+        await loadDataFromApi();
       } else if (update) {
         update("bankImport", b => ({
           ...b,
@@ -503,6 +510,7 @@
     const handleAutoMatch = async () => {
       if (api && api.autoMatchPendingOperations) {
         const res = await api.autoMatchPendingOperations();
+        await loadDataFromApi();
         if (res && res.matchCount > 0) {
           showToast(`🎉 ${res.matchCount} opération(s) rapprochée(s) automatiquement !`);
         } else {
@@ -622,7 +630,7 @@
               const c = (cell || "").toLowerCase();
               if (c.includes("date")) dCol = ci;
               else if (c.includes("libell") || c.includes("label") || c.includes("description") || c.includes("operation")) lCol = ci;
-              else if (c.includes("montant") || c.includes("amount") || c.includes("débit") || c.includes("debit")) aCol = ci;
+              if (c.includes("montant") || c.includes("amount") || c.includes("débit") || c.includes("debit")) aCol = ci;
             });
             break;
           }
@@ -675,6 +683,7 @@
           usePurchaseDate: importUsePurchaseDate
         });
         setImportSummary(summary);
+        await loadDataFromApi();
         if (summary.imported > 0) {
           const firstOpDate = summary.firstOpDate;
           const targetMonthISO = firstOpDate ? firstOpDate.slice(0, 7) : monthISO;
@@ -686,10 +695,9 @@
               month: "long",
               year: "numeric"
             });
-            showToast(`🎉 ${summary.imported} opération(s) CB importée(s) (classées en ${targetMonthName}).`, `➔ Voir ${targetMonthName}`, () => {
-              setSelYear(targetY);
-              setSelMonth(targetM);
-            });
+            setSelYear(targetY);
+            setSelMonth(targetM);
+            showToast(`🎉 ${summary.imported} opération(s) CB importée(s) (classées en ${targetMonthName}).`);
           } else {
             showToast(`🎉 ${summary.imported} opération(s) CB importée(s) avec succès !`);
           }
@@ -786,10 +794,9 @@
             month: "long",
             year: "numeric"
           });
-          showToast(`🎉 ${imported.length} opération(s) CB importée(s) (classées en ${targetMonthName}).`, `➔ Voir ${targetMonthName}`, () => {
-            setSelYear(targetY);
-            setSelMonth(targetM);
-          });
+          setSelYear(targetY);
+          setSelMonth(targetM);
+          showToast(`🎉 ${imported.length} opération(s) CB importée(s) (classées en ${targetMonthName}).`);
         } else {
           showToast(`🎉 ${imported.length} opération(s) CB importée(s) avec succès !`);
         }
@@ -799,6 +806,7 @@
     const forceImportPendingDuplicate = async op => {
       if (api && api.forceImportPendingOperation) {
         await api.forceImportPendingOperation(op);
+        await loadDataFromApi();
       } else if (update) {
         const rules = sourceData.rules || [];
         const categorizedOp = applyRulesToTransactions([op], rules)[0] || op;
@@ -816,6 +824,66 @@
       showToast(`Opération « ${op.label} » ajoutée.`);
     };
 
+    const handleMergeCandidate = async (manualOpId, bankOp) => {
+      if (api && api.mergePendingOperation) {
+        await api.mergePendingOperation(manualOpId, bankOp);
+        await loadDataFromApi();
+      } else if (update) {
+        update("bankImport", b => {
+          const ops = b.pendingOperations || [];
+          const manualOp = ops.find(o => o.id === manualOpId);
+          const cat = manualOp && manualOp.categoryId ? manualOp.categoryId : (bankOp.categoryId || "");
+          const updated = ops.filter(o => o.id !== bankOp.id).map(o => o.id === manualOpId ? {
+            ...o,
+            date: bankOp.date || o.date,
+            expectedDate: bankOp.expectedDate || o.expectedDate,
+            label: bankOp.label || o.label,
+            amount: bankOp.amount !== undefined ? bankOp.amount : o.amount,
+            categoryId: cat,
+            status: "cleared",
+            clearedDate: bankOp.date || o.date,
+            notes: bankOp.notes || o.notes
+          } : o);
+          return {
+            ...b,
+            pendingOperations: updated
+          };
+        });
+      }
+      setImportSummary(prev => prev ? {
+        ...prev,
+        duplicateCandidates: (prev.duplicateCandidates || []).filter(dc => dc.incomingOp.id !== bankOp.id)
+      } : null);
+      showToast(`🔀 Opération fusionnée avec succès (catégorie conservée, statut pointé) !`);
+    };
+
+    const handleImportCandidateSeparately = async (bankOp) => {
+      // Bank op is already imported in backend list or we ensure it's present
+      setImportSummary(prev => prev ? {
+        ...prev,
+        duplicateCandidates: (prev.duplicateCandidates || []).filter(dc => dc.incomingOp.id !== bankOp.id)
+      } : null);
+      showToast(`Opération « ${bankOp.label} » conservée comme ligne distincte.`);
+    };
+
+    const handleIgnoreCandidate = async (bankOp) => {
+      if (api && api.deletePendingOperation) {
+        await api.deletePendingOperation(bankOp.id);
+        await loadDataFromApi();
+      } else if (update) {
+        update("bankImport", b => ({
+          ...b,
+          pendingOperations: (b.pendingOperations || []).filter(o => o.id !== bankOp.id)
+        }));
+      }
+      setImportSummary(prev => prev ? {
+        ...prev,
+        imported: Math.max(0, prev.imported - 1),
+        duplicateCandidates: (prev.duplicateCandidates || []).filter(dc => dc.incomingOp.id !== bankOp.id)
+      } : null);
+      showToast(`Opération « ${bankOp.label} » ignorée et retirée.`);
+    };
+
     const resetImportModal = () => {
       setShowImportModal(false);
       setImportRawRows(null);
@@ -823,6 +891,7 @@
       setImportFileName("");
       setImportSummary(null);
       setShowIgnoredModal(false);
+      setShowDuplicateModal(false);
     };
 
     const colSort = key => {
@@ -2649,7 +2718,20 @@
         flexWrap: "wrap",
         gap: 10
       }
-    }, /*#__PURE__*/React.createElement("div", null, importSummary.error || `✅ ${importSummary.imported} opération(s) importée(s), ${importSummary.duplicates} doublon(s) ignoré(s), ${importSummary.autoCategorized} catégorisée(s) automatiquement selon vos règles.`), importSummary.ignoredDuplicates && importSummary.ignoredDuplicates.length > 0 && /*#__PURE__*/React.createElement("button", {
+    }, /*#__PURE__*/React.createElement("div", null, importSummary.error || `✅ ${importSummary.imported} opération(s) importée(s), ${importSummary.duplicates} doublon(s) ignoré(s), ${importSummary.autoCategorized} catégorisée(s) automatiquement selon vos règles.`), importSummary.duplicateCandidates && importSummary.duplicateCandidates.length > 0 && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => setShowDuplicateModal(true),
+      style: {
+        padding: "5px 12px",
+        borderRadius: 6,
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+        background: C?.gold || "#C99700",
+        color: "#fff",
+        border: "none"
+      }
+    }, "🔀 Revoir les ", importSummary.duplicateCandidates.length, " correspondance(s) manuelle(s)"), importSummary.ignoredDuplicates && importSummary.ignoredDuplicates.length > 0 && /*#__PURE__*/React.createElement("button", {
       type: "button",
       onClick: () => setShowIgnoredModal(true),
       style: {
@@ -2837,6 +2919,270 @@
     }, /*#__PURE__*/React.createElement("button", {
       type: "button",
       onClick: () => setShowIgnoredModal(false),
+      style: {
+        padding: "7px 16px",
+        borderRadius: 7,
+        fontSize: 12.5,
+        fontWeight: 600,
+        background: C?.panel || "#FFFFFF",
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        color: C?.inkSoft || "#6B7278",
+        cursor: "pointer"
+      }
+    }, "Fermer")))), showDuplicateModal && importSummary?.duplicateCandidates && importSummary.duplicateCandidates.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "rgba(0,0,0,0.5)",
+        backdropFilter: "blur(3px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1200,
+        padding: 20
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C?.panel || "#FFFFFF",
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        borderRadius: 14,
+        width: "100%",
+        maxWidth: 880,
+        maxHeight: "88vh",
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "0 12px 36px rgba(0,0,0,0.3)",
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "16px 20px",
+        borderBottom: `1px solid ${C?.line || "#DED6C4"}`,
+        background: C?.panelAlt || "#EFEAE0",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 16,
+        color: C?.navy || "#28394A"
+      }
+    }, "🔀 Rapprochement des saisies manuelles (Doublons potentiels)"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginTop: 2
+      }
+    }, "Des opérations manuelles existantes correspondent à ±1 jour et ±10 € aux lignes de votre relevé. Choisissez l'action pour chaque opération.")), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => setShowDuplicateModal(false),
+      style: {
+        background: "none",
+        border: "none",
+        fontSize: 20,
+        cursor: "pointer",
+        color: C?.inkSoft || "#6B7278"
+      }
+    }, "✕")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        overflowY: "auto",
+        padding: 16,
+        display: "flex",
+        flexDirection: "column",
+        gap: 14
+      }
+    }, importSummary.duplicateCandidates.map((dc, idx) => {
+      const incoming = dc.incomingOp;
+      const manuals = dc.matchingManualOps || [];
+      return /*#__PURE__*/React.createElement("div", {
+        key: incoming.id || idx,
+        style: {
+          border: `1px solid ${C?.line || "#DED6C4"}`,
+          borderRadius: 10,
+          background: C?.panel || "#FFFFFF",
+          padding: 14,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: C?.pineSoft || "#E3ECE8",
+          padding: "8px 12px",
+          borderRadius: 6
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 12,
+          alignItems: "center"
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          fontWeight: 700,
+          background: C?.pine || "#2F5D50",
+          color: "#fff",
+          padding: "2px 6px",
+          borderRadius: 4
+        }
+      }, "RELEVÉ BANCAIRE"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: 12,
+          color: C?.inkSoft || "#6B7278"
+        }
+      }, incoming.date ? incoming.date.split("-").reverse().join("/") : "—"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 700,
+          fontSize: 13,
+          color: C?.ink || "#232A2E"
+        }
+      }, incoming.label)), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontWeight: 700,
+          fontSize: 14,
+          color: incoming.amount < 0 ? C?.brick || "#A8503C" : C?.pine || "#2F5D50"
+        }
+      }, eurExact(incoming.amount))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11.5,
+          fontWeight: 600,
+          color: C?.inkSoft || "#6B7278",
+          marginLeft: 4
+        }
+      }, "Correspondance(s) manuelle(s) détectée(s) :"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          flexDirection: "column",
+          gap: 8
+        }
+      }, manuals.map(mOp => {
+        const cat = categories.find(c => c.id === mOp.categoryId);
+        return /*#__PURE__*/React.createElement("div", {
+          key: mOp.id,
+          style: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            background: C?.panelAlt || "#EFEAE0",
+            padding: "8px 12px",
+            borderRadius: 6,
+            border: `1px solid ${C?.line || "#DED6C4"}`
+          }
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {
+            display: "flex",
+            gap: 12,
+            alignItems: "center"
+          }
+        }, /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontSize: 11,
+            fontWeight: 700,
+            background: C?.navy || "#28394A",
+            color: "#fff",
+            padding: "2px 6px",
+            borderRadius: 4
+          }
+        }, "SAISIE MANUELLE"), /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: 12,
+            color: C?.inkSoft || "#6B7278"
+          }
+        }, mOp.date ? mOp.date.split("-").reverse().join("/") : "—"), /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontWeight: 600,
+            fontSize: 12.5,
+            color: C?.ink || "#232A2E"
+          }
+        }, mOp.label), cat && /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontSize: 11,
+            background: C?.panel || "#FFFFFF",
+            padding: "2px 6px",
+            borderRadius: 4,
+            border: `1px solid ${C?.line || "#DED6C4"}`,
+            color: C?.inkSoft || "#6B7278"
+          }
+        }, "📁 ", cat.label), /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontWeight: 700,
+            fontSize: 13,
+            color: mOp.amount < 0 ? C?.brick || "#A8503C" : C?.pine || "#2F5D50"
+          }
+        }, eurExact(mOp.amount))), /*#__PURE__*/React.createElement("button", {
+          type: "button",
+          onClick: () => handleMergeCandidate(mOp.id, incoming),
+          style: {
+            padding: "5px 12px",
+            borderRadius: 6,
+            fontSize: 11.5,
+            fontWeight: 700,
+            cursor: "pointer",
+            background: C?.pine || "#2F5D50",
+            color: "#fff",
+            border: "none",
+            whiteSpace: "nowrap"
+          }
+        }, "🔀 Fusionner (Garder catégorie)"));
+      })), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 2
+        }
+      }, /*#__PURE__*/React.createElement("button", {
+        type: "button",
+        onClick: () => handleImportCandidateSeparately(incoming),
+        style: {
+          padding: "5px 10px",
+          borderRadius: 6,
+          fontSize: 11.5,
+          fontWeight: 600,
+          background: C?.panelAlt || "#EFEAE0",
+          border: `1px solid ${C?.line || "#DED6C4"}`,
+          color: C?.ink || "#232A2E",
+          cursor: "pointer"
+        }
+      }, "➕ Importer comme nouvelle"), /*#__PURE__*/React.createElement("button", {
+        type: "button",
+        onClick: () => handleIgnoreCandidate(incoming),
+        style: {
+          padding: "5px 10px",
+          borderRadius: 6,
+          fontSize: 11.5,
+          fontWeight: 600,
+          background: C?.brickSoft || "#F4E4DF",
+          border: `1px solid ${C?.brick || "#A8503C"}`,
+          color: C?.brick || "#A8503C",
+          cursor: "pointer"
+        }
+      }, "✕ Ignorer / Retirer")));
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "12px 20px",
+        borderTop: `1px solid ${C?.line || "#DED6C4"}`,
+        background: C?.panelAlt || "#EFEAE0",
+        display: "flex",
+        justifyContent: "flex-end"
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => setShowDuplicateModal(false),
       style: {
         padding: "7px 16px",
         borderRadius: 7,

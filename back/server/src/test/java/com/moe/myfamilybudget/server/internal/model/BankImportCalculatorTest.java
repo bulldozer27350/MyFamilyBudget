@@ -157,4 +157,90 @@ class BankImportCalculatorTest {
             assertThat(result.updatedOperations().get(0).linkedTxId()).isEqualTo("tx2");
         }
     }
+
+    @Nested
+    @DisplayName("Pending CB Import and Smart Duplicate Merge Tests")
+    class PendingCBMergeTests {
+
+        @Test
+        @DisplayName("importPendingCB detects fuzzy duplicate candidates within +-1 day (operation date) and +-10 EUR")
+        void testFuzzyDuplicateDetection() {
+            // Saisie manuelle : le 15/01/2026, libelle "Resto en ville", montant 42.00 €, categorie "cat_resto"
+            BankImportModel.PendingOperationModel manualOp = new BankImportModel.PendingOperationModel(
+                    "man_1", "2026-01-15", "2026-01-15", "cb", "", "Resto en ville",
+                    new BigDecimal("-42.00"), "cat_resto", "pending", null, null, ""
+            );
+
+            List<String> colRoles = List.of("date", "label", "amount");
+            // Ligne de relevé CB : date 16/01/2026 (a 1 jour pres), libelle different "CB BRASSERIE DU NORD", montant -48.50 € (a 6.50 € pres, <= 10 €)
+            List<List<String>> rawRows = List.of(
+                    List.of("16/01/2026", "CB BRASSERIE DU NORD", "-48.50")
+            );
+
+            PendingImportSummaryModel summary = BankImportCalculator.importPendingCB(
+                    rawRows, colRoles, "DD/MM/YYYY", false, List.of(manualOp), List.of()
+            );
+
+            assertThat(summary.imported()).isEqualTo(1);
+            assertThat(summary.duplicateCandidates()).hasSize(1);
+            DuplicateCandidateModel candidate = summary.duplicateCandidates().get(0);
+            assertThat(candidate.incomingOp().label()).isEqualTo("CB BRASSERIE DU NORD");
+            assertThat(candidate.matchingManualOps()).hasSize(1);
+            assertThat(candidate.matchingManualOps().get(0).id()).isEqualTo("man_1");
+            assertThat(candidate.matchingManualOps().get(0).categoryId()).isEqualTo("cat_resto");
+        }
+
+        @Test
+        @DisplayName("importPendingCB does not propose candidate if delta date > 1 day or delta amount > 10 EUR")
+        void testFuzzyDuplicateExceedTolerance() {
+            BankImportModel.PendingOperationModel manualOp = new BankImportModel.PendingOperationModel(
+                    "man_1", "2026-01-15", "2026-01-15", "cb", "", "Courses",
+                    new BigDecimal("-50.00"), "cat_courses", "pending", null, null, ""
+            );
+
+            List<String> colRoles = List.of("date", "label", "amount");
+            // Row 1: delta date = 2 days (17/01/2026 vs 15/01/2026) -> out of tolerance
+            // Row 2: delta amount = 11 EUR (-61.00 vs -50.00) -> out of tolerance
+            List<List<String>> rawRows = List.of(
+                    List.of("17/01/2026", "CARREFOUR", "-50.00"),
+                    List.of("15/01/2026", "AUCHAN", "-61.00")
+            );
+
+            PendingImportSummaryModel summary = BankImportCalculator.importPendingCB(
+                    rawRows, colRoles, "DD/MM/YYYY", false, List.of(manualOp), List.of()
+            );
+
+            assertThat(summary.duplicateCandidates()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("mergePendingOperation preserves manual category and updates official bank fields with cleared status")
+        void testMergePendingOperation() {
+            BankImportModel.PendingOperationModel manualOp = new BankImportModel.PendingOperationModel(
+                    "man_1", "2026-01-15", "2026-01-15", "cb", "", "Saisie manuelle Resto",
+                    new BigDecimal("-40.00"), "cat_resto_perso", "pending", null, null, "Note perso"
+            );
+
+            BankImportModel.PendingOperationModel bankOp = new BankImportModel.PendingOperationModel(
+                    "bank_1", "2026-01-16", "2026-01-31", "cb", "", "FACTURE CARTE 160126 RESTO LE PHARE",
+                    new BigDecimal("-45.50"), "", "pending", null, null, "Achat le 16/01/2026"
+            );
+
+            List<BankImportModel.PendingOperationModel> existingList = List.of(manualOp, bankOp);
+
+            List<BankImportModel.PendingOperationModel> mergedList = BankImportCalculator.mergePendingOperation(
+                    "man_1", bankOp, existingList
+            );
+
+            assertThat(mergedList).hasSize(1); // bankOp removed as redundant, manualOp updated
+            BankImportModel.PendingOperationModel merged = mergedList.get(0);
+            assertThat(merged.id()).isEqualTo("man_1"); // Conserve l'ID
+            assertThat(merged.categoryId()).isEqualTo("cat_resto_perso"); // Conserve la catégorie saisie manuellement
+            assertThat(merged.label()).isEqualTo("FACTURE CARTE 160126 RESTO LE PHARE"); // Libelle banque
+            assertThat(merged.amount()).isEqualByComparingTo(new BigDecimal("-45.50")); // Montant exact banque
+            assertThat(merged.date()).isEqualTo("2026-01-16"); // Date banque
+            assertThat(merged.status()).isEqualTo("cleared"); // Statut passé a cleared
+            assertThat(merged.clearedDate()).isEqualTo("2026-01-16");
+        }
+    }
 }

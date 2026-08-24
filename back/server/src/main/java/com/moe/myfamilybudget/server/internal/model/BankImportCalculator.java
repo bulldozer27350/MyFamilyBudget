@@ -420,6 +420,7 @@ public final class BankImportCalculator {
 
     /**
      * Imports deferred CB pending operations from parsed CSV rows.
+     * Identifies exact duplicates and fuzzy duplicate candidates for manual entries (within +-1 day of operation date and +-10 EUR).
      */
     public static PendingImportSummaryModel importPendingCB(
             List<List<String>> rawRows,
@@ -441,16 +442,21 @@ public final class BankImportCalculator {
         }
 
         Map<String, Integer> existingCounts = new HashMap<>();
+        List<BankImportModel.PendingOperationModel> manualCandidates = new ArrayList<>();
         if (existingOps != null) {
             for (BankImportModel.PendingOperationModel op : existingOps) {
                 String k = transactionDedupeKey(op.date(), op.label(), op.amount());
                 existingCounts.put(k, existingCounts.getOrDefault(k, 0) + 1);
+                if ("pending".equalsIgnoreCase(op.status()) && (op.linkedTxId() == null || op.linkedTxId().isBlank())) {
+                    manualCandidates.add(op);
+                }
             }
         }
 
         Map<String, Integer> fileKeyCounts = new HashMap<>();
         List<BankImportModel.PendingOperationModel> imported = new ArrayList<>();
         List<BankImportModel.PendingOperationModel> ignoredDuplicates = new ArrayList<>();
+        List<DuplicateCandidateModel> duplicateCandidates = new ArrayList<>();
 
         String fmt = (dateFormat != null && !dateFormat.isBlank()) ? dateFormat : "DD-MM-YYYY";
 
@@ -497,10 +503,32 @@ public final class BankImportCalculator {
 
                 if (fileKeyCounts.get(key) <= stored) {
                     ignoredDuplicates.add(op);
-                } else {
-                    existingCounts.put(key, stored + 1);
-                    imported.add(op);
+                    continue;
                 }
+
+                existingCounts.put(key, stored + 1);
+
+                // Fuzzy duplicate check against manual pending operations (within +-1 day on operation date and +-10 EUR)
+                LocalDate incomingOpDate = parseLocalDate(op.date());
+                BigDecimal incomingAbsAmt = op.amount() != null ? op.amount().abs() : BigDecimal.ZERO;
+                List<BankImportModel.PendingOperationModel> matchingManual = manualCandidates.stream()
+                        .filter(m -> {
+                            LocalDate mDate = parseLocalDate(m.date());
+                            if (incomingOpDate != null && mDate != null) {
+                                long diffDays = Math.abs(ChronoUnit.DAYS.between(incomingOpDate, mDate));
+                                if (diffDays > 1) return false;
+                            }
+                            BigDecimal mAbsAmt = m.amount() != null ? m.amount().abs() : BigDecimal.ZERO;
+                            BigDecimal diffAmt = incomingAbsAmt.subtract(mAbsAmt).abs();
+                            return diffAmt.compareTo(new BigDecimal("10.00")) <= 0;
+                        })
+                        .toList();
+
+                if (!matchingManual.isEmpty()) {
+                    duplicateCandidates.add(new DuplicateCandidateModel(op, matchingManual));
+                }
+
+                imported.add(op);
             }
         }
 
@@ -517,8 +545,66 @@ public final class BankImportCalculator {
                 autoCategorized,
                 ignoredDuplicates,
                 firstOpDate,
-                categorized
+                categorized,
+                duplicateCandidates
         );
+    }
+
+    /**
+     * Merges a manual pending operation with an incoming bank operation.
+     * Preserves the manual operation's ID and categoryId (if present).
+     * Overwrites label, date, expectedDate, amount with the bank's values and sets status to 'cleared'.
+     */
+    public static List<BankImportModel.PendingOperationModel> mergePendingOperation(
+            String manualOpId,
+            BankImportModel.PendingOperationModel bankOp,
+            List<BankImportModel.PendingOperationModel> existingOps
+    ) {
+        if (existingOps == null) return Collections.emptyList();
+        List<BankImportModel.PendingOperationModel> updated = new ArrayList<>();
+        boolean found = false;
+
+        for (BankImportModel.PendingOperationModel op : existingOps) {
+            if (op.id().equals(manualOpId)) {
+                found = true;
+                String categoryToKeep = (op.categoryId() != null && !op.categoryId().isBlank())
+                        ? op.categoryId()
+                        : (bankOp != null ? bankOp.categoryId() : "");
+
+                String mergedDate = bankOp != null && bankOp.date() != null && !bankOp.date().isBlank()
+                        ? bankOp.date() : op.date();
+                String mergedExpectedDate = bankOp != null && bankOp.expectedDate() != null && !bankOp.expectedDate().isBlank()
+                        ? bankOp.expectedDate() : op.expectedDate();
+                String mergedLabel = bankOp != null && bankOp.label() != null && !bankOp.label().isBlank()
+                        ? bankOp.label() : op.label();
+                BigDecimal mergedAmount = bankOp != null && bankOp.amount() != null
+                        ? bankOp.amount() : op.amount();
+                String mergedNotes = bankOp != null && bankOp.notes() != null && !bankOp.notes().isBlank()
+                        ? bankOp.notes() : op.notes();
+
+                updated.add(new BankImportModel.PendingOperationModel(
+                        op.id(),
+                        mergedDate,
+                        mergedExpectedDate,
+                        op.type() != null ? op.type() : "cb",
+                        op.refNumber() != null ? op.refNumber() : "",
+                        mergedLabel,
+                        mergedAmount,
+                        categoryToKeep,
+                        "cleared",
+                        op.linkedTxId(),
+                        mergedDate,
+                        mergedNotes
+                ));
+            } else if (bankOp != null && op.id().equals(bankOp.id())) {
+                // If the bank operation was already added to pending operations, remove/skip it to avoid duplicate
+                continue;
+            } else {
+                updated.add(op);
+            }
+        }
+
+        return updated;
     }
 
     /**
