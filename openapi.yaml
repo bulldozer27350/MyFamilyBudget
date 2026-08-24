@@ -1012,6 +1012,72 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BankImportMatchingDto'
+        pendingOperations:
+          type: array
+          items:
+            $ref: '#/components/schemas/PendingOperationDto'
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankImportRuleDto'
+        columnMapping:
+          $ref: '#/components/schemas/BankColumnMappingDto'
+
+    PendingOperationDto:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        expectedDate:
+          type: string
+        type:
+          type: string
+        refNumber:
+          type: string
+        label:
+          type: string
+        amount:
+          type: number
+        categoryId:
+          type: string
+        status:
+          type: string
+        linkedTxId:
+          type: string
+        clearedDate:
+          type: string
+        notes:
+          type: string
+
+    BankImportRuleDto:
+      type: object
+      properties:
+        id:
+          type: string
+        matchText:
+          type: string
+        categoryId:
+          type: string
+
+    BankColumnMappingDto:
+      type: object
+      properties:
+        delimiter:
+          type: string
+        dateFormat:
+          type: string
+        hasHeader:
+          type: boolean
+        dateCol:
+          type: integer
+        labelCol:
+          type: integer
+        typeCol:
+          type: integer
+        amountCol:
+          type: integer
 
     BankImportCategoryDto:
       type: object

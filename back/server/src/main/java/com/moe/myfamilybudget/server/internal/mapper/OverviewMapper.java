@@ -7,7 +7,12 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.api.model.AssetCategoryDto;
+import com.moe.myfamilybudget.api.model.BankColumnMappingDto;
+import com.moe.myfamilybudget.api.model.BankImportCategoryDto;
 import com.moe.myfamilybudget.api.model.BankImportDto;
+import com.moe.myfamilybudget.api.model.BankImportMatchingDto;
+import com.moe.myfamilybudget.api.model.BankImportMatchingLinkDto;
+import com.moe.myfamilybudget.api.model.BankImportRuleDto;
 import com.moe.myfamilybudget.api.model.BankTransactionDto;
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.api.model.CashflowYearDto;
@@ -18,6 +23,7 @@ import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.api.model.PatrimoinePerPlacementDto;
 import com.moe.myfamilybudget.api.model.PatrimoineProjectionsDto;
 import com.moe.myfamilybudget.api.model.PatrimoineYearDto;
+import com.moe.myfamilybudget.api.model.PendingOperationDto;
 import com.moe.myfamilybudget.api.model.PlacementDto;
 import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.RetirementDto;
@@ -588,7 +594,31 @@ public class OverviewMapper {
         List<BankImportModel.BankTransactionModel> txs = dto.getTransactions() != null ? dto.getTransactions().stream()
                 .map(t -> new BankImportModel.BankTransactionModel(t.getId(), t.getDate(), t.getLabel(), t.getAmount()))
                 .collect(Collectors.toList()) : List.of();
-        return new BankImportModel(txs, List.of(), List.of());
+        List<BankImportModel.CategoryModel> categories = dto.getCategories() != null ? dto.getCategories().stream()
+                .map(c -> new BankImportModel.CategoryModel(c.getId(), c.getLabel(),
+                        c.getKind() != null ? c.getKind().getValue() : null,
+                        c.getCompressible() != null ? c.getCompressible().getValue() : null))
+                .collect(Collectors.toList()) : List.of();
+        List<BankImportModel.MatchingModel> matchings = dto.getMatchings() != null ? dto.getMatchings().stream()
+                .map(mm -> new BankImportModel.MatchingModel(mm.getMonth(),
+                        mm.getLinks() != null ? mm.getLinks().stream()
+                                .map(l -> new BankImportModel.MatchingLinkModel(l.getBudgetLineId(), l.getTxIds()))
+                                .collect(Collectors.toList()) : List.of()))
+                .collect(Collectors.toList()) : List.of();
+        List<BankImportModel.PendingOperationModel> pendingOperations = dto.getPendingOperations() != null ? dto.getPendingOperations().stream()
+                .map(p -> new BankImportModel.PendingOperationModel(p.getId(), p.getDate(), p.getExpectedDate(),
+                        p.getType(), p.getRefNumber(), p.getLabel(), p.getAmount(), p.getCategoryId(),
+                        p.getStatus(), p.getLinkedTxId(), p.getClearedDate(), p.getNotes()))
+                .collect(Collectors.toList()) : List.of();
+        List<BankImportModel.BankImportRuleModel> rules = dto.getRules() != null ? dto.getRules().stream()
+                .map(r -> new BankImportModel.BankImportRuleModel(r.getId(), r.getMatchText(), r.getCategoryId()))
+                .collect(Collectors.toList()) : List.of();
+        BankColumnMappingDto cm = dto.getColumnMapping();
+        BankImportModel.BankColumnMappingModel columnMapping = cm != null
+                ? new BankImportModel.BankColumnMappingModel(cm.getDelimiter(), cm.getDateFormat(), cm.getHasHeader(),
+                        cm.getDateCol(), cm.getLabelCol(), cm.getTypeCol(), cm.getAmountCol())
+                : null;
+        return new BankImportModel(columnMapping, categories, rules, txs, pendingOperations, matchings);
     }
 
     private BankImportDto toBankImportDto(BankImportModel m) {
@@ -602,8 +632,66 @@ public class OverviewMapper {
             dto.setAmount(t.amount());
             return dto;
         }).collect(Collectors.toList()) : List.of();
+        List<BankImportCategoryDto> categories = m.categories() != null ? m.categories().stream().map(c -> {
+            BankImportCategoryDto dto = new BankImportCategoryDto();
+            dto.setId(c.id());
+            dto.setLabel(c.label());
+            dto.setKind(c.kind() != null ? BankImportCategoryDto.KindEnum.fromValue(c.kind()) : null);
+            dto.setCompressible(c.compressible() != null ? BankImportCategoryDto.CompressibleEnum.fromValue(c.compressible()) : null);
+            return dto;
+        }).collect(Collectors.toList()) : List.of();
+        List<BankImportMatchingDto> matchings = m.matchings() != null ? m.matchings().stream().map(mm -> {
+            BankImportMatchingDto dto = new BankImportMatchingDto();
+            dto.setMonth(mm.month());
+            dto.setLinks(mm.links() != null ? mm.links().stream().map(l -> {
+                BankImportMatchingLinkDto ldto = new BankImportMatchingLinkDto();
+                ldto.setBudgetLineId(l.budgetLineId());
+                ldto.setTxIds(l.txIds());
+                return ldto;
+            }).collect(Collectors.toList()) : List.of());
+            return dto;
+        }).collect(Collectors.toList()) : List.of();
+        List<PendingOperationDto> pendingOperations = m.pendingOperations() != null ? m.pendingOperations().stream().map(p -> {
+            PendingOperationDto dto = new PendingOperationDto();
+            dto.setId(p.id());
+            dto.setDate(p.date());
+            dto.setExpectedDate(p.expectedDate());
+            dto.setType(p.type());
+            dto.setRefNumber(p.refNumber());
+            dto.setLabel(p.label());
+            dto.setAmount(p.amount());
+            dto.setCategoryId(p.categoryId());
+            dto.setStatus(p.status());
+            dto.setLinkedTxId(p.linkedTxId());
+            dto.setClearedDate(p.clearedDate());
+            dto.setNotes(p.notes());
+            return dto;
+        }).collect(Collectors.toList()) : List.of();
+        List<BankImportRuleDto> rules = m.rules() != null ? m.rules().stream().map(r -> {
+            BankImportRuleDto dto = new BankImportRuleDto();
+            dto.setId(r.id());
+            dto.setMatchText(r.matchText());
+            dto.setCategoryId(r.categoryId());
+            return dto;
+        }).collect(Collectors.toList()) : List.of();
+        BankColumnMappingDto columnMapping = null;
+        if (m.columnMapping() != null) {
+            columnMapping = new BankColumnMappingDto();
+            columnMapping.setDelimiter(m.columnMapping().delimiter());
+            columnMapping.setDateFormat(m.columnMapping().dateFormat());
+            columnMapping.setHasHeader(m.columnMapping().hasHeader());
+            columnMapping.setDateCol(m.columnMapping().dateCol());
+            columnMapping.setLabelCol(m.columnMapping().labelCol());
+            columnMapping.setTypeCol(m.columnMapping().typeCol());
+            columnMapping.setAmountCol(m.columnMapping().amountCol());
+        }
         BankImportDto dto = new BankImportDto();
         dto.setTransactions(txs);
+        dto.setCategories(categories);
+        dto.setMatchings(matchings);
+        dto.setPendingOperations(pendingOperations);
+        dto.setRules(rules);
+        dto.setColumnMapping(columnMapping);
         return dto;
     }
     

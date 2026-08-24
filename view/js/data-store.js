@@ -177,7 +177,16 @@
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(parsed)
-            }).catch(() => {});
+            }).then(res => {
+              if (!res.ok) {
+                if (callback) callback(false, "Import local reussi, mais la synchronisation serveur a echoue (" + res.status + ")");
+              } else if (callback) {
+                callback(true, "Données importées avec succès");
+              }
+            }).catch(() => {
+              if (callback) callback(false, "Import local reussi, mais la synchronisation serveur a echoue (hors ligne ?)");
+            });
+            return;
           }
           if (callback) callback(true, "Données importées avec succès");
         } catch (err) {
