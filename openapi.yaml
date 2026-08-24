@@ -459,6 +459,34 @@ paths:
         '200':
           description: Traitement du CSV effectue
 
+  /bank/transactions/{txId}/splits:
+    put:
+      summary: Met à jour la ventilation (splits) d'une transaction bancaire
+      operationId: updateBankTransactionSplits
+      tags:
+        - Import Bancaire
+      parameters:
+        - name: txId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/BankTransactionSplitDto'
+      responses:
+        '200':
+          description: Ventilation mise à jour avec succès
+        '400':
+          description: Somme des splits non valide
+        '404':
+          description: Transaction non trouvée
+
   # ---------------------------------------------------------------------------
   # OPERATIONS EN COURS (PENDING)
   # ---------------------------------------------------------------------------
@@ -985,6 +1013,20 @@ components:
         taxable:
           type: string
 
+    BankTransactionSplitDto:
+      type: object
+      properties:
+        id:
+          type: string
+        categoryId:
+          type: string
+        budgetLineId:
+          type: string
+        amount:
+          type: number
+        label:
+          type: string
+
     BankTransactionDto:
       type: object
       properties:
@@ -996,6 +1038,14 @@ components:
           type: string
         amount:
           type: number
+        categoryId:
+          type: string
+        type:
+          type: string
+        splits:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankTransactionSplitDto'
 
     BankImportDto:
       type: object

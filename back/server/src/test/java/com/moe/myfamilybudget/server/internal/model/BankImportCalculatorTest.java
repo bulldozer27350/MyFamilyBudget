@@ -243,4 +243,80 @@ class BankImportCalculatorTest {
             assertThat(merged.clearedDate()).isEqualTo("2026-01-16");
         }
     }
+
+    @Nested
+    @DisplayName("BankTransactionSplit Tests")
+    class BankTransactionSplitTests {
+
+        @Test
+        @DisplayName("BankTransactionSplitModel applies safe defaults for null values")
+        void testSplitModelDefaults() {
+            BankImportModel.BankTransactionSplitModel split = new BankImportModel.BankTransactionSplitModel(null, null, null, null);
+
+            assertThat(split.id()).isNotBlank();
+            assertThat(split.categoryId()).isEmpty();
+            assertThat(split.amount()).isEqualTo(BigDecimal.ZERO);
+            assertThat(split.label()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("BankTransactionModel with empty splits passes validation")
+        void testTransactionWithoutSplitsIsValid() {
+            BankImportModel.BankTransactionModel tx = new BankImportModel.BankTransactionModel(
+                    "tx1", "2026-01-15", "LECLERC", "", new BigDecimal("-100.00"), "cat_courses"
+            );
+
+            assertThat(tx.splits()).isEmpty();
+            tx.validateSplits(); // Should not throw
+        }
+
+        @Test
+        @DisplayName("BankTransactionModel with valid splits sum passes validation")
+        void testTransactionWithValidSplits() {
+            List<BankImportModel.BankTransactionSplitModel> splits = List.of(
+                    new BankImportModel.BankTransactionSplitModel("s1", "cat_food", new BigDecimal("-60.00"), "Alimentation"),
+                    new BankImportModel.BankTransactionSplitModel("s2", "cat_clothes", new BigDecimal("-40.00"), "Vêtements")
+            );
+
+            BankImportModel.BankTransactionModel tx = new BankImportModel.BankTransactionModel(
+                    "tx1", "2026-01-15", "LECLERC", "", new BigDecimal("-100.00"), "", splits
+            );
+
+            assertThat(tx.splits()).hasSize(2);
+            tx.validateSplits(); // Should not throw
+        }
+
+        @Test
+        @DisplayName("BankTransactionModel with split sum matching within 0.01 tolerance passes validation")
+        void testTransactionWithRoundingTolerance() {
+            List<BankImportModel.BankTransactionSplitModel> splits = List.of(
+                    new BankImportModel.BankTransactionSplitModel("s1", "cat_1", new BigDecimal("-33.33"), "Part 1"),
+                    new BankImportModel.BankTransactionSplitModel("s2", "cat_2", new BigDecimal("-33.33"), "Part 2"),
+                    new BankImportModel.BankTransactionSplitModel("s3", "cat_3", new BigDecimal("-33.33"), "Part 3")
+            ); // Sum is -99.99 for tx of -100.00 (diff = 0.01)
+
+            BankImportModel.BankTransactionModel tx = new BankImportModel.BankTransactionModel(
+                    "tx1", "2026-01-15", "LECLERC", "", new BigDecimal("-100.00"), "", splits
+            );
+
+            tx.validateSplits(); // Should not throw because diff <= 0.01
+        }
+
+        @Test
+        @DisplayName("BankTransactionModel with invalid splits sum throws IllegalArgumentException")
+        void testTransactionWithInvalidSplitsThrows() {
+            List<BankImportModel.BankTransactionSplitModel> splits = List.of(
+                    new BankImportModel.BankTransactionSplitModel("s1", "cat_food", new BigDecimal("-50.00"), "Alimentation"),
+                    new BankImportModel.BankTransactionSplitModel("s2", "cat_clothes", new BigDecimal("-30.00"), "Vêtements")
+            ); // Sum is -80.00 for tx of -100.00
+
+            BankImportModel.BankTransactionModel tx = new BankImportModel.BankTransactionModel(
+                    "tx1", "2026-01-15", "LECLERC", "", new BigDecimal("-100.00"), "", splits
+            );
+
+            assertThatThrownBy(tx::validateSplits)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("La somme des ventilations (-80.00 €) ne correspond pas au montant de la transaction (-100.00 €)");
+        }
+    }
 }

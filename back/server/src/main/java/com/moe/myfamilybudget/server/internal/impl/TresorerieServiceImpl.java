@@ -28,6 +28,8 @@ import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.server.internal.model.PointageCalculator;
+import com.moe.myfamilybudget.server.internal.model.PointageCalculator;
 import com.moe.myfamilybudget.server.internal.model.RealAverageModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
@@ -202,11 +204,11 @@ public class TresorerieServiceImpl implements TresorerieApi {
                 String kind = lineKindMap.getOrDefault(l.budgetLineId(), "charge");
 
                 BigDecimal sum = BigDecimal.ZERO;
-                for (String txId : l.txIds()) {
-                    BankImportModel.BankTransactionModel tx = txById.get(txId);
-                    if (tx == null || tx.amount() == null) continue;
-                    BigDecimal amt = tx.amount();
-                    sum = sum.add("revenu".equals(kind) ? amt : amt.negate());
+                for (String refId : l.txIds()) {
+                    BigDecimal amt = PointageCalculator.resolveAmount(refId, txById);
+                    if (amt != null) {
+                        sum = sum.add("revenu".equals(kind) ? amt : amt.negate());
+                    }
                 }
 
                 byLine.computeIfAbsent(l.budgetLineId(), k -> new ArrayList<>())

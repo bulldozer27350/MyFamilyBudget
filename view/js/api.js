@@ -17,10 +17,32 @@
 
   /**
    * Adresse et port du serveur Back-end Spring Boot (conformément au contrat OpenAPI).
-   * Par défaut : 'http://localhost:8080/api/v1' (ou configurable via window.API_BASE_URL).
-   * Le serveur Express (view/server.js) relaie également ces requêtes sur le port 3000 vers http://localhost:8080.
+   * Dans le navigateur : '/api/v1' pour passer par le proxy Express port 3000.
+   * Côté Node / tests : 'http://localhost:8080/api/v1'.
    */
-  const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8080/api/v1';
+  const API_BASE_URL = typeof window !== 'undefined'
+    ? (window.API_BASE_URL || '/api/v1')
+    : (typeof process !== 'undefined' && process?.env?.BACKEND_URL ? process.env.BACKEND_URL : 'http://localhost:8080/api/v1');
+
+  async function safeFetch(url, options = {}, timeoutMs = 800) {
+    if (typeof fetch === 'undefined') return null;
+    try {
+      let controller = null;
+      let timer = null;
+      if (typeof AbortController !== 'undefined') {
+        controller = new AbortController();
+        timer = setTimeout(() => controller.abort(), timeoutMs);
+      }
+      const res = await fetch(url, {
+        ...options,
+        signal: controller ? controller.signal : undefined
+      });
+      if (timer) clearTimeout(timer);
+      return res;
+    } catch (e) {
+      return null;
+    }
+  }
 
   const BudgetApi = {
     /**
@@ -531,6 +553,31 @@
     },
 
     /**
+     * Met à jour la ventilation (splits) d'une transaction bancaire.
+     * @param {string} txId - Identifiant de la transaction
+     * @param {Array} splits - Liste des sous-lignes ventilées
+     * @returns {Promise<void>}
+     */
+    async updateBankTransactionSplits(txId, splits) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank/transactions/' + encodeURIComponent(txId) + '/splits', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(splits || [])
+          });
+          if (res && res.ok) {
+            app().BankImportService.updateBankTransactionSplits(txId, splits);
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to update transaction splits on backend", e);
+        }
+      }
+      return Promise.resolve(app().BankImportService.updateBankTransactionSplits(txId, splits));
+    },
+
+    /**
      * Force l'import d'une transaction marquée comme doublon.
      * @returns {Promise<void>}
      */
@@ -560,33 +607,44 @@
      * @returns {Promise<Object>} Modèle de lecture
      */
     async getPendingOperations() {
-      if (typeof fetch !== 'undefined') {
-        try {
-          const res = await fetch(API_BASE_URL + '/pending-operations');
-          if (res.ok) {
-            const data = await res.json();
-            const localFallback = (typeof app === 'function' && app().PendingOperationsService)
-              ? app().PendingOperationsService.buildPendingOperations()
-              : {};
-            return {
-              ...localFallback,
-              ...data,
-              pendingOperations: data.pendingOperations || localFallback.pendingOperations || []
-            };
-          }
-        } catch (e) {}
-      }
-      return Promise.resolve(app().PendingOperationsService.buildPendingOperations());
+      const localFallback = (typeof app === 'function' && app().PendingOperationsService)
+        ? app().PendingOperationsService.buildPendingOperations()
+        : {};
+      try {
+        const res = await safeFetch(API_BASE_URL + '/pending-operations');
+        if (res && res.ok) {
+          const data = await res.json();
+          const backendOps = Array.isArray(data?.pendingOperations) ? data.pendingOperations : [];
+          const localOps = Array.isArray(localFallback?.pendingOperations) ? localFallback.pendingOperations : [];
+          const mergedOpsMap = new Map();
+          localOps.forEach(op => { if (op && op.id) mergedOpsMap.set(op.id, op); });
+          backendOps.forEach(op => { if (op && op.id) mergedOpsMap.set(op.id, op); });
+          return {
+            ...localFallback,
+            ...data,
+            pendingOperations: Array.from(mergedOpsMap.values())
+          };
+        }
+      } catch (e) {}
+      return Promise.resolve(localFallback);
     },
 
     /**
      * Enregistre ou met à jour une opération en cours.
      * @param {Object} opData Données de l'opération
      * @param {string} [opId] Identifiant existant en cas de modification
-     * @returns {Promise<Array>} Liste mise à jour des opérations en cours
+     * @returns {Promise<Object>} Opération enregistrée
      */
     async savePendingOperation(opData, opId) {
-      return Promise.resolve(app().PendingOperationsService.savePendingOperation(opData, opId));
+      const localResult = app().PendingOperationsService.savePendingOperation(opData, opId);
+      try {
+        await safeFetch(API_BASE_URL + '/pending-operations/force', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(localResult)
+        });
+      } catch (e) {}
+      return Promise.resolve(localResult);
     },
 
     /**
@@ -595,15 +653,13 @@
      * @returns {Promise<Array>} Liste mise à jour des opérations en cours
      */
     async deletePendingOperation(opId) {
-      if (typeof fetch !== 'undefined') {
-        try {
-          await fetch(API_BASE_URL + '/pending-operations/ignore', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: opId, operationId: opId })
-          });
-        } catch (e) {}
-      }
+      try {
+        await safeFetch(API_BASE_URL + '/pending-operations/ignore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: opId, operationId: opId })
+        });
+      } catch (e) {}
       return Promise.resolve(app().PendingOperationsService.deletePendingOperation(opId));
     },
 
@@ -821,7 +877,7 @@
   };
 
   // Export de computeRetirementProjection pour compatibilité avec retraite-view.js
-  exports.computeRetirementProjection = exports.computeRetirementProjection || window.BudgetApp?.computeRetirementProjection;
+  exports.computeRetirementProjection = exports.computeRetirementProjection || (typeof window !== 'undefined' ? window.BudgetApp?.computeRetirementProjection : undefined);
   
   exports.BudgetApi = BudgetApi;
 })(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);

@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
 import com.moe.myfamilybudget.server.internal.model.AutoMatchResultModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportSummaryModel;
@@ -111,19 +112,40 @@ public class StatementBankImportMapper {
         map.put("type", model.type());
         map.put("amount", model.amount());
         map.put("categoryId", model.categoryId());
+        if (model.splits() != null && !model.splits().isEmpty()) {
+            map.put("splits", model.splits().stream().map(this::toSplitMap).collect(Collectors.toList()));
+        } else {
+            map.put("splits", Collections.emptyList());
+        }
         return map;
     }
 
-    public BankImportModel.BankTransactionModel toTransactionModel(Map<String, Object> map) {
-        if (map == null) return new BankImportModel.BankTransactionModel(null, "", "", BigDecimal.ZERO);
-        String id = (String) map.get("id");
-        String date = (String) map.getOrDefault("date", "");
-        String label = (String) map.getOrDefault("label", "");
-        String type = (String) map.getOrDefault("type", "");
-        BigDecimal amount = toBigDecimal(map.get("amount"));
-        String categoryId = (String) map.getOrDefault("categoryId", "");
-        return new BankImportModel.BankTransactionModel(id, date, label, type, amount, categoryId);
+    public Map<String, Object> toSplitMap(BankImportModel.BankTransactionSplitModel model) {
+        if (model == null) return Collections.emptyMap();
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", model.id());
+        map.put("categoryId", model.categoryId());
+        map.put("amount", model.amount());
+        map.put("label", model.label());
+        return map;
     }
+
+    public BankImportModel.BankTransactionSplitModel toSplitModel(BankTransactionSplitDto item) {
+        if (item == null) return new BankImportModel.BankTransactionSplitModel(null, "", BigDecimal.ZERO, "");
+        String id = item.getId();
+        String categoryId = item.getCategoryId();
+        BigDecimal amount = item.getAmount();
+        String label = item.getLabel();
+        return new BankImportModel.BankTransactionSplitModel(id, categoryId, amount, label);
+    }
+
+    public List<BankImportModel.BankTransactionSplitModel> toSplitList(List<BankTransactionSplitDto> body) {
+            return body.stream()
+                    .map(item -> toSplitModel(item))
+                    .collect(Collectors.toList());
+    }
+
+//    
 
     public Map<String, Object> toPendingOperationMap(BankImportModel.PendingOperationModel model) {
         if (model == null) return Collections.emptyMap();

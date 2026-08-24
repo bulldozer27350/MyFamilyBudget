@@ -6,7 +6,10 @@ async function runTests() {
   console.log("=== VERIFYING RUNTIME EXECUTION OF ALL MODULAR PAGES ===");
 
   const rootDir = path.resolve(__dirname, '..');
-  const sampleData = JSON.parse(fs.readFileSync(path.join(rootDir, 'budget-familial.json'), 'utf8'));
+  const jsonPath = fs.existsSync(path.join(rootDir, 'budget-familial.json')) 
+    ? path.join(rootDir, 'budget-familial.json') 
+    : path.join(__dirname, '..', '..', 'budget-familial.json');
+  const sampleData = fs.existsSync(jsonPath) ? JSON.parse(fs.readFileSync(jsonPath, 'utf8')) : {};
 
   const coreScripts = [
     'js/tokens.js',

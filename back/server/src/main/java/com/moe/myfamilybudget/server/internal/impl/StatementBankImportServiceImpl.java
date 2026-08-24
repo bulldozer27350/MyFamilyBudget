@@ -13,11 +13,14 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.moe.myfamilybudget.api.controller.ImportBancaireApi;
+import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportSummaryModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+
+import jakarta.validation.Valid;
 
 /**
  * Service et Contrôleur REST implémentant le contrat OpenAPI ImportBancaireApi (Tag: Import Bancaire).
@@ -108,6 +111,57 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         return ResponseEntity.ok().build();
     }
 
+    @Override
+    public ResponseEntity<Void> updateBankTransactionSplits(String txId,
+            @Valid List<@Valid BankTransactionSplitDto> bankTransactionSplitDto) {
+        BankImportModel current = persistenceManager.getBankImport();
+        List<BankImportModel.BankTransactionModel> currentTxs = current.transactions();
+
+        int txIndex = -1;
+        for (int i = 0; i < currentTxs.size(); i++) {
+            if (currentTxs.get(i).id().equals(txId)) {
+                txIndex = i;
+                break;
+            }
+        }
+        if (txIndex == -1) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<BankImportModel.BankTransactionSplitModel> splits = mapper.toSplitList(bankTransactionSplitDto);
+        BankImportModel.BankTransactionModel existingTx = currentTxs.get(txIndex);
+        BankImportModel.BankTransactionModel updatedTx = new BankImportModel.BankTransactionModel(
+                existingTx.id(),
+                existingTx.date(),
+                existingTx.label(),
+                existingTx.type(),
+                existingTx.amount(),
+                existingTx.categoryId(),
+                splits
+        );
+
+        try {
+            updatedTx.validateSplits();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>(currentTxs);
+        updatedTxs.set(txIndex, updatedTx);
+
+        BankImportModel updatedModel = new BankImportModel(
+                current.columnMapping(),
+                current.categories(),
+                current.rules(),
+                updatedTxs,
+                current.pendingOperations(),
+                current.matchings()
+        );
+
+        persistenceManager.updateBankImport(updatedModel);
+        return ResponseEntity.ok().build();
+    }
+
     // --- Utility ---
 
     @SuppressWarnings("unchecked")
@@ -117,4 +171,5 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         }
         return Collections.emptyMap();
     }
+
 }

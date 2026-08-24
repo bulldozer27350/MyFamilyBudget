@@ -65,7 +65,7 @@ class PointageCalculatorTest {
     }
 
     @Test
-    @DisplayName("calculateRealByLine aggregates transaction amounts per budget line")
+    @DisplayName("calculateRealByLine aggregates transaction amounts per budget line with whole transactions and splits")
     void testCalculateRealByLine() {
         PointageBudgetLineModel line1 = new PointageBudgetLineModel("c1", "Loyer", "charge", new BigDecimal("800"), "cat1");
         PointageBudgetLineModel line2 = new PointageBudgetLineModel("i1", "Salaire", "revenu", new BigDecimal("3000"), "cat2");
@@ -81,6 +81,81 @@ class PointageCalculatorTest {
 
         assertThat(realMap.get("c1")).isEqualByComparingTo("800.00");
         assertThat(realMap.get("i1")).isEqualByComparingTo("3100.00");
+    }
+
+    @Test
+    @DisplayName("calculateRealByLine handles composite split IDs (txId#splitId)")
+    void testCalculateRealByLineWithSplits() {
+        PointageBudgetLineModel lineFood = new PointageBudgetLineModel("c_food", "Courses", "charge", new BigDecimal("300"), "cat_food");
+        PointageBudgetLineModel lineClothes = new PointageBudgetLineModel("c_clothes", "Vêtements", "charge", new BigDecimal("100"), "cat_clothes");
+
+        BankImportModel.BankTransactionSplitModel split1 = new BankImportModel.BankTransactionSplitModel("s1", "cat_food", new BigDecimal("-65.00"), "Nourriture");
+        BankImportModel.BankTransactionSplitModel split2 = new BankImportModel.BankTransactionSplitModel("s2", "cat_clothes", new BigDecimal("-35.00"), "Pull");
+
+        BankImportModel.BankTransactionModel txSplit = new BankImportModel.BankTransactionModel(
+                "tx_leclerc", "2026-05-15", "LECLERC TICKET", "cb", new BigDecimal("-100.00"), "cat_default", List.of(split1, split2)
+        );
+
+        BankImportModel.MatchingLinkModel linkFood = new BankImportModel.MatchingLinkModel("c_food", List.of("tx_leclerc#s1"));
+        BankImportModel.MatchingLinkModel linkClothes = new BankImportModel.MatchingLinkModel("c_clothes", List.of("tx_leclerc#s2"));
+        BankImportModel.MatchingModel matching = new BankImportModel.MatchingModel("2026-05", List.of(linkFood, linkClothes));
+
+        Map<String, BigDecimal> realMap = PointageCalculator.calculateRealByLine(List.of(txSplit), matching, List.of(lineFood, lineClothes));
+
+        assertThat(realMap.get("c_food")).isEqualByComparingTo("65.00");
+        assertThat(realMap.get("c_clothes")).isEqualByComparingTo("35.00");
+    }
+
+    @Test
+    @DisplayName("calculateMonthBankSummary handles split transactions when partially or fully pointed")
+    void testCalculateMonthBankSummaryWithSplits() {
+        BankImportModel.BankTransactionSplitModel s1 = new BankImportModel.BankTransactionSplitModel("s1", "cat_food", new BigDecimal("-70.00"), "Alim");
+        BankImportModel.BankTransactionSplitModel s2 = new BankImportModel.BankTransactionSplitModel("s2", "cat_other", new BigDecimal("-30.00"), "Autre");
+        BankImportModel.BankTransactionModel txSplit = new BankImportModel.BankTransactionModel(
+                "tx_split", "2026-05-10", "HYPERMARCHE", "cb", new BigDecimal("-100.00"), "cat_food", List.of(s1, s2)
+        );
+
+        // 1. Partial pointing (only s1 is pointed)
+        Set<String> partialPointed = Set.of("tx_split#s1");
+        PointageMonthSummaryModel summaryPartial = PointageCalculator.calculateMonthBankSummary(List.of(txSplit), partialPointed);
+        assertThat(summaryPartial.totalBankExpenses()).isEqualByComparingTo("100.00");
+        assertThat(summaryPartial.unpointedCount()).isEqualTo(1);
+        assertThat(summaryPartial.unpointedExpenses()).isEqualByComparingTo("30.00"); // 100 - 70 = 30 remaining
+
+        // 2. Full pointing via split IDs (both s1 and s2)
+        Set<String> fullPointedSplits = Set.of("tx_split#s1", "tx_split#s2");
+        PointageMonthSummaryModel summaryFull = PointageCalculator.calculateMonthBankSummary(List.of(txSplit), fullPointedSplits);
+        assertThat(summaryFull.unpointedCount()).isEqualTo(0);
+        assertThat(summaryFull.unpointedExpenses()).isEqualByComparingTo("0.00");
+
+        // 3. Full pointing via parent txId
+        Set<String> fullPointedTx = Set.of("tx_split");
+        PointageMonthSummaryModel summaryFullTx = PointageCalculator.calculateMonthBankSummary(List.of(txSplit), fullPointedTx);
+        assertThat(summaryFullTx.unpointedCount()).isEqualTo(0);
+        assertThat(summaryFullTx.unpointedExpenses()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    @DisplayName("resolveAmount correctly retrieves amount for full transaction and composite split reference")
+    void testResolveAmount() {
+        BankImportModel.BankTransactionSplitModel s1 = new BankImportModel.BankTransactionSplitModel("s1", "cat1", new BigDecimal("-40.00"), "Split 1");
+        BankImportModel.BankTransactionModel tx1 = new BankImportModel.BankTransactionModel(
+                "tx1", "2026-05-10", "TX 1", "cb", new BigDecimal("-100.00"), "cat1", List.of(s1)
+        );
+        BankImportModel.BankTransactionModel tx2 = new BankImportModel.BankTransactionModel(
+                "tx2", "2026-05-10", "TX 2", "cb", new BigDecimal("-50.00"), "cat1"
+        );
+
+        Map<String, BankImportModel.BankTransactionModel> txMap = Map.of("tx1", tx1, "tx2", tx2);
+
+        // Whole transaction
+        assertThat(PointageCalculator.resolveAmount("tx2", txMap)).isEqualByComparingTo("-50.00");
+        // Split reference
+        assertThat(PointageCalculator.resolveAmount("tx1#s1", txMap)).isEqualByComparingTo("-40.00");
+        // Unknown split
+        assertThat(PointageCalculator.resolveAmount("tx1#unknown", txMap)).isEqualByComparingTo("0.00");
+        // Unknown tx
+        assertThat(PointageCalculator.resolveAmount("tx_unknown", txMap)).isEqualByComparingTo("0.00");
     }
 
     @Test

@@ -168,6 +168,60 @@
         });
       }
     };
+    const txMap = useMemo(() => {
+      const m = {};
+      transactions.forEach(t => { m[t.id] = t; });
+      return m;
+    }, [transactions]);
+
+    const resolveAmount = (refId) => {
+      if (!refId) return 0;
+      const hashIdx = refId.indexOf('#');
+      if (hashIdx >= 0) {
+        const txId = refId.substring(0, hashIdx);
+        const splitId = refId.substring(hashIdx + 1);
+        const tx = txMap[txId];
+        if (tx && Array.isArray(tx.splits)) {
+          const split = tx.splits.find(s => s.id === splitId);
+          if (split) return Number(split.amount) || 0;
+        }
+        return 0;
+      }
+      const tx = txMap[refId];
+      return tx ? Number(tx.amount) || 0 : 0;
+    };
+
+    const resolveTxDisplay = (refId) => {
+      if (!refId) return { id: '', label: 'Inconnu', date: '', amount: 0, isSplit: false };
+      const hashIdx = refId.indexOf('#');
+      if (hashIdx >= 0) {
+        const txId = refId.substring(0, hashIdx);
+        const splitId = refId.substring(hashIdx + 1);
+        const tx = txMap[txId];
+        if (tx && Array.isArray(tx.splits)) {
+          const split = tx.splits.find(s => s.id === splitId);
+          if (split) {
+            const cat = categories.find(c => c.id === split.categoryId);
+            return {
+              id: refId,
+              label: `[Split] ${tx.label}${split.label ? ' - ' + split.label : ''}${cat ? ' (' + cat.label + ')' : ''}`,
+              date: tx.date,
+              amount: Number(split.amount) || 0,
+              isSplit: true
+            };
+          }
+        }
+      }
+      const tx = txMap[refId];
+      return {
+        id: refId,
+        label: tx ? tx.label : refId,
+        date: tx ? tx.date : '',
+        amount: tx ? Number(tx.amount) || 0 : 0,
+        isSplit: false
+      };
+    };
+
     const activeLineIds = useMemo(() => new Set(budgetLines.map(b => b.id)), [budgetLines]);
     const pointedTxIds = useMemo(() => {
       const s = new Set();
@@ -185,10 +239,29 @@
       let unpointedExpenses = 0;
       monthTxs.forEach(t => {
         const amt = Number(t.amount) || 0;
-        if (amt < 0) totalBankExpenses += Math.abs(amt);else totalBankIncome += amt;
-        if (!pointedTxIds.has(t.id)) {
-          unpointedCount++;
-          if (amt < 0) unpointedExpenses += Math.abs(amt);
+        if (amt < 0) totalBankExpenses += Math.abs(amt);
+        else totalBankIncome += amt;
+
+        if (t.splits && t.splits.length > 0) {
+          let pointedSplitsSum = 0;
+          let pointedSplitsCount = 0;
+          t.splits.forEach(s => {
+            const splitRef = t.id + "#" + s.id;
+            if (pointedTxIds.has(splitRef) || pointedTxIds.has(t.id)) {
+              pointedSplitsSum += Number(s.amount) || 0;
+              pointedSplitsCount++;
+            }
+          });
+          if (pointedSplitsCount < t.splits.length && !pointedTxIds.has(t.id)) {
+            unpointedCount++;
+            const unpointedAmt = amt - pointedSplitsSum;
+            if (unpointedAmt < 0) unpointedExpenses += Math.abs(unpointedAmt);
+          }
+        } else {
+          if (!pointedTxIds.has(t.id)) {
+            unpointedCount++;
+            if (amt < 0) unpointedExpenses += Math.abs(amt);
+          }
         }
       });
       return {
@@ -206,16 +279,14 @@
       const map = {};
       (matching.links || []).forEach(l => {
         const kind = lineKindMap[l.budgetLineId] || "charge";
-        const total = (l.txIds || []).reduce((s, txId) => {
-          const tx = transactions.find(t => t.id === txId);
-          if (!tx) return s;
-          const amt = Number(tx.amount) || 0;
+        const total = (l.txIds || []).reduce((s, refId) => {
+          const amt = resolveAmount(refId);
           return s + (kind === "revenu" ? amt : -amt);
         }, 0);
         map[l.budgetLineId] = total;
       });
       return map;
-    }, [matching, transactions, budgetLines]);
+    }, [matching, txMap, budgetLines]);
     const getStatus = line => {
       const links = (matching.links || []).find(l => l.budgetLineId === line.id);
       if (!links || (links.txIds || []).length === 0) return "pending";
@@ -287,12 +358,27 @@
         if (!line.categoryId) return;
         const existing = (matching.links || []).find(l => l.budgetLineId === line.id);
         if (existing && (existing.txIds || []).length > 0) return;
-        const candidates = monthTxs.filter(t => t.categoryId === line.categoryId && !usedTxIds.has(t.id));
+
+        // Collect matching single txs or split sub-txs
+        const candidates = [];
+        monthTxs.forEach(t => {
+          if (t.splits && t.splits.length > 0) {
+            t.splits.forEach(s => {
+              const refId = t.id + "#" + s.id;
+              if (s.categoryId === line.categoryId && !usedTxIds.has(refId) && !usedTxIds.has(t.id)) {
+                candidates.push(refId);
+              }
+            });
+          } else if (t.categoryId === line.categoryId && !usedTxIds.has(t.id)) {
+            candidates.push(t.id);
+          }
+        });
+
         if (candidates.length === 0) return;
         const lnk = getLink(line.id);
-        candidates.forEach(t => {
-          lnk.txIds.push(t.id);
-          usedTxIds.add(t.id);
+        candidates.forEach(refId => {
+          lnk.txIds.push(refId);
+          usedTxIds.add(refId);
         });
       });
       saveMatching(newLinks);
@@ -333,7 +419,7 @@
         const reel = realByLine[line.id] || 0;
         const ecart = reel - line.monthly;
         const ecartPct = line.monthly > 0 ? ecart / line.monthly * 100 : 0;
-        const linkedTxs = ((matching.links || []).find(l => l.budgetLineId === line.id)?.txIds || []).map(id => transactions.find(t => t.id === id)).filter(Boolean);
+        const linkedTxs = ((matching.links || []).find(l => l.budgetLineId === line.id)?.txIds || []).map(resolveTxDisplay);
         const cat = categories.find(c => c.id === line.categoryId);
         return {
           ...line,
@@ -345,7 +431,7 @@
           catLabel: cat?.label || "—"
         };
       });
-    }, [budgetLines, matching, realByLine, transactions, categories]);
+    }, [budgetLines, matching, realByLine, transactions, categories, txMap]);
     const displayRows = useMemo(() => {
       let r = rows;
       if (filterStatus !== "all") r = r.filter(row => row.status === filterStatus);
@@ -378,13 +464,41 @@
     const availableTxs = useMemo(() => {
       const q = panelSearch.trim().toLowerCase();
       const targetCatId = panelCategoryFilter === "auto" ? panelLine?.categoryId : panelCategoryFilter === "all" ? null : panelCategoryFilter;
-      return monthTxs.filter(t => {
-        if (pointedTxIds.has(t.id)) return false;
-        if (targetCatId && t.categoryId !== targetCatId) return false;
-        if (!q) return true;
-        return t.label.toLowerCase().includes(q) || String(t.amount).includes(q);
-      }).sort((a, b) => a.date < b.date ? -1 : 1);
-    }, [monthTxs, pointedTxIds, panelSearch, panelCategoryFilter, panelLine]);
+      const result = [];
+      monthTxs.forEach(t => {
+        if (t.splits && t.splits.length > 0) {
+          t.splits.forEach(s => {
+            const refId = t.id + "#" + s.id;
+            if (pointedTxIds.has(refId) || pointedTxIds.has(t.id)) return;
+            if (targetCatId && s.categoryId !== targetCatId) return;
+            const catObj = categories.find(c => c.id === s.categoryId);
+            const labelStr = `[Split] ${t.label}${s.label ? ' - ' + s.label : ''}${catObj ? ' (' + catObj.label + ')' : ''}`;
+            if (q && !labelStr.toLowerCase().includes(q) && !String(s.amount).includes(q)) return;
+            result.push({
+              id: refId,
+              date: t.date,
+              label: labelStr,
+              amount: Number(s.amount) || 0,
+              categoryId: s.categoryId,
+              isSplit: true
+            });
+          });
+        } else {
+          if (pointedTxIds.has(t.id)) return;
+          if (targetCatId && t.categoryId !== targetCatId) return;
+          if (q && !t.label.toLowerCase().includes(q) && !String(t.amount).includes(q)) return;
+          result.push({
+            id: t.id,
+            date: t.date,
+            label: t.label,
+            amount: Number(t.amount) || 0,
+            categoryId: t.categoryId,
+            isSplit: false
+          });
+        }
+      });
+      return result.sort((a, b) => a.date < b.date ? -1 : 1);
+    }, [monthTxs, pointedTxIds, panelSearch, panelCategoryFilter, panelLine, categories]);
     const headerStyle = key => ({
       padding: "9px 10px",
       textAlign: "left",

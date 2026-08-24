@@ -944,6 +944,22 @@
     transactions.forEach(t => {
       txById[t.id] = t;
     });
+    const resolveTxAmount = (refId) => {
+      if (!refId) return 0;
+      const hashIdx = refId.indexOf('#');
+      if (hashIdx >= 0) {
+        const txId = refId.substring(0, hashIdx);
+        const splitId = refId.substring(hashIdx + 1);
+        const tx = txById[txId];
+        if (tx && Array.isArray(tx.splits)) {
+          const split = tx.splits.find(s => s.id === splitId);
+          if (split) return Number(split.amount) || 0;
+        }
+        return 0;
+      }
+      const tx = txById[refId];
+      return tx ? Number(tx.amount) || 0 : 0;
+    };
     const lineKindMap = {};
     (data?.charges || []).forEach(c => {
       lineKindMap[c.id] = "charge";
@@ -963,10 +979,8 @@
       (links || []).forEach(l => {
         if (!l.budgetLineId || !(l.txIds || []).length) return;
         const kind = lineKindMap[l.budgetLineId] || "charge";
-        const realAmount = (l.txIds || []).reduce((s, txId) => {
-          const tx = txById[txId];
-          if (!tx) return s;
-          const amt = Number(tx.amount) || 0;
+        const realAmount = (l.txIds || []).reduce((s, refId) => {
+          const amt = resolveTxAmount(refId);
           return s + (kind === "revenu" ? amt : -amt);
         }, 0);
         if (!byLine[l.budgetLineId]) byLine[l.budgetLineId] = [];

@@ -89,13 +89,45 @@
       return d.toISOString().slice(0, 10);
     }, [monthsBack]);
     const periodTx = useMemo(() => cutoffISO ? transactions.filter(t => t.date >= cutoffISO) : transactions, [transactions, cutoffISO]);
+    const txMap = useMemo(() => {
+      const m = {};
+      transactions.forEach(t => { m[t.id] = t; });
+      return m;
+    }, [transactions]);
+
+    const resolveAmount = (refId) => {
+      if (!refId) return 0;
+      const hashIdx = refId.indexOf('#');
+      if (hashIdx >= 0) {
+        const txId = refId.substring(0, hashIdx);
+        const splitId = refId.substring(hashIdx + 1);
+        const tx = txMap[txId];
+        if (tx && Array.isArray(tx.splits)) {
+          const split = tx.splits.find(s => s.id === splitId);
+          if (split) return Number(split.amount) || 0;
+        }
+        return 0;
+      }
+      const tx = txMap[refId];
+      return tx ? Number(tx.amount) || 0 : 0;
+    };
+
     const byCategory = useMemo(() => {
       const map = {};
       periodTx.forEach(t => {
-        const cat = categories.find(c => c.id === t.categoryId);
-        if (cat && cat.kind === "Revenu") return;
-        const label = cat ? cat.label : "Non catégorisé";
-        map[label] = (map[label] || 0) + (-Number(t.amount) || 0);
+        if (t.splits && t.splits.length > 0) {
+          t.splits.forEach(s => {
+            const cat = categories.find(c => c.id === s.categoryId);
+            if (cat && cat.kind === "Revenu") return;
+            const label = cat ? cat.label : "Non catégorisé";
+            map[label] = (map[label] || 0) + (-Number(s.amount) || 0);
+          });
+        } else {
+          const cat = categories.find(c => c.id === t.categoryId);
+          if (cat && cat.kind === "Revenu") return;
+          const label = cat ? cat.label : "Non catégorisé";
+          map[label] = (map[label] || 0) + (-Number(t.amount) || 0);
+        }
       });
       return Object.entries(map).map(([label, amount]) => ({
         label,
@@ -104,15 +136,37 @@
       })).filter(item => Math.abs(item.amount) > 0.01).sort((a, b) => b.amount - a.amount);
     }, [periodTx, categories]);
     const totalExpenses = useMemo(() => byCategory.reduce((s, c) => s + c.amount, 0), [byCategory]);
-    const totalIncome = periodTx.filter(t => {
-      const cat = categories.find(c => c.id === t.categoryId);
-      return cat && cat.kind === "Revenu" || t.amount > 0;
-    }).reduce((s, t) => s + (t.amount > 0 ? t.amount : 0), 0);
+    const totalIncome = useMemo(() => {
+      return periodTx.reduce((s, t) => {
+        if (t.splits && t.splits.length > 0) {
+          return s + t.splits.reduce((subS, split) => {
+            const cat = categories.find(c => c.id === split.categoryId);
+            const amt = Number(split.amount) || 0;
+            if ((cat && cat.kind === "Revenu") || amt > 0) {
+              return subS + (amt > 0 ? amt : 0);
+            }
+            return subS;
+          }, 0);
+        }
+        const cat = categories.find(c => c.id === t.categoryId);
+        const amt = Number(t.amount) || 0;
+        if ((cat && cat.kind === "Revenu") || amt > 0) {
+          return s + (amt > 0 ? amt : 0);
+        }
+        return s;
+      }, 0);
+    }, [periodTx, categories]);
     const nbMonths = Math.max(1, monthsBack || 1);
-    const uncategorized = periodTx.filter(t => !t.categoryId).length;
+    const uncategorized = periodTx.filter(t => !t.categoryId && (!t.splits || t.splits.length === 0)).length;
     const compressibleTotal = useMemo(() => {
       const compressibleIds = new Set(categories.filter(c => c.compressible === "Oui").map(c => c.id));
       return periodTx.reduce((s, t) => {
+        if (t.splits && t.splits.length > 0) {
+          return s + t.splits.reduce((subS, split) => {
+            if (compressibleIds.has(split.categoryId)) return subS + (-Number(split.amount) || 0);
+            return subS;
+          }, 0);
+        }
         if (compressibleIds.has(t.categoryId)) return s + (-Number(t.amount) || 0);
         return s;
       }, 0);
@@ -134,10 +188,6 @@
       const currentMatching = matchings.find(m => m.month === currentMonthISO) || {
         links: []
       };
-      const txById = {};
-      transactions.forEach(t => {
-        txById[t.id] = t;
-      });
       const calcCharge = exports.chargeMonthlyForYear || window.BudgetApp && window.BudgetApp.chargeMonthlyForYear || chargeMonthlyForYear;
       const calcIncome = exports.incomeMonthlyForYear || window.BudgetApp && window.BudgetApp.incomeMonthlyForYear || incomeMonthlyForYear;
       const rows = [];
@@ -150,10 +200,8 @@
         const endOK = !endStr || currentMonthISO <= endStr.slice(0, 7);
         if (!startOK || !endOK) return;
         const link = (currentMatching.links || []).find(l => l.budgetLineId === row.id);
-        const reel = (link?.txIds || []).reduce((s, txId) => {
-          const tx = txById[txId];
-          if (!tx) return s;
-          const amt = Number(tx.amount) || 0;
+        const reel = (link?.txIds || []).reduce((s, refId) => {
+          const amt = resolveAmount(refId);
           return s + (kind === "revenu" ? amt : -amt);
         }, 0);
         const pct = Math.min(100, budgeted > 0 ? reel / budgeted * 100 : 0);
@@ -222,10 +270,8 @@
         };
         const reel = (monthMatching.links || []).reduce((s, l) => {
           const kind = lineKindMap[l.budgetLineId] || "charge";
-          return s + (l.txIds || []).reduce((ss, txId) => {
-            const tx = txById[txId];
-            if (!tx) return ss;
-            const amt = Number(tx.amount) || 0;
+          return s + (l.txIds || []).reduce((ss, refId) => {
+            const amt = resolveAmount(refId);
             return ss + (kind === "revenu" ? amt : -amt);
           }, 0);
         }, 0);

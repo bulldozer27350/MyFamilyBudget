@@ -79,7 +79,13 @@
         result = result.filter(r => columns.every(col => {
           const term = (filters[col.key] || "").trim().toLowerCase();
           if (!term) return true;
-          if (col.filterValue) return String(col.filterValue(r)).toLowerCase() === term.toLowerCase();
+          if (col.filterValue) {
+            const fv = col.filterValue(r);
+            if (Array.isArray(fv)) {
+              return fv.map(v => String(v).toLowerCase()).includes(term.toLowerCase());
+            }
+            return String(fv).toLowerCase() === term.toLowerCase();
+          }
           return String(col.display ? col.display(r) : col.value(r)).toLowerCase().includes(term);
         }));
       }
@@ -213,6 +219,467 @@
       }
     }, "Aucune ligne ne correspond aux filtres.")) : filteredSorted.map(r => renderRow(r))))));
   }
+
+  /**
+   * Modale de ventilation des dépenses (splits)
+   */
+  function SplitModal({
+    transaction,
+    categories,
+    onSave,
+    onClose
+  }) {
+    const targetTotal = Math.abs(Number(transaction?.amount) || 0);
+    const isExpense = (Number(transaction?.amount) || 0) < 0;
+
+    const [splits, setSplits] = useState(() => {
+      if (transaction?.splits && transaction.splits.length > 0) {
+        return transaction.splits.map(s => ({
+          id: s.id || uid(),
+          categoryId: s.categoryId || "",
+          amount: Math.abs(Number(s.amount) || 0),
+          label: s.label || ""
+        }));
+      }
+      const half = Math.round((targetTotal / 2) * 100) / 100;
+      const remainder = Math.round((targetTotal - half) * 100) / 100;
+      return [
+        { id: uid(), categoryId: transaction?.categoryId || categories[0]?.id || "", amount: half, label: "" },
+        { id: uid(), categoryId: categories[1]?.id || categories[0]?.id || "", amount: remainder, label: "" }
+      ];
+    });
+
+    const [errorMsg, setErrorMsg] = useState("");
+
+    const currentSum = useMemo(() => {
+      return splits.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+    }, [splits]);
+
+    const reliquat = Math.round((targetTotal - currentSum) * 100) / 100;
+    const isBalanced = Math.abs(reliquat) < 0.005;
+
+    const updateSplit = (id, field, value) => {
+      setSplits(prev => prev.map(s => {
+        if (s.id !== id) return s;
+        if (field === "amount") {
+          const num = parseFloat(String(value).replace(",", "."));
+          return { ...s, amount: isNaN(num) ? "" : num };
+        }
+        return { ...s, [field]: value };
+      }));
+    };
+
+    const addLine = () => {
+      const nextAmount = reliquat > 0 ? reliquat : 0;
+      setSplits(prev => [
+        ...prev,
+        { id: uid(), categoryId: categories[0]?.id || "", amount: nextAmount, label: "" }
+      ]);
+    };
+
+    const removeLine = id => {
+      if (splits.length <= 1) return;
+      setSplits(prev => prev.filter(s => s.id !== id));
+    };
+
+    const fillRemaining = id => {
+      const otherSum = splits.filter(s => s.id !== id).reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+      const rest = Math.max(0, Math.round((targetTotal - otherSum) * 100) / 100);
+      updateSplit(id, "amount", rest);
+    };
+
+    const handleSave = () => {
+      if (!isBalanced) {
+        setErrorMsg(`La ventilation n'est pas équilibrée. Il reste ${eurExact(reliquat)} à ventiler.`);
+        return;
+      }
+      if (splits.some(s => !s.categoryId)) {
+        setErrorMsg("Veuillez sélectionner une catégorie pour chaque sous-ligne.");
+        return;
+      }
+      if (splits.some(s => (Number(s.amount) || 0) <= 0)) {
+        setErrorMsg("Chaque sous-ligne doit avoir un montant strictement positif.");
+        return;
+      }
+
+      const finalSplits = splits.map(s => {
+        const positiveAmt = Number(s.amount) || 0;
+        const signedAmt = isExpense ? -Math.abs(positiveAmt) : Math.abs(positiveAmt);
+        return {
+          id: s.id,
+          categoryId: s.categoryId,
+          amount: signedAmt,
+          label: (s.label || "").trim()
+        };
+      });
+
+      onSave(transaction.id, finalSplits);
+    };
+
+    const handleClearSplits = () => {
+      if (window.confirm("Voulez-vous supprimer cette ventilation et revenir à une catégorisation simple ?")) {
+        onSave(transaction.id, []);
+      }
+    };
+
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "rgba(0,0,0,0.5)",
+        backdropFilter: "blur(3px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        padding: 20
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C?.panel || "#FFFFFF",
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        borderRadius: 14,
+        width: "100%",
+        maxWidth: 740,
+        maxHeight: "90vh",
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "0 12px 36px rgba(0,0,0,0.25)",
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "16px 20px",
+        borderBottom: `1px solid ${C?.line || "#DED6C4"}`,
+        background: C?.panelAlt || "#EFEAE0",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 17,
+        color: C?.navy || "#28394A",
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "✂ Ventiler une transaction")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: C?.ink || "#232A2E",
+        marginTop: 4,
+        fontWeight: 500
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        color: C?.inkSoft || "#6B7278",
+        marginRight: 8
+      }
+    }, transaction.date ? transaction.date.split("-").reverse().join("/") : ""), /*#__PURE__*/React.createElement("strong", {
+      style: {
+        marginRight: 10
+      }
+    }, transaction.label), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontWeight: 700,
+        color: isExpense ? C?.brick || "#A8503C" : C?.pine || "#2F5D50"
+      }
+    }, eurExact(transaction.amount)))), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: onClose,
+      style: {
+        background: "none",
+        border: "none",
+        fontSize: 22,
+        cursor: "pointer",
+        color: C?.inkSoft || "#6B7278",
+        lineHeight: 1
+      }
+    }, "✕")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        overflowY: "auto",
+        padding: 20
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12.5,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 16,
+        lineHeight: 1.4
+      }
+    }, "Répartissez le montant de ", /*#__PURE__*/React.createElement("strong", null, eurExact(targetTotal)), " sur plusieurs catégories (ex : ticket de supermarché partagé entre Alimentation, Habillement et Entretien)."), /*#__PURE__*/React.createElement("div", {
+      style: {
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        borderRadius: 8,
+        overflow: "hidden",
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("table", {
+      style: {
+        width: "100%",
+        borderCollapse: "collapse",
+        fontSize: 12.5
+      }
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+      style: {
+        background: C?.panelAlt || "#EFEAE0",
+        borderBottom: `1px solid ${C?.line || "#DED6C4"}`
+      }
+    }, /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 10px",
+        textAlign: "left",
+        width: 150
+      }
+    }, "Montant (€)"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 10px",
+        textAlign: "left",
+        width: 220
+      }
+    }, "Catégorie"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 10px",
+        textAlign: "left"
+      }
+    }, "Note / Sous-libellé (optionnel)"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        padding: "8px 10px",
+        textAlign: "center",
+        width: 40
+      }
+    }))), /*#__PURE__*/React.createElement("tbody", null, splits.map((s, idx) => /*#__PURE__*/React.createElement("tr", {
+      key: s.id || idx,
+      style: {
+        borderBottom: `1px solid ${C?.line || "#DED6C4"}`
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 10px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 4
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      step: "0.01",
+      min: "0",
+      value: s.amount !== undefined ? s.amount : "",
+      onChange: e => updateSplit(s.id, "amount", e.target.value),
+      placeholder: "0.00",
+      style: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: 12.5,
+        fontWeight: 600,
+        padding: "5px 8px",
+        borderRadius: 5,
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        width: 80,
+        textAlign: "right",
+        boxSizing: "border-box"
+      }
+    }), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278"
+      }
+    }, "€"), splits.length > 1 && !isBalanced && reliquat > 0 && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => fillRemaining(s.id),
+      title: "Ajuster avec le reste à ventiler",
+      style: {
+        fontSize: 10,
+        padding: "2px 5px",
+        borderRadius: 4,
+        border: `1px solid ${C?.pine || "#2F5D50"}`,
+        background: C?.pineSoft || "#E3ECE8",
+        color: C?.pine || "#2F5D50",
+        cursor: "pointer",
+        whiteSpace: "nowrap"
+      }
+    }, "🪄 Reste"))), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 10px"
+      }
+    }, /*#__PURE__*/React.createElement("select", {
+      value: s.categoryId || "",
+      onChange: e => updateSplit(s.id, "categoryId", e.target.value),
+      style: {
+        fontSize: 12,
+        padding: "5px 8px",
+        borderRadius: 5,
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        width: "100%",
+        background: C?.panel || "#FFFFFF",
+        cursor: "pointer"
+      }
+    }, /*#__PURE__*/React.createElement("option", {
+      value: ""
+    }, "— Choisir une catégorie —"), categories.map(c => /*#__PURE__*/React.createElement("option", {
+      key: c.id,
+      value: c.id
+    }, c.label)))), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 10px"
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      value: s.label || "",
+      onChange: e => updateSplit(s.id, "label", e.target.value),
+      placeholder: `Note sous-ligne ${idx + 1}`,
+      style: {
+        fontSize: 12,
+        padding: "5px 8px",
+        borderRadius: 5,
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        width: "100%",
+        boxSizing: "border-box"
+      }
+    })), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "8px 10px",
+        textAlign: "center"
+      }
+    }, splits.length > 1 && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => removeLine(s.id),
+      style: {
+        background: "none",
+        border: "none",
+        color: C?.brick || "#A8503C",
+        cursor: "pointer",
+        fontSize: 14,
+        fontWeight: 700,
+        padding: "2px 6px"
+      },
+      title: "Supprimer cette sous-ligne"
+    }, "✕"))))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: addLine,
+      style: {
+        ...btnSmStyle,
+        padding: "6px 12px",
+        fontSize: 12,
+        fontWeight: 600,
+        color: C?.pine || "#2F5D50",
+        background: C?.pineSoft || "#E3ECE8",
+        borderColor: C?.pine || "#2F5D50"
+      }
+    }, "➕ Ajouter une sous-ligne")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "12px 16px",
+        borderRadius: 8,
+        border: `1px solid ${isBalanced ? C?.pine || "#2F5D50" : C?.brick || "#A8503C"}`,
+        background: isBalanced ? C?.pineSoft || "#E3ECE8" : C?.brickSoft || "#F4E4DF",
+        color: isBalanced ? C?.pine || "#2F5D50" : C?.brick || "#A8503C",
+        fontSize: 13,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, "Total ventilé : "), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontWeight: 700
+      }
+    }, eurExact(currentSum)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        margin: "0 8px",
+        color: C?.inkSoft || "#6B7278"
+      }
+    }, "/"), /*#__PURE__*/React.createElement("span", null, "Montant attendu : "), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontWeight: 700
+      }
+    }, eurExact(targetTotal))), /*#__PURE__*/React.createElement("div", null, isBalanced ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700
+      }
+    }, "✓ Ventilation équilibrée (0,00 € restant)") : /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700
+      }
+    }, `⚠️ Reliquat à ventiler : ${eurExact(reliquat)}`))), errorMsg && /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: C?.brick || "#A8503C",
+        fontSize: 12,
+        marginTop: 8,
+        fontWeight: 600
+      }
+    }, errorMsg)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "14px 20px",
+        borderTop: `1px solid ${C?.line || "#DED6C4"}`,
+        background: C?.panelAlt || "#EFEAE0",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", null, transaction.splits && transaction.splits.length > 0 && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: handleClearSplits,
+      style: {
+        ...btnSmStyle,
+        color: C?.brick || "#A8503C",
+        borderColor: C?.brick || "#A8503C",
+        background: "#fff",
+        padding: "7px 12px",
+        fontSize: 12
+      }
+    }, "🗑 Supprimer la ventilation")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: onClose,
+      style: {
+        ...btnSmStyle,
+        padding: "8px 16px",
+        fontSize: 12.5
+      }
+    }, "Annuler"), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: handleSave,
+      disabled: !isBalanced || splits.length < 1,
+      style: {
+        padding: "8px 18px",
+        borderRadius: 8,
+        fontSize: 12.5,
+        fontWeight: 700,
+        background: isBalanced ? C?.pine || "#2F5D50" : C?.inkSoft || "#6B7278",
+        color: "#fff",
+        border: "none",
+        cursor: isBalanced ? "pointer" : "not-allowed",
+        opacity: isBalanced ? 1 : 0.6
+      }
+    }, "✓ Enregistrer la ventilation")))));
+  }
+
   function ImportBankView({
     openHelp
   }) {
@@ -222,6 +689,7 @@
     const [fileName, setFileName] = useState("");
     const [importSummary, setImportSummary] = useState(null);
     const [showIgnoredModal, setShowIgnoredModal] = useState(false);
+    const [splitModalTx, setSplitModalTx] = useState(null);
     
     // Charger les données d'import bancaire via l'API asynchrone
     useEffect(() => {
@@ -896,67 +1364,151 @@
         display: t => eurExact(t.amount)
       }, {
         key: "categoryId",
-        label: "Catégorie",
+        label: "Catégorie / Ventilation",
         align: "left",
-        value: t => categories.find(c => c.id === t.categoryId)?.label || "",
+        value: t => t.splits && t.splits.length > 0
+          ? `Ventilée (${t.splits.length})`
+          : (categories.find(c => c.id === t.categoryId)?.label || ""),
         filterOptions: [{
           value: "__none__",
           label: "Non catégorisé"
+        }, {
+          value: "__split__",
+          label: "✂ Ventilées"
         }, ...sortedCategories.map(c => ({
           value: c.label,
           label: c.label
         }))],
-        filterValue: t => t.categoryId ? categories.find(c => c.id === t.categoryId)?.label || "" : "__none__"
-      }],
-      renderRow: t => /*#__PURE__*/React.createElement("tr", {
-        key: t.id,
-        style: {
-          borderBottom: `1px solid ${C?.line || "#DED6C4"}`
-        }
-      }, /*#__PURE__*/React.createElement("td", {
-        style: {
-          padding: "7px",
-          whiteSpace: "nowrap"
-        }
-      }, t.date.split("-").reverse().join("/")), /*#__PURE__*/React.createElement("td", {
-        style: {
-          padding: "7px"
-        }
-      }, t.label), /*#__PURE__*/React.createElement("td", {
-        style: {
-          padding: "7px",
-          textAlign: "right",
-          fontFamily: "'IBM Plex Mono', monospace",
-          color: t.amount < 0 ? C?.brick || "#A8503C" : C?.pine || "#2F5D50"
-        }
-      }, eurExact(t.amount)), /*#__PURE__*/React.createElement("td", {
-        style: {
-          padding: "7px"
-        }
-      }, /*#__PURE__*/React.createElement("select", {
-        value: t.categoryId || "",
-        onChange: e => {
-          let ruleKeyword = null;
-          if (e.target.value) {
-            const suggestion = ruleKeyFromLabel(t.label);
-            const input = window.prompt(`Mot-clé à mémoriser pour classer automatiquement les prochaines transactions similaires dans cette catégorie. Laissez vide pour ne classer que cette transaction.`, suggestion);
-            ruleKeyword = input && input.trim() ? input.trim() : null;
+        filterValue: t => {
+          if (t.splits && t.splits.length > 0) {
+            const splitCatLabels = t.splits.map(s => categories.find(c => c.id === s.categoryId)?.label).filter(Boolean);
+            return ["__split__", ...splitCatLabels];
           }
-          setTransactionCategory(t.id, e.target.value, ruleKeyword);
-        },
-        style: {
-          fontSize: 12,
-          padding: "4px 6px",
-          borderRadius: 5,
-          border: `1px solid ${C?.line || "#DED6C4"}`,
-          cursor: "pointer",
-          background: t.categoryId ? C?.panel || "#FFFFFF" : C?.goldSoft || "#F0EAD3"
+          return t.categoryId ? categories.find(c => c.id === t.categoryId)?.label || "" : "__none__";
         }
-      }, categoryOptions.map(o => /*#__PURE__*/React.createElement("option", {
-        key: o.value,
-        value: o.value
-      }, o.label)))))
-    })));
+      }],
+      renderRow: t => {
+        const hasSplits = Array.isArray(t.splits) && t.splits.length > 0;
+        return /*#__PURE__*/React.createElement("tr", {
+          key: t.id,
+          style: {
+            borderBottom: `1px solid ${C?.line || "#DED6C4"}`
+          }
+        }, /*#__PURE__*/React.createElement("td", {
+          style: {
+            padding: "7px",
+            whiteSpace: "nowrap"
+          }
+        }, t.date.split("-").reverse().join("/")), /*#__PURE__*/React.createElement("td", {
+          style: {
+            padding: "7px"
+          }
+        }, /*#__PURE__*/React.createElement("div", null, t.label, hasSplits && /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 11,
+            color: C?.inkSoft || "#6B7278",
+            marginTop: 4,
+            paddingLeft: 8,
+            borderLeft: `2px solid ${C?.pine || "#2F5D50"}`
+          }
+        }, t.splits.map((s, idx) => {
+          const sCat = categories.find(c => c.id === s.categoryId);
+          return /*#__PURE__*/React.createElement("div", {
+            key: s.id || idx,
+            style: {
+              display: "flex",
+              gap: 8,
+              alignItems: "center"
+            }
+          }, /*#__PURE__*/React.createElement("span", {
+            style: {
+              fontWeight: 600
+            }
+          }, sCat?.label || "Non catégorisé"), s.label && /*#__PURE__*/React.createElement("span", {
+            style: {
+              fontStyle: "italic",
+              color: C?.inkSoft || "#6B7278"
+            }
+          }, s.label), /*#__PURE__*/React.createElement("span", {
+            style: {
+              fontFamily: "'IBM Plex Mono', monospace"
+            }
+          }, eurExact(s.amount)));
+        })))), /*#__PURE__*/React.createElement("td", {
+          style: {
+            padding: "7px",
+            textAlign: "right",
+            fontFamily: "'IBM Plex Mono', monospace",
+            color: t.amount < 0 ? C?.brick || "#A8503C" : C?.pine || "#2F5D50"
+          }
+        }, eurExact(t.amount)), /*#__PURE__*/React.createElement("td", {
+          style: {
+            padding: "7px"
+          }
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap"
+          }
+        }, hasSplits ? /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontSize: 12,
+            fontWeight: 700,
+            padding: "3px 8px",
+            borderRadius: 6,
+            background: C?.pineSoft || "#E3ECE8",
+            color: C?.pine || "#2F5D50",
+            border: `1px solid ${C?.pine || "#2F5D50"}`
+          }
+        }, `✂ Ventilée (${t.splits.length})`) : /*#__PURE__*/React.createElement("select", {
+          value: t.categoryId || "",
+          onChange: e => {
+            let ruleKeyword = null;
+            if (e.target.value) {
+              const suggestion = ruleKeyFromLabel(t.label);
+              const input = window.prompt(`Mot-clé à mémoriser pour classer automatiquement les prochaines transactions similaires dans cette catégorie. Laissez vide pour ne classer que cette transaction.`, suggestion);
+              ruleKeyword = input && input.trim() ? input.trim() : null;
+            }
+            setTransactionCategory(t.id, e.target.value, ruleKeyword);
+          },
+          style: {
+            fontSize: 12,
+            padding: "4px 6px",
+            borderRadius: 5,
+            border: `1px solid ${C?.line || "#DED6C4"}`,
+            cursor: "pointer",
+            background: t.categoryId ? C?.panel || "#FFFFFF" : C?.goldSoft || "#F0EAD3"
+          }
+        }, categoryOptions.map(o => /*#__PURE__*/React.createElement("option", o.value === "" ? { key: o.value, value: o.value } : { key: o.value, value: o.value }, o.label))), /*#__PURE__*/React.createElement("button", {
+          type: "button",
+          onClick: () => setSplitModalTx(t),
+          title: hasSplits ? "Modifier la ventilation" : "Ventiler cette dépense sur plusieurs catégories",
+          style: {
+            fontSize: 11.5,
+            padding: "3px 8px",
+            borderRadius: 5,
+            border: `1px solid ${C?.line || "#DED6C4"}`,
+            background: hasSplits ? C?.panelAlt || "#EFEAE0" : "#fff",
+            color: C?.navy || "#28394A",
+            cursor: "pointer",
+            fontWeight: 600,
+            whiteSpace: "nowrap"
+          }
+        }, hasSplits ? "✏ Modifier ventilation" : "✂ Ventiler"))));
+      }
+    })), splitModalTx && /*#__PURE__*/React.createElement(SplitModal, {
+      transaction: splitModalTx,
+      categories: sortedCategories,
+      onSave: async (txId, splits) => {
+        await BudgetApi.updateBankTransactionSplits(txId, splits);
+        setSplitModalTx(null);
+        const updated = await BudgetApi.getBankImport();
+        setBankImportData(updated);
+      },
+      onClose: () => setSplitModalTx(null)
+    }));
   }
   exports.ImportBankView = ImportBankView;
   exports.SortFilterTable = SortFilterTable;

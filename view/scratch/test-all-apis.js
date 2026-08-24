@@ -101,12 +101,29 @@ const { BudgetApi } = sandbox.window.BudgetApp;
   }
   console.log("✓ Save pointage matching OK");
 
-  console.log("Testing BudgetApi.getPendingOperations...");
+  console.log("Testing BudgetApi.getPendingOperations & savePendingOperation (saisie manuelle)...");
   const pending = await BudgetApi.getPendingOperations();
   if (!pending || !Array.isArray(pending.pendingOperations)) {
     throw new Error("Invalid pending operations data");
   }
-  console.log("✓ Pending Operations OK");
+  const savedManual = await BudgetApi.savePendingOperation({
+    date: "2026-06-12",
+    expectedDate: "2026-06-18",
+    type: "cheque",
+    refNumber: "CHQ-778899",
+    label: "Saisie Manuelle Test Cheque",
+    amount: -45.50,
+    categoryId: "",
+    notes: "Note de test"
+  });
+  if (!savedManual || !savedManual.id) {
+    throw new Error("Failed to save manual pending operation");
+  }
+  const pendingAfterManual = await BudgetApi.getPendingOperations();
+  if (!pendingAfterManual.pendingOperations.some(op => op.refNumber === "CHQ-778899")) {
+    throw new Error("Manual pending operation not found in getPendingOperations result");
+  }
+  console.log("✓ Pending Operations & Manual Entry OK");
 
   console.log("Testing BudgetApi.importPendingCB...");
   const importSummary = await BudgetApi.importPendingCB(

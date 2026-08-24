@@ -94,7 +94,8 @@
       amount: "",
       isDebit: true,
       categoryId: "",
-      notes: ""
+      notes: "",
+      splits: []
     });
     const [matchingOp, setMatchingOp] = useState(null);
     const [matchingSearch, setMatchingSearch] = useState("");
@@ -118,11 +119,16 @@
     const [apiData, setApiData] = useState(null);
     const [loading, setLoading] = useState(!data);
 
+    const getApi = () => exports.BudgetApi || window.BudgetApp?.BudgetApi || api;
+
     const loadDataFromApi = async () => {
-      if (api && api.getPendingOperations) {
+      const apiInstance = getApi();
+      if (apiInstance && apiInstance.getPendingOperations) {
         try {
-          const res = await api.getPendingOperations();
-          setApiData(res);
+          const res = await apiInstance.getPendingOperations();
+          if (res) {
+            setApiData(res);
+          }
           setLoading(false);
           return res;
         } catch (err) {
@@ -146,8 +152,9 @@
 
     useEffect(() => {
       loadDataFromApi();
-      if (api && api.onPendingOperationsChanged) {
-        const unsub = api.onPendingOperationsChanged(() => {
+      const apiInstance = getApi();
+      if (apiInstance && apiInstance.onPendingOperationsChanged) {
+        const unsub = apiInstance.onPendingOperationsChanged(() => {
           loadDataFromApi();
         });
         return () => unsub && unsub();
@@ -161,16 +168,44 @@
     });
     const isCurrentMonth = selYear === today.getFullYear() && selMonth === today.getMonth() + 1;
 
-    const sourceData = apiData || {
-      pendingOperations: data?.bankImport?.pendingOperations || [],
-      transactions: data?.bankImport?.transactions || [],
-      categories: data?.bankImport?.categories || [],
-      rules: data?.bankImport?.rules || [],
-      charges: data?.charges || [],
-      incomes: data?.incomes || [],
-      oneoff: data?.oneoff || [],
-      settings: data?.settings || {}
-    };
+    const sourceData = React.useMemo(() => {
+      const storePending = Array.isArray(data?.bankImport?.pendingOperations) ? data.bankImport.pendingOperations : [];
+      const apiPending = Array.isArray(apiData?.pendingOperations) ? apiData.pendingOperations : [];
+      
+      const pendingMap = new Map();
+      apiPending.forEach(op => { if (op && op.id) pendingMap.set(op.id, op); });
+      storePending.forEach(op => { if (op && op.id) pendingMap.set(op.id, op); });
+      const mergedPending = Array.from(pendingMap.values());
+
+      const storeTx = Array.isArray(data?.bankImport?.transactions) ? data.bankImport.transactions : [];
+      const apiTx = Array.isArray(apiData?.transactions) ? apiData.transactions : [];
+      const txMap = new Map();
+      apiTx.forEach(t => { if (t && t.id) txMap.set(t.id, t); });
+      storeTx.forEach(t => { if (t && t.id) txMap.set(t.id, t); });
+      const mergedTx = Array.from(txMap.values());
+
+      const cats = (Array.isArray(data?.bankImport?.categories) && data.bankImport.categories.length)
+        ? data.bankImport.categories
+        : (Array.isArray(apiData?.categories) ? apiData.categories : []);
+      const rls = (Array.isArray(data?.bankImport?.rules) && data.bankImport.rules.length)
+        ? data.bankImport.rules
+        : (Array.isArray(apiData?.rules) ? apiData.rules : []);
+      const chg = Array.isArray(data?.charges) ? data.charges : (Array.isArray(apiData?.charges) ? apiData.charges : []);
+      const inc = Array.isArray(data?.incomes) ? data.incomes : (Array.isArray(apiData?.incomes) ? apiData.incomes : []);
+      const one = Array.isArray(data?.oneoff) ? data.oneoff : (Array.isArray(apiData?.oneoff) ? apiData.oneoff : []);
+      const set = data?.settings || apiData?.settings || {};
+
+      return {
+        pendingOperations: mergedPending,
+        transactions: mergedTx,
+        categories: cats,
+        rules: rls,
+        charges: chg,
+        incomes: inc,
+        oneoff: one,
+        settings: set
+      };
+    }, [apiData, data]);
 
     const pendingOperations = sourceData.pendingOperations || [];
     const transactions = sourceData.transactions || [];
@@ -332,7 +367,8 @@
         amount: "",
         isDebit: true,
         categoryId: "",
-        notes: ""
+        notes: "",
+        splits: []
       });
       setShowAddModal(true);
     };
@@ -348,7 +384,11 @@
         amount: String(Math.abs(Number(op.amount) || 0)),
         isDebit: (Number(op.amount) || 0) <= 0,
         categoryId: op.categoryId || "",
-        notes: op.notes || ""
+        notes: op.notes || "",
+        splits: Array.isArray(op.splits) ? op.splits.map(s => ({
+          ...s,
+          amount: String(Math.abs(Number(s.amount) || 0))
+        })) : []
       });
       setShowAddModal(true);
     };
@@ -365,6 +405,14 @@
       }
       const signedAmount = (modalData.isDebit ? -1 : 1) * Math.abs(amtNum);
       const opDate = modalData.date || (isCurrentMonth ? todayISO : `${monthISO}-01`);
+
+      const formattedSplits = (modalData.splits || []).map(sp => ({
+        id: sp.id || (typeof uid === 'function' ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+        label: sp.label || "",
+        categoryId: sp.categoryId || "",
+        amount: (modalData.isDebit ? -1 : 1) * Math.abs(parseFloat(String(sp.amount).replace(",", ".")) || 0)
+      })).filter(sp => Math.abs(sp.amount) > 0);
+
       const opPayload = {
         date: opDate,
         expectedDate: modalData.expectedDate || "",
@@ -373,17 +421,26 @@
         label: modalData.label.trim(),
         amount: signedAmount,
         categoryId: modalData.categoryId || "",
-        notes: modalData.notes || ""
+        notes: modalData.notes || "",
+        splits: formattedSplits
       };
 
-      if (api && api.savePendingOperation) {
-        await api.savePendingOperation(opPayload, editingOp ? editingOp.id : undefined);
-        await loadDataFromApi();
-      } else if (update) {
+      const generateId = typeof uid === 'function' ? uid : () => `op_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const targetOpId = editingOp ? editingOp.id : generateId();
+      const fullOpObj = {
+        id: targetOpId,
+        status: editingOp ? (editingOp.status || "pending") : "pending",
+        linkedTxId: editingOp ? (editingOp.linkedTxId || null) : null,
+        clearedDate: editingOp ? (editingOp.clearedDate || null) : null,
+        ...opPayload
+      };
+
+      // 1. Mise à jour synchrone du store React
+      if (update) {
         if (editingOp) {
           update("bankImport", b => ({
             ...b,
-            pendingOperations: (b.pendingOperations || []).map(op => op.id === editingOp.id ? {
+            pendingOperations: (b?.pendingOperations || []).map(op => op.id === editingOp.id ? {
               ...op,
               ...opPayload
             } : op)
@@ -391,61 +448,94 @@
         } else {
           update("bankImport", b => ({
             ...b,
-            pendingOperations: [...(b.pendingOperations || []), {
-              id: uid(),
-              status: "pending",
-              linkedTxId: null,
-              clearedDate: null,
-              ...opPayload
-            }]
+            pendingOperations: [...(b?.pendingOperations || []).filter(o => o.id !== targetOpId), fullOpObj]
           }));
         }
+      }
+
+      // 2. Mise à jour synchrone de l'état local apiData pour rafraîchissement immédiat de la vue
+      setApiData(prev => {
+        const curOps = Array.isArray(prev?.pendingOperations) ? [...prev.pendingOperations] : [];
+        const nextOps = editingOp
+          ? curOps.map(op => op.id === editingOp.id ? { ...op, ...opPayload } : op)
+          : [...curOps.filter(o => o.id !== targetOpId), fullOpObj];
+        return {
+          ...(prev || {}),
+          pendingOperations: nextOps
+        };
+      });
+
+      // 3. Navigation automatique vers le mois de l'opération et ajustement des filtres
+      const opMonthISO = opDate.slice(0, 7);
+      const opParts = opMonthISO.split("-");
+      const targetYear = parseInt(opParts[0], 10);
+      const targetMonth = parseInt(opParts[1], 10);
+      if (!isNaN(targetYear) && !isNaN(targetMonth)) {
+        setSelYear(targetYear);
+        setSelMonth(targetMonth);
+      }
+      if (filterView === "history") {
+        setFilterView("month");
+      }
+      if (filterType !== "all" && filterType !== (modalData.type || "cheque")) {
+        setFilterType("all");
       }
 
       if (editingOp) {
         showToast("Opération modifiée avec succès.");
       } else {
-        const opMonthISO = opDate.slice(0, 7);
-        if (opMonthISO !== monthISO) {
-          const opParts = opMonthISO.split("-");
-          const targetYear = parseInt(opParts[0], 10);
-          const targetMonth = parseInt(opParts[1], 10);
-          const opMonthName = new Date(targetYear, targetMonth - 1, 1).toLocaleDateString("fr-FR", {
-            month: "long",
-            year: "numeric"
-          });
-          showToast(`Opération enregistrée pour le ${opDate.split("-").reverse().join("/")} (classée en ${opMonthName}).`, `➔ Aller en ${opMonthName}`, () => {
-            setSelYear(targetYear);
-            setSelMonth(targetMonth);
-          });
-        } else {
-          showToast("Nouvelle opération enregistrée.");
-        }
+        const opMonthName = new Date(targetYear, targetMonth - 1, 1).toLocaleDateString("fr-FR", {
+          month: "long",
+          year: "numeric"
+        });
+        showToast(`Opération « ${opPayload.label} » (${opPayload.amount < 0 ? '-' : '+'}${Math.abs(opPayload.amount).toFixed(2)} €) enregistrée pour le ${opDate.split("-").reverse().join("/")} (classée en ${opMonthName}).`);
       }
       setShowAddModal(false);
+
+      // 4. Appel asynchrone du service / API en arrière-plan sans bloquer l'interface
+      const apiInstance = getApi();
+      if (apiInstance && apiInstance.savePendingOperation) {
+        apiInstance.savePendingOperation(opPayload, editingOp ? editingOp.id : targetOpId).then(res => {
+          if (res && res.id && res.id !== targetOpId) {
+            setApiData(prev => prev ? {
+              ...prev,
+              pendingOperations: (prev.pendingOperations || []).map(o => o.id === targetOpId ? res : o)
+            } : prev);
+          }
+        }).catch(err => {
+          console.error("Erreur savePendingOperation:", err);
+        });
+      }
     };
+
     const handleDeleteOp = async opId => {
       if (window.confirm("Supprimer définitivement cette opération engagée ?")) {
-        if (api && api.deletePendingOperation) {
-          await api.deletePendingOperation(opId);
-          await loadDataFromApi();
-        } else if (update) {
+        if (update) {
           update("bankImport", b => ({
             ...b,
-            pendingOperations: (b.pendingOperations || []).filter(op => op.id !== opId)
+            pendingOperations: (b?.pendingOperations || []).filter(op => op.id !== opId)
           }));
+        }
+        setApiData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            pendingOperations: (prev.pendingOperations || []).filter(op => op.id !== opId)
+          };
+        });
+        const apiInstance = getApi();
+        if (apiInstance && apiInstance.deletePendingOperation) {
+          apiInstance.deletePendingOperation(opId).catch(err => console.error(err));
         }
         showToast("Opération supprimée.");
       }
     };
+
     const handleUnlink = async opId => {
-      if (api && api.unlinkPendingOperation) {
-        await api.unlinkPendingOperation(opId);
-        await loadDataFromApi();
-      } else if (update) {
+      if (update) {
         update("bankImport", b => ({
           ...b,
-          pendingOperations: (b.pendingOperations || []).map(op => op.id === opId ? {
+          pendingOperations: (b?.pendingOperations || []).map(op => op.id === opId ? {
             ...op,
             status: "pending",
             linkedTxId: null,
@@ -453,8 +543,25 @@
           } : op)
         }));
       }
+      setApiData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pendingOperations: (prev.pendingOperations || []).map(op => op.id === opId ? {
+            ...op,
+            status: "pending",
+            linkedTxId: null,
+            clearedDate: null
+          } : op)
+        };
+      });
+      const apiInstance = getApi();
+      if (apiInstance && apiInstance.unlinkPendingOperation) {
+        apiInstance.unlinkPendingOperation(opId).catch(err => console.error(err));
+      }
       showToast("Opération déliée (remise en circulation).");
     };
+
     const usedTxIds = useMemo(() => {
       const s = new Set();
       pendingOperations.forEach(op => {
@@ -488,23 +595,69 @@
         return a.date < b.date ? 1 : -1;
       });
     }, [matchingOp, transactions, usedTxIds, matchingSearch]);
+
     const handleLinkTransaction = async tx => {
       if (!matchingOp) return;
-      if (api && api.linkPendingOperation) {
-        await api.linkPendingOperation(matchingOp.id, tx.id, tx.date);
-        await loadDataFromApi();
-      } else if (update) {
+      const targetOpId = matchingOp.id;
+
+      let transferredSplits = null;
+      if (Array.isArray(matchingOp.splits) && matchingOp.splits.length > 0) {
+        const realAmt = Number(tx.amount) || 0;
+        const opSplitSum = matchingOp.splits.reduce((s, sp) => s + (Number(sp.amount) || 0), 0);
+        if (Math.abs(opSplitSum) > 0.001 && Math.abs(realAmt - opSplitSum) > 0.001) {
+          const ratio = realAmt / opSplitSum;
+          transferredSplits = matchingOp.splits.map(sp => ({
+            ...sp,
+            id: sp.id || (typeof uid === 'function' ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+            amount: Math.round((Number(sp.amount) || 0) * ratio * 100) / 100
+          }));
+          const newSum = transferredSplits.reduce((s, sp) => s + sp.amount, 0);
+          const diff = Math.round((realAmt - newSum) * 100) / 100;
+          if (diff !== 0 && transferredSplits.length > 0) {
+            transferredSplits[transferredSplits.length - 1].amount = Math.round((transferredSplits[transferredSplits.length - 1].amount + diff) * 100) / 100;
+          }
+        } else {
+          transferredSplits = matchingOp.splits.map(sp => ({
+            ...sp,
+            id: sp.id || (typeof uid === 'function' ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+            amount: Number(sp.amount) || 0
+          }));
+        }
+      }
+
+      if (update) {
         update("bankImport", b => ({
           ...b,
-          pendingOperations: (b.pendingOperations || []).map(op => op.id === matchingOp.id ? {
+          pendingOperations: (b?.pendingOperations || []).map(op => op.id === targetOpId ? {
             ...op,
             status: "cleared",
             linkedTxId: tx.id,
             clearedDate: tx.date
-          } : op)
+          } : op),
+          transactions: transferredSplits ? (b?.transactions || []).map(t => t.id === tx.id ? { ...t, splits: transferredSplits } : t) : (b?.transactions || [])
         }));
       }
-      showToast(`Opération rapprochée avec le débit du ${tx.date.split("-").reverse().join("/")}.`);
+      setApiData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pendingOperations: (prev.pendingOperations || []).map(op => op.id === targetOpId ? {
+            ...op,
+            status: "cleared",
+            linkedTxId: tx.id,
+            clearedDate: tx.date
+          } : op),
+          transactions: transferredSplits ? (prev.transactions || []).map(t => t.id === tx.id ? { ...t, splits: transferredSplits } : t) : (prev.transactions || [])
+        };
+      });
+      const apiInstance = getApi();
+      if (apiInstance && apiInstance.linkPendingOperation) {
+        apiInstance.linkPendingOperation(targetOpId, tx.id, tx.date).catch(err => console.error(err));
+      }
+      if (transferredSplits && apiInstance && apiInstance.updateBankTransactionSplits) {
+        apiInstance.updateBankTransactionSplits(tx.id, transferredSplits).catch(err => console.error(err));
+      }
+      showToast(`Opération rapprochée avec le débit du ${tx.date.split("-").reverse().join("/")}${transferredSplits ? " (ventilations transférées)" : ""}.`);
       setMatchingOp(null);
     };
     const handleAutoMatch = async () => {
@@ -804,16 +957,24 @@
     };
 
     const forceImportPendingDuplicate = async op => {
-      if (api && api.forceImportPendingOperation) {
-        await api.forceImportPendingOperation(op);
-        await loadDataFromApi();
-      } else if (update) {
-        const rules = sourceData.rules || [];
-        const categorizedOp = applyRulesToTransactions([op], rules)[0] || op;
+      const rules = sourceData.rules || [];
+      const categorizedOp = applyRulesToTransactions([op], rules)[0] || op;
+      if (update) {
         update("bankImport", b => ({
           ...b,
-          pendingOperations: [...(b.pendingOperations || []), categorizedOp]
+          pendingOperations: [...(b?.pendingOperations || []), categorizedOp]
         }));
+      }
+      setApiData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pendingOperations: [...(prev.pendingOperations || []), categorizedOp]
+        };
+      });
+      const apiInstance = getApi();
+      if (apiInstance && apiInstance.forceImportPendingOperation) {
+        apiInstance.forceImportPendingOperation(op).catch(err => console.error(err));
       }
       setImportSummary(prev => prev ? {
         ...prev,
@@ -825,30 +986,37 @@
     };
 
     const handleMergeCandidate = async (manualOpId, bankOp) => {
-      if (api && api.mergePendingOperation) {
-        await api.mergePendingOperation(manualOpId, bankOp);
-        await loadDataFromApi();
-      } else if (update) {
-        update("bankImport", b => {
-          const ops = b.pendingOperations || [];
-          const manualOp = ops.find(o => o.id === manualOpId);
-          const cat = manualOp && manualOp.categoryId ? manualOp.categoryId : (bankOp.categoryId || "");
-          const updated = ops.filter(o => o.id !== bankOp.id).map(o => o.id === manualOpId ? {
-            ...o,
-            date: bankOp.date || o.date,
-            expectedDate: bankOp.expectedDate || o.expectedDate,
-            label: bankOp.label || o.label,
-            amount: bankOp.amount !== undefined ? bankOp.amount : o.amount,
-            categoryId: cat,
-            status: "cleared",
-            clearedDate: bankOp.date || o.date,
-            notes: bankOp.notes || o.notes
-          } : o);
-          return {
-            ...b,
-            pendingOperations: updated
-          };
-        });
+      const merger = ops => {
+        const manualOp = (ops || []).find(o => o.id === manualOpId);
+        const cat = manualOp && manualOp.categoryId ? manualOp.categoryId : (bankOp.categoryId || "");
+        return (ops || []).filter(o => o.id !== bankOp.id).map(o => o.id === manualOpId ? {
+          ...o,
+          date: bankOp.date || o.date,
+          expectedDate: bankOp.expectedDate || o.expectedDate,
+          label: bankOp.label || o.label,
+          amount: bankOp.amount !== undefined ? bankOp.amount : o.amount,
+          categoryId: cat,
+          status: "cleared",
+          clearedDate: bankOp.date || o.date,
+          notes: bankOp.notes || o.notes
+        } : o);
+      };
+      if (update) {
+        update("bankImport", b => ({
+          ...b,
+          pendingOperations: merger(b?.pendingOperations || [])
+        }));
+      }
+      setApiData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pendingOperations: merger(prev.pendingOperations || [])
+        };
+      });
+      const apiInstance = getApi();
+      if (apiInstance && apiInstance.mergePendingOperation) {
+        apiInstance.mergePendingOperation(manualOpId, bankOp).catch(err => console.error(err));
       }
       setImportSummary(prev => prev ? {
         ...prev,
@@ -858,7 +1026,6 @@
     };
 
     const handleImportCandidateSeparately = async (bankOp) => {
-      // Bank op is already imported in backend list or we ensure it's present
       setImportSummary(prev => prev ? {
         ...prev,
         duplicateCandidates: (prev.duplicateCandidates || []).filter(dc => dc.incomingOp.id !== bankOp.id)
@@ -867,21 +1034,29 @@
     };
 
     const handleIgnoreCandidate = async (bankOp) => {
-      if (api && api.deletePendingOperation) {
-        await api.deletePendingOperation(bankOp.id);
-        await loadDataFromApi();
-      } else if (update) {
+      if (update) {
         update("bankImport", b => ({
           ...b,
-          pendingOperations: (b.pendingOperations || []).filter(o => o.id !== bankOp.id)
+          pendingOperations: (b?.pendingOperations || []).filter(o => o.id !== bankOp.id)
         }));
+      }
+      setApiData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pendingOperations: (prev.pendingOperations || []).filter(o => o.id !== bankOp.id)
+        };
+      });
+      const apiInstance = getApi();
+      if (apiInstance && apiInstance.deletePendingOperation) {
+        apiInstance.deletePendingOperation(bankOp.id).catch(err => console.error(err));
       }
       setImportSummary(prev => prev ? {
         ...prev,
         imported: Math.max(0, prev.imported - 1),
         duplicateCandidates: (prev.duplicateCandidates || []).filter(dc => dc.incomingOp.id !== bankOp.id)
       } : null);
-      showToast(`Opération « ${bankOp.label} » ignorée et retirée.`);
+      showToast(`Opération « ${bankOp.label} » ignorée.`);
     };
 
     const resetImportModal = () => {
@@ -1704,7 +1879,43 @@
           whiteSpace: "nowrap"
         },
         title: op.label
-      }, op.label), op.notes && /*#__PURE__*/React.createElement("div", {
+      }, op.label), op.splits && op.splits.length > 0 && /*#__PURE__*/React.createElement("div", {
+        style: {
+          marginTop: 4,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          display: "inline-block",
+          fontSize: 10,
+          fontWeight: 700,
+          padding: "1px 5px",
+          borderRadius: 4,
+          background: C?.pineSoft || "#E3ECE8",
+          color: C?.pine || "#2F5D50",
+          border: `1px solid ${C?.pine || "#2F5D50"}`,
+          width: "fit-content"
+        }
+      }, `✂ Ventilée (${op.splits.length})`), op.splits.map((s, idx) => {
+        const sCat = categories.find(c => c.id === s.categoryId);
+        return /*#__PURE__*/React.createElement("div", {
+          key: s.id || idx,
+          style: {
+            fontSize: 11,
+            color: C?.inkSoft || "#6B7278",
+            display: "flex",
+            gap: 4,
+            alignItems: "center"
+          }
+        }, /*#__PURE__*/React.createElement("span", null, "• ", sCat ? sCat.label : (s.label || "Sous-ligne")), /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontWeight: 600
+          }
+        }, "(", eurExact(s.amount), ")"));
+      })), op.notes && /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
           color: C?.inkSoft || "#6B7278",
@@ -1719,7 +1930,7 @@
           fontSize: 12,
           color: C?.inkSoft || "#6B7278"
         }
-      }, cat ? cat.label : "—"), /*#__PURE__*/React.createElement("td", {
+      }, op.splits && op.splits.length > 0 ? `✂ Multi-catégories (${op.splits.length})` : (cat ? cat.label : "—")), /*#__PURE__*/React.createElement("td", {
         style: {
           ...cellStyle,
           textAlign: "right",
@@ -2216,6 +2427,128 @@
         fontSize: 12.5
       }
     })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 6,
+        padding: 12,
+        borderRadius: 8,
+        background: C?.panelAlt || "#EFEAE0",
+        border: `1px solid ${C?.line || "#DED6C4"}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: C?.navy || "#28394A"
+      }
+    }, "✂ Ventilation multi-catégories (optionnel) :"), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => {
+        const generateId = typeof uid === 'function' ? uid : () => `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        setModalData(prev => ({
+          ...prev,
+          splits: [...(prev.splits || []), { id: generateId(), label: "", categoryId: "", amount: "" }]
+        }));
+      },
+      style: {
+        padding: "4px 8px",
+        fontSize: 11,
+        fontWeight: 700,
+        borderRadius: 6,
+        background: C?.pine || "#2F5D50",
+        color: "#fff",
+        border: "none",
+        cursor: "pointer"
+      }
+    }, "➕ Ajouter sous-ligne")), modalData.splits && modalData.splits.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 8
+      }
+    }, modalData.splits.map((sp, sIdx) => /*#__PURE__*/React.createElement("div", {
+      key: sp.id || sIdx,
+      style: {
+        display: "flex",
+        gap: 6,
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("select", {
+      value: sp.categoryId || "",
+      onChange: e => {
+        const next = [...modalData.splits];
+        next[sIdx].categoryId = e.target.value;
+        setModalData({ ...modalData, splits: next });
+      },
+      style: { ...inputStyle, width: 140, fontSize: 11.5, padding: "4px 6px" }
+    }, /*#__PURE__*/React.createElement("option", { value: "" }, "— Catégorie —"), sortedCategories.map(c => /*#__PURE__*/React.createElement("option", { key: c.id, value: c.id }, c.label))), /*#__PURE__*/React.createElement("input", {
+      placeholder: "Sous-libellé (opt.)",
+      value: sp.label || "",
+      onChange: e => {
+        const next = [...modalData.splits];
+        next[sIdx].label = e.target.value;
+        setModalData({ ...modalData, splits: next });
+      },
+      style: { ...inputStyle, flex: 1, fontSize: 11.5, padding: "4px 6px" }
+    }), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      step: "0.01",
+      placeholder: "Montant (€)",
+      value: sp.amount || "",
+      onChange: e => {
+        const next = [...modalData.splits];
+        next[sIdx].amount = e.target.value;
+        setModalData({ ...modalData, splits: next });
+      },
+      style: { ...inputStyle, width: 90, fontSize: 11.5, padding: "4px 6px", fontFamily: "'IBM Plex Mono', monospace" }
+    }), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => {
+        const next = modalData.splits.filter((_, idx) => idx !== sIdx);
+        setModalData({ ...modalData, splits: next });
+      },
+      style: { background: "none", border: "none", cursor: "pointer", color: C?.brick || "#A8503C", fontSize: 14 },
+      title: "Supprimer la sous-ligne"
+    }, "🗑️"))), (() => {
+      const totalNum = parseFloat(String(modalData.amount).replace(",", ".")) || 0;
+      const sumSplits = modalData.splits.reduce((s, sp) => s + (parseFloat(String(sp.amount).replace(",", ".")) || 0), 0);
+      const rem = Math.round((totalNum - sumSplits) * 100) / 100;
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          fontSize: 11,
+          marginTop: 4,
+          padding: "4px 8px",
+          background: "#fff",
+          borderRadius: 6,
+          border: `1px solid ${C?.line || "#DED6C4"}`
+        }
+      }, /*#__PURE__*/React.createElement("span", null, "Ventilations : ", /*#__PURE__*/React.createElement("strong", null, sumSplits.toFixed(2), " €"), " / ", totalNum.toFixed(2), " €"), Math.abs(rem) > 0.001 ? /*#__PURE__*/React.createElement("span", {
+        style: { color: rem > 0 ? C?.brick || "#A8503C" : "#2563EB", fontWeight: 700 }
+      }, "Reste: ", rem > 0 ? `+${rem.toFixed(2)}` : rem.toFixed(2), " €", /*#__PURE__*/React.createElement("button", {
+        type: "button",
+        onClick: () => {
+          if (modalData.splits.length > 0) {
+            const next = [...modalData.splits];
+            const lastIdx = next.length - 1;
+            const curLastAmt = parseFloat(String(next[lastIdx].amount).replace(",", ".")) || 0;
+            next[lastIdx].amount = (curLastAmt + rem).toFixed(2);
+            setModalData({ ...modalData, splits: next });
+          }
+        },
+        style: { marginLeft: 6, padding: "2px 6px", fontSize: 10, fontWeight: 700, borderRadius: 4, background: C?.pine || "#2F5D50", color: "#fff", border: "none", cursor: "pointer" }
+      }, "🪄 Ajuster")) : /*#__PURE__*/React.createElement("span", {
+        style: { color: C?.pine || "#2F5D50", fontWeight: 700 }
+      }, "✓ Équilibré !"));
+    })())), /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 10,
         display: "flex",

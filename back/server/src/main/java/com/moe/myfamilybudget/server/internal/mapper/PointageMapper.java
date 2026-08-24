@@ -112,6 +112,18 @@ public class PointageMapper {
         map.put("type", t.type());
         map.put("amount", t.amount());
         map.put("categoryId", t.categoryId());
+        if (t.splits() != null && !t.splits().isEmpty()) {
+            map.put("splits", t.splits().stream().map(s -> {
+                Map<String, Object> sm = new HashMap<>();
+                sm.put("id", s.id());
+                sm.put("categoryId", s.categoryId());
+                sm.put("amount", s.amount());
+                sm.put("label", s.label());
+                return sm;
+            }).collect(Collectors.toList()));
+        } else {
+            map.put("splits", Collections.emptyList());
+        }
         return map;
     }
 

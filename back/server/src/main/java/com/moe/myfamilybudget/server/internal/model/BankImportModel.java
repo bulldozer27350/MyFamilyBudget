@@ -94,25 +94,62 @@ public record BankImportModel(
         }
     }
 
+    public record BankTransactionSplitModel(
+            String id,
+            String categoryId,
+            BigDecimal amount,
+            String label
+    ) {
+        public BankTransactionSplitModel {
+            if (id == null || id.isBlank()) id = java.util.UUID.randomUUID().toString().substring(0, 8);
+            if (categoryId == null) categoryId = "";
+            if (amount == null) amount = BigDecimal.ZERO;
+            if (label == null) label = "";
+        }
+    }
+
     public record BankTransactionModel(
             String id,
             String date,
             String label,
             String type,
             BigDecimal amount,
-            String categoryId
+            String categoryId,
+            List<BankTransactionSplitModel> splits
     ) {
         public BankTransactionModel {
             if (id == null || id.isBlank()) id = java.util.UUID.randomUUID().toString().substring(0, 8);
             if (date == null) date = "";
             if (label == null) label = "";
             if (type == null) type = "";
-            if (amount == null) amount = amount != null ? amount : BigDecimal.ZERO;
+            if (amount == null) amount = BigDecimal.ZERO;
             if (categoryId == null) categoryId = "";
+            if (splits == null) splits = Collections.emptyList();
+        }
+
+        public BankTransactionModel(String id, String date, String label, String type, BigDecimal amount, String categoryId) {
+            this(id, date, label, type, amount, categoryId, Collections.emptyList());
         }
 
         public BankTransactionModel(String id, String date, String label, BigDecimal amount) {
-            this(id, date, label, "", amount, "");
+            this(id, date, label, "", amount, "", Collections.emptyList());
+        }
+
+        public void validateSplits() {
+            if (splits == null || splits.isEmpty()) {
+                return;
+            }
+            BigDecimal totalSplits = splits.stream()
+                    .map(BankTransactionSplitModel::amount)
+                    .filter(java.util.Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal diff = amount.subtract(totalSplits).abs();
+            if (diff.compareTo(new BigDecimal("0.01")) > 0) {
+                throw new IllegalArgumentException(
+                        String.format("La somme des ventilations (%s €) ne correspond pas au montant de la transaction (%s €)",
+                                totalSplits.toPlainString(), amount.toPlainString())
+                );
+            }
         }
     }
 

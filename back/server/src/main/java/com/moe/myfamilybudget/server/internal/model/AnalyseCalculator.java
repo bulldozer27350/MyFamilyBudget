@@ -64,25 +64,52 @@ public final class AnalyseCalculator {
                 .collect(Collectors.toSet());
 
         for (BankImportModel.BankTransactionModel t : periodTx) {
-            BigDecimal amt = t.amount() != null ? t.amount() : BigDecimal.ZERO;
-            BankImportModel.CategoryModel cat = t.categoryId() != null ? catById.get(t.categoryId()) : null;
+            if (t.splits() != null && !t.splits().isEmpty()) {
+                for (BankImportModel.BankTransactionSplitModel split : t.splits()) {
+                    BigDecimal amt = split.amount() != null ? split.amount() : BigDecimal.ZERO;
+                    String splitCatId = split.categoryId();
+                    BankImportModel.CategoryModel cat = (splitCatId != null && !splitCatId.isBlank()) ? catById.get(splitCatId) : null;
 
-            boolean isIncome = (cat != null && "Revenu".equalsIgnoreCase(cat.kind())) || amt.compareTo(BigDecimal.ZERO) > 0;
-            if (isIncome) {
-                if (amt.compareTo(BigDecimal.ZERO) > 0) {
-                    totalIncome = totalIncome.add(amt);
+                    boolean isIncome = (cat != null && "Revenu".equalsIgnoreCase(cat.kind())) || amt.compareTo(BigDecimal.ZERO) > 0;
+                    if (isIncome) {
+                        if (amt.compareTo(BigDecimal.ZERO) > 0) {
+                            totalIncome = totalIncome.add(amt);
+                        }
+                    } else {
+                        // Expense
+                        if (splitCatId == null || splitCatId.isBlank()) {
+                            uncategorizedCount++;
+                        }
+                        String label = (cat != null && cat.label() != null && !cat.label().isBlank()) ? cat.label() : "Non catégorisé";
+                        BigDecimal expAmt = amt.negate();
+                        expenseByCat.put(label, expenseByCat.getOrDefault(label, BigDecimal.ZERO).add(expAmt));
+
+                        if (splitCatId != null && compressibleCatIds.contains(splitCatId)) {
+                            compressibleTotal = compressibleTotal.add(expAmt);
+                        }
+                    }
                 }
             } else {
-                // Expense
-                if (t.categoryId() == null || t.categoryId().isBlank()) {
-                    uncategorizedCount++;
-                }
-                String label = (cat != null && cat.label() != null && !cat.label().isBlank()) ? cat.label() : "Non catégorisé";
-                BigDecimal expAmt = amt.negate();
-                expenseByCat.put(label, expenseByCat.getOrDefault(label, BigDecimal.ZERO).add(expAmt));
+                BigDecimal amt = t.amount() != null ? t.amount() : BigDecimal.ZERO;
+                BankImportModel.CategoryModel cat = t.categoryId() != null ? catById.get(t.categoryId()) : null;
 
-                if (t.categoryId() != null && compressibleCatIds.contains(t.categoryId())) {
-                    compressibleTotal = compressibleTotal.add(expAmt);
+                boolean isIncome = (cat != null && "Revenu".equalsIgnoreCase(cat.kind())) || amt.compareTo(BigDecimal.ZERO) > 0;
+                if (isIncome) {
+                    if (amt.compareTo(BigDecimal.ZERO) > 0) {
+                        totalIncome = totalIncome.add(amt);
+                    }
+                } else {
+                    // Expense
+                    if (t.categoryId() == null || t.categoryId().isBlank()) {
+                        uncategorizedCount++;
+                    }
+                    String label = (cat != null && cat.label() != null && !cat.label().isBlank()) ? cat.label() : "Non catégorisé";
+                    BigDecimal expAmt = amt.negate();
+                    expenseByCat.put(label, expenseByCat.getOrDefault(label, BigDecimal.ZERO).add(expAmt));
+
+                    if (t.categoryId() != null && compressibleCatIds.contains(t.categoryId())) {
+                        compressibleTotal = compressibleTotal.add(expAmt);
+                    }
                 }
             }
         }
@@ -162,10 +189,9 @@ public final class AnalyseCalculator {
             List<String> txIds = lineToTxIds.getOrDefault(line.id(), Collections.emptyList());
 
             BigDecimal reel = BigDecimal.ZERO;
-            for (String txId : txIds) {
-                BankImportModel.BankTransactionModel tx = txById.get(txId);
-                if (tx != null && tx.amount() != null) {
-                    BigDecimal amt = tx.amount();
+            for (String refId : txIds) {
+                BigDecimal amt = PointageCalculator.resolveAmount(refId, txById);
+                if (amt != null) {
                     if ("revenu".equals(line.kind())) {
                         reel = reel.add(amt);
                     } else {
@@ -260,10 +286,9 @@ public final class AnalyseCalculator {
                     if (link.txIds() != null && !link.txIds().isEmpty()) {
                         hasPointing = true;
                         String kind = lineKindMap.getOrDefault(link.budgetLineId(), "charge");
-                        for (String txId : link.txIds()) {
-                            BankImportModel.BankTransactionModel tx = txById.get(txId);
-                            if (tx != null && tx.amount() != null) {
-                                BigDecimal amt = tx.amount();
+                        for (String refId : link.txIds()) {
+                            BigDecimal amt = PointageCalculator.resolveAmount(refId, txById);
+                            if (amt != null) {
                                 if ("revenu".equals(kind)) {
                                     reel = reel.add(amt);
                                 } else {
@@ -384,11 +409,11 @@ public final class AnalyseCalculator {
                 String kind = lineKindMap.getOrDefault(l.budgetLineId(), "charge");
 
                 BigDecimal sum = BigDecimal.ZERO;
-                for (String txId : l.txIds()) {
-                    BankImportModel.BankTransactionModel tx = txById.get(txId);
-                    if (tx == null || tx.amount() == null) continue;
-                    BigDecimal amt = tx.amount();
-                    sum = sum.add("revenu".equals(kind) ? amt : amt.negate());
+                for (String refId : l.txIds()) {
+                    BigDecimal amt = PointageCalculator.resolveAmount(refId, txById);
+                    if (amt != null) {
+                        sum = sum.add("revenu".equals(kind) ? amt : amt.negate());
+                    }
                 }
 
                 byLine.computeIfAbsent(l.budgetLineId(), k -> new ArrayList<>())

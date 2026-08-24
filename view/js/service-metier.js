@@ -1138,6 +1138,32 @@ function deps() {
   }
 
   /**
+   * Met à jour la ventilation (splits) d'une transaction bancaire.
+   * @param {string} txId - ID de la transaction
+   * @param {Array} splits - Liste des sous-lignes [{ id, categoryId, amount, label }]
+   */
+  function updateBankTransactionSplits(txId, splits) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) {
+      currentData.bankImport = {};
+    }
+    if (!currentData.bankImport.transactions) {
+      currentData.bankImport.transactions = [];
+    }
+    const cleanSplits = Array.isArray(splits) && splits.length > 0 ? splits : null;
+    currentData.bankImport.transactions = currentData.bankImport.transactions.map(t => {
+      if (t.id === txId) {
+        return {
+          ...t,
+          splits: cleanSplits
+        };
+      }
+      return t;
+    });
+    saveFullData(currentData);
+  }
+
+  /**
    * Force l'import d'une transaction marquée comme doublon.
    * @param {Object} tx - Transaction à importer
    */
@@ -1352,13 +1378,17 @@ function deps() {
 
   /**
    * Lie manuellement une opération en cours avec une transaction bancaire (rapprochement).
+   * Si l'opération en cours possède des ventilations (splits), elles sont transférées
+   * et ajustées sur la transaction bancaire réelle.
    */
   function linkPendingOperation(opId, txId, txDate) {
     const currentData = loadFullData();
     if (!currentData.bankImport?.pendingOperations) return null;
     let linked = null;
+    let targetOp = null;
     currentData.bankImport.pendingOperations = currentData.bankImport.pendingOperations.map(o => {
       if (o.id === opId) {
+        targetOp = o;
         linked = {
           ...o,
           status: "cleared",
@@ -1369,6 +1399,43 @@ function deps() {
       }
       return o;
     });
+
+    if (targetOp && Array.isArray(targetOp.splits) && targetOp.splits.length > 0) {
+      if (currentData.bankImport.transactions) {
+        currentData.bankImport.transactions = currentData.bankImport.transactions.map(t => {
+          if (t.id === txId) {
+            const realAmt = Number(t.amount) || 0;
+            const opSplitSum = targetOp.splits.reduce((s, sp) => s + (Number(sp.amount) || 0), 0);
+            let transferredSplits = [];
+            if (Math.abs(opSplitSum) > 0.001 && Math.abs(realAmt - opSplitSum) > 0.001) {
+              const ratio = realAmt / opSplitSum;
+              transferredSplits = targetOp.splits.map(sp => ({
+                ...sp,
+                id: sp.id || (uid ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+                amount: Math.round((Number(sp.amount) || 0) * ratio * 100) / 100
+              }));
+              const newSum = transferredSplits.reduce((s, sp) => s + sp.amount, 0);
+              const diff = Math.round((realAmt - newSum) * 100) / 100;
+              if (diff !== 0 && transferredSplits.length > 0) {
+                transferredSplits[transferredSplits.length - 1].amount = Math.round((transferredSplits[transferredSplits.length - 1].amount + diff) * 100) / 100;
+              }
+            } else {
+              transferredSplits = targetOp.splits.map(sp => ({
+                ...sp,
+                id: sp.id || (uid ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+                amount: Number(sp.amount) || 0
+              }));
+            }
+            return {
+              ...t,
+              splits: transferredSplits
+            };
+          }
+          return t;
+        });
+      }
+    }
+
     saveFullData(currentData);
     return linked;
   }
@@ -1379,7 +1446,7 @@ function deps() {
   function autoMatchPendingOperations() {
     const currentData = loadFullData();
     const pendingOps = currentData?.bankImport?.pendingOperations || [];
-    const transactions = currentData?.bankImport?.transactions || [];
+    let transactions = currentData?.bankImport?.transactions || [];
 
     let matchCount = 0;
     const currentlyLinked = new Set();
@@ -1391,6 +1458,8 @@ function deps() {
       if (op.status === "cleared" && op.linkedTxId) return op;
       const opTargetAmt = Number(op.amount) || 0;
 
+      let matchedTx = null;
+
       // 1. Recherche par référence exacte dans le libellé si référence >= 3 caractères
       if (op.refNumber && op.refNumber.length >= 3) {
         const foundByRef = transactions.find(t =>
@@ -1399,40 +1468,69 @@ function deps() {
           Math.abs(Math.abs(Number(t.amount) || 0) - Math.abs(opTargetAmt)) < 0.01
         );
         if (foundByRef) {
-          currentlyLinked.add(foundByRef.id);
-          matchCount++;
-          return {
-            ...op,
-            status: "cleared",
-            linkedTxId: foundByRef.id,
-            clearedDate: foundByRef.date
-          };
+          matchedTx = foundByRef;
         }
       }
 
-      // 2. Recherche par montant exact unique dans une fenêtre de 90 jours
-      const opDateMs = op.date ? new Date(op.date).getTime() : 0;
-      const exactCandidates = transactions.filter(t => {
-        if (currentlyLinked.has(t.id)) return false;
-        const txAmt = Number(t.amount) || 0;
-        if (Math.abs(Math.abs(txAmt) - Math.abs(opTargetAmt)) >= 0.01) return false;
-        if (opDateMs && t.date) {
-          const tDateMs = new Date(t.date).getTime();
-          const diffDays = Math.abs(tDateMs - opDateMs) / (1000 * 60 * 60 * 24);
-          if (diffDays > 90) return false;
+      if (!matchedTx) {
+        const opDateMs = op.date ? new Date(op.date).getTime() : 0;
+        const exactCandidates = transactions.filter(t => {
+          if (currentlyLinked.has(t.id)) return false;
+          const txAmt = Number(t.amount) || 0;
+          if (Math.abs(Math.abs(txAmt) - Math.abs(opTargetAmt)) >= 0.01) return false;
+          if (opDateMs && t.date) {
+            const tDateMs = new Date(t.date).getTime();
+            const diffDays = Math.abs(tDateMs - opDateMs) / (1000 * 60 * 60 * 24);
+            if (diffDays > 90) return false;
+          }
+          return true;
+        });
+        if (exactCandidates.length === 1) {
+          matchedTx = exactCandidates[0];
         }
-        return true;
-      });
+      }
 
-      if (exactCandidates.length === 1) {
-        const found = exactCandidates[0];
-        currentlyLinked.add(found.id);
+      if (matchedTx) {
+        currentlyLinked.add(matchedTx.id);
         matchCount++;
+
+        // Transfert des ventilations si présentes
+        if (Array.isArray(op.splits) && op.splits.length > 0) {
+          transactions = transactions.map(t => {
+            if (t.id === matchedTx.id) {
+              const realAmt = Number(t.amount) || 0;
+              const opSplitSum = op.splits.reduce((s, sp) => s + (Number(sp.amount) || 0), 0);
+              let transferredSplits = [];
+              if (Math.abs(opSplitSum) > 0.001 && Math.abs(realAmt - opSplitSum) > 0.001) {
+                const ratio = realAmt / opSplitSum;
+                transferredSplits = op.splits.map(sp => ({
+                  ...sp,
+                  id: sp.id || (uid ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+                  amount: Math.round((Number(sp.amount) || 0) * ratio * 100) / 100
+                }));
+                const newSum = transferredSplits.reduce((s, sp) => s + sp.amount, 0);
+                const diff = Math.round((realAmt - newSum) * 100) / 100;
+                if (diff !== 0 && transferredSplits.length > 0) {
+                  transferredSplits[transferredSplits.length - 1].amount = Math.round((transferredSplits[transferredSplits.length - 1].amount + diff) * 100) / 100;
+                }
+              } else {
+                transferredSplits = op.splits.map(sp => ({
+                  ...sp,
+                  id: sp.id || (uid ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+                  amount: Number(sp.amount) || 0
+                }));
+              }
+              return { ...t, splits: transferredSplits };
+            }
+            return t;
+          });
+        }
+
         return {
           ...op,
           status: "cleared",
-          linkedTxId: found.id,
-          clearedDate: found.date
+          linkedTxId: matchedTx.id,
+          clearedDate: matchedTx.date
         };
       }
 
@@ -1440,15 +1538,12 @@ function deps() {
     });
 
     if (matchCount > 0) {
-      if (!currentData.bankImport) currentData.bankImport = {};
       currentData.bankImport.pendingOperations = updated;
+      currentData.bankImport.transactions = transactions;
       saveFullData(currentData);
     }
 
-    return {
-      matchCount,
-      updatedOperations: updated
-    };
+    return { matchCount, updatedPendingOperations: updated };
   }
 
   /**
@@ -1641,6 +1736,7 @@ function deps() {
     removeBankImportRule,
     recalculateBankImportRules,
     setBankImportTransactionCategory,
+    updateBankTransactionSplits,
     forceImportBankTransaction,
     importBankTransactions,
     subscribeBankImport

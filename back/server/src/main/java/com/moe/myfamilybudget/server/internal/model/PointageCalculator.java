@@ -115,6 +115,32 @@ public final class PointageCalculator {
     }
 
     /**
+     * Résout le montant d'un identifiant de transaction composite ("txId" ou "txId#splitId").
+     */
+    public static BigDecimal resolveAmount(String refId, Map<String, BankImportModel.BankTransactionModel> txMap) {
+        if (refId == null || refId.isBlank() || txMap == null) {
+            return BigDecimal.ZERO;
+        }
+        int hashIdx = refId.indexOf('#');
+        if (hashIdx >= 0) {
+            String txId = refId.substring(0, hashIdx);
+            String splitId = refId.substring(hashIdx + 1);
+            BankImportModel.BankTransactionModel tx = txMap.get(txId);
+            if (tx != null && tx.splits() != null) {
+                for (BankImportModel.BankTransactionSplitModel split : tx.splits()) {
+                    if (split != null && splitId.equals(split.id())) {
+                        return split.amount() != null ? split.amount() : BigDecimal.ZERO;
+                    }
+                }
+            }
+            return BigDecimal.ZERO;
+        } else {
+            BankImportModel.BankTransactionModel tx = txMap.get(refId);
+            return (tx != null && tx.amount() != null) ? tx.amount() : BigDecimal.ZERO;
+        }
+    }
+
+    /**
      * Calcule le résumé bancaire mensuel (dépenses, revenus, transactions non pointées).
      */
     public static PointageMonthSummaryModel calculateMonthBankSummary(List<BankImportModel.BankTransactionModel> monthTxs, Set<String> pointedTxIds) {
@@ -138,10 +164,30 @@ public final class PointageCalculator {
                 totalIncome = totalIncome.add(amt);
             }
 
-            if (!pointedSet.contains(tx.id())) {
-                unpointedCount++;
-                if (amt.compareTo(BigDecimal.ZERO) < 0) {
-                    unpointedExpenses = unpointedExpenses.add(amt.abs());
+            if (tx.splits() != null && !tx.splits().isEmpty()) {
+                BigDecimal pointedSplitsSum = BigDecimal.ZERO;
+                int pointedSplitsCount = 0;
+                for (BankImportModel.BankTransactionSplitModel split : tx.splits()) {
+                    if (split == null) continue;
+                    String splitRef = tx.id() + "#" + split.id();
+                    if (pointedSet.contains(splitRef) || pointedSet.contains(tx.id())) {
+                        pointedSplitsSum = pointedSplitsSum.add(split.amount() != null ? split.amount() : BigDecimal.ZERO);
+                        pointedSplitsCount++;
+                    }
+                }
+                if (pointedSplitsCount < tx.splits().size() && !pointedSet.contains(tx.id())) {
+                    unpointedCount++;
+                    BigDecimal unpointedAmt = amt.subtract(pointedSplitsSum);
+                    if (unpointedAmt.compareTo(BigDecimal.ZERO) < 0) {
+                        unpointedExpenses = unpointedExpenses.add(unpointedAmt.abs());
+                    }
+                }
+            } else {
+                if (!pointedSet.contains(tx.id())) {
+                    unpointedCount++;
+                    if (amt.compareTo(BigDecimal.ZERO) < 0) {
+                        unpointedExpenses = unpointedExpenses.add(amt.abs());
+                    }
                 }
             }
         }
@@ -180,13 +226,13 @@ public final class PointageCalculator {
             String kind = lineKindMap.getOrDefault(link.budgetLineId(), "charge");
 
             BigDecimal sum = BigDecimal.ZERO;
-            for (String txId : link.txIds()) {
-                BankImportModel.BankTransactionModel tx = txMap.get(txId);
-                if (tx != null && tx.amount() != null) {
+            for (String refId : link.txIds()) {
+                BigDecimal amt = resolveAmount(refId, txMap);
+                if (amt != null) {
                     if ("revenu".equalsIgnoreCase(kind)) {
-                        sum = sum.add(tx.amount());
+                        sum = sum.add(amt);
                     } else {
-                        sum = sum.add(tx.amount().negate());
+                        sum = sum.add(amt.negate());
                     }
                 }
             }

@@ -1,14 +1,16 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
+import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
@@ -86,6 +88,86 @@ class StatementBankImportServiceImplTest {
         BankImportModel stored = persistenceManager.getBankImport();
         assertThat(stored.transactions()).hasSize(1);
         assertThat(stored.transactions().get(0).label()).isEqualTo("Achat Carrefour");
+    }
+
+    @Test
+    @DisplayName("updateBankTransactionSplits updates splits for existing transaction")
+    void testUpdateBankTransactionSplitsSuccess() {
+        // Setup initial transaction
+        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel.BankTransactionModel tx = new BankImportModel.BankTransactionModel(
+                "tx_split_1", "2026-01-15", "LECLERC SUPER", "", new java.math.BigDecimal("-100.00"), "cat_default"
+        );
+        java.util.List<BankImportModel.BankTransactionModel> txs = new java.util.ArrayList<>(current.transactions());
+        txs.add(tx);
+        persistenceManager.updateBankImport(new BankImportModel(
+                current.columnMapping(), current.categories(), current.rules(), txs, current.pendingOperations(), current.matchings()
+        ));
+        
+        BankTransactionSplitDto split1 = new BankTransactionSplitDto();
+        split1.setId("s1");
+        split1.setCategoryId("cat_food");
+        split1.setAmount(new java.math.BigDecimal("-60.00"));
+        split1.setLabel("Courses");
+        
+        BankTransactionSplitDto split2 = new BankTransactionSplitDto();
+        split2.setId("s2");
+        split2.setCategoryId("cat_clothes");
+        split2.setAmount(new java.math.BigDecimal("-40.00"));
+        split2.setLabel("Vêtements");
+
+        // Update with 2 splits: -60 and -40
+        java.util.List<BankTransactionSplitDto> splitsBody = java.util.List.of(
+                split1, split2
+        );
+
+        ResponseEntity<Void> response = service.updateBankTransactionSplits("tx_split_1", splitsBody);
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+
+        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel.BankTransactionModel storedTx = stored.transactions().stream()
+                .filter(t -> t.id().equals("tx_split_1"))
+                .findFirst().orElseThrow();
+
+        assertThat(storedTx.splits()).hasSize(2);
+        assertThat(storedTx.splits().get(0).amount()).isEqualByComparingTo("-60.00");
+        assertThat(storedTx.splits().get(0).categoryId()).isEqualTo("cat_food");
+        assertThat(storedTx.splits().get(1).amount()).isEqualByComparingTo("-40.00");
+        assertThat(storedTx.splits().get(1).categoryId()).isEqualTo("cat_clothes");
+    }
+
+    @Test
+    @DisplayName("updateBankTransactionSplits returns 400 when splits sum does not match transaction amount")
+    void testUpdateBankTransactionSplitsInvalidSum() {
+        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel.BankTransactionModel tx = new BankImportModel.BankTransactionModel(
+                "tx_split_2", "2026-01-15", "LECLERC SUPER", "", new java.math.BigDecimal("-100.00"), "cat_default"
+        );
+        java.util.List<BankImportModel.BankTransactionModel> txs = new java.util.ArrayList<>(current.transactions());
+        txs.add(tx);
+        persistenceManager.updateBankImport(new BankImportModel(
+                current.columnMapping(), current.categories(), current.rules(), txs, current.pendingOperations(), current.matchings()
+        ));
+
+        BankTransactionSplitDto split1 = new BankTransactionSplitDto();
+        split1.setId("s1");
+        split1.setCategoryId("cat_food");
+        split1.setAmount(new java.math.BigDecimal("-50.00"));
+        split1.setLabel("Courses");
+        
+        java.util.List<BankTransactionSplitDto> splitsBody = java.util.List.of(
+                split1
+        ); // -50 != -100
+
+        ResponseEntity<Void> response = service.updateBankTransactionSplits("tx_split_2", splitsBody);
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+    }
+
+    @Test
+    @DisplayName("updateBankTransactionSplits returns 404 when transaction is not found")
+    void testUpdateBankTransactionSplitsNotFound() {
+        ResponseEntity<Void> response = service.updateBankTransactionSplits("unknown_tx", java.util.List.of());
+        assertThat(response.getStatusCode().value()).isEqualTo(404);
     }
 
     @Test
