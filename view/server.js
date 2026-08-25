@@ -4,10 +4,13 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 const PORT = 3000;
-// Définition de l'adresse et du port du serveur Spring Boot back-end (avec context-path /api/v1)
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080/api/v1';
 
-// Proxy API requests to Spring Boot backend server (port 8080)
+// === TA CONSTANTE UNIQUE POUR LE SERVEUR NODE ===
+const TARGET_SPRINGBOOT = 'http://172.25.65.15:8080'; // Renseigne ton IP locale ici
+
+const BACKEND_URL = process.env.BACKEND_URL || `${TARGET_SPRINGBOOT}/api/v1`;
+
+// Proxy API requests to Spring Boot backend server
 const apiPaths = [
   '/overview',
   '/tresorerie',
@@ -32,7 +35,7 @@ apiPaths.forEach(apiPath => {
 });
 
 app.use('/api/v1', createProxyMiddleware({
-  target: 'http://localhost:8080/api/v1',
+  target: TARGET_SPRINGBOOT, // <- Remplacement du localhost en dur
   changeOrigin: true,
   pathRewrite: { '^/api/v1': '' },
   logLevel: 'warn'

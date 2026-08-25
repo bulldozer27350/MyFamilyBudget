@@ -16,13 +16,11 @@
   }
 
   /**
-   * Adresse et port du serveur Back-end Spring Boot (conformément au contrat OpenAPI).
-   * Dans le navigateur : '/api/v1' pour passer par le proxy Express port 3000.
-   * Côté Node / tests : 'http://localhost:8080/api/v1'.
+   * Adresse et port du serveur Back-end
    */
   const API_BASE_URL = typeof window !== 'undefined'
     ? (window.API_BASE_URL || '/api/v1')
-    : (typeof process !== 'undefined' && process?.env?.BACKEND_URL ? process.env.BACKEND_URL : 'http://localhost:8080/api/v1');
+    : (typeof process !== 'undefined' && process?.env?.BACKEND_URL ? process.env.BACKEND_URL : '/api/v1');
 
   async function safeFetch(url, options = {}, timeoutMs = 800) {
     if (typeof fetch === 'undefined') return null;

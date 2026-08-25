@@ -172,7 +172,7 @@
           const parsed = JSON.parse(ev.target.result);
           this.setData(parsed);
           if (typeof fetch !== "undefined") {
-            const apiBase = window.API_BASE_URL || 'http://localhost:8080/api/v1';
+            const apiBase = window.API_BASE_URL || '/api/v1';
             fetch(apiBase + "/budget/import", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -201,7 +201,7 @@
         const defaultData = getDefaultData();
         this.setData(defaultData);
         if (typeof fetch !== "undefined") {
-          const apiBase = window.API_BASE_URL || 'http://localhost:8080/api/v1';
+          const apiBase = window.API_BASE_URL || '/api/v1';
           fetch(apiBase + "/budget/reset", { method: "POST" }).catch(() => {});
         }
       }
