@@ -553,7 +553,7 @@ public final class BankImportCalculator {
     /**
      * Merges a manual pending operation with an incoming bank operation.
      * Preserves the manual operation's ID and categoryId (if present).
-     * Overwrites label, date, expectedDate, amount with the bank's values and sets status to 'cleared'.
+     * Overwrites label, date, expectedDate, amount with the bank's values and keeps status as 'pending'.
      */
     public static List<BankImportModel.PendingOperationModel> mergePendingOperation(
             String manualOpId,
@@ -591,9 +591,9 @@ public final class BankImportCalculator {
                         mergedLabel,
                         mergedAmount,
                         categoryToKeep,
-                        "cleared",
-                        op.linkedTxId(),
-                        mergedDate,
+                        "pending",
+                        null,
+                        null,
                         mergedNotes
                 ));
             } else if (bankOp != null && op.id().equals(bankOp.id())) {

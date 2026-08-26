@@ -215,7 +215,7 @@ class BankImportCalculatorTest {
         }
 
         @Test
-        @DisplayName("mergePendingOperation preserves manual category and updates official bank fields with cleared status")
+        @DisplayName("mergePendingOperation preserves manual category and updates official bank fields with pending status")
         void testMergePendingOperation() {
             BankImportModel.PendingOperationModel manualOp = new BankImportModel.PendingOperationModel(
                     "man_1", "2026-01-15", "2026-01-15", "cb", "", "Saisie manuelle Resto",
@@ -240,8 +240,9 @@ class BankImportCalculatorTest {
             assertThat(merged.label()).isEqualTo("FACTURE CARTE 160126 RESTO LE PHARE"); // Libelle banque
             assertThat(merged.amount()).isEqualByComparingTo(new BigDecimal("-45.50")); // Montant exact banque
             assertThat(merged.date()).isEqualTo("2026-01-16"); // Date banque
-            assertThat(merged.status()).isEqualTo("cleared"); // Statut passé a cleared
-            assertThat(merged.clearedDate()).isEqualTo("2026-01-16");
+            assertThat(merged.status()).isEqualTo("pending"); // Reste en statut pending
+            assertThat(merged.linkedTxId()).isNull();
+            assertThat(merged.clearedDate()).isNull();
         }
     }
 

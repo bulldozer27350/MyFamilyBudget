@@ -108,6 +108,8 @@ class StatementBankImportServiceImplIntegrationTest {
         assertThat(merged.id()).isEqualTo("man_cb_1");
         assertThat(merged.categoryId()).isEqualTo("cat_carburant"); // Conserved
         assertThat(merged.label()).isEqualTo("TOTAL RELAIS PARIS"); // Bank value
-        assertThat(merged.status()).isEqualTo("cleared");
+        assertThat(merged.status()).isEqualTo("pending");
+        assertThat(merged.linkedTxId()).isNull();
+        assertThat(merged.clearedDate()).isNull();
     }
 }

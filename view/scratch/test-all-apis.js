@@ -125,7 +125,7 @@ const { BudgetApi } = sandbox.window.BudgetApp;
   }
   console.log("✓ Pending Operations & Manual Entry OK");
 
-  console.log("Testing BudgetApi.importPendingCB...");
+  console.log("Testing BudgetApi.importPendingCB & mergePendingOperation...");
   const importSummary = await BudgetApi.importPendingCB(
     [["15/01/2026", "CB TEST RESTAURANT", "-25.00"]],
     ["date", "label", "amount"],
@@ -138,7 +138,22 @@ const { BudgetApi } = sandbox.window.BudgetApp;
   if (!pendingAfterImport.pendingOperations.some(op => op.label.includes("CB TEST RESTAURANT"))) {
     throw new Error("Imported pending operation not found in getPendingOperations result");
   }
-  console.log("✓ Import Pending CB OK");
+
+  // Test merging manual op with imported bank op (must stay with status "pending")
+  const importedOp = pendingAfterImport.pendingOperations.find(op => op.label.includes("CB TEST RESTAURANT"));
+  await BudgetApi.mergePendingOperation(savedManual.id, importedOp);
+  const pendingAfterMerge = await BudgetApi.getPendingOperations();
+  const mergedOp = pendingAfterMerge.pendingOperations.find(op => op.id === savedManual.id);
+  if (!mergedOp) {
+    throw new Error("Merged operation not found by manual ID");
+  }
+  if (mergedOp.status !== "pending") {
+    throw new Error("Expected merged operation status to be 'pending', got: " + mergedOp.status);
+  }
+  if (mergedOp.linkedTxId != null || mergedOp.clearedDate != null) {
+    throw new Error("Merged operation should not have linkedTxId or clearedDate set before account debit");
+  }
+  console.log("✓ Import Pending CB & Merge (status pending) OK");
 
   console.log("Testing BudgetApi.getBudgetFull & importJSON & resetData...");
   const fullBudget = await BudgetApi.getBudgetFull();

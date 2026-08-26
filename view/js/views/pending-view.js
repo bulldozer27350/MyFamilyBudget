@@ -996,8 +996,9 @@
           label: bankOp.label || o.label,
           amount: bankOp.amount !== undefined ? bankOp.amount : o.amount,
           categoryId: cat,
-          status: "cleared",
-          clearedDate: bankOp.date || o.date,
+          status: "pending",
+          linkedTxId: null,
+          clearedDate: null,
           notes: bankOp.notes || o.notes
         } : o);
       };
@@ -1022,7 +1023,7 @@
         ...prev,
         duplicateCandidates: (prev.duplicateCandidates || []).filter(dc => dc.incomingOp.id !== bankOp.id)
       } : null);
-      showToast(`🔀 Opération fusionnée avec succès (catégorie conservée, statut pointé) !`);
+      showToast(`🔀 Opération fusionnée avec succès (catégorie conservée, statut en cours) !`);
     };
 
     const handleImportCandidateSeparately = async (bankOp) => {
@@ -3305,7 +3306,7 @@
         fontSize: 16,
         color: C?.navy || "#28394A"
       }
-    }, "🔀 Rapprochement des saisies manuelles (Doublons potentiels)"), /*#__PURE__*/React.createElement("div", {
+    }, "🔀 Fusion des saisies manuelles (Doublons potentiels)"), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: C?.inkSoft || "#6B7278",

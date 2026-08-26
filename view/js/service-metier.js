@@ -1673,6 +1673,39 @@ function deps() {
     return categorizedOp;
   }
 
+  /**
+   * Fusionne une saisie manuelle avec une opération importée (CB différé).
+   * Conserve l'ID et la catégorie manuelle, met à jour les champs officiels et conserve le statut "pending" (non rapproché).
+   */
+  function mergePendingOperation(manualOpId, bankOp) {
+    const currentData = loadFullData();
+    if (!currentData.bankImport) currentData.bankImport = {};
+    if (!currentData.bankImport.pendingOperations) currentData.bankImport.pendingOperations = [];
+    const ops = currentData.bankImport.pendingOperations;
+    const manualOp = ops.find(o => o.id === manualOpId);
+    const cat = manualOp && manualOp.categoryId ? manualOp.categoryId : (bankOp?.categoryId || "");
+
+    currentData.bankImport.pendingOperations = ops.filter(o => o.id !== bankOp?.id).map(o => {
+      if (o.id === manualOpId) {
+        return {
+          ...o,
+          date: bankOp?.date || o.date,
+          expectedDate: bankOp?.expectedDate || o.expectedDate,
+          label: bankOp?.label || o.label,
+          amount: bankOp?.amount !== undefined ? bankOp.amount : o.amount,
+          categoryId: cat,
+          status: "pending",
+          linkedTxId: null,
+          clearedDate: null,
+          notes: bankOp?.notes || o.notes
+        };
+      }
+      return o;
+    });
+    saveFullData(currentData);
+    return { success: true };
+  }
+
   function subscribePendingOperations(listener) {
     return deps().BudgetStore.subscribe(listener);
   }
@@ -1750,6 +1783,7 @@ function deps() {
     linkPendingOperation,
     autoMatchPendingOperations,
     importPendingCB,
+    mergePendingOperation,
     forceImportPendingOperation,
     subscribePendingOperations
   };
