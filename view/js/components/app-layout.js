@@ -6,7 +6,9 @@
 
   const {
     useState,
-    useRef
+    useRef,
+    useEffect,
+    useCallback
   } = React;
   const {
     C
@@ -206,6 +208,48 @@
         return false;
       }
     });
+
+    // ── Mobile overlay state ──────────────────────────────────────────
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const sidebarRef = useRef(null);
+
+    /** Fermeture intelligente : clic sur le backdrop ou en dehors de la sidebar */
+    const closeMobileMenu = useCallback(() => {
+      setMobileOpen(false);
+    }, []);
+
+    useEffect(() => {
+      if (!mobileOpen) return;
+
+      // Fermer si clic en dehors de la sidebar (sur le backdrop ou le main)
+      function handleOutsideClick(e) {
+        if (sidebarRef.current && !sidebarRef.current.contains(e.target)) {
+          closeMobileMenu();
+        }
+      }
+
+      // Fermer si clic sur un lien de navigation (changement de page)
+      function handleNavClick(e) {
+        const link = e.target.closest('a.sidebar-nav-link');
+        if (link) {
+          closeMobileMenu();
+        }
+      }
+
+      document.addEventListener('pointerdown', handleOutsideClick, true);
+      document.addEventListener('click', handleNavClick, true);
+
+      // Bloquer le scroll du body pendant que la sidebar est ouverte
+      document.body.style.overflow = 'hidden';
+
+      return () => {
+        document.removeEventListener('pointerdown', handleOutsideClick, true);
+        document.removeEventListener('click', handleNavClick, true);
+        document.body.style.overflow = '';
+      };
+    }, [mobileOpen, closeMobileMenu]);
+    // ─────────────────────────────────────────────────────────────────
+
     const toggleCollapsed = () => {
       setCollapsed(prev => {
         const next = !prev;
@@ -236,6 +280,22 @@
       }
       e.target.value = "";
     };
+
+    // ── Icône hamburger SVG ───────────────────────────────────────────
+    const HamburgerIcon = () => React.createElement("svg", {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      strokeWidth: 2,
+      strokeLinecap: "round",
+      strokeLinejoin: "round"
+    },
+      React.createElement("line", { x1: 3, y1: 7, x2: 21, y2: 7 }),
+      React.createElement("line", { x1: 3, y1: 12, x2: 21, y2: 12 }),
+      React.createElement("line", { x1: 3, y1: 17, x2: 21, y2: 17 })
+    );
+    // ─────────────────────────────────────────────────────────────────
+
     return React.createElement("div", {
       className: "app-container",
       style: {
@@ -243,9 +303,28 @@
         background: C?.paper || "#F6F3EC",
         color: C?.ink || "#232A2E"
       }
-    }, 
+    },
+
+    /* ── Backdrop mobile (derrière la sidebar, devant le contenu) ── */
+    React.createElement("div", {
+      className: `mobile-sidebar-backdrop${mobileOpen ? " visible" : ""}`,
+      "aria-hidden": "true",
+      onClick: closeMobileMenu
+    }),
+
+    /* ── Bouton hamburger flottant (mobile uniquement via CSS) ── */
+    React.createElement("button", {
+      type: "button",
+      className: "mobile-hamburger-btn",
+      "aria-label": "Ouvrir le menu de navigation",
+      "aria-expanded": mobileOpen,
+      onClick: () => setMobileOpen(true)
+    }, React.createElement(HamburgerIcon, null)),
+
+    /* ── Sidebar ── */
     React.createElement("aside", {
-      className: `app-sidebar ${collapsed ? "collapsed" : ""}`
+      ref: sidebarRef,
+      className: `app-sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`.trim()
     }, 
     React.createElement("div", {
       className: "sidebar-header"
@@ -406,11 +485,15 @@
     }, Icon("refresh")), React.createElement("span", {
       className: "sidebar-btn-label"
     }, "Réinitialiser")))),
+
+    /* ── Zone de contenu principale ── */
     React.createElement("main", {
       className: "app-main"
     }, typeof children === "function" ? children({
       openHelp
     }) : children), 
+
+    /* ── Modal d'aide ── */
     React.createElement(HelpModal, {
       isOpen: helpState.isOpen,
       onClose: closeHelp,
