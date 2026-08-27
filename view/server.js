@@ -41,12 +41,17 @@ app.use('/api/v1', createProxyMiddleware({
   logLevel: 'warn'
 }));
 
+// Heartbeat endpoint
+app.get(['/heartbeat', '/ping', '/api/v1/heartbeat', '/api/v1/ping'], (req, res) => {
+  res.json({ status: 'UP', app: 'MyFamilyBudget', version: '1.0.0', timestamp: Date.now() });
+});
+
 // Serve static assets from view directory
 app.use(express.static(__dirname));
 
-// Fallback to overview.html or index.html in view
+// Fallback to index.html (Web SplashScreen)
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'overview.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {

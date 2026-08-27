@@ -74,10 +74,79 @@
 
     <build>
         <plugins>
-            <!-- Spring Boot Plugin -->
+            <!-- Standard JAR Plugin with Main-Class in Manifest -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.moe.myfamilybudget.ServerApplication</mainClass>
+                            <addClasspath>true</addClasspath>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <!-- Spring Boot Plugin (Génération du Fat-JAR exécutable autonome) -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>repackage</id>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>com.moe.myfamilybudget.ServerApplication</mainClass>
+                            <layout>JAR</layout>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <mainClass>com.moe.myfamilybudget.ServerApplication</mainClass>
+                    <executable>true</executable>
+                </configuration>
+            </plugin>
+
+            <!-- Synchronisation & Embarquement des assets du Front dans le Back -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>embed-frontend-assets</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/classes/static</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/../../view</directory>
+                                    <includes>
+                                        <include>*.html</include>
+                                        <include>config.js</include>
+                                        <include>css/**</include>
+                                        <include>js/**</include>
+                                        <include>assets/**</include>
+                                    </includes>
+                                    <excludes>
+                                        <exclude>server.js</exclude>
+                                        <exclude>package.json</exclude>
+                                        <exclude>metadata.json</exclude>
+                                        <exclude>scratch/**</exclude>
+                                        <exclude>Manuel utilisateur.md</exclude>
+                                    </excludes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Compiler Plugin -->
@@ -178,6 +247,29 @@
                                 <source>${project.build.directory}/generated-sources/openapi/src/main/java</source>
                             </sources>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Maven Assembly Plugin (Génération du livrable ZIP portable autonome) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <descriptors>
+                        <descriptor>src/assembly/portable-distribution.xml</descriptor>
+                    </descriptors>
+                    <finalName>MyFamilyBudget-${project.version}</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-portable-zip</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
