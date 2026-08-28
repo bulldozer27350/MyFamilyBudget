@@ -53,15 +53,30 @@
     if (!str) return null;
     const cleaned = String(str).trim();
     const parts = cleaned.split(/[\/\-\.]/);
+    if (parts.length !== 3) return null;
+
+    // Si la date commence par 4 chiffres (format ISO YYYY-MM-DD ou YYYY/MM/DD), elle est déjà en ISO
+    if (parts[0].length === 4) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const d = parseInt(parts[2], 10);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+        return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      }
+    }
+
     const order = (format || "DD/MM/YYYY").split(/[\/\-\.]/);
-    if (parts.length !== 3 || order.length !== 3) return null;
+    if (order.length !== 3) return null;
     let d, m, y;
     order.forEach((token, idx) => {
       const v = parseInt(parts[idx], 10);
       if (isNaN(v)) return;
-      if (token[0] === "D") d = v;else if (token[0] === "M") m = v;else if (token[0] === "Y") y = v < 100 ? 2000 + v : v;
+      if (token[0] === "D" || token[0] === "d") d = v;
+      else if (token[0] === "M" || token[0] === "m") m = v;
+      else if (token[0] === "Y" || token[0] === "y") y = v < 100 ? 2000 + v : v;
     });
     if (!d || !m || !y) return null;
+    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 1900 || y > 2100) return null;
     return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   }
 
@@ -84,7 +99,10 @@
    * Clé de dédoublonnage d'une transaction — évite de réimporter deux fois la même ligne
    */
   function transactionDedupeKey(t) {
-    return `${t.date}|${(t.label || "").trim().toLowerCase()}|${Math.round((Number(t.amount) || 0) * 100)}`;
+    const d = t.date || "";
+    const l = (t.label || "").trim().replace(/\s+/g, " ").toLowerCase();
+    const a = Math.round((Number(t.amount) || 0) * 100);
+    return `${d}|${l}|${a}`;
   }
 
   /**

@@ -459,6 +459,37 @@ paths:
         '200':
           description: Traitement du CSV effectue
 
+  /bank/convert-excel:
+    post:
+      summary: Convertit un fichier Excel (.xls ou .xlsx) en texte CSV
+      operationId: convertExcelToCsv
+      tags:
+        - Import Bancaire
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Fichier Excel (.xls ou .xlsx) à convertir
+      responses:
+        '200':
+          description: Contenu CSV résultant de la conversion
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Format de fichier non supporté ou nombre de lignes dépassé
+          content:
+            text/plain:
+              schema:
+                type: string
+
   /bank/transactions/{txId}/splits:
     put:
       summary: Met à jour la ventilation (splits) d'une transaction bancaire

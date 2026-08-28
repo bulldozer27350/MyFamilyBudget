@@ -27,7 +27,7 @@ class StatementBankImportServiceImplTest {
         persistenceManager = new PersistenceManager();
         persistenceManager.init();
         StatementBankImportMapper mapper = new StatementBankImportMapper();
-        service = new StatementBankImportServiceImpl(persistenceManager, mapper);
+        service = new StatementBankImportServiceImpl(persistenceManager, mapper, new ExcelToCsvService());
         pendingService = new PendingOperationsServiceImpl(persistenceManager, mapper);
     }
 

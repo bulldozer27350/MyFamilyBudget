@@ -730,28 +730,50 @@
       value: c.id,
       label: c.label
     }))];
+    const [isConverting, setIsConverting] = useState(false);
+    const [convertError, setConvertError] = useState(null);
+
+    const processCSVText = (csvText, name) => {
+      const rows = parseCSVText(String(csvText), mapping.delimiter);
+      const dataRows = mapping.hasHeader ? rows.slice(1) : rows;
+      setRawRows(dataRows);
+      const nCols = dataRows[0] ? dataRows[0].length : 0;
+      const roles = [];
+      for (let i = 0; i < nCols; i++) {
+        if (i === mapping.dateCol) roles.push("date");else if (i === mapping.labelCol) roles.push("label");else if (i === mapping.typeCol) roles.push("type");else if (i === mapping.amountCol) roles.push("amount");else roles.push("ignore");
+      }
+      if (!roles.includes("date") && !roles.includes("label") && !roles.includes("amount")) {
+        if (nCols > 0) roles[0] = "date";
+        if (nCols > 1) roles[1] = "label";
+        if (nCols > 2) roles[2] = "amount";
+      }
+      setColRoles(roles);
+    };
+
     const handleFile = file => {
       if (!file) return;
       setFileName(file.name);
       setImportSummary(null);
-      const reader = new FileReader();
-      reader.onload = e => {
-        const rows = parseCSVText(String(e.target.result), mapping.delimiter);
-        const dataRows = mapping.hasHeader ? rows.slice(1) : rows;
-        setRawRows(dataRows);
-        const nCols = dataRows[0] ? dataRows[0].length : 0;
-        const roles = [];
-        for (let i = 0; i < nCols; i++) {
-          if (i === mapping.dateCol) roles.push("date");else if (i === mapping.labelCol) roles.push("label");else if (i === mapping.typeCol) roles.push("type");else if (i === mapping.amountCol) roles.push("amount");else roles.push("ignore");
-        }
-        if (!roles.includes("date") && !roles.includes("label") && !roles.includes("amount")) {
-          if (nCols > 0) roles[0] = "date";
-          if (nCols > 1) roles[1] = "label";
-          if (nCols > 2) roles[2] = "amount";
-        }
-        setColRoles(roles);
-      };
-      reader.readAsText(file, "UTF-8");
+      setConvertError(null);
+      const lower = file.name.toLowerCase();
+      if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) {
+        // Conversion Excel → CSV via le backend
+        setIsConverting(true);
+        BudgetApi.convertExcelToCsv(file)
+          .then(csvText => {
+            processCSVText(csvText, file.name);
+            setIsConverting(false);
+          })
+          .catch(err => {
+            setConvertError("Erreur de conversion : " + err.message);
+            setIsConverting(false);
+          });
+      } else {
+        // Fichier CSV classique — traitement local
+        const reader = new FileReader();
+        reader.onload = e => processCSVText(String(e.target.result), file.name);
+        reader.readAsText(file, "UTF-8");
+      }
     };
     const setRole = (colIdx, role) => {
       setColRoles(prev => prev.map((r, i) => {
@@ -949,26 +971,45 @@
         padding: "9px 16px",
         borderRadius: 8,
         border: `1px solid ${C?.line || "#DED6C4"}`,
-        cursor: "pointer",
+        cursor: isConverting ? "not-allowed" : "pointer",
         fontSize: 13,
         fontWeight: 600,
-        color: C?.pine || "#2F5D50",
-        background: C?.pineSoft || "#E3ECE8"
+        color: isConverting ? C?.inkSoft || "#6B7278" : C?.pine || "#2F5D50",
+        background: isConverting ? C?.panelAlt || "#EFEAE0" : C?.pineSoft || "#E3ECE8",
+        opacity: isConverting ? 0.7 : 1
       }
-    }, "📄 Choisir un fichier CSV…", /*#__PURE__*/React.createElement("input", {
+    }, isConverting ? "⏳ Conversion Excel en cours…" : "📄 Choisir un fichier CSV ou Excel…", /*#__PURE__*/React.createElement("input", {
       type: "file",
-      accept: ".csv,.txt",
+      accept: ".csv,.txt,.xls,.xlsx",
+      disabled: isConverting,
       style: {
         display: "none"
       },
       onChange: e => handleFile(e.target.files[0])
-    })), fileName && /*#__PURE__*/React.createElement("span", {
+    })), fileName && !isConverting && /*#__PURE__*/React.createElement("span", {
       style: {
         marginLeft: 12,
         fontSize: 12.5,
         color: C?.inkSoft || "#6B7278"
       }
-    }, fileName)), rawRows && colRoles && /*#__PURE__*/React.createElement("div", {
+    }, fileName), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C?.inkSoft || "#6B7278",
+        marginTop: 5
+      }
+    }, "Formats acceptés : CSV, TXT, Excel (.xls, .xlsx) — les fichiers Excel sont convertis automatiquement.")), convertError && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 10,
+        padding: "10px 14px",
+        borderRadius: 7,
+        background: C?.brickSoft || "#F4E4DF",
+        border: `1px solid ${C?.brick || "#A8503C"}`,
+        color: C?.brick || "#A8503C",
+        fontSize: 12.5,
+        fontWeight: 600
+      }
+    }, "⚠️ ", convertError), rawRows && colRoles && /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 14
       }

@@ -31,10 +31,14 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
     private final PersistenceManager persistenceManager;
     private final StatementBankImportMapper mapper;
+    private final ExcelToCsvService excelToCsvService;
 
-    public StatementBankImportServiceImpl(PersistenceManager persistenceManager, StatementBankImportMapper mapper) {
+    public StatementBankImportServiceImpl(PersistenceManager persistenceManager,
+                                          StatementBankImportMapper mapper,
+                                          ExcelToCsvService excelToCsvService) {
         this.persistenceManager = persistenceManager;
         this.mapper = mapper;
+        this.excelToCsvService = excelToCsvService;
     }
 
     // ---------------------------------------------------------------------------
@@ -163,6 +167,30 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
     }
 
     // --- Utility ---
+
+    /**
+     * Convertit un fichier Excel (.xls ou .xlsx) en texte CSV.
+     * Retourne le CSV en text/plain pour que le front-end puisse ensuite
+     * le traiter exactement comme un fichier CSV normal.
+     */
+    @Override
+    public ResponseEntity<String> convertExcelToCsv(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body("Fichier manquant ou vide.");
+        }
+        String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
+        try {
+            String csvText = excelToCsvService.convert(file, filename);
+            return ResponseEntity.ok()
+                    .header("Content-Type", "text/plain; charset=UTF-8")
+                    .body(csvText);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body("Erreur lors de la conversion Excel → CSV : " + e.getMessage());
+        }
+    }
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> toMap(Object body) {

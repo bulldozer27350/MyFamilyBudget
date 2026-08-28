@@ -114,6 +114,8 @@
     const [importSummary, setImportSummary] = useState(null);
     const [showIgnoredModal, setShowIgnoredModal] = useState(false);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+    const [isImportConverting, setIsImportConverting] = useState(false);
+    const [importConvertError, setImportConvertError] = useState(null);
 
     // État asynchrone issu de la façade API
     const [apiData, setApiData] = useState(null);
@@ -746,68 +748,92 @@
       return null;
     };
 
+    const processImportCSVText = (text, fileName) => {
+      // Auto-détection du séparateur
+      const countSemi = (text.match(/;/g) || []).length;
+      const countComma = (text.match(/,/g) || []).length;
+      const countTab = (text.match(/\t/g) || []).length;
+      let delim = importDelimiter;
+      if (countSemi > countComma && countSemi > countTab) delim = ";";
+      else if (countComma > countSemi && countComma > countTab) delim = ",";
+      else if (countTab > countSemi && countTab > countComma) delim = "\t";
+      setImportDelimiter(delim);
+
+      const rows = parseCSVText(text, delim);
+      if (!rows || rows.length === 0) return;
+
+      // Auto-détection de la ligne d'en-tête
+      let headerRowIdx = 0;
+      let dCol = 0, lCol = 1, aCol = 2;
+      let foundHeader = false;
+
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const r = rows[i];
+        const isDateH = r.some(c => /date/i.test(c));
+        const isLabelH = r.some(c => /libell|label|description|operation/i.test(c));
+        const isAmtH = r.some(c => /montant|amount|debit|credit/i.test(c));
+        if ((isDateH && isLabelH) || (isDateH && isAmtH)) {
+          headerRowIdx = i;
+          foundHeader = true;
+          r.forEach((cell, ci) => {
+            const c = (cell || "").toLowerCase();
+            if (c.includes("date")) dCol = ci;
+            else if (c.includes("libell") || c.includes("label") || c.includes("description") || c.includes("operation")) lCol = ci;
+            if (c.includes("montant") || c.includes("amount") || c.includes("débit") || c.includes("debit")) aCol = ci;
+          });
+          break;
+        }
+      }
+
+      const dataRows = foundHeader ? rows.slice(headerRowIdx + 1) : rows;
+      setImportRawRows(dataRows);
+
+      const nCols = dataRows[0] ? dataRows[0].length : 0;
+      const roles = [];
+      for (let i = 0; i < nCols; i++) {
+        if (i === dCol) roles.push("date");
+        else if (i === lCol) roles.push("label");
+        else if (i === aCol) roles.push("amount");
+        else roles.push("ignore");
+      }
+      if (!roles.includes("date") && !roles.includes("label") && !roles.includes("amount")) {
+        if (nCols > 0) roles[0] = "date";
+        if (nCols > 1) roles[1] = "label";
+        if (nCols > 2) roles[2] = "amount";
+      }
+      setImportColRoles(roles);
+    };
+
     const handleImportFile = file => {
       if (!file) return;
       setImportFileName(file.name);
       setImportSummary(null);
-      const reader = new FileReader();
-      reader.onload = e => {
-        const text = String(e.target.result || "");
-        // Auto-détection du séparateur
-        const countSemi = (text.match(/;/g) || []).length;
-        const countComma = (text.match(/,/g) || []).length;
-        const countTab = (text.match(/\t/g) || []).length;
-        let delim = importDelimiter;
-        if (countSemi > countComma && countSemi > countTab) delim = ";";
-        else if (countComma > countSemi && countComma > countTab) delim = ",";
-        else if (countTab > countSemi && countTab > countComma) delim = "\t";
-        setImportDelimiter(delim);
-
-        const rows = parseCSVText(text, delim);
-        if (!rows || rows.length === 0) return;
-
-        // Auto-détection de la ligne d'en-tête
-        let headerRowIdx = 0;
-        let dCol = 0, lCol = 1, aCol = 2;
-        let foundHeader = false;
-
-        for (let i = 0; i < Math.min(rows.length, 10); i++) {
-          const r = rows[i];
-          const isDateH = r.some(c => /date/i.test(c));
-          const isLabelH = r.some(c => /libell|label|description|operation/i.test(c));
-          const isAmtH = r.some(c => /montant|amount|debit|credit/i.test(c));
-          if ((isDateH && isLabelH) || (isDateH && isAmtH)) {
-            headerRowIdx = i;
-            foundHeader = true;
-            r.forEach((cell, ci) => {
-              const c = (cell || "").toLowerCase();
-              if (c.includes("date")) dCol = ci;
-              else if (c.includes("libell") || c.includes("label") || c.includes("description") || c.includes("operation")) lCol = ci;
-              if (c.includes("montant") || c.includes("amount") || c.includes("débit") || c.includes("debit")) aCol = ci;
+      setImportConvertError(null);
+      const lower = file.name.toLowerCase();
+      if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) {
+        // Conversion Excel → CSV via le backend
+        setIsImportConverting(true);
+        const apiInstance = getApi();
+        if (apiInstance && apiInstance.convertExcelToCsv) {
+          apiInstance.convertExcelToCsv(file)
+            .then(csvText => {
+              processImportCSVText(csvText, file.name);
+              setIsImportConverting(false);
+            })
+            .catch(err => {
+              setImportConvertError("Erreur de conversion Excel : " + err.message);
+              setIsImportConverting(false);
             });
-            break;
-          }
+        } else {
+          setImportConvertError("Service de conversion non disponible");
+          setIsImportConverting(false);
         }
-
-        const dataRows = foundHeader ? rows.slice(headerRowIdx + 1) : rows;
-        setImportRawRows(dataRows);
-
-        const nCols = dataRows[0] ? dataRows[0].length : 0;
-        const roles = [];
-        for (let i = 0; i < nCols; i++) {
-          if (i === dCol) roles.push("date");
-          else if (i === lCol) roles.push("label");
-          else if (i === aCol) roles.push("amount");
-          else roles.push("ignore");
-        }
-        if (!roles.includes("date") && !roles.includes("label") && !roles.includes("amount")) {
-          if (nCols > 0) roles[0] = "date";
-          if (nCols > 1) roles[1] = "label";
-          if (nCols > 2) roles[2] = "amount";
-        }
-        setImportColRoles(roles);
-      };
-      reader.readAsText(file, "UTF-8");
+      } else {
+        // Fichier CSV classique — traitement local
+        const reader = new FileReader();
+        reader.onload = e => processImportCSVText(String(e.target.result || ""), file.name);
+        reader.readAsText(file, "UTF-8");
+      }
     };
 
     const setImportRole = (colIdx, role) => {
@@ -1068,6 +1094,8 @@
       setImportSummary(null);
       setShowIgnoredModal(false);
       setShowDuplicateModal(false);
+      setIsImportConverting(false);
+      setImportConvertError(null);
     };
 
     const colSort = key => {
@@ -2910,7 +2938,8 @@
       style: {
         display: "flex",
         alignItems: "center",
-        gap: 12
+        gap: 12,
+        flexWrap: "wrap"
       }
     }, /*#__PURE__*/React.createElement("label", {
       style: {
@@ -2920,15 +2949,17 @@
         padding: "9px 16px",
         borderRadius: 8,
         border: `1px solid ${C?.pine || "#2F5D50"}`,
-        cursor: "pointer",
+        cursor: isImportConverting ? "not-allowed" : "pointer",
         fontSize: 13,
         fontWeight: 600,
-        color: "#fff",
-        background: C?.pine || "#2F5D50"
+        color: isImportConverting ? C?.inkSoft || "#6B7278" : "#fff",
+        background: isImportConverting ? C?.panelAlt || "#EFEAE0" : C?.pine || "#2F5D50",
+        opacity: isImportConverting ? 0.7 : 1
       }
-    }, "📄 Choisir le fichier d'encours CB…", /*#__PURE__*/React.createElement("input", {
+    }, isImportConverting ? "⏳ Conversion Excel en cours…" : "📄 Choisir le fichier d'encours CB (CSV ou Excel)…", /*#__PURE__*/React.createElement("input", {
       type: "file",
-      accept: ".csv,.txt",
+      accept: ".csv,.txt,.xls,.xlsx",
+      disabled: isImportConverting,
       style: {
         display: "none"
       },
@@ -2939,7 +2970,23 @@
         fontWeight: 600,
         color: C?.navy || "#28394A"
       }
-    }, importFileName)), importRawRows && importColRoles && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    }, importFileName)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C?.inkSoft || "#6B7278",
+        marginTop: -6
+      }
+    }, "Formats acceptés : CSV, TXT, Excel (.xls, .xlsx) — les fichiers Excel sont convertis automatiquement."), importConvertError && /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "10px 14px",
+        borderRadius: 7,
+        background: C?.brickSoft || "#F4E4DF",
+        border: `1px solid ${C?.brick || "#A8503C"}`,
+        color: C?.brick || "#A8503C",
+        fontSize: 12.5,
+        fontWeight: 600
+      }
+    }, "⚠️ ", importConvertError), importRawRows && importColRoles && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: C?.inkSoft || "#6B7278",

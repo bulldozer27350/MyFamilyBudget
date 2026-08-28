@@ -584,6 +584,28 @@
     },
 
     /**
+     * Convertit un fichier Excel (.xls ou .xlsx) en texte CSV via le backend.
+     * @param {File} file - Fichier Excel à convertir
+     * @returns {Promise<string>} Contenu CSV converti
+     */
+    async convertExcelToCsv(file) {
+      if (typeof fetch !== 'undefined') {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(API_BASE_URL + '/bank/convert-excel', {
+          method: 'POST',
+          body: formData
+        });
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(msg || res.statusText || 'Erreur de conversion Excel');
+        }
+        return await res.text();
+      }
+      throw new Error("Conversion Excel non supportée dans cet environnement");
+    },
+
+    /**
      * Importe des transactions depuis un fichier CSV traité.
      * @returns {Promise<Object>} Résumé de l'import
      */

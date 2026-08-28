@@ -34,6 +34,8 @@ class BankImportCalculatorTest {
         void testParseDateWithFormat() {
             assertThat(BankImportCalculator.parseDateWithFormat("15/01/2026", "DD/MM/YYYY")).isEqualTo("2026-01-15");
             assertThat(BankImportCalculator.parseDateWithFormat("2026-05-20", "YYYY-MM-DD")).isEqualTo("2026-05-20");
+            assertThat(BankImportCalculator.parseDateWithFormat("2026-01-15", "DD/MM/YYYY")).isEqualTo("2026-01-15");
+            assertThat(BankImportCalculator.parseDateWithFormat("2026-01-15", "DD-MM-YYYY")).isEqualTo("2026-01-15");
             assertThat(BankImportCalculator.parseDateWithFormat("01-12-25", "DD-MM-YY")).isEqualTo("2025-12-01");
             assertThat(BankImportCalculator.parseDateWithFormat("invalid", "DD/MM/YYYY")).isNull();
         }

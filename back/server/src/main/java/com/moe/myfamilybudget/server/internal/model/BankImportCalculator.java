@@ -85,27 +85,40 @@ public final class BankImportCalculator {
     public static String parseDateWithFormat(String str, String format) {
         if (str == null || str.isBlank()) return null;
         String cleaned = str.trim();
-        String fmt = (format != null && !format.isBlank()) ? format : "DD/MM/YYYY";
-
         String[] parts = cleaned.split("[/\\-\\.]");
-        String[] order = fmt.split("[/\\-\\.]");
+        if (parts.length != 3) return null;
 
-        if (parts.length != 3 || order.length != 3) return null;
+        // If the date string starts with a 4-digit year (ISO format: YYYY-MM-DD or YYYY/MM/DD)
+        if (parts[0].trim().length() == 4) {
+            try {
+                int y = Integer.parseInt(parts[0].trim());
+                int m = Integer.parseInt(parts[1].trim());
+                int d = Integer.parseInt(parts[2].trim());
+                if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+                    return String.format("%04d-%02d-%02d", y, m, d);
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        String fmt = (format != null && !format.isBlank()) ? format : "DD/MM/YYYY";
+        String[] order = fmt.split("[/\\-\\.]");
+        if (order.length != 3) return null;
 
         Integer d = null, m = null, y = null;
         for (int idx = 0; idx < 3; idx++) {
             try {
                 int v = Integer.parseInt(parts[idx].trim());
-                char tokenChar = order[idx].trim().toUpperCase().charAt(0);
+                char tokenChar = Character.toUpperCase(order[idx].trim().charAt(0));
                 if (tokenChar == 'D') d = v;
                 else if (tokenChar == 'M') m = v;
                 else if (tokenChar == 'Y') y = v < 100 ? 2000 + v : v;
-            } catch (NumberFormatException e) {
+            } catch (Exception e) {
                 return null;
             }
         }
         if (d == null || m == null || y == null) return null;
-        if (d < 1 || d > 31 || m < 1 || m > 12) return null;
+        if (d < 1 || d > 31 || m < 1 || m > 12 || y < 1900 || y > 2100) return null;
 
         return String.format("%04d-%02d-%02d", y, m, d);
     }
@@ -140,7 +153,7 @@ public final class BankImportCalculator {
      */
     public static String transactionDedupeKey(String date, String label, BigDecimal amount) {
         String d = date != null ? date : "";
-        String l = label != null ? label.trim().toLowerCase() : "";
+        String l = label != null ? label.trim().replaceAll("\\s+", " ").toLowerCase() : "";
         BigDecimal amt = amount != null ? amount : BigDecimal.ZERO;
         long roundedCents = amt.multiply(new BigDecimal("100")).setScale(0, RoundingMode.HALF_UP).longValue();
         return d + "|" + l + "|" + roundedCents;
