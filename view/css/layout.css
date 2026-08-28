@@ -33,7 +33,7 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .app-sidebar.collapsed .sidebar-header {
@@ -100,7 +100,7 @@
 .sidebar-subtitle {
   font-size: 12px;
   color: var(--color-navy-text-muted, #9FB0BE);
-  margin-bottom: 24px;
+  margin-bottom: 0;
 }
 
 .sidebar-nav-link {
@@ -135,7 +135,7 @@
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: var(--color-navy-text-subtle, #7C8D9B);
-  margin: 16px 12px 6px;
+  margin: 8px 12px 6px;
   font-weight: 700;
 }
 
@@ -212,6 +212,11 @@
 
 .app-sidebar.collapsed ~ .app-main {
   max-width: 1360px;
+}
+
+/* Le bouton hamburger est invisible par défaut (PC) */
+.mobile-hamburger-btn {
+  display: none;
 }
 
 /* ============================================================
@@ -343,11 +348,6 @@
   .sidebar-toggle-btn {
     display: none;
   }
-}
-
-/* Le bouton hamburger est invisible par défaut (PC) */
-.mobile-hamburger-btn {
-  display: none;
 }
 
 .sidebar-nav-icon svg {

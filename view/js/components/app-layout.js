@@ -332,7 +332,7 @@
     React.createElement("div", null, 
       React.createElement("div", {
       className: "sidebar-title"
-    }, "Livre de comptes"), 
+    }, "MyFamilyBudget"), 
     React.createElement("div", {
       className: "sidebar-subtitle"
     }, "Budget & patrimoine familial")), 
@@ -341,7 +341,10 @@
       onClick: toggleCollapsed,
       className: "sidebar-toggle-btn",
       title: collapsed ? "Étendre le menu" : "Réduire le menu"
-    }, collapsed ? "»" : "«")), NAV_ITEMS.map(item => {
+    }, collapsed ? "»" : "«")), 
+    React.createElement("div", {
+      className: "sidebar-section-title"
+    }, "Analyse du réel"), NAV_ANALYSE_ITEMS.map(item => {
       const isActive = currentSection === item.key;
       return React.createElement("a", {
         key: item.key,
@@ -361,7 +364,7 @@
     }),
     React.createElement("div", {
       className: "sidebar-section-title"
-    }, "Analyse du réel"), NAV_ANALYSE_ITEMS.map(item => {
+    }, "Prévisions & planification"), NAV_ITEMS.map(item => {
       const isActive = currentSection === item.key;
       return React.createElement("a", {
         key: item.key,
