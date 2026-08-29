@@ -22,6 +22,24 @@ public record PlacementModel(
     Integer pausePriority,
     String categoryId
 ) {
+    public PlacementModel(
+        String id,
+        String label,
+        String category,
+        BigDecimal balance,
+        String balanceDate,
+        BigDecimal monthly,
+        String monthlyFrom,
+        String monthlyUntil,
+        BigDecimal ratePess,
+        BigDecimal rateCorr,
+        BigDecimal rateOpti,
+        Boolean excludedFromRetirement,
+        String notes
+    ) {
+        this(id, label, category, balance, balanceDate, monthly, monthlyFrom, monthlyUntil, ratePess, rateCorr, rateOpti, excludedFromRetirement, notes, null, null, null, null, "");
+    }
+
     public BigDecimal getEffectiveBalance() {
         return balance != null ? balance : BigDecimal.ZERO;
     }

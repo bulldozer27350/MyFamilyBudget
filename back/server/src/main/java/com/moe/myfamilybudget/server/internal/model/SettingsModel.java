@@ -18,6 +18,22 @@ public record SettingsModel(
     BigDecimal cashCeiling,
     BigDecimal cashFloor
 ) {
+    public SettingsModel(
+        Integer birthYear,
+        Integer retireAge,
+        Integer simulateUntilAge,
+        BigDecimal inflationRate,
+        String pivotDate,
+        String pivotMode,
+        BigDecimal startBalance,
+        Integer childExitAge,
+        BigDecimal taxAbattement,
+        BigDecimal pass2026,
+        BigDecimal passGrowthRate
+    ) {
+        this(birthYear, retireAge, simulateUntilAge, inflationRate, pivotDate, pivotMode, startBalance, childExitAge, taxAbattement, pass2026, passGrowthRate, false, null, null);
+    }
+
     public int getEffectiveBirthYear() {
         return birthYear != null ? birthYear : 1985;
     }

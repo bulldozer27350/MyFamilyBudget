@@ -21,5 +21,9 @@ public record AssetCategoryModel(
             bucket = "cash";
         }
     }
+
+    public AssetCategoryModel(String id, String icon, String name, String bucket) {
+        this(id, icon, name, bucket, null);
+    }
 }
 

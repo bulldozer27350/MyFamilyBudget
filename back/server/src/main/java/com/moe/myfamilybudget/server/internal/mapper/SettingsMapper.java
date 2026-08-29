@@ -62,15 +62,17 @@ public class SettingsMapper {
         map.put("icon", category.icon());
         map.put("name", category.name());
         map.put("bucket", category.bucket());
+        map.put("color", category.color());
         return map;
     }
 
     public AssetCategoryModel toAssetCategoryModel(Map<String, Object> map) {
-        if (map == null) return new AssetCategoryModel(null, "📁", "", "cash");
+        if (map == null) return new AssetCategoryModel(null, "📁", "", "cash", null);
         String id = map.get("id") != null ? String.valueOf(map.get("id")) : null;
         String icon = map.get("icon") != null ? String.valueOf(map.get("icon")) : "📁";
         String name = map.get("name") != null ? String.valueOf(map.get("name")) : "";
         String bucket = map.get("bucket") != null ? String.valueOf(map.get("bucket")) : "cash";
-        return new AssetCategoryModel(id, icon, name, bucket);
+        String color = map.get("color") != null ? String.valueOf(map.get("color")) : null;
+        return new AssetCategoryModel(id, icon, name, bucket, color);
     }
 }

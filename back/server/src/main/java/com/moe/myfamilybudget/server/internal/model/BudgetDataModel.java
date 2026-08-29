@@ -55,6 +55,31 @@ public record BudgetDataModel(
              List.of());
     }
 
+    public BudgetDataModel(
+        SettingsModel settings,
+        List<IncomeModel> incomes,
+        List<ChargeModel> charges,
+        List<PlacementModel> placements,
+        List<RealEstateModel> realEstate,
+        RetirementModel retirement,
+        List<TaxChildModel> taxChildren,
+        List<TaxBracketModel> taxBrackets,
+        List<TaxRateOverrideModel> taxRateOverrides,
+        List<TaxActualOverrideModel> taxActualOverrides,
+        List<OneOffExpenseModel> oneoff,
+        List<TransferModel> transfers,
+        List<VariableIncomeModel> variableIncomes,
+        List<VariableOverrideModel> variableOverrides,
+        BankImportModel bankImport,
+        List<AssetCategoryModel> assetCategories
+    ) {
+        this(settings, incomes, charges, placements, realEstate, retirement, taxChildren,
+             taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers,
+             variableIncomes, variableOverrides, bankImport,
+             assetCategories != null ? assetCategories : (activeCategories.get() != null ? activeCategories.get() : List.of()),
+             List.of());
+    }
+
     public SettingsModel getEffectiveSettings() {
         if (settings != null) {
             return settings;
