@@ -22,6 +22,9 @@ public class SettingsEntity {
     private BigDecimal taxAbattement;
     private BigDecimal pass2026;
     private BigDecimal passGrowthRate;
+    private Boolean sweepEnabled;
+    private BigDecimal cashCeiling;
+    private BigDecimal cashFloor;
     
     // Constructors
     public SettingsEntity() {}
@@ -138,5 +141,29 @@ public class SettingsEntity {
     
     public void setPassGrowthRate(BigDecimal passGrowthRate) {
         this.passGrowthRate = passGrowthRate;
+    }
+
+    public Boolean getSweepEnabled() {
+        return sweepEnabled;
+    }
+
+    public void setSweepEnabled(Boolean sweepEnabled) {
+        this.sweepEnabled = sweepEnabled;
+    }
+
+    public BigDecimal getCashCeiling() {
+        return cashCeiling;
+    }
+
+    public void setCashCeiling(BigDecimal cashCeiling) {
+        this.cashCeiling = cashCeiling;
+    }
+
+    public BigDecimal getCashFloor() {
+        return cashFloor;
+    }
+
+    public void setCashFloor(BigDecimal cashFloor) {
+        this.cashFloor = cashFloor;
     }
 }

@@ -162,11 +162,16 @@ public class StatementBankImportMapper {
         map.put("linkedTxId", model.linkedTxId());
         map.put("clearedDate", model.clearedDate());
         map.put("notes", model.notes());
+        if (model.splits() != null && !model.splits().isEmpty()) {
+            map.put("splits", model.splits().stream().map(this::toSplitMap).collect(Collectors.toList()));
+        } else {
+            map.put("splits", Collections.emptyList());
+        }
         return map;
     }
 
     public BankImportModel.PendingOperationModel toPendingOperationModel(Map<String, Object> map) {
-        if (map == null) return new BankImportModel.PendingOperationModel(null, "", "", "cb", "", "", BigDecimal.ZERO, "", "pending", null, null, "");
+        if (map == null) return new BankImportModel.PendingOperationModel(null, "", "", "cb", "", "", BigDecimal.ZERO, "", "pending", null, null, "", Collections.emptyList());
         String id = (String) map.get("id");
         String date = (String) map.getOrDefault("date", "");
         String expectedDate = (String) map.getOrDefault("expectedDate", date);
@@ -179,7 +184,19 @@ public class StatementBankImportMapper {
         String linkedTxId = (String) map.get("linkedTxId");
         String clearedDate = (String) map.get("clearedDate");
         String notes = (String) map.getOrDefault("notes", "");
-        return new BankImportModel.PendingOperationModel(id, date, expectedDate, type, refNumber, label, amount, categoryId, status, linkedTxId, clearedDate, notes);
+        List<BankImportModel.BankTransactionSplitModel> splits = Collections.emptyList();
+        if (map.get("splits") instanceof List<?> list) {
+            splits = list.stream().filter(item -> item instanceof Map).map(item -> {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> sMap = (Map<String, Object>) item;
+                String sid = (String) sMap.get("id");
+                String scatId = (String) sMap.getOrDefault("categoryId", "");
+                BigDecimal samt = toBigDecimal(sMap.get("amount"));
+                String slabel = (String) sMap.getOrDefault("label", "");
+                return new BankImportModel.BankTransactionSplitModel(sid, scatId, samt, slabel);
+            }).collect(Collectors.toList());
+        }
+        return new BankImportModel.PendingOperationModel(id, date, expectedDate, type, refNumber, label, amount, categoryId, status, linkedTxId, clearedDate, notes, splits);
     }
 
     public Map<String, Object> toImportSummaryMap(BankImportSummaryModel summary) {

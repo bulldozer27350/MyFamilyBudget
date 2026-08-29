@@ -20,6 +20,7 @@ import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
@@ -32,7 +33,9 @@ import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
+import com.moe.myfamilybudget.server.internal.persistence.entity.BankImportEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.*;
 
@@ -65,6 +68,7 @@ public class PersistenceManager {
     private final AssetCategoryRepository assetCategoryRepository;
     private final RetirementRepository retirementRepository;
     private final BankImportRepository bankImportRepository;
+    private final LoanRepository loanRepository;
 
     // Default constructor for testing compatibility
     public PersistenceManager() {
@@ -85,6 +89,7 @@ public class PersistenceManager {
         this.assetCategoryRepository = null;
         this.retirementRepository = null;
         this.bankImportRepository = null;
+        this.loanRepository = null;
     }
 
     public PersistenceManager(BudgetDataRepository budgetDataRepository,
@@ -103,7 +108,8 @@ public class PersistenceManager {
                             TaxActualOverrideRepository taxActualOverrideRepository,
                             AssetCategoryRepository assetCategoryRepository,
                             RetirementRepository retirementRepository,
-                            BankImportRepository bankImportRepository) {
+                            BankImportRepository bankImportRepository,
+                            LoanRepository loanRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.settingsRepository = settingsRepository;
         this.incomeRepository = incomeRepository;
@@ -121,7 +127,10 @@ public class PersistenceManager {
         this.assetCategoryRepository = assetCategoryRepository;
         this.retirementRepository = retirementRepository;
         this.bankImportRepository = bankImportRepository;
+        this.loanRepository = loanRepository;
     }
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @PostConstruct
     public void init() {
@@ -129,7 +138,18 @@ public class PersistenceManager {
         if (budgetDataRepository != null) {
             Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
             if (existingData.isPresent()) {
-                currentBudget.set(EntityModelConverter.toModel(existingData.get()));
+                BudgetDataModel loaded = EntityModelConverter.toModel(existingData.get());
+                BankImportModel bi = loadBankImport(existingData.get().getId());
+                BudgetDataModel complete = new BudgetDataModel(
+                        loaded.settings(), loaded.incomes(), loaded.charges(), loaded.placements(),
+                        loaded.realEstate(), loaded.retirement(), loaded.taxChildren(), loaded.taxBrackets(),
+                        loaded.taxRateOverrides(), loaded.taxActualOverrides(), loaded.oneoff(),
+                        loaded.transfers(), loaded.variableIncomes(), loaded.variableOverrides(),
+                        bi != null ? bi : new BankImportModel(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+                        loaded.assetCategories(),
+                        loaded.loans()
+                );
+                currentBudget.set(complete);
                 return;
             }
         }
@@ -175,6 +195,46 @@ public class PersistenceManager {
         saveTaxRateOverrides(model.taxRateOverrides(), entity);
         saveTaxActualOverrides(model.taxActualOverrides(), entity);
         saveAssetCategories(model.assetCategories(), entity);
+        saveLoans(model.loans(), entity);
+        saveBankImport(model.bankImport(), entity);
+    }
+
+    private void saveLoans(List<LoanModel> loans, BudgetDataEntity budgetData) {
+        if (loanRepository == null) return;
+        loanRepository.deleteByBudgetDataId(budgetData.getId());
+        if (loans != null) {
+            for (LoanModel loan : loans) {
+                loanRepository.save(EntityModelConverter.toEntity(loan, budgetData));
+            }
+        }
+    }
+
+    private BankImportModel loadBankImport(Long budgetDataId) {
+        if (bankImportRepository == null || budgetDataId == null) return null;
+        Optional<BankImportEntity> biEntity = bankImportRepository.findFirstByBudgetDataId(budgetDataId);
+        if (biEntity.isPresent() && biEntity.get().getJsonData() != null && !biEntity.get().getJsonData().isBlank()) {
+            try {
+                return objectMapper.readValue(biEntity.get().getJsonData(), BankImportModel.class);
+            } catch (Exception e) {
+                // Fallback
+            }
+        }
+        return null;
+    }
+
+    private void saveBankImport(BankImportModel bankImport, BudgetDataEntity budgetData) {
+        if (bankImportRepository == null || budgetData == null) return;
+        bankImportRepository.deleteByBudgetDataId(budgetData.getId());
+        if (bankImport != null) {
+            try {
+                String json = objectMapper.writeValueAsString(bankImport);
+                BankImportEntity biEntity = new BankImportEntity(json);
+                biEntity.setBudgetData(budgetData);
+                bankImportRepository.save(biEntity);
+            } catch (Exception e) {
+                // Fallback
+            }
+        }
     }
     
     private void saveIncomes(List<IncomeModel> incomes, BudgetDataEntity budgetData) {
@@ -291,7 +351,17 @@ public class PersistenceManager {
             if (budgetDataRepository != null) {
                 Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
                 if (existingData.isPresent()) {
-                    model = EntityModelConverter.toModel(existingData.get());
+                    BudgetDataModel loaded = EntityModelConverter.toModel(existingData.get());
+                    BankImportModel bi = loadBankImport(existingData.get().getId());
+                    model = new BudgetDataModel(
+                            loaded.settings(), loaded.incomes(), loaded.charges(), loaded.placements(),
+                            loaded.realEstate(), loaded.retirement(), loaded.taxChildren(), loaded.taxBrackets(),
+                            loaded.taxRateOverrides(), loaded.taxActualOverrides(), loaded.oneoff(),
+                            loaded.transfers(), loaded.variableIncomes(), loaded.variableOverrides(),
+                            bi != null ? bi : new BankImportModel(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+                            loaded.assetCategories(),
+                            loaded.loans()
+                    );
                 }
             }
             
@@ -334,7 +404,7 @@ public class PersistenceManager {
     }
 
     /**
-     * Ajoute une nouvelle ligne dans une section de trésorerie (incomes, charges, oneoff, variableIncomes, variableOverrides).
+     * Ajoute une nouvelle ligne dans une section de trésorerie (incomes, charges, oneoff, variableIncomes, variableOverrides, placements).
      */
     public Map<String, Object> addTresorerieRow(String listKey, Map<String, Object> body) {
         String uid = (body != null && body.containsKey("id") && body.get("id") != null)
@@ -373,10 +443,7 @@ public class PersistenceManager {
                 resultRow.put("categoryId", categoryId);
                 resultRow.put("notes", notes);
 
-                return new BudgetDataModel(base.settings(), list, base.charges(), base.placements(), base.realEstate(),
-                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                        base.variableOverrides(), base.bankImport());
+                return base.withIncomes(list);
             } else if ("charges".equalsIgnoreCase(listKey)) {
                 List<ChargeModel> list = new ArrayList<>(base.getEffectiveCharges());
                 String label = getString(body, "label", "Nouvelle charge");
@@ -398,10 +465,7 @@ public class PersistenceManager {
                 resultRow.put("categoryId", categoryId);
                 resultRow.put("notes", notes);
 
-                return new BudgetDataModel(base.settings(), base.incomes(), list, base.placements(), base.realEstate(),
-                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                        base.variableOverrides(), base.bankImport());
+                return base.withCharges(list);
             } else if ("oneoff".equalsIgnoreCase(listKey)) {
                 List<OneOffExpenseModel> list = new ArrayList<>(base.getEffectiveOneoff());
                 String label = getString(body, "label", "Nouvelle dépense");
@@ -417,10 +481,7 @@ public class PersistenceManager {
                 resultRow.put("amount", amount);
                 resultRow.put("notes", notes);
 
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), list, base.transfers(),
-                        base.variableIncomes(), base.variableOverrides(), base.bankImport());
+                return base.withOneoff(list);
             } else if ("variableIncomes".equalsIgnoreCase(listKey)) {
                 List<VariableIncomeModel> list = new ArrayList<>(base.getEffectiveVariableIncomes());
                 String label = getString(body, "label", "Nouvelle prime");
@@ -430,8 +491,10 @@ public class PersistenceManager {
                 Integer startYear = getInteger(body, "startYear", 2026);
                 Integer endYear = getInteger(body, "endYear", retireYear);
                 String taxable = getString(body, "taxable", "Oui");
+                String type = getString(body, "type", "prime");
+                String notes = getString(body, "notes", "");
 
-                VariableIncomeModel created = new VariableIncomeModel(uid, label, refIncomeLabel, rate, startYear, endYear, taxable);
+                VariableIncomeModel created = new VariableIncomeModel(uid, label, refIncomeLabel, rate, startYear, endYear, taxable, type, notes);
                 list.add(created);
 
                 resultRow.put("label", label);
@@ -440,11 +503,10 @@ public class PersistenceManager {
                 resultRow.put("startYear", startYear);
                 resultRow.put("endYear", endYear);
                 resultRow.put("taxable", taxable);
+                resultRow.put("type", type);
+                resultRow.put("notes", notes);
 
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
-                        list, base.variableOverrides(), base.bankImport());
+                return base.withVariableIncomes(list);
             } else if ("variableOverrides".equalsIgnoreCase(listKey)) {
                 List<VariableOverrideModel> list = new ArrayList<>(base.getEffectiveVariableOverrides());
                 String firstVarLabel = !base.getEffectiveVariableIncomes().isEmpty() ? base.getEffectiveVariableIncomes().get(0).label() : "";
@@ -452,19 +514,18 @@ public class PersistenceManager {
                 Integer year = getInteger(body, "year", LocalDate.now().getYear());
                 BigDecimal amount = getBigDecimal(body, "amount", BigDecimal.ZERO);
                 String taxable = getString(body, "taxable", "");
+                String notes = getString(body, "notes", "");
 
-                VariableOverrideModel created = new VariableOverrideModel(uid, label, year, amount, taxable);
+                VariableOverrideModel created = new VariableOverrideModel(uid, label, year, amount, taxable, notes);
                 list.add(created);
 
                 resultRow.put("label", label);
                 resultRow.put("year", year);
                 resultRow.put("amount", amount);
                 resultRow.put("taxable", taxable);
+                resultRow.put("notes", notes);
 
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
-                        base.variableIncomes(), list, base.bankImport());
+                return base.withVariableOverrides(list);
             } else if ("placements".equalsIgnoreCase(listKey)) {
                 List<PlacementModel> list = new ArrayList<>(base.getEffectivePlacements());
                 String label = getString(body, "label", "Nouveau placement");
@@ -480,9 +541,15 @@ public class PersistenceManager {
                 Boolean excludedFromRetirement = body != null && body.containsKey("excludedFromRetirement")
                         ? Boolean.valueOf(String.valueOf(body.get("excludedFromRetirement"))) : false;
                 String notes = getString(body, "notes", "");
+                Integer sweepPriority = getInteger(body, "sweepPriority", null);
+                BigDecimal sweepCap = getBigDecimal(body, "sweepCap", null);
+                BigDecimal pauseTriggerBalance = getBigDecimal(body, "pauseTriggerBalance", null);
+                Integer pausePriority = getInteger(body, "pausePriority", null);
+                String categoryId = getString(body, "categoryId", "");
 
                 PlacementModel created = new PlacementModel(uid, label, category, balance, balanceDate, monthly,
-                        monthlyFrom, monthlyUntil, ratePess, rateCorr, rateOpti, excludedFromRetirement, notes);
+                        monthlyFrom, monthlyUntil, ratePess, rateCorr, rateOpti, excludedFromRetirement, notes,
+                        sweepPriority, sweepCap, pauseTriggerBalance, pausePriority, categoryId);
                 list.add(created);
 
                 resultRow.put("label", label);
@@ -497,11 +564,13 @@ public class PersistenceManager {
                 resultRow.put("rateOpti", rateOpti);
                 resultRow.put("excludedFromRetirement", excludedFromRetirement);
                 resultRow.put("notes", notes);
+                resultRow.put("sweepPriority", sweepPriority);
+                resultRow.put("sweepCap", sweepCap);
+                resultRow.put("pauseTriggerBalance", pauseTriggerBalance);
+                resultRow.put("pausePriority", pausePriority);
+                resultRow.put("categoryId", categoryId);
 
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), list, base.realEstate(),
-                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                        base.variableOverrides(), base.bankImport());
+                return base.withPlacements(list);
             }
             return base;
         });
@@ -541,10 +610,7 @@ public class PersistenceManager {
                         list.add(r);
                     }
                 }
-                return new BudgetDataModel(base.settings(), list, base.charges(), base.placements(), base.realEstate(),
-                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                        base.variableOverrides(), base.bankImport());
+                return base.withIncomes(list);
             } else if ("charges".equalsIgnoreCase(listKey)) {
                 List<ChargeModel> list = new ArrayList<>();
                 for (ChargeModel r : base.getEffectiveCharges()) {
@@ -563,10 +629,7 @@ public class PersistenceManager {
                         list.add(r);
                     }
                 }
-                return new BudgetDataModel(base.settings(), base.incomes(), list, base.placements(), base.realEstate(),
-                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                        base.variableOverrides(), base.bankImport());
+                return base.withCharges(list);
             } else if ("oneoff".equalsIgnoreCase(listKey)) {
                 List<OneOffExpenseModel> list = new ArrayList<>();
                 for (OneOffExpenseModel r : base.getEffectiveOneoff()) {
@@ -582,10 +645,7 @@ public class PersistenceManager {
                         list.add(r);
                     }
                 }
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), list, base.transfers(),
-                        base.variableIncomes(), base.variableOverrides(), base.bankImport());
+                return base.withOneoff(list);
             } else if ("variableIncomes".equalsIgnoreCase(listKey)) {
                 List<VariableIncomeModel> list = new ArrayList<>();
                 for (VariableIncomeModel r : base.getEffectiveVariableIncomes()) {
@@ -597,16 +657,15 @@ public class PersistenceManager {
                                 "rate".equals(field) ? toBigDecimal(value, new BigDecimal("0.05")) : r.rate(),
                                 "startYear".equals(field) ? toInteger(value, 2026) : r.startYear(),
                                 "endYear".equals(field) ? toInteger(value, 2049) : r.endYear(),
-                                "taxable".equals(field) ? (value != null ? String.valueOf(value) : "") : r.taxable()
+                                "taxable".equals(field) ? (value != null ? String.valueOf(value) : "") : r.taxable(),
+                                "type".equals(field) ? (value != null ? String.valueOf(value) : "prime") : r.type(),
+                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes()
                         ));
                     } else {
                         list.add(r);
                     }
                 }
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
-                        list, base.variableOverrides(), base.bankImport());
+                return base.withVariableIncomes(list);
             } else if ("variableOverrides".equalsIgnoreCase(listKey)) {
                 List<VariableOverrideModel> list = new ArrayList<>();
                 for (VariableOverrideModel r : base.getEffectiveVariableOverrides()) {
@@ -616,16 +675,14 @@ public class PersistenceManager {
                                 "label".equals(field) ? (value != null ? String.valueOf(value) : "") : r.label(),
                                 "year".equals(field) ? toInteger(value, LocalDate.now().getYear()) : r.year(),
                                 "amount".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.amount(),
-                                "taxable".equals(field) ? (value != null ? String.valueOf(value) : "") : r.taxable()
+                                "taxable".equals(field) ? (value != null ? String.valueOf(value) : "") : r.taxable(),
+                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes()
                         ));
                     } else {
                         list.add(r);
                     }
                 }
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
-                        base.variableIncomes(), list, base.bankImport());
+                return base.withVariableOverrides(list);
             } else if ("placements".equalsIgnoreCase(listKey)) {
                 List<PlacementModel> list = new ArrayList<>();
                 for (PlacementModel r : base.getEffectivePlacements()) {
@@ -643,16 +700,18 @@ public class PersistenceManager {
                                 "rateCorr".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.rateCorr(),
                                 "rateOpti".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.rateOpti(),
                                 "excludedFromRetirement".equals(field) ? (value instanceof Boolean b ? b : Boolean.parseBoolean(String.valueOf(value))) : r.excludedFromRetirement(),
-                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes()
+                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes(),
+                                "sweepPriority".equals(field) ? toInteger(value, null) : r.sweepPriority(),
+                                "sweepCap".equals(field) ? toBigDecimal(value, null) : r.sweepCap(),
+                                "pauseTriggerBalance".equals(field) ? toBigDecimal(value, null) : r.pauseTriggerBalance(),
+                                "pausePriority".equals(field) ? toInteger(value, null) : r.pausePriority(),
+                                "categoryId".equals(field) ? (value != null ? String.valueOf(value) : "") : r.categoryId()
                         ));
                     } else {
                         list.add(r);
                     }
                 }
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), list, base.realEstate(),
-                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                        base.variableOverrides(), base.bankImport());
+                return base.withPlacements(list);
             }
 
             return base;
@@ -677,50 +736,32 @@ public class PersistenceManager {
                 List<IncomeModel> list = base.getEffectiveIncomes().stream()
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
-                return new BudgetDataModel(base.settings(), list, base.charges(), base.placements(), base.realEstate(),
-                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                        base.variableOverrides(), base.bankImport());
+                return base.withIncomes(list);
             } else if ("charges".equalsIgnoreCase(listKey)) {
                 List<ChargeModel> list = base.getEffectiveCharges().stream()
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
-                return new BudgetDataModel(base.settings(), base.incomes(), list, base.placements(), base.realEstate(),
-                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                        base.variableOverrides(), base.bankImport());
+                return base.withCharges(list);
             } else if ("oneoff".equalsIgnoreCase(listKey)) {
                 List<OneOffExpenseModel> list = base.getEffectiveOneoff().stream()
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), list, base.transfers(),
-                        base.variableIncomes(), base.variableOverrides(), base.bankImport());
+                return base.withOneoff(list);
             } else if ("variableIncomes".equalsIgnoreCase(listKey)) {
                 List<VariableIncomeModel> list = base.getEffectiveVariableIncomes().stream()
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
-                        list, base.variableOverrides(), base.bankImport());
+                return base.withVariableIncomes(list);
             } else if ("variableOverrides".equalsIgnoreCase(listKey)) {
                 List<VariableOverrideModel> list = base.getEffectiveVariableOverrides().stream()
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
-                        base.variableIncomes(), list, base.bankImport());
+                return base.withVariableOverrides(list);
             } else if ("placements".equalsIgnoreCase(listKey)) {
                 List<PlacementModel> list = base.getEffectivePlacements().stream()
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), list, base.realEstate(),
-                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                        base.variableOverrides(), base.bankImport());
+                return base.withPlacements(list);
             }
 
             return base;
@@ -744,7 +785,7 @@ public class PersistenceManager {
     }
 
     /**
-     * Sauvegarde ou crée une ligne de patrimoine (placements, transfers, realEstate).
+     * Sauvegarde ou crée une ligne de patrimoine (placements, transfers, loans/credits, realEstate).
      */
     public Map<String, Object> savePatrimoineRow(String listKey, Map<String, Object> body) {
         Map<String, Object> resultRow = new HashMap<>();
@@ -774,9 +815,15 @@ public class PersistenceManager {
                 Boolean excludedFromRetirement = body != null && body.containsKey("excludedFromRetirement")
                         ? Boolean.valueOf(String.valueOf(body.get("excludedFromRetirement"))) : false;
                 String notes = getString(body, "notes", "");
+                Integer sweepPriority = getInteger(body, "sweepPriority", null);
+                BigDecimal sweepCap = getBigDecimal(body, "sweepCap", null);
+                BigDecimal pauseTriggerBalance = getBigDecimal(body, "pauseTriggerBalance", null);
+                Integer pausePriority = getInteger(body, "pausePriority", null);
+                String categoryId = getString(body, "categoryId", "");
 
                 PlacementModel model = new PlacementModel(uid, label, category, balance, balanceDate, monthly,
-                        monthlyFrom, monthlyUntil, ratePess, rateCorr, rateOpti, excludedFromRetirement, notes);
+                        monthlyFrom, monthlyUntil, ratePess, rateCorr, rateOpti, excludedFromRetirement, notes,
+                        sweepPriority, sweepCap, pauseTriggerBalance, pausePriority, categoryId);
 
                 for (PlacementModel p : base.getEffectivePlacements()) {
                     if (Objects.equals(p.id(), uid)) {
@@ -802,11 +849,13 @@ public class PersistenceManager {
                 resultRow.put("rateOpti", rateOpti);
                 resultRow.put("excludedFromRetirement", excludedFromRetirement);
                 resultRow.put("notes", notes);
+                resultRow.put("sweepPriority", sweepPriority);
+                resultRow.put("sweepCap", sweepCap);
+                resultRow.put("pauseTriggerBalance", pauseTriggerBalance);
+                resultRow.put("pausePriority", pausePriority);
+                resultRow.put("categoryId", categoryId);
 
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), list, base.realEstate(),
-                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                        base.variableOverrides(), base.bankImport());
+                return base.withPlacements(list);
             } else if ("transfers".equalsIgnoreCase(listKey)) {
                 List<TransferModel> list = new ArrayList<>();
                 boolean found = false;
@@ -835,10 +884,7 @@ public class PersistenceManager {
                 resultRow.put("amount", amount);
                 resultRow.put("notes", notes);
 
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), list,
-                        base.variableIncomes(), base.variableOverrides(), base.bankImport());
+                return base.withTransfers(list);
             } else if ("realEstate".equalsIgnoreCase(listKey)) {
                 List<RealEstateModel> list = new ArrayList<>();
                 boolean found = false;
@@ -871,10 +917,42 @@ public class PersistenceManager {
                 resultRow.put("annualGrowthRate", annualGrowthRate);
                 resultRow.put("notes", notes);
 
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        list, base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
-                        base.variableIncomes(), base.variableOverrides(), base.bankImport());
+                return base.withRealEstate(list);
+            } else if ("loans".equalsIgnoreCase(listKey) || "credits".equalsIgnoreCase(listKey)) {
+                List<LoanModel> list = new ArrayList<>();
+                boolean found = false;
+
+                String label = getString(body, "label", "Nouveau prêt");
+                BigDecimal crd = getBigDecimal(body, "crd", BigDecimal.ZERO);
+                BigDecimal rate = getBigDecimal(body, "rate", BigDecimal.ZERO);
+                BigDecimal monthly = getBigDecimal(body, "monthly", BigDecimal.ZERO);
+                BigDecimal insurance = getBigDecimal(body, "insurance", BigDecimal.ZERO);
+                String startDate = getString(body, "startDate", "2026-01-01");
+                String endDate = getString(body, "endDate", "2046-01-01");
+
+                LoanModel model = new LoanModel(uid, label, crd, rate, monthly, insurance, startDate, endDate);
+
+                for (LoanModel l : base.getEffectiveLoans()) {
+                    if (Objects.equals(l.id(), uid)) {
+                        list.add(model);
+                        found = true;
+                    } else {
+                        list.add(l);
+                    }
+                }
+                if (!found) {
+                    list.add(model);
+                }
+
+                resultRow.put("label", label);
+                resultRow.put("crd", crd);
+                resultRow.put("rate", rate);
+                resultRow.put("monthly", monthly);
+                resultRow.put("insurance", insurance);
+                resultRow.put("startDate", startDate);
+                resultRow.put("endDate", endDate);
+
+                return base.withLoans(list);
             }
 
             return base;
@@ -892,10 +970,7 @@ public class PersistenceManager {
     public void updateRetirement(RetirementModel retirement) {
         BudgetDataModel updated = currentBudget.updateAndGet(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
-            return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                    base.realEstate(), retirement, base.taxChildren(), base.taxBrackets(),
-                    base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
-                    base.variableIncomes(), base.variableOverrides(), base.bankImport());
+            return base.withRetirement(retirement);
         });
         
         // Save to database
@@ -909,23 +984,10 @@ public class PersistenceManager {
                                 List<TaxRateOverrideModel> rateOverrides, List<TaxActualOverrideModel> actualOverrides) {
         BudgetDataModel updated = currentBudget.updateAndGet(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
-            return new BudgetDataModel(
-                    base.settings(),
-                    base.incomes(),
-                    base.charges(),
-                    base.placements(),
-                    base.realEstate(),
-                    base.retirement(),
-                    children != null ? children : base.taxChildren(),
-                    brackets != null ? brackets : base.taxBrackets(),
-                    rateOverrides != null ? rateOverrides : base.taxRateOverrides(),
-                    actualOverrides != null ? actualOverrides : base.taxActualOverrides(),
-                    base.oneoff(),
-                    base.transfers(),
-                    base.variableIncomes(),
-                    base.variableOverrides(),
-                    base.bankImport()
-            );
+            return base.withTaxChildren(children != null ? children : base.taxChildren())
+                    .withTaxBrackets(brackets != null ? brackets : base.taxBrackets())
+                    .withTaxRateOverrides(rateOverrides != null ? rateOverrides : base.taxRateOverrides())
+                    .withTaxActualOverrides(actualOverrides != null ? actualOverrides : base.taxActualOverrides());
         });
         
         // Save to database
@@ -933,7 +995,7 @@ public class PersistenceManager {
     }
 
     /**
-     * Met à jour un paramètre lié aux impôts dans Settings.
+     * Met à jour un paramètre lié aux impôts ou généraux dans Settings.
      */
     public void updateTaxSettings(String field, Object value) {
         if (field == null) return;
@@ -951,14 +1013,12 @@ public class PersistenceManager {
                     "childExitAge".equals(field) ? toInteger(value, 21) : s.childExitAge(),
                     "taxAbattement".equals(field) ? toBigDecimal(value, new BigDecimal("0.10")) : s.taxAbattement(),
                     "pass2026".equals(field) ? toBigDecimal(value, new BigDecimal("47100")) : s.pass2026(),
-                    "passGrowthRate".equals(field) ? toBigDecimal(value, new BigDecimal("0.015")) : s.passGrowthRate()
+                    "passGrowthRate".equals(field) ? toBigDecimal(value, new BigDecimal("0.015")) : s.passGrowthRate(),
+                    "sweepEnabled".equals(field) ? (value != null && Boolean.parseBoolean(String.valueOf(value))) : s.sweepEnabled(),
+                    "cashCeiling".equals(field) ? toBigDecimal(value, null) : s.cashCeiling(),
+                    "cashFloor".equals(field) ? toBigDecimal(value, null) : s.cashFloor()
             );
-            return new BudgetDataModel(
-                    updatedSettings, base.incomes(), base.charges(), base.placements(), base.realEstate(),
-                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                    base.variableOverrides(), base.bankImport(), base.getEffectiveAssetCategories()
-            );
+            return base.withSettings(updatedSettings);
         });
         
         // Save to database
@@ -980,19 +1040,15 @@ public class PersistenceManager {
                             c.id(),
                             "icon".equals(field) ? String.valueOf(value) : c.icon(),
                             "name".equals(field) ? String.valueOf(value) : c.name(),
-                            "bucket".equals(field) ? String.valueOf(value) : c.bucket()
+                            "bucket".equals(field) ? String.valueOf(value) : c.bucket(),
+                            "color".equals(field) ? String.valueOf(value) : c.color()
                     );
                     updatedList.add(updatedCategory);
                 } else {
                     updatedList.add(c);
                 }
             }
-            return new BudgetDataModel(
-                    base.settings(), base.incomes(), base.charges(), base.placements(), base.realEstate(),
-                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                    base.variableOverrides(), base.bankImport(), updatedList
-            );
+            return base.withAssetCategories(updatedList);
         });
         
         // Save to database
@@ -1008,12 +1064,7 @@ public class PersistenceManager {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             List<AssetCategoryModel> list = new ArrayList<>(base.getEffectiveAssetCategories());
             list.add(category);
-            return new BudgetDataModel(
-                    base.settings(), base.incomes(), base.charges(), base.placements(), base.realEstate(),
-                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                    base.variableOverrides(), base.bankImport(), list
-            );
+            return base.withAssetCategories(list);
         });
         
         // Save to database
@@ -1030,12 +1081,7 @@ public class PersistenceManager {
             List<AssetCategoryModel> list = base.getEffectiveAssetCategories().stream()
                     .filter(c -> !Objects.equals(c.id(), id))
                     .toList();
-            return new BudgetDataModel(
-                    base.settings(), base.incomes(), base.charges(), base.placements(), base.realEstate(),
-                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                    base.variableOverrides(), base.bankImport(), list
-            );
+            return base.withAssetCategories(list);
         });
         
         // Save to database
@@ -1055,12 +1101,7 @@ public class PersistenceManager {
                     new TaxBracketModel("tb_4", new BigDecimal("177106"), new BigDecimal("0.41")),
                     new TaxBracketModel("tb_5", null, new BigDecimal("0.45"))
             );
-            return new BudgetDataModel(
-                    base.settings(), base.incomes(), base.charges(), base.placements(), base.realEstate(),
-                    base.retirement(), base.taxChildren(), defaultBrackets, base.taxRateOverrides(),
-                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                    base.variableOverrides(), base.bankImport()
-            );
+            return base.withTaxBrackets(defaultBrackets);
         });
         
         // Save to database
@@ -1068,7 +1109,7 @@ public class PersistenceManager {
     }
 
     /**
-     * Supprime une ligne de patrimoine (placements, transfers, realEstate).
+     * Supprime une ligne de patrimoine (placements, transfers, loans/credits, realEstate).
      */
     public void deletePatrimoineRow(String listKey, String id) {
         if (listKey == null || id == null) {
@@ -1082,26 +1123,22 @@ public class PersistenceManager {
                 List<PlacementModel> list = base.getEffectivePlacements().stream()
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), list, base.realEstate(),
-                        base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                        base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                        base.variableOverrides(), base.bankImport());
+                return base.withPlacements(list);
             } else if ("transfers".equalsIgnoreCase(listKey)) {
                 List<TransferModel> list = base.getEffectiveTransfers().stream()
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        base.realEstate(), base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), list,
-                        base.variableIncomes(), base.variableOverrides(), base.bankImport());
+                return base.withTransfers(list);
             } else if ("realEstate".equalsIgnoreCase(listKey)) {
                 List<RealEstateModel> list = base.getEffectiveRealEstate().stream()
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
-                return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), base.placements(),
-                        list, base.retirement(), base.taxChildren(), base.taxBrackets(),
-                        base.taxRateOverrides(), base.taxActualOverrides(), base.oneoff(), base.transfers(),
-                        base.variableIncomes(), base.variableOverrides(), base.bankImport());
+                return base.withRealEstate(list);
+            } else if ("loans".equalsIgnoreCase(listKey) || "credits".equalsIgnoreCase(listKey)) {
+                List<LoanModel> list = base.getEffectiveLoans().stream()
+                        .filter(r -> !Objects.equals(r.id(), id))
+                        .toList();
+                return base.withLoans(list);
             }
 
             return base;
@@ -1134,7 +1171,9 @@ public class PersistenceManager {
                             p.id(), p.label(), p.category(), value, date,
                             p.monthly(), p.monthlyFrom(), p.monthlyUntil(),
                             p.ratePess(), p.rateCorr(), p.rateOpti(),
-                            p.excludedFromRetirement(), p.notes()
+                            p.excludedFromRetirement(), p.notes(),
+                            p.sweepPriority(), p.sweepCap(), p.pauseTriggerBalance(),
+                            p.pausePriority(), p.categoryId()
                     );
                     list.add(updatedPlacement);
                 } else {
@@ -1142,10 +1181,7 @@ public class PersistenceManager {
                 }
             }
 
-            return new BudgetDataModel(base.settings(), base.incomes(), base.charges(), list, base.realEstate(),
-                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                    base.variableOverrides(), base.bankImport());
+            return base.withPlacements(list);
         });
         
         // Save to database
@@ -1175,12 +1211,7 @@ public class PersistenceManager {
         if (bankImport == null) return;
         BudgetDataModel updated = currentBudget.updateAndGet(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
-            return new BudgetDataModel(
-                    base.settings(), base.incomes(), base.charges(), base.placements(), base.realEstate(),
-                    base.retirement(), base.taxChildren(), base.taxBrackets(), base.taxRateOverrides(),
-                    base.taxActualOverrides(), base.oneoff(), base.transfers(), base.variableIncomes(),
-                    base.variableOverrides(), bankImport, base.getEffectiveAssetCategories()
-            );
+            return base.withBankImport(bankImport);
         });
         
         // Save to database
@@ -1251,7 +1282,10 @@ public class PersistenceManager {
                 21,
                 new BigDecimal("0.10"),
                 new BigDecimal("47100"),
-                new BigDecimal("0.015")
+                new BigDecimal("0.015"),
+                false,
+                null,
+                null
         );
 
         RetirementModel retirement = new RetirementModel(
@@ -1292,7 +1326,9 @@ public class PersistenceManager {
                 new ArrayList<>(),
                 new ArrayList<>(),
                 new ArrayList<>(),
-                bankImport
+                bankImport,
+                new ArrayList<>(),
+                new ArrayList<>()
         );
     }
 }

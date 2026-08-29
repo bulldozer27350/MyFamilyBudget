@@ -1325,13 +1325,22 @@ function deps() {
           id: opId
         };
         savedOp = ops[idx];
+      } else {
+        savedOp = {
+          id: opId,
+          status: opData.status || "pending",
+          linkedTxId: opData.linkedTxId || null,
+          clearedDate: opData.clearedDate || null,
+          ...opData
+        };
+        ops.push(savedOp);
       }
     } else {
       savedOp = {
         id: uid ? uid() : `op_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        status: "pending",
-        linkedTxId: null,
-        clearedDate: null,
+        status: opData.status || "pending",
+        linkedTxId: opData.linkedTxId || null,
+        clearedDate: opData.clearedDate || null,
         ...opData
       };
       ops.push(savedOp);

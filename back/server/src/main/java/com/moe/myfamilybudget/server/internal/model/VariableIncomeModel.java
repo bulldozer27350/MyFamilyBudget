@@ -9,9 +9,12 @@ public record VariableIncomeModel(
     BigDecimal rate,
     Integer startYear,
     Integer endYear,
-    String taxable
+    String taxable,
+    String type,
+    String notes
 ) {
     public BigDecimal getEffectiveRate() {
         return rate != null ? rate : BigDecimal.ZERO;
     }
 }
+

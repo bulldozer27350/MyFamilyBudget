@@ -74,7 +74,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
                             ? new BankImportModel.PendingOperationModel(
                             op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
                             op.label(), op.amount(), op.categoryId(), "ignored", op.linkedTxId(),
-                            op.clearedDate(), op.notes())
+                            op.clearedDate(), op.notes(), op.splits())
                             : op)
                     .collect(Collectors.toList());
 
@@ -168,10 +168,16 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
 
         if (op != null) {
             BankImportModel current = persistenceManager.getBankImport();
-            List<BankImportModel.PendingOperationModel> rulesApplied = BankImportCalculator.applyRulesToPendingOperations(
-                    List.of(op), current.rules()
-            );
-            BankImportModel.PendingOperationModel opToAdd = !rulesApplied.isEmpty() ? rulesApplied.get(0) : op;
+            BankImportModel.PendingOperationModel resolvedOp = op;
+            if ((op.categoryId() == null || op.categoryId().isBlank()) && (op.splits() == null || op.splits().isEmpty())) {
+                List<BankImportModel.PendingOperationModel> rulesApplied = BankImportCalculator.applyRulesToPendingOperations(
+                        List.of(op), current.rules()
+                );
+                if (!rulesApplied.isEmpty()) {
+                    resolvedOp = rulesApplied.get(0);
+                }
+            }
+            final BankImportModel.PendingOperationModel opToAdd = resolvedOp;
 
             List<BankImportModel.PendingOperationModel> updatedList = new java.util.ArrayList<>(current.pendingOperations());
             // Filter out any existing with same ID if any

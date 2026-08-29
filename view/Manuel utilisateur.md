@@ -171,7 +171,7 @@ Activation globale, seuil haut et seuil bas du compte courant.
 
 ## 7. Onglet « Import »
 
-L'onglet Import permet d'intégrer vos relevés bancaires réels (fichiers CSV exportés depuis votre banque) pour analyser vos dépenses concrètes.
+L'onglet Import permet d'intégrer vos relevés bancaires réels (fichiers CSV ou XLS/XLSX exportés depuis votre banque) pour analyser vos dépenses concrètes.
 
 ### 7.1 Format du fichier & Mapping des colonnes
 - **Séparateur** : Point-virgule ( ; ), virgule ( , ) ou tabulation.
@@ -211,7 +211,7 @@ $$\text{Solde Disponible Réel} = \text{Solde Banque (Relevé)} - \sum \text{Ch�
   - *Date d'effet prévue* : Optionnelle (laissée vide pour les chèques ; renseignée pour les salaires/CB différées avec badge *« ⏱ Terme dépassé »* si en retard).
 
 ### 8.3 Import des encours de CB différées
-- Bouton **« 📥 Importer encours CB »** : permet d'importer directement un fichier CSV d'encours de carte à débit différé fourni par votre banque (ex. `export_*.csv`).
+- Bouton **« 📥 Importer encours CB »** : permet d'importer directement un fichier CSV d'encours de carte à débit différé fourni par votre banque (ex. `export_*.csv`). Les extensions compatibles sont : csv, xls, xlsx, txt.
 - **Détection & Configuration automatique** : analyse intelligente des en-têtes et des colonnes (Date, Libellé, Montant), choix du séparateur (`;`, `,`, tab) et du format de date.
 - **Option Date d'achat** : permet au choix de conserver la date de relevé fin de mois ou d'extraire la date d'achat réelle présente dans le libellé (ex: `FACTURE CARTE DU 290726` $\rightarrow$ 29/07/2026).
 - **Dédoublonnage rigoureux** : identique à l'onglet Import, évite de compter deux fois les mêmes débits lors d'imports successifs.

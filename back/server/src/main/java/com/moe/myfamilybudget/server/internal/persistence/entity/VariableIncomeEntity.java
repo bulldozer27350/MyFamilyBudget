@@ -18,6 +18,8 @@ public class VariableIncomeEntity {
     private Integer startYear;
     private Integer endYear;
     private String taxable;
+    private String type;
+    private String notes;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "budget_data_id")
@@ -100,6 +102,22 @@ public class VariableIncomeEntity {
     
     public void setTaxable(String taxable) {
         this.taxable = taxable;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
     
     public BudgetDataEntity getBudgetData() {

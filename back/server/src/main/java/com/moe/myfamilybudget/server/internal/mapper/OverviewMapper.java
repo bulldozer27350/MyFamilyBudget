@@ -14,6 +14,7 @@ import com.moe.myfamilybudget.api.model.BankImportMatchingDto;
 import com.moe.myfamilybudget.api.model.BankImportMatchingLinkDto;
 import com.moe.myfamilybudget.api.model.BankImportRuleDto;
 import com.moe.myfamilybudget.api.model.BankTransactionDto;
+import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.api.model.CashflowYearDto;
 import com.moe.myfamilybudget.api.model.ChargeDto;
@@ -608,7 +609,8 @@ public class OverviewMapper {
         List<BankImportModel.PendingOperationModel> pendingOperations = dto.getPendingOperations() != null ? dto.getPendingOperations().stream()
                 .map(p -> new BankImportModel.PendingOperationModel(p.getId(), p.getDate(), p.getExpectedDate(),
                         p.getType(), p.getRefNumber(), p.getLabel(), p.getAmount(), p.getCategoryId(),
-                        p.getStatus(), p.getLinkedTxId(), p.getClearedDate(), p.getNotes()))
+                        p.getStatus(), p.getLinkedTxId(), p.getClearedDate(), p.getNotes(),
+                        p.getSplits() != null ? p.getSplits().stream().map(s -> new BankImportModel.BankTransactionSplitModel(s.getId(), s.getCategoryId(), s.getAmount(), s.getLabel())).collect(Collectors.toList()) : List.of()))
                 .collect(Collectors.toList()) : List.of();
         List<BankImportModel.BankImportRuleModel> rules = dto.getRules() != null ? dto.getRules().stream()
                 .map(r -> new BankImportModel.BankImportRuleModel(r.getId(), r.getMatchText(), r.getCategoryId()))
@@ -665,6 +667,18 @@ public class OverviewMapper {
             dto.setLinkedTxId(p.linkedTxId());
             dto.setClearedDate(p.clearedDate());
             dto.setNotes(p.notes());
+            if (p.splits() != null && !p.splits().isEmpty()) {
+                dto.setSplits(p.splits().stream().map(s -> {
+                    BankTransactionSplitDto sdto = new BankTransactionSplitDto();
+                    sdto.setId(s.id());
+                    sdto.setCategoryId(s.categoryId());
+                    sdto.setAmount(s.amount());
+                    sdto.setLabel(s.label());
+                    return sdto;
+                }).collect(Collectors.toList()));
+            } else {
+                dto.setSplits(List.of());
+            }
             return dto;
         }).collect(Collectors.toList()) : List.of();
         List<BankImportRuleDto> rules = m.rules() != null ? m.rules().stream().map(r -> {

@@ -19,7 +19,8 @@ public record BudgetDataModel(
     List<VariableIncomeModel> variableIncomes,
     List<VariableOverrideModel> variableOverrides,
     BankImportModel bankImport,
-    List<AssetCategoryModel> assetCategories
+    List<AssetCategoryModel> assetCategories,
+    List<LoanModel> loans
 ) {
  // Thread-safe static reference to preserve custom asset categories across record copies/updates.
     private static final java.util.concurrent.atomic.AtomicReference<List<AssetCategoryModel>> activeCategories =
@@ -50,7 +51,8 @@ public record BudgetDataModel(
         this(settings, incomes, charges, placements, realEstate, retirement, taxChildren,
              taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers,
              variableIncomes, variableOverrides, bankImport,
-             activeCategories.get() != null ? activeCategories.get() : List.of());
+             activeCategories.get() != null ? activeCategories.get() : List.of(),
+             List.of());
     }
 
     public SettingsModel getEffectiveSettings() {
@@ -60,12 +62,17 @@ public record BudgetDataModel(
         return new SettingsModel(
             1985, 64, 85, new BigDecimal("0.02"), "", "manual",
             BigDecimal.ZERO, 21, new BigDecimal("0.10"),
-            new BigDecimal("47100"), new BigDecimal("0.015")
+            new BigDecimal("47100"), new BigDecimal("0.015"),
+            null, null, null
         );
     }
 
     public List<AssetCategoryModel> getEffectiveAssetCategories() {
         return assetCategories != null ? assetCategories : List.of();
+    }
+
+    public List<LoanModel> getEffectiveLoans() {
+        return loans != null ? loans : List.of();
     }
 
     public List<IncomeModel> getEffectiveIncomes() {
@@ -123,5 +130,73 @@ public record BudgetDataModel(
 
     public List<VariableOverrideModel> getEffectiveVariableOverrides() {
         return variableOverrides != null ? variableOverrides : List.of();
+    }
+
+    public BudgetDataModel withSettings(SettingsModel newSettings) {
+        return new BudgetDataModel(newSettings, incomes, charges, placements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withIncomes(List<IncomeModel> newIncomes) {
+        return new BudgetDataModel(settings, newIncomes, charges, placements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withCharges(List<ChargeModel> newCharges) {
+        return new BudgetDataModel(settings, incomes, newCharges, placements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withPlacements(List<PlacementModel> newPlacements) {
+        return new BudgetDataModel(settings, incomes, charges, newPlacements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withLoans(List<LoanModel> newLoans) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, newLoans);
+    }
+
+    public BudgetDataModel withRealEstate(List<RealEstateModel> newRealEstate) {
+        return new BudgetDataModel(settings, incomes, charges, placements, newRealEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withRetirement(RetirementModel newRetirement) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, newRetirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withTaxChildren(List<TaxChildModel> newTaxChildren) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, newTaxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withTaxBrackets(List<TaxBracketModel> newTaxBrackets) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren, newTaxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withTaxRateOverrides(List<TaxRateOverrideModel> newTaxRateOverrides) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren, taxBrackets, newTaxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withTaxActualOverrides(List<TaxActualOverrideModel> newTaxActualOverrides) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, newTaxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withOneoff(List<OneOffExpenseModel> newOneoff) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, newOneoff, transfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withTransfers(List<TransferModel> newTransfers) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, newTransfers, variableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withVariableIncomes(List<VariableIncomeModel> newVariableIncomes) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, newVariableIncomes, variableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withVariableOverrides(List<VariableOverrideModel> newVariableOverrides) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, newVariableOverrides, bankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withBankImport(BankImportModel newBankImport) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, newBankImport, assetCategories, loans);
+    }
+
+    public BudgetDataModel withAssetCategories(List<AssetCategoryModel> newAssetCategories) {
+        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren, taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes, variableOverrides, bankImport, newAssetCategories, loans);
     }
 }

@@ -11,7 +11,7 @@ public class EntityModelConverter {
     // Settings conversions
     public static SettingsEntity toEntity(SettingsModel model) {
         if (model == null) return null;
-        return new SettingsEntity(
+        SettingsEntity entity = new SettingsEntity(
             model.birthYear(),
             model.retireAge(),
             model.simulateUntilAge(),
@@ -24,6 +24,10 @@ public class EntityModelConverter {
             model.pass2026(),
             model.passGrowthRate()
         );
+        entity.setSweepEnabled(model.sweepEnabled());
+        entity.setCashCeiling(model.cashCeiling());
+        entity.setCashFloor(model.cashFloor());
+        return entity;
     }
 
     public static SettingsModel toModel(SettingsEntity entity) {
@@ -39,7 +43,10 @@ public class EntityModelConverter {
             entity.getChildExitAge(),
             entity.getTaxAbattement(),
             entity.getPass2026(),
-            entity.getPassGrowthRate()
+            entity.getPassGrowthRate(),
+            entity.getSweepEnabled(),
+            entity.getCashCeiling(),
+            entity.getCashFloor()
         );
     }
 
@@ -123,6 +130,11 @@ public class EntityModelConverter {
             model.excludedFromRetirement(),
             model.notes()
         );
+        entity.setSweepPriority(model.sweepPriority());
+        entity.setSweepCap(model.sweepCap());
+        entity.setPauseTriggerBalance(model.pauseTriggerBalance());
+        entity.setPausePriority(model.pausePriority());
+        entity.setCategoryId(model.categoryId());
         entity.setBudgetData(budgetData);
         return entity;
     }
@@ -142,7 +154,43 @@ public class EntityModelConverter {
             entity.getRateCorr(),
             entity.getRateOpti(),
             entity.getExcludedFromRetirement(),
-            entity.getNotes()
+            entity.getNotes(),
+            entity.getSweepPriority(),
+            entity.getSweepCap(),
+            entity.getPauseTriggerBalance(),
+            entity.getPausePriority(),
+            entity.getCategoryId()
+        );
+    }
+
+    // Loan conversions
+    public static LoanEntity toEntity(LoanModel model, BudgetDataEntity budgetData) {
+        if (model == null) return null;
+        LoanEntity entity = new LoanEntity(
+            model.id(),
+            model.label(),
+            model.crd(),
+            model.rate(),
+            model.monthly(),
+            model.insurance(),
+            model.startDate(),
+            model.endDate()
+        );
+        entity.setBudgetData(budgetData);
+        return entity;
+    }
+
+    public static LoanModel toModel(LoanEntity entity) {
+        if (entity == null) return null;
+        return new LoanModel(
+            entity.getUid(),
+            entity.getLabel(),
+            entity.getCrd(),
+            entity.getRate(),
+            entity.getMonthly(),
+            entity.getInsurance(),
+            entity.getStartDate(),
+            entity.getEndDate()
         );
     }
 
@@ -237,6 +285,8 @@ public class EntityModelConverter {
             model.endYear(),
             model.taxable()
         );
+        entity.setType(model.type());
+        entity.setNotes(model.notes());
         entity.setBudgetData(budgetData);
         return entity;
     }
@@ -250,7 +300,9 @@ public class EntityModelConverter {
             entity.getRate(),
             entity.getStartYear(),
             entity.getEndYear(),
-            entity.getTaxable()
+            entity.getTaxable(),
+            entity.getType(),
+            entity.getNotes()
         );
     }
 
@@ -264,6 +316,7 @@ public class EntityModelConverter {
             model.amount(),
             model.taxable()
         );
+        entity.setNotes(model.notes());
         entity.setBudgetData(budgetData);
         return entity;
     }
@@ -275,7 +328,8 @@ public class EntityModelConverter {
             entity.getLabel(),
             entity.getYear(),
             entity.getAmount(),
-            entity.getTaxable()
+            entity.getTaxable(),
+            entity.getNotes()
         );
     }
 
@@ -368,6 +422,7 @@ public class EntityModelConverter {
             model.name(),
             model.bucket()
         );
+        entity.setColor(model.color());
         entity.setBudgetData(budgetData);
         return entity;
     }
@@ -378,7 +433,8 @@ public class EntityModelConverter {
             entity.getUid(),
             entity.getIcon(),
             entity.getName(),
-            entity.getBucket()
+            entity.getBucket(),
+            entity.getColor()
         );
     }
 
@@ -513,7 +569,8 @@ public class EntityModelConverter {
             entity.getVariableIncomes().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             entity.getVariableOverrides().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             null, // BankImport - handled separately due to JSON serialization
-            entity.getAssetCategories().stream().map(EntityModelConverter::toModel).collect(Collectors.toList())
+            entity.getAssetCategories().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
+            entity.getLoans().stream().map(EntityModelConverter::toModel).collect(Collectors.toList())
         );
     }
 }

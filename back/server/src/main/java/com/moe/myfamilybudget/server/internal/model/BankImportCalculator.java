@@ -228,7 +228,7 @@ public final class BankImportCalculator {
                 result.add(new BankImportModel.PendingOperationModel(
                         op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
                         op.label(), op.amount(), match.get().categoryId(), op.status(),
-                        op.linkedTxId(), op.clearedDate(), op.notes()
+                        op.linkedTxId(), op.clearedDate(), op.notes(), op.splits()
                 ));
             } else {
                 result.add(op);
@@ -369,7 +369,7 @@ public final class BankImportCalculator {
                     updatedOps.add(new BankImportModel.PendingOperationModel(
                             op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
                             op.label(), op.amount(), op.categoryId(), "cleared", found.id(),
-                            found.date(), op.notes()
+                            found.date(), op.notes(), op.splits()
                     ));
                     matched = true;
                 }
@@ -398,7 +398,7 @@ public final class BankImportCalculator {
                 updatedOps.add(new BankImportModel.PendingOperationModel(
                         op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
                         op.label(), op.amount(), op.categoryId(), "cleared", found.id(),
-                        found.date(), op.notes()
+                        found.date(), op.notes(), op.splits()
                 ));
             } else {
                 updatedOps.add(op);
@@ -595,6 +595,10 @@ public final class BankImportCalculator {
                 String mergedNotes = bankOp != null && bankOp.notes() != null && !bankOp.notes().isBlank()
                         ? bankOp.notes() : op.notes();
 
+                List<BankImportModel.BankTransactionSplitModel> splitsToKeep = (op.splits() != null && !op.splits().isEmpty())
+                        ? op.splits()
+                        : (bankOp != null && bankOp.splits() != null ? bankOp.splits() : Collections.emptyList());
+
                 updated.add(new BankImportModel.PendingOperationModel(
                         op.id(),
                         mergedDate,
@@ -607,7 +611,8 @@ public final class BankImportCalculator {
                         "pending",
                         null,
                         null,
-                        mergedNotes
+                        mergedNotes,
+                        splitsToKeep
                 ));
             } else if (bankOp != null && op.id().equals(bankOp.id())) {
                 // If the bank operation was already added to pending operations, remove/skip it to avoid duplicate

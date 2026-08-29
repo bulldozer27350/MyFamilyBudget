@@ -7,9 +7,11 @@ public record VariableOverrideModel(
     String label,
     Integer year,
     BigDecimal amount,
-    String taxable
+    String taxable,
+    String notes
 ) {
     public BigDecimal getEffectiveAmount() {
         return amount != null ? amount : BigDecimal.ZERO;
     }
 }
+

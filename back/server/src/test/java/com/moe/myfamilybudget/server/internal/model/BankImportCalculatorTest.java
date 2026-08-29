@@ -322,5 +322,43 @@ class BankImportCalculatorTest {
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("La somme des ventilations (-80.00 €) ne correspond pas au montant de la transaction (-100.00 €)");
         }
+
+        @Test
+        @DisplayName("PendingOperationModel retains splits and notes through applyRulesToPendingOperations and autoMatch")
+        void testPendingOperationSplitsAndNotesRetention() {
+            List<BankImportModel.BankTransactionSplitModel> splits = List.of(
+                    new BankImportModel.BankTransactionSplitModel("s1", "cat_food", new BigDecimal("-60.00"), "Alimentation"),
+                    new BankImportModel.BankTransactionSplitModel("s2", "cat_clothes", new BigDecimal("-40.00"), "Vêtements")
+            );
+
+            BankImportModel.PendingOperationModel pendingOp = new BankImportModel.PendingOperationModel(
+                    "pop_1", "2026-02-10", "2026-02-15", "cb", "", "AUCHAN DRIVE",
+                    new BigDecimal("-100.00"), "", "pending", null, null, "Course de la semaine", splits
+            );
+
+            assertThat(pendingOp.splits()).hasSize(2);
+            assertThat(pendingOp.notes()).isEqualTo("Course de la semaine");
+
+            // Apply rules
+            List<BankImportModel.BankImportRuleModel> rules = List.of(
+                    new BankImportModel.BankImportRuleModel("r1", "AUCHAN", "cat_food")
+            );
+            List<BankImportModel.PendingOperationModel> ruleApplied = BankImportCalculator.applyRulesToPendingOperations(List.of(pendingOp), rules);
+            assertThat(ruleApplied).hasSize(1);
+            assertThat(ruleApplied.get(0).categoryId()).isEqualTo("cat_food");
+            assertThat(ruleApplied.get(0).splits()).hasSize(2);
+            assertThat(ruleApplied.get(0).notes()).isEqualTo("Course de la semaine");
+
+            // Auto match
+            BankImportModel.BankTransactionModel matchedTx = new BankImportModel.BankTransactionModel(
+                    "tx_bank_1", "2026-02-12", "AUCHAN DRIVE VALENCE", "", new BigDecimal("-100.00"), "cat_food"
+            );
+            AutoMatchResultModel matchResult = BankImportCalculator.autoMatchPendingOperations(ruleApplied, List.of(matchedTx));
+            assertThat(matchResult.matchCount()).isEqualTo(1);
+            assertThat(matchResult.updatedOperations().get(0).status()).isEqualTo("cleared");
+            assertThat(matchResult.updatedOperations().get(0).linkedTxId()).isEqualTo("tx_bank_1");
+            assertThat(matchResult.updatedOperations().get(0).splits()).hasSize(2);
+            assertThat(matchResult.updatedOperations().get(0).notes()).isEqualTo("Course de la semaine");
+        }
     }
 }

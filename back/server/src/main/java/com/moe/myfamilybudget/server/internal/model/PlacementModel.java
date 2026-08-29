@@ -15,7 +15,12 @@ public record PlacementModel(
     BigDecimal rateCorr,
     BigDecimal rateOpti,
     Boolean excludedFromRetirement,
-    String notes
+    String notes,
+    Integer sweepPriority,
+    BigDecimal sweepCap,
+    BigDecimal pauseTriggerBalance,
+    Integer pausePriority,
+    String categoryId
 ) {
     public BigDecimal getEffectiveBalance() {
         return balance != null ? balance : BigDecimal.ZERO;
@@ -41,3 +46,4 @@ public record PlacementModel(
         return Boolean.TRUE.equals(excludedFromRetirement);
     }
 }
+

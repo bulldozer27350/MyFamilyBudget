@@ -260,7 +260,84 @@ test.describe('Export JSON (GET /budget)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 9. Smoke tests API backend (sans IHM)
+// 9. Operations engagees (pending.html) – Creation, modification, ventilation, reactivite immediate et persistance
+// ---------------------------------------------------------------------------
+test.describe('Operations engagees (pending.html)', () => {
+  test('modification d une operation (categorie, note, ventilation) : mise a jour immediate et persistance apres rafraichissement', async ({ page }) => {
+    await page.goto(FRONT + '/pending.html');
+    await waitForReactMount(page);
+
+    // Initialiser ou inserer une operation engagee via le service / store
+    await page.evaluate(async () => {
+      const api = window.BudgetApp?.BudgetApi;
+      if (api) {
+        await api.savePendingOperation({
+          id: 'op_e2e_ui_test',
+          date: '2026-06-15',
+          expectedDate: '2026-06-25',
+          type: 'cheque',
+          refNumber: 'CHQ-990011',
+          label: 'Test Facture Travaux',
+          amount: -120.00,
+          categoryId: '',
+          notes: 'Initiale sans note'
+        });
+      }
+    });
+
+    // Recharger la vue pour afficher l'operation
+    await page.goto(FRONT + '/pending.html');
+    await waitForReactMount(page);
+
+    // Verifier la presence de la ligne
+    await expect(page.locator('text=Test Facture Travaux')).toBeVisible({ timeout: 10000 });
+
+    // Modifier l'operation via API / store pour simuler une edition complete avec note, categorie et splits
+    await page.evaluate(async () => {
+      const api = window.BudgetApp?.BudgetApi;
+      if (api) {
+        await api.savePendingOperation({
+          id: 'op_e2e_ui_test',
+          date: '2026-06-15',
+          expectedDate: '2026-06-25',
+          type: 'cheque',
+          refNumber: 'CHQ-990011-MOD',
+          label: 'Test Facture Travaux Modifiee',
+          amount: -120.00,
+          categoryId: 'cat_travaux',
+          notes: 'Note detaillee apres modification',
+          splits: [
+            { id: 'sp_1', categoryId: 'cat_travaux', amount: -80.00, label: 'Peinture' },
+            { id: 'sp_2', categoryId: 'cat_divers', amount: -40.00, label: 'Outillage' }
+          ]
+        }, 'op_e2e_ui_test');
+      }
+    });
+
+    // Verifier que l'API renvoie bien les donnees modifiees avec les splits et notes
+    const opData = await page.evaluate(async () => {
+      const api = window.BudgetApp?.BudgetApi;
+      const res = await api.getPendingOperations();
+      return res.pendingOperations.find(o => o.id === 'op_e2e_ui_test');
+    });
+
+    expect(opData.label).toBe('Test Facture Travaux Modifiee');
+    expect(opData.notes).toBe('Note detaillee apres modification');
+    expect(opData.splits).toHaveLength(2);
+    expect(opData.splits[0].label).toBe('Peinture');
+
+    // Rafraichir la page pour verifier la persistance complete
+    await page.reload();
+    await waitForReactMount(page);
+
+    await expect(page.locator('text=Test Facture Travaux Modifiee')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Note detaillee apres modification')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=✂ Ventilée (2)')).toBeVisible({ timeout: 10000 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 10. Smoke tests API backend (sans IHM)
 //    Garantit que le serveur Spring Boot repond correctement sur tous les
 //    endpoints definis dans le contrat OpenAPI.
 // ---------------------------------------------------------------------------

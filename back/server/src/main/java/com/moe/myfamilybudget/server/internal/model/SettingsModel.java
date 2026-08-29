@@ -13,7 +13,10 @@ public record SettingsModel(
     Integer childExitAge,
     BigDecimal taxAbattement,
     BigDecimal pass2026,
-    BigDecimal passGrowthRate
+    BigDecimal passGrowthRate,
+    Boolean sweepEnabled,
+    BigDecimal cashCeiling,
+    BigDecimal cashFloor
 ) {
     public int getEffectiveBirthYear() {
         return birthYear != null ? birthYear : 1985;
@@ -43,3 +46,4 @@ public record SettingsModel(
         return taxAbattement != null ? taxAbattement : BigDecimal.ZERO;
     }
 }
+

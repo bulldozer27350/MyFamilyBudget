@@ -24,6 +24,11 @@ public class PlacementEntity {
     private BigDecimal rateOpti;
     private Boolean excludedFromRetirement;
     private String notes;
+    private Integer sweepPriority;
+    private BigDecimal sweepCap;
+    private BigDecimal pauseTriggerBalance;
+    private Integer pausePriority;
+    private String categoryId;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "budget_data_id")
@@ -161,6 +166,46 @@ public class PlacementEntity {
     
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public Integer getSweepPriority() {
+        return sweepPriority;
+    }
+
+    public void setSweepPriority(Integer sweepPriority) {
+        this.sweepPriority = sweepPriority;
+    }
+
+    public BigDecimal getSweepCap() {
+        return sweepCap;
+    }
+
+    public void setSweepCap(BigDecimal sweepCap) {
+        this.sweepCap = sweepCap;
+    }
+
+    public BigDecimal getPauseTriggerBalance() {
+        return pauseTriggerBalance;
+    }
+
+    public void setPauseTriggerBalance(BigDecimal pauseTriggerBalance) {
+        this.pauseTriggerBalance = pauseTriggerBalance;
+    }
+
+    public Integer getPausePriority() {
+        return pausePriority;
+    }
+
+    public void setPausePriority(Integer pausePriority) {
+        this.pausePriority = pausePriority;
+    }
+
+    public String getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(String categoryId) {
+        this.categoryId = categoryId;
     }
     
     public BudgetDataEntity getBudgetData() {

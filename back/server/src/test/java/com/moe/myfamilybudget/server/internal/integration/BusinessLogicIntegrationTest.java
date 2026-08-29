@@ -533,6 +533,119 @@ class BusinessLogicIntegrationTest {
         assertThat(retireYear).isGreaterThan(2000);
     }
 
+    @Test
+    @Order(31)
+    @DisplayName("POST /pending-operations/force => Sauvegarde, modification avec ventilation (splits), note, catégorie et persistance")
+    void testPendingOperations_modificationAndPersistenceWithSplits() throws Exception {
+        importMockBudget();
+
+        // 1. Initial creation
+        String initialOpJson = """
+        {
+            "id": "op_e2e_1",
+            "date": "2026-07-10",
+            "expectedDate": "2026-07-15",
+            "type": "cheque",
+            "refNumber": "CHQ-8899",
+            "label": "Achat Mobilier Salon",
+            "amount": -300.00,
+            "categoryId": "cat_maison",
+            "notes": "Achat canape et table basse",
+            "splits": [
+                { "id": "sp_1", "categoryId": "cat_maison", "amount": -200.00, "label": "Canape" },
+                { "id": "sp_2", "categoryId": "cat_decoration", "amount": -100.00, "label": "Table basse" }
+            ]
+        }
+        """;
+
+        mockMvc.perform(post("/api/v1/pending-operations/force")
+                .contextPath("/api/v1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(initialOpJson))
+                .andExpect(status().isOk());
+
+        // Verify initial get
+        MvcResult res1 = mockMvc.perform(get("/api/v1/pending-operations").contextPath("/api/v1"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode root1 = objectMapper.readTree(res1.getResponse().getContentAsString());
+        JsonNode opNode1 = null;
+        for (JsonNode op : root1.path("pendingOperations")) {
+            if ("op_e2e_1".equals(op.path("id").asText())) {
+                opNode1 = op;
+                break;
+            }
+        }
+        assertThat(opNode1).isNotNull();
+        assertThat(opNode1.path("notes").asText()).isEqualTo("Achat canape et table basse");
+        assertThat(opNode1.path("splits")).hasSize(2);
+        assertThat(opNode1.path("splits").get(0).path("label").asText()).isEqualTo("Canape");
+
+        // 2. Modify operation (new notes, new category, new splits)
+        String updatedOpJson = """
+        {
+            "id": "op_e2e_1",
+            "date": "2026-07-12",
+            "expectedDate": "2026-07-20",
+            "type": "cheque",
+            "refNumber": "CHQ-8899-MOD",
+            "label": "Achat Mobilier & Eclairage",
+            "amount": -350.00,
+            "categoryId": "cat_mobilier",
+            "notes": "Ajout luminaire d'ambiance",
+            "splits": [
+                { "id": "sp_1_m", "categoryId": "cat_mobilier", "amount": -250.00, "label": "Canape cuir" },
+                { "id": "sp_2_m", "categoryId": "cat_eclairage", "amount": -100.00, "label": "Lampadaire" }
+            ]
+        }
+        """;
+
+        mockMvc.perform(post("/api/v1/pending-operations/force")
+                .contextPath("/api/v1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updatedOpJson))
+                .andExpect(status().isOk());
+
+        // 3. Verify updated get
+        MvcResult res2 = mockMvc.perform(get("/api/v1/pending-operations").contextPath("/api/v1"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode root2 = objectMapper.readTree(res2.getResponse().getContentAsString());
+        JsonNode opNode2 = null;
+        for (JsonNode op : root2.path("pendingOperations")) {
+            if ("op_e2e_1".equals(op.path("id").asText())) {
+                opNode2 = op;
+                break;
+            }
+        }
+        assertThat(opNode2).isNotNull();
+        assertThat(opNode2.path("label").asText()).isEqualTo("Achat Mobilier & Eclairage");
+        assertThat(opNode2.path("categoryId").asText()).isEqualTo("cat_mobilier");
+        assertThat(opNode2.path("notes").asText()).isEqualTo("Ajout luminaire d'ambiance");
+        assertThat(opNode2.path("refNumber").asText()).isEqualTo("CHQ-8899-MOD");
+        assertThat(opNode2.path("amount").asDouble()).isEqualTo(-350.00);
+        assertThat(opNode2.path("splits")).hasSize(2);
+        assertThat(opNode2.path("splits").get(0).path("label").asText()).isEqualTo("Canape cuir");
+        assertThat(opNode2.path("splits").get(1).path("categoryId").asText()).isEqualTo("cat_eclairage");
+
+        // 4. Verify in Overview response
+        MvcResult resOverview = mockMvc.perform(get("/api/v1/overview").contextPath("/api/v1"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode overviewRoot = objectMapper.readTree(resOverview.getResponse().getContentAsString());
+        JsonNode overviewPending = overviewRoot.path("data").path("bankImport").path("pendingOperations");
+        JsonNode overviewOp = null;
+        for (JsonNode op : overviewPending) {
+            if ("op_e2e_1".equals(op.path("id").asText())) {
+                overviewOp = op;
+                break;
+            }
+        }
+        assertThat(overviewOp).isNotNull();
+        assertThat(overviewOp.path("notes").asText()).isEqualTo("Ajout luminaire d'ambiance");
+        assertThat(overviewOp.path("splits")).hasSize(2);
+    }
+
     // =========================================================================
     // HELPER
     // =========================================================================

@@ -183,7 +183,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [placements, transfers, credits, realEstate]
+            enum: [placements, transfers, credits, loans, realEstate]
       requestBody:
         required: true
         content:
@@ -783,6 +783,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AssetCategoryDto'
+        loans:
+          type: array
+          items:
+            $ref: '#/components/schemas/LoanDto'
 
     SettingsDto:
       type: object
@@ -808,6 +812,12 @@ components:
         pass2026:
           type: number
         passGrowthRate:
+          type: number
+        sweepEnabled:
+          type: boolean
+        cashCeiling:
+          type: number
+        cashFloor:
           type: number
 
     IncomeDto:
@@ -878,6 +888,36 @@ components:
         excludedFromRetirement:
           type: boolean
         notes:
+          type: string
+        sweepPriority:
+          type: integer
+        sweepCap:
+          type: number
+        pauseTriggerBalance:
+          type: number
+        pausePriority:
+          type: integer
+        categoryId:
+          type: string
+
+    LoanDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        crd:
+          type: number
+        rate:
+          type: number
+        monthly:
+          type: number
+        insurance:
+          type: number
+        startDate:
+          type: string
+        endDate:
           type: string
 
     RealEstateDto:
@@ -1029,6 +1069,10 @@ components:
           type: integer
         taxable:
           type: string
+        type:
+          type: string
+        notes:
+          type: string
 
     VariableOverrideDto:
       type: object
@@ -1042,6 +1086,8 @@ components:
         amount:
           type: number
         taxable:
+          type: string
+        notes:
           type: string
 
     BankTransactionSplitDto:
@@ -1131,6 +1177,10 @@ components:
           type: string
         notes:
           type: string
+        splits:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankTransactionSplitDto'
 
     BankImportRuleDto:
       type: object
@@ -1407,6 +1457,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TransferDto'
+        loans:
+          type: array
+          items:
+            $ref: '#/components/schemas/LoanDto'
         realEstate:
           type: array
           items:
@@ -1432,6 +1486,8 @@ components:
         name:
           type: string
         bucket:
+          type: string
+        color:
           type: string
 
     AnalyseResponseDto:

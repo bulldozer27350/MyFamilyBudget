@@ -16,6 +16,7 @@ public class VariableOverrideEntity {
     private Integer year;
     private BigDecimal amount;
     private String taxable;
+    private String notes;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "budget_data_id")
@@ -79,6 +80,14 @@ public class VariableOverrideEntity {
     
     public void setTaxable(String taxable) {
         this.taxable = taxable;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
     
     public BudgetDataEntity getBudgetData() {

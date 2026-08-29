@@ -440,13 +440,16 @@
       // 1. Mise à jour synchrone du store React
       if (update) {
         if (editingOp) {
-          update("bankImport", b => ({
-            ...b,
-            pendingOperations: (b?.pendingOperations || []).map(op => op.id === editingOp.id ? {
-              ...op,
-              ...opPayload
-            } : op)
-          }));
+          update("bankImport", b => {
+            const list = b?.pendingOperations || [];
+            const exists = list.some(op => op.id === editingOp.id);
+            return {
+              ...b,
+              pendingOperations: exists
+                ? list.map(op => op.id === editingOp.id ? { ...op, ...opPayload } : op)
+                : [...list, fullOpObj]
+            };
+          });
         } else {
           update("bankImport", b => ({
             ...b,
@@ -458,8 +461,9 @@
       // 2. Mise à jour synchrone de l'état local apiData pour rafraîchissement immédiat de la vue
       setApiData(prev => {
         const curOps = Array.isArray(prev?.pendingOperations) ? [...prev.pendingOperations] : [];
-        const nextOps = editingOp
-          ? curOps.map(op => op.id === editingOp.id ? { ...op, ...opPayload } : op)
+        const exists = curOps.some(o => o.id === targetOpId);
+        const nextOps = exists
+          ? curOps.map(op => op.id === targetOpId ? { ...op, ...opPayload } : op)
           : [...curOps.filter(o => o.id !== targetOpId), fullOpObj];
         return {
           ...(prev || {}),
@@ -497,7 +501,7 @@
       // 4. Appel asynchrone du service / API en arrière-plan sans bloquer l'interface
       const apiInstance = getApi();
       if (apiInstance && apiInstance.savePendingOperation) {
-        apiInstance.savePendingOperation(opPayload, editingOp ? editingOp.id : targetOpId).then(res => {
+        apiInstance.savePendingOperation(fullOpObj, targetOpId).then(res => {
           if (res && res.id && res.id !== targetOpId) {
             setApiData(prev => prev ? {
               ...prev,

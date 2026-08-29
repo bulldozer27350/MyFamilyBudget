@@ -123,6 +123,46 @@ const { BudgetApi } = sandbox.window.BudgetApp;
   if (!pendingAfterManual.pendingOperations.some(op => op.refNumber === "CHQ-778899")) {
     throw new Error("Manual pending operation not found in getPendingOperations result");
   }
+
+  // Test modifying existing pending operation with splits, category, and notes
+  console.log("Testing BudgetApi.savePendingOperation (modification with splits, category, notes)...");
+  const modifiedManual = await BudgetApi.savePendingOperation({
+    date: "2026-06-14",
+    expectedDate: "2026-06-22",
+    type: "cheque",
+    refNumber: "CHQ-778899-MOD",
+    label: "Saisie Manuelle Test Cheque Modifié",
+    amount: -75.00,
+    categoryId: "cat_brico",
+    notes: "Note mise à jour avec ventilation",
+    splits: [
+      { id: "sp_1", categoryId: "cat_brico", amount: -50.00, label: "Partie Bricolage" },
+      { id: "sp_2", categoryId: "cat_jardin", amount: -25.00, label: "Partie Jardinage" }
+    ]
+  }, savedManual.id);
+
+  if (!modifiedManual || modifiedManual.id !== savedManual.id) {
+    throw new Error("Failed to modify existing pending operation");
+  }
+  if (modifiedManual.categoryId !== "cat_brico" || modifiedManual.notes !== "Note mise à jour avec ventilation") {
+    throw new Error("Modified pending operation fields (category or notes) not updated");
+  }
+  if (!Array.isArray(modifiedManual.splits) || modifiedManual.splits.length !== 2) {
+    throw new Error("Modified pending operation splits not preserved");
+  }
+
+  const pendingAfterEdit = await BudgetApi.getPendingOperations();
+  const checkOp = pendingAfterEdit.pendingOperations.find(op => op.id === savedManual.id);
+  if (!checkOp) {
+    throw new Error("Modified operation not found in getPendingOperations");
+  }
+  if (checkOp.categoryId !== "cat_brico" || checkOp.notes !== "Note mise à jour avec ventilation" || checkOp.amount !== -75.00) {
+    throw new Error("getPendingOperations did not return modified fields");
+  }
+  if (!Array.isArray(checkOp.splits) || checkOp.splits.length !== 2) {
+    throw new Error("getPendingOperations did not return modified splits");
+  }
+  console.log("✓ Modify Pending Operation (Category, Notes, Splits) OK");
   console.log("✓ Pending Operations & Manual Entry OK");
 
   console.log("Testing BudgetApi.importPendingCB & mergePendingOperation...");

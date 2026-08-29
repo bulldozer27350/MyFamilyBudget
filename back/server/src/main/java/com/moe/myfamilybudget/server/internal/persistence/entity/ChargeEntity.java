@@ -15,6 +15,7 @@ public class ChargeEntity {
     private String label;
     private BigDecimal monthly;
     private String start;
+    @Column(name = "end_date")
     private String end;
     private BigDecimal growthRate;
     private String categoryId;

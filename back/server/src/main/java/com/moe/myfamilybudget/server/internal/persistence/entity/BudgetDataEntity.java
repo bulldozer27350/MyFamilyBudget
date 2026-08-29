@@ -60,6 +60,9 @@ public class BudgetDataEntity {
     
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<AssetCategoryEntity> assetCategories = new ArrayList<>();
+
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<LoanEntity> loans = new ArrayList<>();
     
     // Constructors
     public BudgetDataEntity() {}
@@ -203,5 +206,13 @@ public class BudgetDataEntity {
     
     public void setAssetCategories(List<AssetCategoryEntity> assetCategories) {
         this.assetCategories = assetCategories;
+    }
+
+    public List<LoanEntity> getLoans() {
+        return loans;
+    }
+
+    public void setLoans(List<LoanEntity> loans) {
+        this.loans = loans;
     }
 }

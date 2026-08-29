@@ -4,7 +4,8 @@ public record AssetCategoryModel(
         String id,
         String icon,
         String name,
-        String bucket
+        String bucket,
+        String color
 ) {
     public AssetCategoryModel {
         if (id == null || id.isBlank()) {
@@ -21,3 +22,4 @@ public record AssetCategoryModel(
         }
     }
 }
+

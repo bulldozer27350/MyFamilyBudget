@@ -14,6 +14,7 @@ public class AssetCategoryEntity {
     private String icon;
     private String name;
     private String bucket;
+    private String color;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "budget_data_id")
@@ -68,6 +69,14 @@ public class AssetCategoryEntity {
     
     public void setBucket(String bucket) {
         this.bucket = bucket;
+    }
+
+    public String getColor() {
+        return color;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
     }
     
     public BudgetDataEntity getBudgetData() {
