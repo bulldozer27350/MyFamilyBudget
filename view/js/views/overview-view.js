@@ -30,6 +30,9 @@
   const {
     HelpBadge
   } = exports.HelpBadge ? exports : window.BudgetApp || {};
+  const {
+    exportPatrimoineReportPDF
+  } = exports.exportPatrimoineReportPDF ? exports : window.BudgetApp || {};
   const btnSmStyle = {
     fontSize: 11,
     padding: "3px 8px",
@@ -970,7 +973,35 @@
     financialOnlyRente,
     openHelp
   }) {
+    const handleExportPatrimoinePDF = () => {
+      const pivotLabel = pivotBalance !== null ? data.settings.pivotDate ? `Solde réel au ${new Date(data.settings.pivotDate + 'T12:00:00').toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      })}` : "Solde réel (Date Pivot)" : "Trésorerie de départ";
+      exportPatrimoineReportPDF(data, {
+        patrimoineActuel,
+        pivotBalance,
+        pivotLabel
+      });
+    };
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "flex-end",
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: handleExportPatrimoinePDF,
+      style: {
+        ...btnSmStyle,
+        fontSize: 12,
+        padding: "6px 12px",
+        color: C?.pine || "#2F5D50",
+        fontWeight: 600
+      },
+      title: "Ouvre un aperçu imprimable du bilan patrimonial — choisissez « Microsoft Print to PDF » dans la boîte d'impression pour l'enregistrer en PDF"
+    }, "📄 Exporter le bilan (PDF)")), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         gap: 16,
