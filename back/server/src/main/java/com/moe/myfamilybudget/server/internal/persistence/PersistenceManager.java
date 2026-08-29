@@ -169,18 +169,19 @@ public class PersistenceManager {
         }
         
         BudgetDataEntity entity = EntityModelConverter.toEntity(model);
-        
-        // Save settings first
-        if (entity.getSettings() != null) {
-            settingsRepository.save(entity.getSettings());
-        }
-        
-        // Save retirement if exists
-        if (entity.getRetirement() != null) {
-            retirementRepository.save(entity.getRetirement());
-        }
-        
-        // Save the main entity
+
+        // NOTE: settings/retirement ne doivent PAS être sauvegardés séparément ici.
+        // Ils sont rattachés à `entity` (relations @OneToOne en CascadeType.ALL) et seront
+        // persistés automatiquement par le save() ci-dessous, dans la MÊME transaction/
+        // persistence context. Les sauvegarder au préalable via leur propre repository
+        // les détache du contexte de persistance (chaque appel de repository Spring Data
+        // s'exécute dans sa propre transaction), ce qui provoque ensuite un
+        // "PersistentObjectException: detached entity passed to persist" lors du
+        // cascade effectué par budgetDataRepository.save(entity) - en particulier au
+        // démarrage de l'application (@PostConstruct init()), qui s'exécute hors de toute
+        // transaction Spring.
+
+        // Save the main entity (cascade ALL persiste settings/retirement automatiquement)
         entity = budgetDataRepository.save(entity);
         
         // Save all child entities with proper parent references

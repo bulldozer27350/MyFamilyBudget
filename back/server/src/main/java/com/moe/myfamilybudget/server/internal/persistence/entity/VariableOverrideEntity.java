@@ -13,6 +13,7 @@ public class VariableOverrideEntity {
     
     private String uid;
     private String label;
+    @Column(name = "year_value")
     private Integer year;
     private BigDecimal amount;
     private String taxable;

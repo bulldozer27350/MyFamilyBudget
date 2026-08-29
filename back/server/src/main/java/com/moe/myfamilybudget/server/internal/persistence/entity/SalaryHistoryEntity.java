@@ -11,6 +11,7 @@ public class SalaryHistoryEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @Column(name = "year_value")
     private Integer year;
     private BigDecimal salary;
     
