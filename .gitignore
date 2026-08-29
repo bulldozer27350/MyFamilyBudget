@@ -5,6 +5,11 @@ target/
 # Node
 node_modules/
 dist/
+package-lock.json
+
+#Test results
+tests/e2e/report/*
+test-results/*
 
 # IDE
 .idea/
@@ -14,3 +19,10 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+data/
+
+#Eclipse files
+*.project
+*.prefs
+*.classpath
