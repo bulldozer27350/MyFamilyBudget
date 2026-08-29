@@ -14,7 +14,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
@@ -71,6 +73,13 @@ public class PersistenceManager {
     private final BankImportRepository bankImportRepository;
     private final LoanRepository loanRepository;
 
+    // Gestion programmatique de la transaction pour l'initialisation au démarrage.
+    // Voir le commentaire dans saveToDatabase() : le @Transactional de classe ne
+    // s'applique jamais à un appel émis depuis @PostConstruct (self-invocation avant
+    // la création du proxy AOP). On utilise donc un TransactionTemplate explicite
+    // pour englober l'unique sauvegarde effectuée pendant init().
+    private final TransactionTemplate transactionTemplate;
+
     // Default constructor for testing compatibility
     public PersistenceManager() {
         this.budgetDataRepository = null;
@@ -91,6 +100,7 @@ public class PersistenceManager {
         this.retirementRepository = null;
         this.bankImportRepository = null;
         this.loanRepository = null;
+        this.transactionTemplate = null;
     }
 
     @Autowired
@@ -111,7 +121,8 @@ public class PersistenceManager {
                             AssetCategoryRepository assetCategoryRepository,
                             RetirementRepository retirementRepository,
                             BankImportRepository bankImportRepository,
-                            LoanRepository loanRepository) {
+                            LoanRepository loanRepository,
+                            PlatformTransactionManager transactionManager) {
         this.budgetDataRepository = budgetDataRepository;
         this.settingsRepository = settingsRepository;
         this.incomeRepository = incomeRepository;
@@ -130,6 +141,7 @@ public class PersistenceManager {
         this.retirementRepository = retirementRepository;
         this.bankImportRepository = bankImportRepository;
         this.loanRepository = loanRepository;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -156,9 +168,22 @@ public class PersistenceManager {
             }
         }
         
-        // Create new default data and save to database
+        // Create new default data and save to database.
+        // NOTE: init() est un callback @PostConstruct, invoqué par Spring AVANT que le
+        // proxy AOP (@Transactional) n'enveloppe ce bean. L'appel ci-dessous à
+        // saveToDatabase(...) est donc un self-invocation qui NE PASSE PAS par le proxy
+        // transactionnel de la classe : sans la mesure explicite ci-dessous, les
+        // opérations d'écriture déclenchées (notamment loanRepository.deleteByBudgetDataId,
+        // qui exécute une requête JPQL de suppression) échouent avec
+        // "TransactionRequiredException: Executing an update/delete query" dès que la
+        // base est vide au démarrage (typiquement en environnement de test, où le schéma
+        // est réinitialisé). On ouvre donc explicitement une transaction programmatique.
         BudgetDataModel defaultData = createDefaultBudgetData();
-        saveToDatabase(defaultData);
+        if (transactionTemplate != null) {
+            transactionTemplate.executeWithoutResult(status -> saveToDatabase(defaultData));
+        } else {
+            saveToDatabase(defaultData);
+        }
         currentBudget.set(defaultData);
     }
     
@@ -167,7 +192,19 @@ public class PersistenceManager {
         if (budgetDataRepository == null) {
             return;
         }
-        
+
+        // IMPORTANT : EntityModelConverter.toEntity(model) renvoie toujours une entité
+        // avec id=null (voir son commentaire "Lists will be set separately"). Sans ce
+        // deleteAll() préalable, Hibernate ferait donc un INSERT à chaque appel de
+        // saveToDatabase() (édition d'une ligne, import JSON...) au lieu d'un UPDATE,
+        // créant une nouvelle ligne budget_data à chaque sauvegarde. Après un
+        // redémarrage, @PostConstruct init() relit via findFirstByOrderByIdAsc(), qui
+        // renvoie l'id le plus petit — donc la toute première ligne (souvent vide) —
+        // au lieu de la dernière version sauvegardée. On supprime l'existant avant de
+        // réinsérer (même mécanisme que resetData(), déjà en place plus bas) pour
+        // garantir qu'une seule ligne budget_data existe à tout moment.
+        budgetDataRepository.deleteAll();
+
         BudgetDataEntity entity = EntityModelConverter.toEntity(model);
 
         // NOTE: settings/retirement ne doivent PAS être sauvegardés séparément ici.

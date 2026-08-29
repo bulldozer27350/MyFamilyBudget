@@ -42,6 +42,43 @@
     }
   }
 
+  /**
+   * Indique si le fallback silencieux vers le service JS local (service-metier.js /
+   * localStorage) doit être désactivé. Piloté par window.DISABLE_JS_FALLBACK,
+   * réglable dans config.js, pour lever toute ambiguïté sur l'origine réelle
+   * (backend Spring Boot / H2 vs. store JS local) des données affichées.
+   */
+  function isJsFallbackDisabled() {
+    return typeof window !== 'undefined' && window.DISABLE_JS_FALLBACK === true;
+  }
+
+  /**
+   * Factorise le pattern « tenter le backend, sinon retomber sur le service JS local ».
+   * @param {string} path Chemin relatif à API_BASE_URL (ex: '/overview')
+   * @param {Function} fallbackFn Fonction synchrone retournant les données du service JS local
+   * @param {string} [query] Query string éventuelle (ex: '?useConstantEuros=true')
+   * @returns {Promise<Object>}
+   */
+  async function fetchJsonOrFallback(path, fallbackFn, query = '') {
+    if (typeof fetch !== 'undefined') {
+      try {
+        const res = await fetch(API_BASE_URL + path + query);
+        if (res.ok) return await res.json();
+        if (isJsFallbackDisabled()) {
+          throw new Error('Backend a répondu ' + res.status + ' pour ' + path);
+        }
+      } catch (e) {
+        if (isJsFallbackDisabled()) {
+          console.error('[DISABLE_JS_FALLBACK] Échec de ' + path + ', fallback JS désactivé.', e);
+          throw e;
+        }
+      }
+    } else if (isJsFallbackDisabled()) {
+      throw new Error("fetch indisponible et fallback JS désactivé pour " + path);
+    }
+    return Promise.resolve(fallbackFn());
+  }
+
   const BudgetApi = {
     /**
      * Vue d'ensemble : KPIs, projections (trésorerie, patrimoine) et jauges FIRE.
@@ -49,13 +86,7 @@
      * @returns {Promise<Object>} modèle de lecture de la Vue d'ensemble
      */
     async getVueDensemble(options) {
-      if (typeof fetch !== 'undefined') {
-        try {
-          const res = await fetch(API_BASE_URL + '/overview');
-          if (res.ok) return await res.json();
-        } catch (e) {}
-      }
-      return Promise.resolve(app().OverviewService.buildOverview(options));
+      return fetchJsonOrFallback('/overview', () => app().OverviewService.buildOverview(options));
     },
 
     /**
@@ -73,14 +104,8 @@
      * @returns {Promise<Object>} modèle de lecture de l'onglet Trésorerie
      */
     async getTresorerie(options) {
-      if (typeof fetch !== 'undefined') {
-        try {
-          const query = options?.useConstantEuros ? '?useConstantEuros=true' : '';
-          const res = await fetch(API_BASE_URL + '/tresorerie' + query);
-          if (res.ok) return await res.json();
-        } catch (e) {}
-      }
-      return Promise.resolve(app().TresorerieService.buildTresorerie(options));
+      const query = options?.useConstantEuros ? '?useConstantEuros=true' : '';
+      return fetchJsonOrFallback('/tresorerie', () => app().TresorerieService.buildTresorerie(options), query);
     },
 
     /**
@@ -168,14 +193,8 @@
      * @returns {Promise<Object>} modèle de lecture de l'onglet Patrimoine
      */
     async getPatrimoine(options) {
-      if (typeof fetch !== 'undefined') {
-        try {
-          const query = options?.useConstantEuros ? '?useConstantEuros=true' : '';
-          const res = await fetch(API_BASE_URL + '/patrimoine' + query);
-          if (res.ok) return await res.json();
-        } catch (e) {}
-      }
-      return Promise.resolve(app().PatrimoineService.buildPatrimoine(options));
+      const query = options?.useConstantEuros ? '?useConstantEuros=true' : '';
+      return fetchJsonOrFallback('/patrimoine', () => app().PatrimoineService.buildPatrimoine(options), query);
     },
 
     /**
@@ -375,14 +394,7 @@
      * @returns {Promise<Object>} modèle de lecture de l'onglet Paramètres
      */
     async getSettings() {
-      if (typeof fetch !== 'undefined') {
-        try {
-          const res = await fetch(API_BASE_URL + '/settings');
-          if (res.ok) return await res.json();
-        } catch (e) {
-          console.error("Failed to fetch settings from backend, falling back to local store", e);
-        }
-      }
+      return fetchJsonOrFallback('/settings', () => app().SettingsService.buildSettings());
     },
 
     /**
