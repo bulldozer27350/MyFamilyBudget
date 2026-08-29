@@ -1,0 +1,23 @@
+# Profil "docker" : à activer explicitement avec SPRING_PROFILES_ACTIVE=docker
+# Ce profil ne remplace pas le profil par défaut (H2, distribution portable) :
+# il vient uniquement le surcharger pour un déploiement conteneurisé avec PostgreSQL.
+
+spring:
+  main:
+    headless: true
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/myfamilybudget}
+    driver-class-name: org.postgresql.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:myfamilybudget}
+    password: ${SPRING_DATASOURCE_PASSWORD:myfamilybudget}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  h2:
+    console:
+      enabled: false

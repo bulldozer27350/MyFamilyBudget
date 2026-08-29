@@ -22,6 +22,9 @@ Thumbs.db
 
 data/
 
+# Environment variables (secrets locaux, ne jamais committer)
+.env
+
 #Eclipse files
 *.project
 *.prefs
