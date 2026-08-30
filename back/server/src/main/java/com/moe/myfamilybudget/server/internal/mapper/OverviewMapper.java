@@ -19,6 +19,7 @@ import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.api.model.CashflowYearDto;
 import com.moe.myfamilybudget.api.model.ChargeDto;
 import com.moe.myfamilybudget.api.model.IncomeDto;
+import com.moe.myfamilybudget.api.model.LoanDto;
 import com.moe.myfamilybudget.api.model.OneOffExpenseDto;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.api.model.PatrimoinePerPlacementDto;
@@ -45,6 +46,7 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.CashflowYearModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.OverviewResultModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
@@ -85,6 +87,9 @@ public class OverviewMapper {
         List<RealEstateModel> realEstate = dto.getRealEstate() != null
                 ? dto.getRealEstate().stream().map(this::toRealEstateModel).collect(Collectors.toList())
                 : List.of();
+        List<LoanModel> loans = dto.getLoans() != null
+                ? dto.getLoans().stream().map(this::toLoanModel).collect(Collectors.toList())
+                : List.of();
         RetirementModel retirement = toRetirementModel(dto.getRetirement());
         List<TaxChildModel> taxChildren = dto.getTaxChildren() != null
                 ? dto.getTaxChildren().stream().map(this::toTaxChildModel).collect(Collectors.toList())
@@ -117,7 +122,7 @@ public class OverviewMapper {
 
         return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren,
                 taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes,
-                variableOverrides, bankImport, assetCategories);
+                variableOverrides, bankImport, assetCategories, loans);
     }
 
     public BudgetDataDto toBudgetDataDto(BudgetDataModel model) {
@@ -137,6 +142,9 @@ public class OverviewMapper {
                 : List.of());
         dto.setRealEstate(model.realEstate() != null
                 ? model.realEstate().stream().map(this::toRealEstateDto).collect(Collectors.toList())
+                : List.of());
+        dto.setLoans(model.loans() != null
+                ? model.loans().stream().map(this::toLoanDto).collect(Collectors.toList())
                 : List.of());
         dto.setRetirement(toRetirementDto(model.retirement()));
         dto.setSettings(toSettingsDto(model.settings()));
@@ -709,6 +717,30 @@ public class OverviewMapper {
         return dto;
     }
     
+    private LoanModel toLoanModel(LoanDto dto) {
+        if (dto == null) {
+            return null;
+        }
+        return new LoanModel(dto.getId(), dto.getLabel(), dto.getCrd(), dto.getRate(), dto.getMonthly(),
+                dto.getInsurance(), dto.getStartDate(), dto.getEndDate());
+    }
+
+    private LoanDto toLoanDto(LoanModel model) {
+        if (model == null) {
+            return null;
+        }
+        LoanDto dto = new LoanDto();
+        dto.setId(model.id());
+        dto.setLabel(model.label());
+        dto.setCrd(model.crd());
+        dto.setRate(model.rate());
+        dto.setMonthly(model.monthly());
+        dto.setInsurance(model.insurance());
+        dto.setStartDate(model.startDate());
+        dto.setEndDate(model.endDate());
+        return dto;
+    }
+
     private AssetCategoryModel toAssetCategoryModel(AssetCategoryDto dto) {
         if (dto == null) {
             return null;

@@ -15,6 +15,7 @@ import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
@@ -153,5 +154,33 @@ class OverviewServiceImplTest {
         assertThat(projection.trimestresEstimesDepart()).isEqualTo(192);
         assertThat(projection.tauxApplique()).isGreaterThan(new BigDecimal("0.50")); // Surcote applied
         assertThat(projection.pensionTotaleMensuelle()).isGreaterThan(BigDecimal.ZERO);
+    }
+
+    @Test
+    @DisplayName("Should include loans (passif) in the data returned by /overview")
+    void testBuildOverview_LoansAreReturnedInDataDto() {
+        // Given
+        SettingsModel settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
+                BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015"));
+
+        LoanModel loan1 = new LoanModel("loan_1", "Pret RP", new BigDecimal("180000"), new BigDecimal("0.0080"),
+                new BigDecimal("950"), new BigDecimal("15"), "2020-01-01", "2045-01-01");
+
+        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(), List.of(), List.of(), List.of(), null,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null,
+                List.of(), List.of(loan1));
+
+        this.persistenceManager.setBudgetData(budgetData); // Save to persistence for retrieval in service
+
+        // When
+        OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
+
+        // Then : le passif doit être visible dans data.loans (utilisé par LoansSummaryCard
+        // et par l'export PDF du bilan patrimonial dans patrimoine-report.js)
+        assertThat(response).isNotNull();
+        assertThat(response.getData()).isNotNull();
+        assertThat(response.getData().getLoans()).isNotNull();
+        assertThat(response.getData().getLoans()).hasSize(1);
+        assertThat(response.getData().getLoans().get(0).getCrd()).isEqualByComparingTo("180000");
     }
 }

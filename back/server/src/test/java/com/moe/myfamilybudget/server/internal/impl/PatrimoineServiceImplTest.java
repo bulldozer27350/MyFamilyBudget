@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import com.moe.myfamilybudget.api.model.AddPlacementHistoriquePointRequest;
+import com.moe.myfamilybudget.api.model.LoanDto;
 import com.moe.myfamilybudget.api.model.PatrimoineResponseDto;
 import com.moe.myfamilybudget.api.model.PlacementDto;
 import com.moe.myfamilybudget.api.model.RealEstateDto;
@@ -51,6 +52,7 @@ class PatrimoineServiceImplTest {
         assertNotNull(response.getBody());
         assertNotNull(response.getBody().getPlacements());
         assertNotNull(response.getBody().getTransfers());
+        assertNotNull(response.getBody().getLoans());
         assertNotNull(response.getBody().getRealEstate());
         assertNotNull(response.getBody().getPatrimoine());
         assertNotNull(response.getBody().getPatrimoine().getTotals());
@@ -260,6 +262,92 @@ class PatrimoineServiceImplTest {
         // Vérification absence
         ResponseEntity<PatrimoineResponseDto> afterDeleteResp = service.getPatrimoine(false);
         assertFalse(afterDeleteResp.getBody().getRealEstate().stream().anyMatch(r -> reId.equals(r.getId())));
+    }
+
+    // -------------------------------------------------------------------------
+    // POST & DELETE /patrimoine/loans
+    // -------------------------------------------------------------------------
+
+    @Test
+    void savePatrimoineLigne_loans_createsAndUpdates() {
+        String loanId = "loan_test_1";
+        Map<String, Object> body = new HashMap<>();
+        body.put("id", loanId);
+        body.put("label", "Pret Residence Principale");
+        body.put("crd", new BigDecimal("180000"));
+        body.put("rate", new BigDecimal("0.008"));
+        body.put("monthly", new BigDecimal("950"));
+        body.put("insurance", new BigDecimal("15"));
+        body.put("startDate", "2020-01-01");
+        body.put("endDate", "2045-01-01");
+
+        // 1. Création
+        ResponseEntity<Void> createResp = service.savePatrimoineLigne("loans", body);
+        assertEquals(HttpStatus.OK, createResp.getStatusCode());
+        assertNull(createResp.getBody());
+
+        // 2. Vérification présence : c'est cette liste qui alimente la table
+        // "Crédits" de la vue Patrimoine et le KPI "Passif" de l'export PDF.
+        ResponseEntity<PatrimoineResponseDto> getResp = service.getPatrimoine(false);
+        LoanDto created = getResp.getBody().getLoans().stream()
+                .filter(l -> loanId.equals(l.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(created);
+        assertEquals("Pret Residence Principale", created.getLabel());
+        assertEquals(new BigDecimal("180000"), created.getCrd());
+
+        // 3. Mise à jour
+        body.put("crd", new BigDecimal("175000"));
+        service.savePatrimoineLigne("loans", body);
+
+        ResponseEntity<PatrimoineResponseDto> updatedResp = service.getPatrimoine(false);
+        LoanDto updated = updatedResp.getBody().getLoans().stream()
+                .filter(l -> loanId.equals(l.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(updated);
+        assertEquals(new BigDecimal("175000"), updated.getCrd());
+    }
+
+    @Test
+    void savePatrimoineLigne_credits_aliasIsAcceptedForLoans() {
+        // L'alias "credits" (utilisé historiquement côté JS) doit produire le même
+        // résultat que "loans" côté backend.
+        String loanId = "loan_alias_1";
+        Map<String, Object> body = new HashMap<>();
+        body.put("id", loanId);
+        body.put("label", "Pret Auto");
+        body.put("crd", new BigDecimal("12000"));
+
+        ResponseEntity<Void> createResp = service.savePatrimoineLigne("credits", body);
+        assertEquals(HttpStatus.OK, createResp.getStatusCode());
+
+        ResponseEntity<PatrimoineResponseDto> getResp = service.getPatrimoine(false);
+        assertTrue(getResp.getBody().getLoans().stream().anyMatch(l -> loanId.equals(l.getId())));
+    }
+
+    @Test
+    void deletePatrimoineLigne_loans_deletesSuccessfully() {
+        String loanId = "loan_del_1";
+        Map<String, Object> body = new HashMap<>();
+        body.put("id", loanId);
+        body.put("label", "Pret Temporaire");
+        body.put("crd", new BigDecimal("5000"));
+
+        service.savePatrimoineLigne("loans", body);
+
+        // Vérification présence
+        ResponseEntity<PatrimoineResponseDto> getResp = service.getPatrimoine(false);
+        assertTrue(getResp.getBody().getLoans().stream().anyMatch(l -> loanId.equals(l.getId())));
+
+        // Suppression
+        ResponseEntity<Void> deleteResp = service.deletePatrimoineLigne("loans", loanId);
+        assertEquals(HttpStatus.NO_CONTENT, deleteResp.getStatusCode());
+
+        // Vérification absence
+        ResponseEntity<PatrimoineResponseDto> afterDeleteResp = service.getPatrimoine(false);
+        assertFalse(afterDeleteResp.getBody().getLoans().stream().anyMatch(l -> loanId.equals(l.getId())));
     }
 
     // -------------------------------------------------------------------------

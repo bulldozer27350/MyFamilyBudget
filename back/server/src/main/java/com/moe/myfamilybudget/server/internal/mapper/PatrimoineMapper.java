@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.api.model.AssetCategoryDto;
 import com.moe.myfamilybudget.api.model.BankImportCategoryDto;
+import com.moe.myfamilybudget.api.model.LoanDto;
 import com.moe.myfamilybudget.api.model.PatrimoinePerPlacementDto;
 import com.moe.myfamilybudget.api.model.PatrimoineProjectionsDto;
 import com.moe.myfamilybudget.api.model.PatrimoineResponseDto;
@@ -18,6 +19,7 @@ import com.moe.myfamilybudget.api.model.TransferDto;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
@@ -85,6 +87,34 @@ public class PatrimoineMapper {
                 dto.getDate(),
                 dto.getAmount(),
                 dto.getNotes()
+        );
+    }
+
+    public LoanDto toLoanDto(LoanModel m) {
+        if (m == null) return null;
+        LoanDto dto = new LoanDto();
+        dto.setId(m.id());
+        dto.setLabel(m.label());
+        dto.setCrd(m.crd());
+        dto.setRate(m.rate());
+        dto.setMonthly(m.monthly());
+        dto.setInsurance(m.insurance());
+        dto.setStartDate(m.startDate());
+        dto.setEndDate(m.endDate());
+        return dto;
+    }
+
+    public LoanModel toLoanModel(LoanDto dto) {
+        if (dto == null) return null;
+        return new LoanModel(
+                dto.getId(),
+                dto.getLabel(),
+                dto.getCrd(),
+                dto.getRate(),
+                dto.getMonthly(),
+                dto.getInsurance(),
+                dto.getStartDate(),
+                dto.getEndDate()
         );
     }
 
@@ -163,6 +193,10 @@ public class PatrimoineMapper {
                 .map(this::toRealEstateDto)
                 .collect(Collectors.toList());
 
+        List<LoanDto> loans = data.getEffectiveLoans().stream()
+                .map(this::toLoanDto)
+                .collect(Collectors.toList());
+
         List<AssetCategoryDto> assetCategories = data.getEffectiveAssetCategories().stream()
                 .map(this::toAssetCategoryDto)
                 .collect(Collectors.toList());
@@ -177,6 +211,7 @@ public class PatrimoineMapper {
         PatrimoineResponseDto dto = new PatrimoineResponseDto();
         dto.setPlacements(placements);
         dto.setTransfers(transfers);
+        dto.setLoans(loans);
         dto.setRealEstate(realEstate);
         dto.setPatrimoine(projDto);
         dto.setAssetCategories(assetCategories);

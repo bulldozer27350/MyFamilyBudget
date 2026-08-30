@@ -211,7 +211,7 @@
      */
     async updatePatrimoineLigne(listKey, id, field, value) {
       await app().PatrimoineService.updatePatrimoineLigne(listKey, id, field, value);
-      if (typeof fetch !== 'undefined' && listKey !== "loans") {
+      if (typeof fetch !== 'undefined') {
         try {
           const list = app().BudgetStore.getData()[listKey] || [];
           const row = list.find(r => r.id === id);
@@ -235,7 +235,7 @@
      */
     async addPatrimoineLigne(listKey, row) {
       await app().PatrimoineService.addPatrimoineLigne(listKey, row);
-      if (typeof fetch !== 'undefined' && listKey !== "loans") {
+      if (typeof fetch !== 'undefined') {
         try {
           let targetRow = row;
           if (!targetRow) {
@@ -261,7 +261,7 @@
      */
     async removePatrimoineLigne(listKey, id) {
       await app().PatrimoineService.removePatrimoineLigne(listKey, id);
-      if (typeof fetch !== 'undefined' && listKey !== "loans") {
+      if (typeof fetch !== 'undefined') {
         try {
           await fetch(API_BASE_URL + '/patrimoine/' + encodeURIComponent(listKey) + '/' + encodeURIComponent(id), {
             method: 'DELETE'
