@@ -5,9 +5,16 @@
   'use strict';
 
   const {
-    useState
+    useState,
+    useEffect,
+    useRef
   } = React;
   const C = exports.C || window.BudgetApp && window.BudgetApp.C || {};
+
+  // Délai (ms) avant qu'une saisie clavier ne soit répercutée au parent (state + sauvegarde /
+  // synchronisation serveur). Évite un appel réseau à chaque frappe sur les champs texte/nombre.
+  const FIELD_DEBOUNCE_MS = 500;
+
   function Field({
     type = "text",
     value,
@@ -17,6 +24,48 @@
     mono,
     placeholder
   }) {
+    // Les champs "select" et "color" déclenchent un choix ponctuel (pas une frappe continue) :
+    // pas besoin de debounce, on répercute immédiatement.
+    const isDebounced = type !== "select" && type !== "color";
+    const [localValue, setLocalValue] = useState(value ?? "");
+    const debounceTimerRef = useRef(null);
+    const isTypingRef = useRef(false);
+
+    // Garde le champ synchronisé si la valeur change depuis l'extérieur (recalcul, undo, sync
+    // multi-onglets...), sauf pendant que l'utilisateur est en train de taper : on ne veut pas
+    // écraser sa saisie en cours.
+    useEffect(() => {
+      if (isDebounced && !isTypingRef.current) {
+        setLocalValue(value ?? "");
+      }
+    }, [value, isDebounced]);
+
+    useEffect(() => {
+      return () => {
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      };
+    }, []);
+
+    function handleDebouncedChange(v) {
+      setLocalValue(v);
+      isTypingRef.current = true;
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        debounceTimerRef.current = null;
+        isTypingRef.current = false;
+        onChange(v);
+      }, FIELD_DEBOUNCE_MS);
+    }
+
+    function flushDebouncedChange() {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+        isTypingRef.current = false;
+        onChange(localValue);
+      }
+    }
+
     const base = {
       width: "100%",
       background: "transparent",
@@ -73,12 +122,14 @@
         }
       }, value || "#2F5D50"));
     }
+    // type "text" / "number" / "date" arrivent ici : saisie debouncée (voir handleDebouncedChange).
     return /*#__PURE__*/React.createElement("input", {
       type: type,
       style: base,
-      value: value ?? "",
+      value: localValue ?? "",
       placeholder: placeholder,
-      onChange: e => onChange(e.target.value)
+      onChange: e => handleDebouncedChange(e.target.value),
+      onBlur: flushDebouncedChange
     });
   }
   function FieldHint({
@@ -201,7 +252,8 @@
     rows,
     onCell,
     onAdd,
-    onRemove
+    onRemove,
+    renderRowActions
   }) {
     return /*#__PURE__*/React.createElement("div", {
       style: {
@@ -240,7 +292,10 @@
       let onChange = v => onCell(row.id, c.key, v);
       if (c.type === "percent") {
         const isUnset = val === undefined || val === null || val === "";
-        val = isUnset ? "" : ((Number(val) || 0) * 100).toFixed(1);
+        // Jusqu'à 3 décimales (ex. taux de crédit à 0,751 %) : on arrondit à une précision fine
+        // pour éviter les artefacts de virgule flottante, puis on retire les zéros superflus
+        // (0.8 reste "0.8", pas "0.800") sans jamais tronquer à 1 seule décimale.
+        val = isUnset ? "" : parseFloat(((Number(val) || 0) * 100).toFixed(3)).toString();
         onChange = v => onCell(row.id, c.key, v === "" || v === null ? null : (parseFloat(v) || 0) / 100);
       }
       return /*#__PURE__*/React.createElement("td", {
@@ -257,11 +312,21 @@
         mono: c.type === "number" || c.type === "percent",
         placeholder: c.placeholder
       }));
-    }), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(IconBtn, {
+    }), /*#__PURE__*/React.createElement("td", {
+      style: {
+        whiteSpace: "nowrap"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-end"
+      }
+    }, renderRowActions && renderRowActions(row), /*#__PURE__*/React.createElement(IconBtn, {
       title: "Supprimer la ligne",
       danger: true,
       onClick: () => onRemove(row.id)
-    }, "✕")))))), /*#__PURE__*/React.createElement("button", {
+    }, "✕"))))))), /*#__PURE__*/React.createElement("button", {
       onClick: onAdd,
       style: {
         marginTop: 12,

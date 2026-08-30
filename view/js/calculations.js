@@ -652,6 +652,57 @@
   }
 
   /* ============================== Projections & Allocations ============================== */
+  /**
+   * Calcule le Capital Restant Dû théorique d'un crédit à une date cible, par simulation
+   * mensuelle de l'amortissement à partir de la dernière valeur saisie (crd) et de sa date
+   * de référence (startDate, "Date CRD"). Réplique exactement la même formule que la
+   * simulation de trajectoire patrimoniale (boucle activeLoans de calculateDetailedFinancialTimeline) :
+   * les deux doivent rester synchronisées si la formule d'amortissement évolue.
+   *
+   * Utilisé par le bouton "Actualiser" du tableau des crédits (Patrimoine) pour recalculer et
+   * écraser le CRD saisi avec sa valeur théorique à aujourd'hui, sans avoir à ressaisir
+   * manuellement l'amortissement d'un prêt (lissé ou non).
+   *
+   * @param {{crd:number, rate:number, monthly:number, insurance:number, startDate:string, endDate?:string}} loan
+   * @param {Date|string} [targetDate] - date jusqu'à laquelle amortir (par défaut : aujourd'hui)
+   * @returns {number} CRD théorique à targetDate, arrondi au centime
+   */
+  function projectLoanCrdToDate(loan, targetDate) {
+    let crd = Number(loan?.crd) || 0;
+    if (crd <= 0) return 0;
+    const rate = Number(loan?.rate) || 0;
+    const monthly = Number(loan?.monthly) || 0;
+    const insurance = Number(loan?.insurance) || 0;
+    if (!loan?.startDate) return Math.round(crd * 100) / 100;
+    const start = new Date(loan.startDate);
+    const target = targetDate ? new Date(targetDate) : new Date();
+    if (isNaN(start.getTime()) || isNaN(target.getTime())) return Math.round(crd * 100) / 100;
+    const end = loan.endDate ? new Date(loan.endDate) : null;
+
+    let y = start.getFullYear();
+    let m = start.getMonth();
+    const targetAbs = target.getFullYear() * 12 + target.getMonth();
+
+    // Un pas par mois, du mois de référence (inclus) jusqu'au mois cible (inclus) : cohérent
+    // avec la boucle de simulation, où le CRD affiché au 1er jour d'un mois reflète déjà le
+    // paiement de ce mois-là.
+    while (crd > 0 && y * 12 + m <= targetAbs) {
+      const monthlyInterest = crd * (rate / 12);
+      const netPayment = Math.max(0, monthly - insurance);
+      const principalPaid = Math.min(crd, netPayment - monthlyInterest);
+      crd = Math.max(0, crd - principalPaid);
+      if (end && (y > end.getFullYear() || y === end.getFullYear() && m >= end.getMonth())) {
+        crd = 0;
+      }
+      m += 1;
+      if (m > 11) {
+        m = 0;
+        y += 1;
+      }
+    }
+    return Math.round(crd * 100) / 100;
+  }
+
   function projectPlacementBalanceAt(p, targetDateISO, rateKey, transfers) {
     const balanceDate = p.balanceDate ? new Date(p.balanceDate) : new Date(targetDateISO);
     const target = new Date(targetDateISO);
@@ -1053,6 +1104,7 @@
   exports.computePivotBalance = computePivotBalance;
   exports.latestTransactionDate = latestTransactionDate;
   exports.calculateDetailedFinancialTimeline = calculateDetailedFinancialTimeline;
+  exports.projectLoanCrdToDate = projectLoanCrdToDate;
   exports.projectPlacementBalanceAt = projectPlacementBalanceAt;
   exports.classifyAllocation = classifyAllocation;
   exports.computeFinancialProjections = computeFinancialProjections;

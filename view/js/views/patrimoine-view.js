@@ -17,8 +17,12 @@
     SectionCard,
     EditableTable,
     Field,
-    FieldHint
+    FieldHint,
+    IconBtn
   } = exports.SectionCard ? exports : window.BudgetApp || {};
+  const {
+    projectLoanCrdToDate
+  } = exports.projectLoanCrdToDate ? exports : window.BudgetApp || {};
   const {
     LineChartJS
   } = exports.LineChartJS ? exports : window.BudgetApp || {};
@@ -860,6 +864,27 @@
         BudgetApi.updatePatrimoineLigne("placements", id, field, value);
       }
     };
+    // Recalcule le CRD théorique d'un crédit (amortissement mensuel depuis sa "Date CRD")
+    // et écrase la saisie avec cette valeur, en réinitialisant la date de référence à
+    // aujourd'hui pour que le prochain clic reparte d'un point d'ancrage correct.
+    const handleRefreshLoanCrd = row => {
+      if (!projectLoanCrdToDate) return;
+      const start = row.startDate ? new Date(row.startDate) : null;
+      if (!start || isNaN(start.getTime())) return;
+      const today = new Date();
+      const startAbs = start.getFullYear() * 12 + start.getMonth();
+      const todayAbs = today.getFullYear() * 12 + today.getMonth();
+      if (startAbs >= todayAbs) {
+        // Tranche pas encore entrée en vigueur (lissage futur) : on ne touche ni au CRD ni à
+        // la Date CRD, pour ne pas casser le déclenchement prévu de cette ligne.
+        window.alert(`Cette ligne démarre le ${row.startDate.split("-").reverse().join("/")}, la date d'aujourd'hui ou une date future : rien à actualiser pour l'instant. La Date CRD n'a pas été modifiée.`);
+        return;
+      }
+      const todayISO = today.toISOString().slice(0, 10);
+      const newCrd = projectLoanCrdToDate(row, today);
+      BudgetApi.updatePatrimoineLigne("loans", row.id, "crd", newCrd);
+      BudgetApi.updatePatrimoineLigne("loans", row.id, "startDate", todayISO);
+    };
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionCard, {
       title: "Évolution du patrimoine — 3 scénarios",
       subtitle: "Somme de tous les placements ci-dessous"
@@ -1003,8 +1028,21 @@
       rows: loans,
       onCell: (id, field, value) => BudgetApi.updatePatrimoineLigne("loans", id, field, value),
       onRemove: id => BudgetApi.removePatrimoineLigne("loans", id),
-      onAdd: () => BudgetApi.addPatrimoineLigne("loans")
-    })), /*#__PURE__*/React.createElement(SectionCard, {
+      onAdd: () => BudgetApi.addPatrimoineLigne("loans"),
+      renderRowActions: row => /*#__PURE__*/React.createElement(IconBtn, {
+        key: "refresh",
+        title: "Recalculer le CRD théorique à aujourd'hui (amortissement depuis la Date CRD) et écraser la saisie",
+        onClick: () => handleRefreshLoanCrd(row)
+      }, "🔄")
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        color: C?.inkSoft || "#6B7278",
+        marginTop: 16,
+        borderTop: `1px solid ${C?.line || "#DED6C4"}`,
+        paddingTop: 12
+      }
+    }, "💡 ", /*#__PURE__*/React.createElement("em", null, "Le CRD saisi ci-dessus est une photo à la \"Date CRD\" indiquée : il n'évolue pas tout seul avec le temps. Cliquez sur 🔄 pour le recalculer par amortissement (capital remboursé déduit de la mensualité nette d'assurance) jusqu'à aujourd'hui et remettre la Date CRD à jour."))), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Actif Immobilier Physique",
       subtitle: "Résidence principale, terrains, nu-propriété — la valorisation annuelle est intégrée au patrimoine net et à la jauge FIRE"
     }, /*#__PURE__*/React.createElement(EditableTable, {
