@@ -114,7 +114,12 @@ public class OverviewServiceImpl implements OverviewApi{
             .map(PlacementModel::getEffectiveBalance)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal fluxNetActuel = projections.cashflow().isEmpty() ? BigDecimal.ZERO : projections.cashflow().get(0).net();
+        int currentCalendarYear = LocalDate.now().getYear();
+        BigDecimal fluxNetActuel = projections.cashflow().stream()
+            .filter(c -> c.year() == currentCalendarYear)
+            .findFirst()
+            .map(CashflowYearModel::net)
+            .orElse(projections.cashflow().isEmpty() ? BigDecimal.ZERO : projections.cashflow().get(0).net());
 
         return new OverviewResultModel(
             data,

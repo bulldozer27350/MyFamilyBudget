@@ -107,7 +107,7 @@ function deps() {
       retireYear,
       pivotBalance: computePivotBalance(data),
       patrimoineActuel: (data?.placements || []).reduce((s, p) => s + (Number(p.balance) || 0), 0),
-      fluxNetActuel: cashflow[0]?.net || 0,
+      fluxNetActuel: ((cashflow || []).find(c => c.year === new Date().getFullYear()) || cashflow[0] || {}).net || 0,
       retireCharges,
       totalPensions,
       retirePatrimoine,
