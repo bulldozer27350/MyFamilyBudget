@@ -647,6 +647,41 @@ class BusinessLogicIntegrationTest {
     }
 
     // =========================================================================
+    // ANALYSE
+    // =========================================================================
+
+    @Test
+    @Order(32)
+    @DisplayName("GET /analyse => retourne 200 avec le champ data et les listes directes et calculées")
+    void testAnalyse_endpoint() throws Exception {
+        importMockBudget();
+        MvcResult res = mockMvc.perform(get("/api/v1/analyse?monthsBack=12").contextPath("/api/v1"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode root = objectMapper.readTree(res.getResponse().getContentAsString());
+        assertThat(root.has("data")).isTrue();
+        assertThat(root.path("data").has("charges")).isTrue();
+        assertThat(root.path("data").has("incomes")).isTrue();
+        assertThat(root.path("data").has("placements")).isTrue();
+        assertThat(root.path("data").has("bankImport")).isTrue();
+        assertThat(root.path("data").has("settings")).isTrue();
+
+        assertThat(root.has("charges")).isTrue();
+        assertThat(root.has("incomes")).isTrue();
+        assertThat(root.has("placements")).isTrue();
+        assertThat(root.has("bankImport")).isTrue();
+        assertThat(root.has("settings")).isTrue();
+
+        assertThat(root.has("kpis")).isTrue();
+        assertThat(root.has("landingData")).isTrue();
+        assertThat(root.has("driftRows")).isTrue();
+        assertThat(root.has("monthlyCompareData")).isTrue();
+        assertThat(root.has("categorySummaries")).isTrue();
+        assertThat(root.has("currentMonthISO")).isTrue();
+    }
+
+    // =========================================================================
     // HELPER
     // =========================================================================
 

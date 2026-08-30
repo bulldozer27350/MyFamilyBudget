@@ -7,8 +7,10 @@ const fs   = require('fs');
 const API   = 'http://localhost:8080/api/v1';
 const FRONT = 'http://localhost:3000';
 
-// Fichier de donnees de test a la racine du projet
-const JSON_DATASET = path.resolve(__dirname, '..', '..', 'budget-familial.json');
+// Fichier de donnees de test a la racine du projet ou dans data/
+const JSON_DATASET = fs.existsSync(path.resolve(__dirname, '..', '..', 'data', 'budget-familial.json'))
+  ? path.resolve(__dirname, '..', '..', 'data', 'budget-familial.json')
+  : path.resolve(__dirname, '..', '..', 'budget-familial.json');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -122,13 +124,23 @@ test.describe('Parametres', () => {
 // 5. Analyse – GET /analyse
 // ---------------------------------------------------------------------------
 test.describe('Analyse', () => {
-  test('charge les donnees via GET /analyse', async ({ page }) => {
+  test('charge les donnees via GET /analyse avec data complet', async ({ page }) => {
     const backendCall = expectBackendCall(page, '/analyse', 'GET');
     await page.goto(FRONT + '/analyse.html');
     await waitForReactMount(page);
 
     const res = await backendCall;
     expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body, 'AnalyseResponseDto doit contenir la propriete data').toHaveProperty('data');
+    expect(body.data, 'data doit contenir charges').toHaveProperty('charges');
+    expect(body.data, 'data doit contenir bankImport').toHaveProperty('bankImport');
+    expect(body.data, 'data doit contenir settings').toHaveProperty('settings');
+    expect(body).toHaveProperty('bankImport');
+    expect(body).toHaveProperty('charges');
+    expect(body).toHaveProperty('kpis');
+
+    await expect(page.locator('#root')).not.toBeEmpty();
   });
 });
 

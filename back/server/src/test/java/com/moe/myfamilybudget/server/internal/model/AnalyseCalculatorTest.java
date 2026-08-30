@@ -65,6 +65,8 @@ class AnalyseCalculatorTest {
         AnalyseResultModel result = AnalyseCalculator.computeAnalyse(data, bankImport, 12);
 
         assertThat(result).isNotNull();
+        assertThat(result.data()).isNotNull();
+        assertThat(result.data().charges()).isNotEmpty();
         assertThat(result.kpis()).isNotNull();
         assertThat(result.landingData()).isNotEmpty();
         assertThat(result.categorySummaries()).isNotEmpty();

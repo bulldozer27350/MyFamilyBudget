@@ -22,12 +22,31 @@ import java.util.stream.Collectors;
 @Component
 public class AnalyseMapper {
 
+    private final OverviewMapper overviewMapper;
+
+    public AnalyseMapper() {
+        this(new OverviewMapper());
+    }
+
+    public AnalyseMapper(OverviewMapper overviewMapper) {
+        this.overviewMapper = overviewMapper;
+    }
+
     public AnalyseResponseDto toDto(AnalyseResultModel model) {
         if (model == null) {
             return new AnalyseResponseDto();
         }
 
         AnalyseResponseDto dto = new AnalyseResponseDto();
+        if (model.data() != null && overviewMapper != null) {
+            var dataDto = overviewMapper.toBudgetDataDto(model.data());
+            dto.setData(dataDto);
+            dto.setBankImport(dataDto.getBankImport());
+            dto.setCharges(dataDto.getCharges());
+            dto.setIncomes(dataDto.getIncomes());
+            dto.setPlacements(dataDto.getPlacements());
+            dto.setSettings(dataDto.getSettings());
+        }
         dto.setKpis(toKpiDto(model.kpis()));
         dto.setLandingData(model.landingData().stream().map(this::toLandingRowDto).collect(Collectors.toList()));
         dto.setDriftRows(model.driftRows().stream().map(this::toDriftRowDto).collect(Collectors.toList()));

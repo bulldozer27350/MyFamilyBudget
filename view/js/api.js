@@ -22,7 +22,7 @@
     ? (window.API_BASE_URL || '/api/v1')
     : (typeof process !== 'undefined' && process?.env?.BACKEND_URL ? process.env.BACKEND_URL : '/api/v1');
 
-  async function safeFetch(url, options = {}, timeoutMs = 800) {
+  async function safeFetch(url, options = {}, timeoutMs = 5000) {
     if (typeof fetch === 'undefined') return null;
     try {
       let controller = null;

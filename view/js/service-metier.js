@@ -1337,7 +1337,7 @@ function deps() {
       }
     } else {
       savedOp = {
-        id: uid ? uid() : `op_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        id: opData.id || (uid ? uid() : `op_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`),
         status: opData.status || "pending",
         linkedTxId: opData.linkedTxId || null,
         clearedDate: opData.clearedDate || null,

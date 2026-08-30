@@ -29,7 +29,9 @@ public final class AnalyseCalculator {
             data = new BudgetDataModel(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         }
         if (bankImport == null) {
-            bankImport = new BankImportModel(null, null, null, null, null, null);
+            bankImport = data.bankImport() != null ? data.bankImport() : new BankImportModel(null, null, null, null, null, null);
+        } else if (data.bankImport() == null) {
+            data = data.withBankImport(bankImport);
         }
 
         int mBack = (monthsBack != null && monthsBack >= 0) ? monthsBack : 12;
@@ -361,6 +363,7 @@ public final class AnalyseCalculator {
         }
 
         return new AnalyseResultModel(
+                data,
                 kpis,
                 landingData,
                 driftRows,

@@ -29,12 +29,13 @@ function isUrlReady(urlStr) {
   });
 }
 
-function spawnProc(cmd, args, cwd, tag) {
+function spawnProc(cmd, args, cwd, tag, extraEnv) {
   const isWin = process.platform === 'win32';
   const proc = spawn(cmd, args, {
     cwd,
     stdio: ['ignore', 'pipe', 'pipe'],
     shell: isWin,
+    env: Object.assign({}, process.env, extraEnv || {}),
   });
   proc.stdout.on('data', d => log(tag, d.toString().trimEnd()));
   proc.stderr.on('data', d => log(tag + ':err', d.toString().trimEnd()));
@@ -102,7 +103,10 @@ function kill(proc) {
     log('setup', 'Frontend server is already running.');
   } else {
     log('setup', 'Starting frontend server...');
-    frontendProc = spawnProc('node', ['server.js'], VIEW_DIR, 'frontend');
+    frontendProc = spawnProc('node', ['server.js'], VIEW_DIR, 'frontend', {
+      TARGET_SPRINGBOOT: 'http://localhost:8080',
+      BACKEND_URL: 'http://localhost:8080/api/v1'
+    });
   }
 
   // 3. Wait for both servers to be ready

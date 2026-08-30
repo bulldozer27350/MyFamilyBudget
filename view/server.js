@@ -6,7 +6,7 @@ const app = express();
 const PORT = 3000;
 
 // === TA CONSTANTE UNIQUE POUR LE SERVEUR NODE ===
-const TARGET_SPRINGBOOT = 'http://172.25.65.15:8080'; // Renseigne ton IP locale ici
+const TARGET_SPRINGBOOT = process.env.TARGET_SPRINGBOOT || 'http://localhost:8080';
 
 const BACKEND_URL = process.env.BACKEND_URL || `${TARGET_SPRINGBOOT}/api/v1`;
 
@@ -28,16 +28,16 @@ const apiPaths = [
 
 apiPaths.forEach(apiPath => {
   app.use(apiPath, createProxyMiddleware({
-    target: BACKEND_URL,
+    target: TARGET_SPRINGBOOT,
     changeOrigin: true,
+    pathRewrite: (p) => '/api/v1' + p,
     logLevel: 'warn'
   }));
 });
 
 app.use('/api/v1', createProxyMiddleware({
-  target: TARGET_SPRINGBOOT, // <- Remplacement du localhost en dur
+  target: TARGET_SPRINGBOOT,
   changeOrigin: true,
-  pathRewrite: { '^/api/v1': '' },
   logLevel: 'warn'
 }));
 

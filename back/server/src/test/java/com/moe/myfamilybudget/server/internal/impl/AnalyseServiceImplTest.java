@@ -36,6 +36,12 @@ class AnalyseServiceImplTest {
         assertNotNull(response.getBody());
 
         AnalyseResponseDto body = response.getBody();
+        assertNotNull(body.getData());
+        assertNotNull(body.getBankImport());
+        assertNotNull(body.getCharges());
+        assertNotNull(body.getIncomes());
+        assertNotNull(body.getPlacements());
+        assertNotNull(body.getSettings());
         assertNotNull(body.getKpis());
         assertNotNull(body.getLandingData());
         assertNotNull(body.getDriftRows());

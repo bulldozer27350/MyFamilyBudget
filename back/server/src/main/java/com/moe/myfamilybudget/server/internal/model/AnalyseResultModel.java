@@ -7,6 +7,7 @@ import java.util.List;
  * Résultat complet de l'analyse Réel vs Prévisionnel
  */
 public record AnalyseResultModel(
+    BudgetDataModel data,
     AnalyseKpiModel kpis,
     List<AnalyseLandingRowModel> landingData,
     List<AnalyseDriftRowModel> driftRows,
@@ -15,6 +16,18 @@ public record AnalyseResultModel(
     String currentMonthISO,
     String currentMonthLabel
 ) {
+    public AnalyseResultModel(
+        AnalyseKpiModel kpis,
+        List<AnalyseLandingRowModel> landingData,
+        List<AnalyseDriftRowModel> driftRows,
+        List<AnalyseMonthlyCompareModel> monthlyCompareData,
+        List<AnalyseCategorySummaryModel> categorySummaries,
+        String currentMonthISO,
+        String currentMonthLabel
+    ) {
+        this(null, kpis, landingData, driftRows, monthlyCompareData, categorySummaries, currentMonthISO, currentMonthLabel);
+    }
+
     public AnalyseResultModel {
         kpis = kpis != null ? kpis : new AnalyseKpiModel(
             BigDecimal.ZERO, BigDecimal.ZERO, 0, 0, BigDecimal.ZERO

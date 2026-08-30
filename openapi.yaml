@@ -1493,6 +1493,24 @@ components:
     AnalyseResponseDto:
       type: object
       properties:
+        data:
+          $ref: '#/components/schemas/BudgetDataDto'
+        bankImport:
+          $ref: '#/components/schemas/BankImportDto'
+        charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChargeDto'
+        incomes:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncomeDto'
+        placements:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlacementDto'
+        settings:
+          $ref: '#/components/schemas/SettingsDto'
         kpis:
           $ref: '#/components/schemas/AnalyseKpiDto'
         landingData:
