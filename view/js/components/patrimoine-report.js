@@ -15,7 +15,8 @@
   } = exports.C ? exports : window.BudgetApp || {};
   const {
     classifyAllocation,
-    projectPlacementBalanceAt
+    projectPlacementBalanceAt,
+    projectLoanCrdToDate
   } = exports.classifyAllocation ? exports : window.BudgetApp || {};
 
   function escapeHtml(str) {
@@ -66,8 +67,9 @@
       allocation
     } = classifyAllocation(data.placements, getBalance, tresorerie, data.assetCategories);
 
+    const crdToday = l => projectLoanCrdToDate ? projectLoanCrdToDate(l, todayISO) : Number(l.crd) || 0;
     const totalPlacements = (data.placements || []).reduce((s, p) => s + getBalance(p), 0);
-    const totalCRD = (data.loans || []).reduce((s, l) => s + (Number(l.crd) || 0), 0);
+    const totalCRD = (data.loans || []).reduce((s, l) => s + crdToday(l), 0);
     const totalImmobilier = (data.realEstate || []).reduce((s, r) => s + (Number(r.currentValue) || 0), 0);
     const patrimoineNet = totalPlacements + totalImmobilier - totalCRD;
 
@@ -86,7 +88,7 @@
 
     const allocationTable = buildTable(["Classe d'actif", "Montant", "Répartition"], allocation.map(a => [a.label, eur(a.amount), `${a.pct.toFixed(1)} %`]));
     const placementTable = buildTable(["Libellé", "Catégorie", "Solde actuel", "Date de référence", "Versement mensuel"], (data.placements || []).map(p => [p.label || "(sans nom)", p.category || "—", eur(getBalance(p)), formatDateFR(p.balanceDate), p.monthly ? `${eur(p.monthly)} / mois` : "—"]));
-    const loanTable = buildTable(["Crédit", "CRD actuel", "Taux (hors assurance)", "Mensualité", "Échéance"], (data.loans || []).map(l => [l.label || "(sans nom)", eur(Number(l.crd) || 0), `${((Number(l.rate) || 0) * 100).toFixed(2)} %`, eur(Number(l.monthly) || 0), formatDateFR(l.endDate)]));
+    const loanTable = buildTable(["Crédit", "CRD actuel", "Taux (hors assurance)", "Mensualité", "Échéance"], (data.loans || []).map(l => [l.label || "(sans nom)", eur(crdToday(l)), `${((Number(l.rate) || 0) * 100).toFixed(2)} %`, eur(Number(l.monthly) || 0), formatDateFR(l.endDate)]));
     const realEstateTable = buildTable(["Bien", "Type", "Valeur estimée", "Année d'estimation", "Revalorisation"], (data.realEstate || []).map(r => [r.label || "(sans nom)", r.type || "—", eur(Number(r.currentValue) || 0), r.valuationYear || "—", `+${((Number(r.annualGrowthRate) || 0) * 100).toFixed(1)} % / an`]));
 
     return `<!DOCTYPE html>

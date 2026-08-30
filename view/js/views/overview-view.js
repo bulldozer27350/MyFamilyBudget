@@ -16,6 +16,7 @@
   const {
     calculateDetailedFinancialTimeline,
     projectPlacementBalanceAt,
+    projectLoanCrdToDate,
     classifyAllocation
   } = exports.calculateDetailedFinancialTimeline ? exports : window.BudgetApp || {};
   const {
@@ -697,7 +698,12 @@
   }) {
     const activeLoans = data?.loans || [];
     if (activeLoans.length === 0) return null;
-    const totalCRDInitial = activeLoans.reduce((sum, l) => sum + (Number(l.crd) || 0), 0);
+    // CRD affiché ici = CRD théorique amorti jusqu'à aujourd'hui depuis la "Date CRD" de
+    // référence saisie sur la page Patrimoine (jamais l.crd brut, qui reste figé à cette
+    // date de référence tant qu'on ne l'a pas ressaisi manuellement).
+    const today = new Date();
+    const crdToday = l => projectLoanCrdToDate ? projectLoanCrdToDate(l, today) : Number(l.crd) || 0;
+    const totalCRDInitial = activeLoans.reduce((sum, l) => sum + crdToday(l), 0);
     return /*#__PURE__*/React.createElement("div", {
       style: {
         background: C?.panel || "#FFFFFF",
@@ -784,7 +790,7 @@
       style: {
         fontFamily: "'IBM Plex Mono', monospace"
       }
-    }, eur(Number(l.crd) || 0)))), /*#__PURE__*/React.createElement("div", {
+    }, eur(crdToday(l))))), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11.5,
         color: C?.inkSoft || "#6B7278",
