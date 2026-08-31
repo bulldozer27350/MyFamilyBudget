@@ -1580,6 +1580,12 @@ components:
           type: string
           enum: [match, pending, economy, over]
           description: Statut de la ligne
+        pendingContrib:
+          type: number
+          description: Part du montant réel provenant d'opérations en attente (pending, non rapprochées)
+        hasPendingContrib:
+          type: boolean
+          description: Indique si le montant réel inclut une contribution d'opérations en attente
 
     AnalyseDriftRowDto:
       type: object

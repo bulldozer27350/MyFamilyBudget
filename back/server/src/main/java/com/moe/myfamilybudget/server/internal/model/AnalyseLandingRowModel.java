@@ -12,12 +12,15 @@ public record AnalyseLandingRowModel(
     BigDecimal budgeted,
     BigDecimal reel,
     BigDecimal pct,
-    String status
+    String status,
+    BigDecimal pendingContrib,
+    boolean hasPendingContrib
 ) {
     public AnalyseLandingRowModel {
         budgeted = budgeted != null ? budgeted : BigDecimal.ZERO;
         reel = reel != null ? reel : BigDecimal.ZERO;
         pct = pct != null ? pct : BigDecimal.ZERO;
         status = status != null ? status : "pending";
+        pendingContrib = pendingContrib != null ? pendingContrib : BigDecimal.ZERO;
     }
 }

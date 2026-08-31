@@ -78,6 +78,8 @@ public class AnalyseMapper {
         dto.setReel(model.reel());
         dto.setPct(model.pct());
         dto.setStatus(AnalyseLandingRowDto.StatusEnum.fromValue(model.status()));
+        dto.setPendingContrib(model.pendingContrib());
+        dto.setHasPendingContrib(model.hasPendingContrib());
         return dto;
     }
 

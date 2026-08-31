@@ -207,10 +207,11 @@
     const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
     const [apiData, setApiData] = useState(null);
     const [loading, setLoading] = useState(!data);
+    const [monthsBack, setMonthsBack] = useState(12);
 
-    const loadDataFromApi = () => {
+    const loadDataFromApi = (currentMonthsBack) => {
       if (api && api.getAnalyse) {
-        api.getAnalyse().then(res => {
+        api.getAnalyse(currentMonthsBack).then(res => {
           setApiData(res);
           setLoading(false);
         }).catch(err => {
@@ -232,21 +233,37 @@
     };
 
     useEffect(() => {
-      loadDataFromApi();
+      loadDataFromApi(monthsBack);
       if (api && api.onAnalyseChanged) {
         const unsub = api.onAnalyseChanged(() => {
-          loadDataFromApi();
+          loadDataFromApi(monthsBack);
         });
         return () => unsub && unsub();
       }
-    }, []);
+      // Se recharge quand la période sélectionnée change, pour que le serveur
+      // recalcule kpis / landingData / driftRows / monthlyCompareData / categorySummaries
+      // sur la bonne fenêtre temporelle (le sélecteur "monthsBack" pilote /api/v1/analyse).
+    }, [monthsBack]);
+
+    /**
+     * Vérifie que la réponse serveur contient bien les agrégats calculés par
+     * AnalyseCalculator.java (et pas seulement les données brutes retournées
+     * par le fallback JS local AnalyseService.buildAnalyse(), qui ne les fournit pas).
+     * Un tableau vide reste valide (absence de données ≠ réponse incomplète).
+     */
+    const isServerAnalyseComplete = ad => !!ad && ad.kpis && typeof ad.kpis === "object" && Array.isArray(ad.landingData) && Array.isArray(ad.driftRows) && Array.isArray(ad.monthlyCompareData) && Array.isArray(ad.categorySummaries);
+    const serverDataValid = isServerAnalyseComplete(apiData);
+    useEffect(() => {
+      if (apiData && !serverDataValid) {
+        console.warn("[AnalyseView] Réponse /api/v1/analyse incomplète ou issue du fallback JS local (kpis/landingData/driftRows/monthlyCompareData/categorySummaries manquants) : recalcul local JS utilisé pour les 4 onglets historiques.", apiData);
+      }
+    }, [apiData, serverDataValid]);
 
     const rawData = apiData?.data || data;
     const transactions = rawData?.bankImport?.transactions || [];
     const categories = rawData?.bankImport?.categories || [];
     const matchings = rawData?.bankImport?.matchings || [];
     const pendingOperations = apiData?.pendingOperations || rawData?.bankImport?.pendingOperations || [];
-    const [monthsBack, setMonthsBack] = useState(12);
     const [driftSortKey, setDriftSortKey] = useState("ecart");
     const [driftSortDir, setDriftSortDir] = useState(-1);
     const [driftSearch, setDriftSearch] = useState("");
@@ -287,7 +304,7 @@
       return tx ? Number(tx.amount) || 0 : 0;
     };
 
-    const byCategory = useMemo(() => {
+    const localByCategory = useMemo(() => {
       const map = {};
       periodTx.forEach(t => {
         if (t.splits && t.splits.length > 0) {
@@ -310,8 +327,8 @@
         color: amount < 0 ? C?.pine || "#2F5D50" : label === "Non catégorisé" ? C?.inkSoft || "#6B7278" : C?.brick || "#A8503C"
       })).filter(item => Math.abs(item.amount) > 0.01).sort((a, b) => b.amount - a.amount);
     }, [periodTx, categories]);
-    const totalExpenses = useMemo(() => byCategory.reduce((s, c) => s + c.amount, 0), [byCategory]);
-    const totalIncome = useMemo(() => {
+    const localTotalExpenses = useMemo(() => localByCategory.reduce((s, c) => s + c.amount, 0), [localByCategory]);
+    const localTotalIncome = useMemo(() => {
       return periodTx.reduce((s, t) => {
         if (t.splits && t.splits.length > 0) {
           return s + t.splits.reduce((subS, split) => {
@@ -331,9 +348,9 @@
         return s;
       }, 0);
     }, [periodTx, categories]);
-    const nbMonths = Math.max(1, monthsBack || 1);
-    const uncategorized = periodTx.filter(t => !t.categoryId && (!t.splits || t.splits.length === 0)).length;
-    const compressibleTotal = useMemo(() => {
+    const localNbMonths = Math.max(1, monthsBack || 1);
+    const localUncategorized = periodTx.filter(t => !t.categoryId && (!t.splits || t.splits.length === 0)).length;
+    const localCompressibleTotal = useMemo(() => {
       const compressibleIds = new Set(categories.filter(c => c.compressible === "Oui").map(c => c.id));
       return periodTx.reduce((s, t) => {
         if (t.splits && t.splits.length > 0) {
@@ -346,6 +363,14 @@
         return s;
       }, 0);
     }, [periodTx, categories]);
+    // Priorité aux agrégats calculés par AnalyseCalculator.java (apiData.kpis / categorySummaries)
+    // quand la réponse serveur est complète ; recalcul JS local en secours sinon (cf. isServerAnalyseComplete).
+    const byCategory = serverDataValid ? apiData.categorySummaries : localByCategory;
+    const totalExpenses = serverDataValid ? Number(apiData.kpis.totalExpenses) || 0 : localTotalExpenses;
+    const totalIncome = serverDataValid ? Number(apiData.kpis.totalIncome) || 0 : localTotalIncome;
+    const nbMonths = serverDataValid ? Math.max(1, Number(apiData.kpis.nbMonths) || 1) : localNbMonths;
+    const uncategorized = serverDataValid ? Number(apiData.kpis.uncategorizedCount) || 0 : localUncategorized;
+    const compressibleTotal = serverDataValid ? Number(apiData.kpis.compressibleTotal) || 0 : localCompressibleTotal;
     const currentMonthISO = useMemo(() => {
       const n = new Date();
       return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
@@ -357,7 +382,7 @@
         year: "numeric"
       });
     }, [currentMonthISO]);
-    const landingData = useMemo(() => {
+    const localLandingData = useMemo(() => {
       const inflationRate = Number(rawData?.settings?.inflationRate) || 0.02;
       const currentYear = new Date().getFullYear();
       const currentMatching = matchings.find(m => m.month === currentMonthISO) || {
@@ -410,9 +435,12 @@
       (rawData?.placements || []).forEach(p => processLine(p, "placement"));
       return rows.sort((a, b) => b.budgeted - a.budgeted);
     }, [rawData, matchings, transactions, pendingOperations, currentMonthISO]);
+    // apiData.landingData (AnalyseLandingRowDto) porte déjà id/label/kind/budgeted/reel/pct/status/
+    // pendingContrib/hasPendingContrib : mêmes clés que les lignes calculées en JS, pas de remapping.
+    const landingData = serverDataValid ? apiData.landingData : localLandingData;
     const landingTotalBudget = landingData.reduce((s, r) => s + r.budgeted, 0);
     const landingTotalReel = landingData.reduce((s, r) => s + r.reel, 0);
-    const monthlyCompareData = useMemo(() => {
+    const localMonthlyCompareData = useMemo(() => {
       const inflationRate = Number(rawData?.settings?.inflationRate) || 0.02;
       const txById = {};
       transactions.forEach(t => {
@@ -484,6 +512,10 @@
         };
       });
     }, [rawData, matchings, transactions, pendingOperations, monthsBack]);
+    // apiData.monthlyCompareData (AnalyseMonthlyCompareDto) : monthISO/label/budgeted/reel/hasPointing,
+    // seuls champs effectivement lus par le rendu (ecart/status sont recalculés localement dans le tableau
+    // et le graphique à partir de budgeted/reel/hasPointing, identiquement des deux côtés).
+    const monthlyCompareData = serverDataValid ? apiData.monthlyCompareData : localMonthlyCompareData;
     const barChartRef = useRef(null);
     const barCanvasRef = useRef(null);
     useEffect(() => {
@@ -562,7 +594,7 @@
         if (barChartRef.current) barChartRef.current.destroy();
       };
     }, [monthlyCompareData, activeTab]);
-    const driftRows = useMemo(() => {
+    const localDriftRows = useMemo(() => {
       const calcAvgs = exports.computeRealAverages || window.BudgetApp && window.BudgetApp.computeRealAverages || computeRealAverages;
       const realAvgs = calcAvgs(rawData);
       const inflationRate = Number(rawData?.settings?.inflationRate) || 0.02;
@@ -602,6 +634,9 @@
       (rawData?.placements || []).forEach(p => addLine(p, "placement"));
       return rows;
     }, [rawData]);
+    // apiData.driftRows (AnalyseDriftRowDto) : id/label/kind/budgeted/avg3m/avg12m/ecart/ecartPct/status/months,
+    // structure identique aux lignes calculées en JS.
+    const driftRows = serverDataValid ? apiData.driftRows : localDriftRows;
     const displayDriftRows = useMemo(() => {
       let r = driftRows;
       if (driftSearch.trim()) {

@@ -841,14 +841,8 @@
      * @returns {Promise<Object>}
      */
     async getAnalyse(monthsBack) {
-      if (typeof fetch !== 'undefined') {
-        try {
-          const query = monthsBack !== undefined && monthsBack !== null ? '?monthsBack=' + monthsBack : '';
-          const res = await fetch(API_BASE_URL + '/analyse' + query);
-          if (res.ok) return await res.json();
-        } catch (e) {}
-      }
-      return Promise.resolve(app().AnalyseService.buildAnalyse());
+      const query = monthsBack !== undefined && monthsBack !== null ? '?monthsBack=' + monthsBack : '';
+      return fetchJsonOrFallback('/analyse', () => app().AnalyseService.buildAnalyse(), query);
     },
 
     /**

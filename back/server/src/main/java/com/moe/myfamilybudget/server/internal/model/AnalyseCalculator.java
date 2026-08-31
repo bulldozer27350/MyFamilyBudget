@@ -254,7 +254,9 @@ public final class AnalyseCalculator {
                     budgeted.setScale(2, RoundingMode.HALF_UP),
                     reel.setScale(2, RoundingMode.HALF_UP),
                     pct.setScale(2, RoundingMode.HALF_UP),
-                    status
+                    status,
+                    pendingContrib.setScale(2, RoundingMode.HALF_UP),
+                    pendingContrib.compareTo(BigDecimal.ZERO) > 0
             ));
         }
         landingData.sort((a, b) -> b.budgeted().compareTo(a.budgeted()));
