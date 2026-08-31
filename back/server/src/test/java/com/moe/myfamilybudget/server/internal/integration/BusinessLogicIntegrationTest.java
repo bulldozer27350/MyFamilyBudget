@@ -681,6 +681,99 @@ class BusinessLogicIntegrationTest {
         assertThat(root.has("currentMonthISO")).isTrue();
     }
 
+    @Test
+    @Order(33)
+    @DisplayName("POST /budget/import avec transactions, catégories et matchings => GET /analyse préserve les catégories et calcule les KPIs")
+    void testAnalyseWithRealTransactions() throws Exception {
+        String budgetWithTxs = """
+        {
+          "settings": {
+            "birthYear": 1990, "retireAge": 64, "simulateUntilAge": 85,
+            "inflationRate": 0.02, "pivotDate": "2026-01-01", "pivotMode": "manual",
+            "startBalance": 5000, "childExitAge": 21, "taxAbattement": 0,
+            "pass2026": 47100, "passGrowthRate": 0.015
+          },
+          "charges": [
+            { "id": "chg_loyer", "label": "Loyer", "monthly": 800, "start": "2026-01-01", "end": "2050-12-31", "growthRate": 0, "categoryId": "cat_loyer" },
+            { "id": "chg_courses", "label": "Courses", "monthly": 400, "start": "2026-01-01", "end": "2050-12-31", "growthRate": 0, "categoryId": "cat_courses" }
+          ],
+          "incomes": [
+            { "id": "inc_salaire", "label": "Salaire", "monthly": 2500, "start": "2026-01-01", "end": "2050-12-31", "growthRate": 0, "categoryId": "cat_salaire" }
+          ],
+          "placements": [], "realEstate": [], "taxChildren": [], "taxBrackets": [],
+          "taxRateOverrides": [], "taxActualOverrides": [], "oneoff": [], "transfers": [],
+          "variableIncomes": [], "variableOverrides": [], "assetCategories": [],
+          "bankImport": {
+            "categories": [
+              { "id": "cat_loyer", "label": "Logement", "kind": "Dépense", "compressible": "Non" },
+              { "id": "cat_courses", "label": "Alimentation", "kind": "Dépense", "compressible": "Non" },
+              { "id": "cat_salaire", "label": "Revenus", "kind": "Revenu", "compressible": "Non" }
+            ],
+            "transactions": [
+              { "id": "tx_1", "date": "2026-08-05", "label": "Paiement Loyer", "type": "VIR", "amount": -800, "categoryId": "cat_loyer" },
+              { "id": "tx_2", "date": "2026-08-10", "label": "Supermarché", "type": "CB", "amount": -150, "categoryId": "cat_courses" },
+              { "id": "tx_3", "date": "2026-08-28", "label": "Virement Employeur", "type": "VIR", "amount": 2500, "categoryId": "cat_salaire" }
+            ],
+            "matchings": [
+              { "month": "2026-08", "links": [
+                { "budgetLineId": "chg_loyer", "txIds": ["tx_1"] },
+                { "budgetLineId": "chg_courses", "txIds": ["tx_2"] }
+              ]}
+            ],
+            "pendingOperations": [
+              { "id": "pop_1", "date": "2026-08-20", "label": "Courses Drive", "amount": -80, "type": "cb", "categoryId": "cat_courses", "status": "pending", "budgetLineId": "chg_courses" }
+            ]
+          }
+        }
+        """;
+
+        mockMvc.perform(post("/api/v1/budget/import")
+                .contextPath("/api/v1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(budgetWithTxs))
+                .andExpect(status().isOk());
+
+        MvcResult res = mockMvc.perform(get("/api/v1/analyse?monthsBack=12").contextPath("/api/v1"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode root = objectMapper.readTree(res.getResponse().getContentAsString());
+        // Vérifier que data.bankImport.transactions contient bien les catégories et types
+        JsonNode txs = root.path("data").path("bankImport").path("transactions");
+        assertThat(txs.size()).isEqualTo(3);
+        assertThat(txs.get(0).path("categoryId").asText()).isEqualTo("cat_loyer");
+        assertThat(txs.get(0).path("type").asText()).isEqualTo("VIR");
+        assertThat(txs.get(1).path("categoryId").asText()).isEqualTo("cat_courses");
+
+        // Vérifier pendingOperations et budgetLineId
+        JsonNode pendingOps = root.path("data").path("bankImport").path("pendingOperations");
+        assertThat(pendingOps.size()).isEqualTo(1);
+        assertThat(pendingOps.get(0).path("budgetLineId").asText()).isEqualTo("chg_courses");
+
+        // Vérifier categorySummaries
+        JsonNode summaries = root.path("categorySummaries");
+        assertThat(summaries.size()).isGreaterThanOrEqualTo(2);
+
+        // Vérifier KPIs
+        JsonNode kpis = root.path("kpis");
+        assertThat(kpis.path("totalExpenses").asDouble()).isEqualTo(950.0); // 800 + 150
+        assertThat(kpis.path("totalIncome").asDouble()).isEqualTo(2500.0);
+
+        // Vérifier landingData (2 charges + 1 revenu = 3 lignes)
+        JsonNode landing = root.path("landingData");
+        assertThat(landing.size()).isEqualTo(3);
+        // courses = 150 (pointé) + 80 (pending) = 230
+        JsonNode coursesLanding = null;
+        for (JsonNode row : landing) {
+            if ("chg_courses".equals(row.path("id").asText())) {
+                coursesLanding = row;
+                break;
+            }
+        }
+        assertThat(coursesLanding).isNotNull();
+        assertThat(coursesLanding.path("reel").asDouble()).isEqualTo(230.0);
+    }
+
     // =========================================================================
     // HELPER
     // =========================================================================

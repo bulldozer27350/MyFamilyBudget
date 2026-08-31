@@ -71,6 +71,7 @@
       transactions: data?.bankImport?.transactions || [],
       categories: data?.bankImport?.categories || [],
       matchings: data?.bankImport?.matchings || [],
+      pendingOperations: data?.bankImport?.pendingOperations || [],
       charges: data?.charges || [],
       incomes: data?.incomes || [],
       placements: data?.placements || [],
@@ -96,6 +97,7 @@
     const transactions = sourceData.transactions || [];
     const categories = sourceData.categories || [];
     const matchings = sourceData.matchings || [];
+    const pendingOperations = sourceData.pendingOperations || [];
 
     // Lignes de budget actives ce mois
     const budgetLines = useMemo(() => {
@@ -499,6 +501,10 @@
       });
       return result.sort((a, b) => a.date < b.date ? -1 : 1);
     }, [monthTxs, pointedTxIds, panelSearch, panelCategoryFilter, panelLine, categories]);
+    const linePendingOps = useMemo(() => {
+      if (!panelLine) return [];
+      return pendingOperations.filter(op => op.budgetLineId === panelLine.id && op.status === "pending" && (!op.date || op.date.slice(0, 7) === monthISO));
+    }, [pendingOperations, panelLine, monthISO]);
     const headerStyle = key => ({
       padding: "9px 10px",
       textAlign: "left",
@@ -1145,7 +1151,51 @@
         padding: "0 2px"
       },
       title: "Dissocier"
-    }, "✕"))))), /*#__PURE__*/React.createElement("div", {
+    }, "✕"))))), linePendingOps.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "10px 14px",
+        borderBottom: `1px solid ${C?.line || "#DED6C4"}`,
+        background: "#FFFBEB"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        fontWeight: 700,
+        color: "#D97706",
+        marginBottom: 6
+      }
+    }, "⏳ Opérations en cours (pending) associées :"), linePendingOps.map(op => /*#__PURE__*/React.createElement("div", {
+      key: op.id,
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        fontSize: 11.5,
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        flex: 1,
+        marginRight: 6
+      },
+      title: op.label
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C?.inkSoft || "#6B7278",
+        fontFamily: "'IBM Plex Mono', monospace",
+        marginRight: 4
+      }
+    }, op.date?.slice(5) || ""), op.label.slice(0, 28), op.label.length > 28 ? "…" : ""), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontWeight: 700,
+        color: (Number(op.amount) || 0) < 0 ? C?.brick || "#A8503C" : C?.pine || "#2F5D50",
+        fontSize: 12
+      }
+    }, eurExact(op.amount))))), /*#__PURE__*/React.createElement("div", {
       style: {
         padding: "10px 14px",
         borderBottom: `1px solid ${C?.line || "#DED6C4"}`

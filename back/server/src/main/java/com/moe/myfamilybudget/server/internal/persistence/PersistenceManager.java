@@ -144,7 +144,8 @@ public class PersistenceManager {
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @PostConstruct
     public void init() {
@@ -256,7 +257,7 @@ public class PersistenceManager {
             try {
                 return objectMapper.readValue(biEntity.get().getJsonData(), BankImportModel.class);
             } catch (Exception e) {
-                // Fallback
+                org.slf4j.LoggerFactory.getLogger(PersistenceManager.class).error("Erreur lors de la lecture de BankImport depuis la base: ", e);
             }
         }
         return null;
@@ -272,7 +273,7 @@ public class PersistenceManager {
                 biEntity.setBudgetData(budgetData);
                 bankImportRepository.save(biEntity);
             } catch (Exception e) {
-                // Fallback
+                org.slf4j.LoggerFactory.getLogger(PersistenceManager.class).error("Erreur lors de la sauvegarde de BankImport dans la base: ", e);
             }
         }
     }

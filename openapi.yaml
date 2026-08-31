@@ -1177,6 +1177,8 @@ components:
           type: string
         notes:
           type: string
+        budgetLineId:
+          type: string
         splits:
           type: array
           items:

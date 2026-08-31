@@ -185,6 +185,10 @@ public final class AnalyseCalculator {
             }
         }
 
+        List<BankImportModel.PendingOperationModel> allPendingOps = bankImport.pendingOperations() != null
+                ? bankImport.pendingOperations()
+                : Collections.emptyList();
+
         List<AnalyseLandingRowModel> landingData = new ArrayList<>();
         for (PointageBudgetLineModel line : activeLines) {
             BigDecimal budgeted = line.monthly() != null ? line.monthly() : BigDecimal.ZERO;
@@ -202,6 +206,22 @@ public final class AnalyseCalculator {
                 }
             }
 
+            BigDecimal pendingContrib = BigDecimal.ZERO;
+            for (BankImportModel.PendingOperationModel op : allPendingOps) {
+                if ("pending".equalsIgnoreCase(op.status()) && line.id().equals(op.budgetLineId())) {
+                    String opDate = op.date() != null ? op.date() : "";
+                    if (opDate.isBlank() || opDate.startsWith(currentMonthISO)) {
+                        BigDecimal amt = op.amount() != null ? op.amount() : BigDecimal.ZERO;
+                        if ("revenu".equals(line.kind())) {
+                            pendingContrib = pendingContrib.add(amt.max(BigDecimal.ZERO));
+                        } else {
+                            pendingContrib = pendingContrib.add(amt.abs());
+                        }
+                    }
+                }
+            }
+            reel = reel.add(pendingContrib);
+
             BigDecimal pct = BigDecimal.ZERO;
             if (budgeted.compareTo(BigDecimal.ZERO) > 0) {
                 pct = reel.divide(budgeted, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
@@ -214,7 +234,8 @@ public final class AnalyseCalculator {
             BigDecimal tolerance = budgeted.multiply(new BigDecimal("0.02")).max(BigDecimal.ONE);
 
             String status;
-            if (!txIds.isEmpty()) {
+            boolean hasData = !txIds.isEmpty() || pendingContrib.compareTo(BigDecimal.ZERO) > 0;
+            if (hasData) {
                 if (diff.compareTo(tolerance) <= 0) {
                     status = "match";
                 } else if ("revenu".equals(line.kind()) || "placement".equals(line.kind())) {
@@ -300,6 +321,26 @@ public final class AnalyseCalculator {
                         }
                     }
                 }
+            }
+
+            BigDecimal pendingContrib = BigDecimal.ZERO;
+            for (BankImportModel.PendingOperationModel op : allPendingOps) {
+                if ("pending".equalsIgnoreCase(op.status()) && op.budgetLineId() != null && !op.budgetLineId().isBlank()) {
+                    String opDate = op.date() != null ? op.date() : "";
+                    if (opDate.startsWith(monthISO)) {
+                        String kind = lineKindMap.getOrDefault(op.budgetLineId(), "charge");
+                        BigDecimal amt = op.amount() != null ? op.amount() : BigDecimal.ZERO;
+                        if ("revenu".equals(kind)) {
+                            pendingContrib = pendingContrib.add(amt.max(BigDecimal.ZERO));
+                        } else {
+                            pendingContrib = pendingContrib.add(amt.abs());
+                        }
+                    }
+                }
+            }
+            reel = reel.add(pendingContrib);
+            if (pendingContrib.compareTo(BigDecimal.ZERO) > 0) {
+                hasPointing = true;
             }
 
             String label = ym.format(DateTimeFormatter.ofPattern("MMM yy", Locale.FRENCH));

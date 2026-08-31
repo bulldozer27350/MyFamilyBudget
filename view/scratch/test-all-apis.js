@@ -195,6 +195,37 @@ const { BudgetApi } = sandbox.window.BudgetApp;
   }
   console.log("✓ Import Pending CB & Merge (status pending) OK");
 
+  console.log("Testing BudgetApi budgetLineId assignment, propagation, and Analyse integration...");
+  // 1. Enregistrer une charge
+  await BudgetApi.addTresorerieLigne("charges", { id: "chg_test_loyer", label: "Loyer Test", monthly: 800, kind: "charge" });
+  
+  // 2. Créer une pending avec budgetLineId
+  const pendingOpWithBudget = await BudgetApi.savePendingOperation({
+    date: "2026-06-05",
+    type: "cheque",
+    refNumber: "CHQ-999",
+    label: "Chèque Loyer Juin",
+    amount: -800.00,
+    categoryId: "cat_logement",
+    budgetLineId: "chg_test_loyer"
+  });
+  if (pendingOpWithBudget.budgetLineId !== "chg_test_loyer") {
+    throw new Error("Expected budgetLineId 'chg_test_loyer' on saved pending op");
+  }
+
+  // 3. Link pending operation to a bank transaction -> should auto-propagate to matchings
+  await BudgetApi.linkPendingOperation(pendingOpWithBudget.id, "tx_bank_loyer_123", "2026-06-10");
+  const pointageAfterLink = await BudgetApi.getPointage();
+  const juneMatching = (pointageAfterLink.matchings || []).find(m => m.month === "2026-06");
+  if (!juneMatching) {
+    throw new Error("Expected matchings entry for 2026-06 after linkPendingOperation with budgetLineId");
+  }
+  const loyerLink = (juneMatching.links || []).find(l => l.budgetLineId === "chg_test_loyer");
+  if (!loyerLink || !loyerLink.txIds.includes("tx_bank_loyer_123")) {
+    throw new Error("Expected automatic propagation of tx_bank_loyer_123 into matchings for chg_test_loyer");
+  }
+  console.log("✓ Budget line assignment & Auto-propagation to Pointage Matchings OK");
+
   console.log("Testing BudgetApi.getBudgetFull & importJSON & resetData...");
   const fullBudget = await BudgetApi.getBudgetFull();
   if (!fullBudget || !fullBudget.settings) {

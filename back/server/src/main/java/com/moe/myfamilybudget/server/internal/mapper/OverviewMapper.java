@@ -601,7 +601,15 @@ public class OverviewMapper {
         if (dto == null)
             return null;
         List<BankImportModel.BankTransactionModel> txs = dto.getTransactions() != null ? dto.getTransactions().stream()
-                .map(t -> new BankImportModel.BankTransactionModel(t.getId(), t.getDate(), t.getLabel(), t.getAmount()))
+                .map(t -> new BankImportModel.BankTransactionModel(
+                        t.getId(),
+                        t.getDate(),
+                        t.getLabel(),
+                        t.getType(),
+                        t.getAmount(),
+                        t.getCategoryId(),
+                        t.getSplits() != null ? t.getSplits().stream().map(s -> new BankImportModel.BankTransactionSplitModel(s.getId(), s.getCategoryId(), s.getAmount(), s.getLabel())).collect(Collectors.toList()) : List.of()
+                ))
                 .collect(Collectors.toList()) : List.of();
         List<BankImportModel.CategoryModel> categories = dto.getCategories() != null ? dto.getCategories().stream()
                 .map(c -> new BankImportModel.CategoryModel(c.getId(), c.getLabel(),
@@ -615,10 +623,13 @@ public class OverviewMapper {
                                 .collect(Collectors.toList()) : List.of()))
                 .collect(Collectors.toList()) : List.of();
         List<BankImportModel.PendingOperationModel> pendingOperations = dto.getPendingOperations() != null ? dto.getPendingOperations().stream()
-                .map(p -> new BankImportModel.PendingOperationModel(p.getId(), p.getDate(), p.getExpectedDate(),
+                .map(p -> new BankImportModel.PendingOperationModel(
+                        p.getId(), p.getDate(), p.getExpectedDate(),
                         p.getType(), p.getRefNumber(), p.getLabel(), p.getAmount(), p.getCategoryId(),
                         p.getStatus(), p.getLinkedTxId(), p.getClearedDate(), p.getNotes(),
-                        p.getSplits() != null ? p.getSplits().stream().map(s -> new BankImportModel.BankTransactionSplitModel(s.getId(), s.getCategoryId(), s.getAmount(), s.getLabel())).collect(Collectors.toList()) : List.of()))
+                        p.getSplits() != null ? p.getSplits().stream().map(s -> new BankImportModel.BankTransactionSplitModel(s.getId(), s.getCategoryId(), s.getAmount(), s.getLabel())).collect(Collectors.toList()) : List.of(),
+                        p.getBudgetLineId()
+                ))
                 .collect(Collectors.toList()) : List.of();
         List<BankImportModel.BankImportRuleModel> rules = dto.getRules() != null ? dto.getRules().stream()
                 .map(r -> new BankImportModel.BankImportRuleModel(r.getId(), r.getMatchText(), r.getCategoryId()))
@@ -639,7 +650,21 @@ public class OverviewMapper {
             dto.setId(t.id());
             dto.setDate(t.date());
             dto.setLabel(t.label());
+            dto.setType(t.type());
             dto.setAmount(t.amount());
+            dto.setCategoryId(t.categoryId());
+            if (t.splits() != null && !t.splits().isEmpty()) {
+                dto.setSplits(t.splits().stream().map(s -> {
+                    BankTransactionSplitDto sdto = new BankTransactionSplitDto();
+                    sdto.setId(s.id());
+                    sdto.setCategoryId(s.categoryId());
+                    sdto.setAmount(s.amount());
+                    sdto.setLabel(s.label());
+                    return sdto;
+                }).collect(Collectors.toList()));
+            } else {
+                dto.setSplits(List.of());
+            }
             return dto;
         }).collect(Collectors.toList()) : List.of();
         List<BankImportCategoryDto> categories = m.categories() != null ? m.categories().stream().map(c -> {
@@ -675,6 +700,7 @@ public class OverviewMapper {
             dto.setLinkedTxId(p.linkedTxId());
             dto.setClearedDate(p.clearedDate());
             dto.setNotes(p.notes());
+            dto.setBudgetLineId(p.budgetLineId());
             if (p.splits() != null && !p.splits().isEmpty()) {
                 dto.setSplits(p.splits().stream().map(s -> {
                     BankTransactionSplitDto sdto = new BankTransactionSplitDto();

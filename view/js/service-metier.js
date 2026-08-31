@@ -1389,6 +1389,7 @@ function deps() {
    * Lie manuellement une opération en cours avec une transaction bancaire (rapprochement).
    * Si l'opération en cours possède des ventilations (splits), elles sont transférées
    * et ajustées sur la transaction bancaire réelle.
+   * Si l'opération possède un budgetLineId, il est automatiquement propagé dans les matchings.
    */
   function linkPendingOperation(opId, txId, txDate) {
     const currentData = loadFullData();
@@ -1445,9 +1446,22 @@ function deps() {
       }
     }
 
+    // Propagation automatique du budgetLineId dans les matchings de pointage
+    if (linked && linked.budgetLineId && txId && txDate) {
+      const monthISO = String(txDate).slice(0, 7);
+      if (!currentData.bankImport.matchings) currentData.bankImport.matchings = [];
+      const others = currentData.bankImport.matchings.filter(m => m.month !== monthISO);
+      const existing = currentData.bankImport.matchings.find(m => m.month === monthISO) || { month: monthISO, links: [] };
+      const otherLinks = (existing.links || []).filter(l => l.budgetLineId !== linked.budgetLineId);
+      const thisLink = (existing.links || []).find(l => l.budgetLineId === linked.budgetLineId) || { budgetLineId: linked.budgetLineId, txIds: [] };
+      const updatedLink = { ...thisLink, txIds: [...(thisLink.txIds || []).filter(id => id !== txId), txId] };
+      currentData.bankImport.matchings = [...others, { ...existing, links: [...otherLinks, updatedLink] }];
+    }
+
     saveFullData(currentData);
     return linked;
   }
+
 
   /**
    * Algorithme métier de rapprochement automatique entre opérations en cours et relevés bancaires.
@@ -1725,6 +1739,7 @@ function deps() {
       transactions: data?.bankImport?.transactions || [],
       categories: data?.bankImport?.categories || [],
       matchings: data?.bankImport?.matchings || [],
+      pendingOperations: data?.bankImport?.pendingOperations || [],
       charges: data?.charges || [],
       incomes: data?.incomes || [],
       placements: data?.placements || [],
@@ -1756,6 +1771,7 @@ function deps() {
     return {
       data,
       bankImport: data?.bankImport || {},
+      pendingOperations: data?.bankImport?.pendingOperations || [],
       charges: data?.charges || [],
       incomes: data?.incomes || [],
       placements: data?.placements || [],

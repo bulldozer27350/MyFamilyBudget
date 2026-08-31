@@ -166,7 +166,8 @@ public record BankImportModel(
             String linkedTxId,
             String clearedDate,
             String notes,
-            List<BankTransactionSplitModel> splits
+            List<BankTransactionSplitModel> splits,
+            String budgetLineId
     ) {
         public PendingOperationModel {
             if (id == null || id.isBlank()) id = java.util.UUID.randomUUID().toString().substring(0, 8);
@@ -180,6 +181,25 @@ public record BankImportModel(
             if (status == null) status = "pending";
             if (notes == null) notes = "";
             if (splits == null) splits = Collections.emptyList();
+            if (budgetLineId == null) budgetLineId = "";
+        }
+
+        public PendingOperationModel(
+                String id,
+                String date,
+                String expectedDate,
+                String type,
+                String refNumber,
+                String label,
+                BigDecimal amount,
+                String categoryId,
+                String status,
+                String linkedTxId,
+                String clearedDate,
+                String notes,
+                List<BankTransactionSplitModel> splits
+        ) {
+            this(id, date, expectedDate, type, refNumber, label, amount, categoryId, status, linkedTxId, clearedDate, notes, splits, "");
         }
 
         public PendingOperationModel(
@@ -196,7 +216,7 @@ public record BankImportModel(
                 String clearedDate,
                 String notes
         ) {
-            this(id, date, expectedDate, type, refNumber, label, amount, categoryId, status, linkedTxId, clearedDate, notes, Collections.emptyList());
+            this(id, date, expectedDate, type, refNumber, label, amount, categoryId, status, linkedTxId, clearedDate, notes, Collections.emptyList(), "");
         }
     }
 

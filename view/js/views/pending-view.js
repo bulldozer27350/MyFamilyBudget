@@ -95,7 +95,8 @@
       isDebit: true,
       categoryId: "",
       notes: "",
-      splits: []
+      splits: [],
+      budgetLineId: ""
     });
     const [matchingOp, setMatchingOp] = useState(null);
     const [matchingSearch, setMatchingSearch] = useState("");
@@ -213,6 +214,13 @@
     const transactions = sourceData.transactions || [];
     const categories = sourceData.categories || [];
     const sortedCategories = useMemo(() => [...categories].sort((a, b) => (a.label || "").localeCompare(b.label || "", "fr")), [categories]);
+    const budgetLineOptions = useMemo(() => {
+      const list = [];
+      (sourceData.charges || []).forEach(c => list.push({ id: c.id, label: `Charge : ${c.label}`, kind: "charge" }));
+      (sourceData.incomes || []).forEach(i => list.push({ id: i.id, label: `Revenu : ${i.label}`, kind: "revenu" }));
+      (sourceData.oneoff || []).forEach(o => list.push({ id: o.id, label: `Ponctuel : ${o.label}`, kind: "oneoff" }));
+      return list;
+    }, [sourceData.charges, sourceData.incomes, sourceData.oneoff]);
     const navMonth = dir => {
       let m = selMonth + dir,
         y = selYear;
@@ -336,7 +344,8 @@
           categoryId: preset.raw.categoryId || prev.categoryId,
           amount: String(Math.abs(Number(preset.raw.monthly) || 0)),
           isDebit: true,
-          type: "cb"
+          type: "cb",
+          budgetLineId: preset.raw.id || ""
         }));
       } else if (preset.kind === "income") {
         setModalData(prev => ({
@@ -345,7 +354,8 @@
           categoryId: preset.raw.categoryId || prev.categoryId,
           amount: String(Math.abs(Number(preset.raw.monthly) || 0)),
           isDebit: false,
-          type: "virement"
+          type: "virement",
+          budgetLineId: preset.raw.id || ""
         }));
       } else if (preset.kind === "oneoff") {
         setModalData(prev => ({
@@ -353,7 +363,8 @@
           label: preset.raw.label || "",
           amount: String(Math.abs(Number(preset.raw.amount) || 0)),
           isDebit: true,
-          type: "cheque"
+          type: "cheque",
+          budgetLineId: ""
         }));
       }
     };
@@ -370,7 +381,8 @@
         isDebit: true,
         categoryId: "",
         notes: "",
-        splits: []
+        splits: [],
+        budgetLineId: ""
       });
       setShowAddModal(true);
     };
@@ -390,7 +402,8 @@
         splits: Array.isArray(op.splits) ? op.splits.map(s => ({
           ...s,
           amount: String(Math.abs(Number(s.amount) || 0))
-        })) : []
+        })) : [],
+        budgetLineId: op.budgetLineId || ""
       });
       setShowAddModal(true);
     };
@@ -424,7 +437,8 @@
         amount: signedAmount,
         categoryId: modalData.categoryId || "",
         notes: modalData.notes || "",
-        splits: formattedSplits
+        splits: formattedSplits,
+        budgetLineId: modalData.budgetLineId || ""
       };
 
       const generateId = typeof uid === 'function' ? uid : () => `op_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -1542,10 +1556,56 @@
       }, tm.icon, " ", tm.label, op.refNumber ? ` #${op.refNumber}` : "")), /*#__PURE__*/React.createElement("td", {
         style: {
           padding: "7px 10px",
-          fontWeight: 600,
           color: C?.ink || "#232A2E"
         }
-      }, op.label), /*#__PURE__*/React.createElement("td", {
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontWeight: 600
+        }
+      }, op.label), op.splits && op.splits.length > 0 && /*#__PURE__*/React.createElement("div", {
+        style: {
+          marginTop: 3,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          display: "inline-block",
+          fontSize: 10,
+          fontWeight: 700,
+          padding: "1px 5px",
+          borderRadius: 4,
+          background: C?.pineSoft || "#E3ECE8",
+          color: C?.pine || "#2F5D50",
+          border: `1px solid ${C?.pine || "#2F5D50"}`,
+          width: "fit-content"
+        }
+      }, `✂ Ventilée (${op.splits.length})`), op.splits.map((s, idx) => {
+        const sCat = categories.find(c => c.id === s.categoryId);
+        return /*#__PURE__*/React.createElement("div", {
+          key: s.id || idx,
+          style: {
+            fontSize: 10.5,
+            color: C?.inkSoft || "#6B7278",
+            display: "flex",
+            gap: 4,
+            alignItems: "center"
+          }
+        }, /*#__PURE__*/React.createElement("span", null, "• ", sCat ? sCat.label : (s.label || "Sous-ligne")), /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontWeight: 600
+          }
+        }, "(", eurExact(s.amount), ")"));
+      })), op.notes && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          color: C?.inkSoft || "#6B7278",
+          fontWeight: 400,
+          marginTop: 2
+        }
+      }, op.notes)), /*#__PURE__*/React.createElement("td", {
         style: {
           padding: "7px 10px",
           textAlign: "right",
@@ -2440,6 +2500,31 @@
       key: c.id,
       value: c.id
     }, c.label)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+      style: {
+        fontSize: 11.5,
+        fontWeight: 700,
+        color: C?.inkSoft || "#6B7278",
+        display: "block",
+        marginBottom: 4
+      }
+    }, "Ligne budgétaire"), /*#__PURE__*/React.createElement("select", {
+      value: modalData.budgetLineId,
+      onChange: e => setModalData({
+        ...modalData,
+        budgetLineId: e.target.value
+      }),
+      style: {
+        ...inputStyle,
+        width: "100%",
+        fontSize: 13,
+        cursor: "pointer"
+      }
+    }, /*#__PURE__*/React.createElement("option", {
+      value: ""
+    }, "— Aucune affectation budgétaire —"), budgetLineOptions.map(opt => /*#__PURE__*/React.createElement("option", {
+      key: opt.id,
+      value: opt.id
+    }, opt.label)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
       style: {
         fontSize: 11.5,
         fontWeight: 700,

@@ -54,6 +54,7 @@
         setApiData({
           data,
           bankImport: data?.bankImport || {},
+          pendingOperations: data?.bankImport?.pendingOperations || [],
           charges: data?.charges || [],
           incomes: data?.incomes || [],
           placements: data?.placements || [],
@@ -77,6 +78,7 @@
     const transactions = rawData?.bankImport?.transactions || [];
     const categories = rawData?.bankImport?.categories || [];
     const matchings = rawData?.bankImport?.matchings || [];
+    const pendingOperations = apiData?.pendingOperations || rawData?.bankImport?.pendingOperations || [];
     const [monthsBack, setMonthsBack] = useState(12);
     const [driftSortKey, setDriftSortKey] = useState("ecart");
     const [driftSortDir, setDriftSortDir] = useState(-1);
@@ -200,14 +202,22 @@
         const endOK = !endStr || currentMonthISO <= endStr.slice(0, 7);
         if (!startOK || !endOK) return;
         const link = (currentMatching.links || []).find(l => l.budgetLineId === row.id);
-        const reel = (link?.txIds || []).reduce((s, refId) => {
+        const reelFromPointing = (link?.txIds || []).reduce((s, refId) => {
           const amt = resolveAmount(refId);
           return s + (kind === "revenu" ? amt : -amt);
         }, 0);
+        const pendingContrib = pendingOperations
+          .filter(op => op.status === "pending" && op.budgetLineId === row.id && (!op.date || op.date.slice(0, 7) === currentMonthISO))
+          .reduce((s, op) => {
+            const amt = Number(op.amount) || 0;
+            return s + (kind === "revenu" ? Math.max(0, amt) : Math.abs(amt));
+          }, 0);
+        const reel = reelFromPointing + pendingContrib;
         const pct = Math.min(100, budgeted > 0 ? reel / budgeted * 100 : 0);
         const diff = Math.abs(reel - budgeted);
         const tolerance = Math.max(1, budgeted * 0.02);
-        const status = link && (link.txIds || []).length > 0 ? diff <= tolerance ? "match" : kind === "revenu" || kind === "placement" ? reel > budgeted ? "economy" : "over" : reel < budgeted ? "economy" : "over" : "pending";
+        const hasData = (link && (link.txIds || []).length > 0) || pendingContrib > 0;
+        const status = hasData ? diff <= tolerance ? "match" : kind === "revenu" || kind === "placement" ? reel > budgeted ? "economy" : "over" : reel < budgeted ? "economy" : "over" : "pending";
         const displayLabel = kind === "placement" ? `Épargne : ${row.label}` : row.label;
         rows.push({
           id: row.id,
@@ -215,6 +225,9 @@
           kind,
           budgeted,
           reel,
+          reelFromPointing,
+          pendingContrib,
+          hasPendingContrib: pendingContrib > 0,
           pct,
           status
         });
@@ -223,7 +236,7 @@
       (rawData?.incomes || []).forEach(i => processLine(i, "revenu"));
       (rawData?.placements || []).forEach(p => processLine(p, "placement"));
       return rows.sort((a, b) => b.budgeted - a.budgeted);
-    }, [rawData, matchings, transactions, currentMonthISO]);
+    }, [rawData, matchings, transactions, pendingOperations, currentMonthISO]);
     const landingTotalBudget = landingData.reduce((s, r) => s + r.budgeted, 0);
     const landingTotalReel = landingData.reduce((s, r) => s + r.reel, 0);
     const monthlyCompareData = useMemo(() => {
@@ -268,13 +281,21 @@
         const monthMatching = matchings.find(m => m.month === monthISO) || {
           links: []
         };
-        const reel = (monthMatching.links || []).reduce((s, l) => {
+        const pointedReel = (monthMatching.links || []).reduce((s, l) => {
           const kind = lineKindMap[l.budgetLineId] || "charge";
           return s + (l.txIds || []).reduce((ss, refId) => {
             const amt = resolveAmount(refId);
             return ss + (kind === "revenu" ? amt : -amt);
           }, 0);
         }, 0);
+        const pendingContrib = pendingOperations
+          .filter(op => op.status === "pending" && op.budgetLineId && op.date && op.date.slice(0, 7) === monthISO)
+          .reduce((s, op) => {
+            const kind = lineKindMap[op.budgetLineId] || "charge";
+            const amt = Number(op.amount) || 0;
+            return s + (kind === "revenu" ? Math.max(0, amt) : Math.abs(amt));
+          }, 0);
+        const reel = pointedReel + pendingContrib;
         const label = new Date(Number(monthISO.slice(0, 4)), Number(monthISO.slice(5, 7)) - 1, 1).toLocaleDateString("fr-FR", {
           month: "short",
           year: "2-digit"
@@ -284,10 +305,12 @@
           label,
           budgeted,
           reel,
-          hasPointing: (monthMatching.links || []).some(l => (l.txIds || []).length > 0)
+          pointedReel,
+          pendingContrib,
+          hasPointing: (monthMatching.links || []).some(l => (l.txIds || []).length > 0) || pendingContrib > 0
         };
       });
-    }, [rawData, matchings, transactions, monthsBack]);
+    }, [rawData, matchings, transactions, pendingOperations, monthsBack]);
     const barChartRef = useRef(null);
     const barCanvasRef = useRef(null);
     useEffect(() => {
@@ -840,10 +863,22 @@
         style: {
           display: "flex",
           alignItems: "center",
-          gap: 10,
+          gap: 8,
           flexShrink: 0
         }
-      }, /*#__PURE__*/React.createElement("span", {
+      }, row.hasPendingContrib && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 10.5,
+          color: "#D97706",
+          background: "#FFFBEB",
+          border: "1px solid #FDE68A",
+          borderRadius: 6,
+          padding: "1px 6px",
+          fontWeight: 600,
+          whiteSpace: "nowrap"
+        },
+        title: `Inclut ${eur(row.pendingContrib)} issu d'opérations en cours (pending)`
+      }, `⏳ +${eur(row.pendingContrib)} en cours`), /*#__PURE__*/React.createElement("span", {
         style: {
           fontFamily: "'IBM Plex Mono', monospace",
           fontSize: 13,

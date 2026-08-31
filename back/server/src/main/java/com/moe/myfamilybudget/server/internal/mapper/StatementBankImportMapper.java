@@ -158,6 +158,7 @@ public class StatementBankImportMapper {
         map.put("label", model.label());
         map.put("amount", model.amount());
         map.put("categoryId", model.categoryId());
+        map.put("budgetLineId", model.budgetLineId());
         map.put("status", model.status());
         map.put("linkedTxId", model.linkedTxId());
         map.put("clearedDate", model.clearedDate());
@@ -171,7 +172,7 @@ public class StatementBankImportMapper {
     }
 
     public BankImportModel.PendingOperationModel toPendingOperationModel(Map<String, Object> map) {
-        if (map == null) return new BankImportModel.PendingOperationModel(null, "", "", "cb", "", "", BigDecimal.ZERO, "", "pending", null, null, "", Collections.emptyList());
+        if (map == null) return new BankImportModel.PendingOperationModel(null, "", "", "cb", "", "", BigDecimal.ZERO, "", "pending", null, null, "", Collections.emptyList(), "");
         String id = (String) map.get("id");
         String date = (String) map.getOrDefault("date", "");
         String expectedDate = (String) map.getOrDefault("expectedDate", date);
@@ -180,6 +181,7 @@ public class StatementBankImportMapper {
         String label = (String) map.getOrDefault("label", "");
         BigDecimal amount = toBigDecimal(map.get("amount"));
         String categoryId = (String) map.getOrDefault("categoryId", "");
+        String budgetLineId = (String) map.getOrDefault("budgetLineId", "");
         String status = (String) map.getOrDefault("status", "pending");
         String linkedTxId = (String) map.get("linkedTxId");
         String clearedDate = (String) map.get("clearedDate");
@@ -196,7 +198,7 @@ public class StatementBankImportMapper {
                 return new BankImportModel.BankTransactionSplitModel(sid, scatId, samt, slabel);
             }).collect(Collectors.toList());
         }
-        return new BankImportModel.PendingOperationModel(id, date, expectedDate, type, refNumber, label, amount, categoryId, status, linkedTxId, clearedDate, notes, splits);
+        return new BankImportModel.PendingOperationModel(id, date, expectedDate, type, refNumber, label, amount, categoryId, status, linkedTxId, clearedDate, notes, splits, budgetLineId);
     }
 
     public Map<String, Object> toImportSummaryMap(BankImportSummaryModel summary) {
