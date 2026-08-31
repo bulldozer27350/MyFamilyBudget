@@ -12,7 +12,8 @@
   } = React;
   const {
     C,
-    eur
+    eur,
+    eurExact
   } = exports.C ? exports : window.BudgetApp || {};
   const {
     chargeMonthlyForYear,
@@ -33,6 +34,172 @@
     fontSize: 14,
     width: 140
   };
+  function multiSelectKindMeta(kind) {
+    if (kind === "Revenu" || kind === "revenu") {
+      return {
+        dot: C?.pine || "#2F5D50"
+      };
+    }
+    if (kind === "placement") {
+      return {
+        dot: C?.navy || "#28394A"
+      };
+    }
+    return {
+      dot: C?.brick || "#A8503C"
+    };
+  }
+  function MultiSelectDropdown({
+    items,
+    selectedIds,
+    onChange,
+    width
+  }) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const containerRef = useRef(null);
+    useEffect(() => {
+      const onDocClick = e => {
+        if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false);
+      };
+      document.addEventListener("mousedown", onDocClick);
+      return () => document.removeEventListener("mousedown", onDocClick);
+    }, []);
+    const filteredItems = useMemo(() => {
+      if (!search.trim()) return items;
+      const q = search.trim().toLowerCase();
+      return items.filter(it => (it.label || "").toLowerCase().includes(q));
+    }, [items, search]);
+    const toggle = id => {
+      if (selectedIds.includes(id)) onChange(selectedIds.filter(x => x !== id));else onChange([...selectedIds, id]);
+    };
+    const buttonLabel = selectedIds.length === 0 ? `Toutes (${items.length})` : `${selectedIds.length} sélectionnée${selectedIds.length > 1 ? "s" : ""}`;
+    return /*#__PURE__*/React.createElement("div", {
+      ref: containerRef,
+      style: {
+        position: "relative",
+        width: width || 220
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => setOpen(o => !o),
+      style: {
+        ...inputStyle,
+        width: "100%",
+        textAlign: "left",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        background: C?.panel || "#FFFFFF",
+        cursor: "pointer"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+      }
+    }, buttonLabel), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: C?.inkSoft || "#6B7278",
+        marginLeft: 6
+      }
+    }, open ? "▲" : "▼")), open && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        top: "calc(100% + 4px)",
+        left: 0,
+        zIndex: 20,
+        width: Math.max(width || 220, 260),
+        background: C?.panel || "#FFFFFF",
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        borderRadius: 8,
+        boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+        padding: 10
+      }
+    }, items.length > 8 && /*#__PURE__*/React.createElement("input", {
+      value: search,
+      onChange: e => setSearch(e.target.value),
+      placeholder: "🔍 Rechercher…",
+      style: {
+        ...inputStyle,
+        width: "100%",
+        marginBottom: 8,
+        fontSize: 12.5
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        marginBottom: 6
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => onChange(items.map(it => it.id)),
+      style: {
+        border: "none",
+        background: "none",
+        color: C?.pine || "#2F5D50",
+        fontSize: 11.5,
+        fontWeight: 600,
+        cursor: "pointer",
+        padding: 0
+      }
+    }, "Tout cocher"), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => onChange([]),
+      style: {
+        border: "none",
+        background: "none",
+        color: C?.inkSoft || "#6B7278",
+        fontSize: 11.5,
+        fontWeight: 600,
+        cursor: "pointer",
+        padding: 0
+      }
+    }, "Tout décocher")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        maxHeight: 240,
+        overflowY: "auto"
+      }
+    }, filteredItems.length === 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        padding: "6px 2px"
+      }
+    }, "Aucun résultat."), filteredItems.map(it => /*#__PURE__*/React.createElement("label", {
+      key: it.id,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 7,
+        padding: "5px 2px",
+        fontSize: 12.5,
+        cursor: "pointer",
+        color: C?.ink || "#232A2E"
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      checked: selectedIds.includes(it.id),
+      onChange: () => toggle(it.id)
+    }), it.kind && /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 7,
+        height: 7,
+        borderRadius: "50%",
+        background: multiSelectKindMeta(it.kind).dot,
+        flexShrink: 0
+      }
+    }), /*#__PURE__*/React.createElement("span", {
+      style: {
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+      }
+    }, it.label))))));
+  }
   function AnalyseView({
     data,
     openHelp
@@ -84,6 +251,12 @@
     const [driftSortDir, setDriftSortDir] = useState(-1);
     const [driftSearch, setDriftSearch] = useState("");
     const [activeTab, setActiveTab] = useState("overview");
+    const [customDateFrom, setCustomDateFrom] = useState("");
+    const [customDateTo, setCustomDateTo] = useState("");
+    const [customCategoryIds, setCustomCategoryIds] = useState([]);
+    const [customBudgetLineIds, setCustomBudgetLineIds] = useState([]);
+    const [customSortKey, setCustomSortKey] = useState("date");
+    const [customSortDir, setCustomSortDir] = useState(-1);
     const cutoffISO = useMemo(() => {
       if (!monthsBack) return null;
       const d = new Date();
@@ -499,6 +672,161 @@
         userSelect: "none"
       }
     });
+    const txBudgetLineMap = useMemo(() => {
+      const map = {};
+      matchings.forEach(m => {
+        (m.links || []).forEach(link => {
+          (link.txIds || []).forEach(refId => {
+            map[refId] = link.budgetLineId;
+          });
+        });
+      });
+      return map;
+    }, [matchings]);
+    const categoryOptions = useMemo(() => {
+      return [...categories].map(c => ({
+        id: c.id,
+        label: c.label,
+        kind: c.kind
+      })).sort((a, b) => (a.label || "").localeCompare(b.label || ""));
+    }, [categories]);
+    const budgetLineOptions = useMemo(() => {
+      const opts = [];
+      (rawData?.charges || []).forEach(c => opts.push({
+        id: c.id,
+        label: c.label,
+        kind: "charge"
+      }));
+      (rawData?.incomes || []).forEach(i => opts.push({
+        id: i.id,
+        label: i.label,
+        kind: "revenu"
+      }));
+      (rawData?.placements || []).forEach(p => opts.push({
+        id: p.id,
+        label: p.label,
+        kind: "placement"
+      }));
+      return opts.sort((a, b) => (a.label || "").localeCompare(b.label || ""));
+    }, [rawData]);
+    const categoryLabelMap = useMemo(() => {
+      const m = {};
+      categories.forEach(c => {
+        m[c.id] = c.label;
+      });
+      return m;
+    }, [categories]);
+    const budgetLineLabelMap = useMemo(() => {
+      const m = {};
+      budgetLineOptions.forEach(o => {
+        m[o.id] = o;
+      });
+      return m;
+    }, [budgetLineOptions]);
+    const customAllOps = useMemo(() => {
+      const ops = [];
+      const pushOp = (refId, date, label, amount, categoryId, budgetLineId, origin) => {
+        ops.push({
+          key: refId,
+          date: date || "",
+          label: label || "—",
+          amount,
+          categoryId: categoryId || null,
+          budgetLineId: budgetLineId || null,
+          categoryLabel: categoryId ? categoryLabelMap[categoryId] || "Catégorie supprimée" : "Non catégorisé",
+          budgetLineLabel: budgetLineId ? budgetLineLabelMap[budgetLineId]?.label || "Ligne supprimée" : "Non affectée",
+          budgetLineKind: budgetLineId ? budgetLineLabelMap[budgetLineId]?.kind || null : null,
+          origin
+        });
+      };
+      transactions.forEach(t => {
+        if (t.splits && t.splits.length > 0) {
+          t.splits.forEach(s => {
+            const refId = `${t.id}#${s.id}`;
+            pushOp(refId, t.date, t.label, Number(s.amount) || 0, s.categoryId, txBudgetLineMap[refId] || txBudgetLineMap[t.id], "cleared");
+          });
+        } else {
+          pushOp(t.id, t.date, t.label, Number(t.amount) || 0, t.categoryId, txBudgetLineMap[t.id], "cleared");
+        }
+      });
+      pendingOperations.filter(op => op.status === "pending").forEach(op => {
+        if (op.splits && op.splits.length > 0) {
+          op.splits.forEach(s => {
+            pushOp(`${op.id}#${s.id}`, op.date, op.label, Number(s.amount) || 0, s.categoryId, op.budgetLineId, "pending");
+          });
+        } else {
+          pushOp(op.id, op.date, op.label, Number(op.amount) || 0, op.categoryId, op.budgetLineId, "pending");
+        }
+      });
+      return ops;
+    }, [transactions, pendingOperations, txBudgetLineMap, categoryLabelMap, budgetLineLabelMap]);
+    const customFilteredOps = useMemo(() => {
+      const filtered = customAllOps.filter(op => {
+        if (customDateFrom && (!op.date || op.date < customDateFrom)) return false;
+        if (customDateTo && (!op.date || op.date > customDateTo)) return false;
+        if (customCategoryIds.length > 0 && (!op.categoryId || !customCategoryIds.includes(op.categoryId))) return false;
+        if (customBudgetLineIds.length > 0 && (!op.budgetLineId || !customBudgetLineIds.includes(op.budgetLineId))) return false;
+        return true;
+      });
+      return [...filtered].sort((a, b) => {
+        const av = a[customSortKey] ?? "";
+        const bv = b[customSortKey] ?? "";
+        return av < bv ? customSortDir : av > bv ? -customSortDir : 0;
+      });
+    }, [customAllOps, customDateFrom, customDateTo, customCategoryIds, customBudgetLineIds, customSortKey, customSortDir]);
+    const customKpis = useMemo(() => {
+      const expenseOps = customFilteredOps.filter(o => o.amount < 0);
+      const incomeOps = customFilteredOps.filter(o => o.amount > 0);
+      const sumExpenses = -expenseOps.reduce((s, o) => s + o.amount, 0);
+      const sumIncome = incomeOps.reduce((s, o) => s + o.amount, 0);
+      return {
+        count: customFilteredOps.length,
+        sumExpenses,
+        sumIncome,
+        avgExpense: expenseOps.length ? sumExpenses / expenseOps.length : 0,
+        avgIncome: incomeOps.length ? sumIncome / incomeOps.length : 0
+      };
+    }, [customFilteredOps]);
+    const colCustom = key => {
+      if (customSortKey === key) setCustomSortDir(-customSortDir);else {
+        setCustomSortKey(key);
+        setCustomSortDir(-1);
+      }
+    };
+    const customIcon = key => customSortKey === key ? customSortDir === 1 ? " ↑" : " ↓" : "";
+    const customHasFilters = !!(customDateFrom || customDateTo || customCategoryIds.length > 0 || customBudgetLineIds.length > 0);
+    const resetCustomFilters = () => {
+      setCustomDateFrom("");
+      setCustomDateTo("");
+      setCustomCategoryIds([]);
+      setCustomBudgetLineIds([]);
+    };
+    const hdrCellCustom = (key, align = "left") => ({
+      onClick: () => colCustom(key),
+      style: {
+        padding: "9px 10px",
+        textAlign: align,
+        fontSize: 11,
+        fontWeight: 700,
+        color: customSortKey === key ? C?.pine || "#2F5D50" : C?.inkSoft || "#6B7278",
+        background: C?.panelAlt || "#EFEAE0",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        borderBottom: `2px solid ${C?.line || "#DED6C4"}`,
+        userSelect: "none"
+      }
+    });
+    const originMeta = origin => origin === "pending" ? {
+      label: "En attente",
+      dot: "#D97706",
+      bg: "#FFFBEB",
+      border: "#FDE68A"
+    } : {
+      label: "Comptabilisé",
+      dot: "#2563EB",
+      bg: "#EFF6FF",
+      border: "#BFDBFE"
+    };
     const TAB_STYLE = active => ({
       padding: "7px 18px",
       fontSize: 13,
@@ -600,6 +928,9 @@
     }, {
       key: "drift",
       label: "📉 Dérives par Ligne"
+    }, {
+      key: "custom",
+      label: "🔎 Filtre Personnalisé"
     }].map(t => /*#__PURE__*/React.createElement("button", {
       type: "button",
       key: t.key,
@@ -1239,7 +1570,228 @@
         marginTop: 10,
         fontStyle: "italic"
       }
-    }, "💡 Les lignes «\xA0Non pointées\xA0» n'ont aucun pointage dans l'onglet ", /*#__PURE__*/React.createElement("strong", null, "Pointage"), ".")));
+    }, "💡 Les lignes «\xA0Non pointées\xA0» n'ont aucun pointage dans l'onglet ", /*#__PURE__*/React.createElement("strong", null, "Pointage"), ".")), activeTab === "custom" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 14,
+        flexWrap: "wrap",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Newsreader', serif",
+        fontSize: 18,
+        fontWeight: 600,
+        color: C?.ink || "#232A2E"
+      }
+    }, "🔎 Filtre personnalisé"), customHasFilters && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: resetCustomFilters,
+      style: {
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        background: "none",
+        color: C?.inkSoft || "#6B7278",
+        borderRadius: 7,
+        padding: "6px 12px",
+        fontSize: 12.5,
+        fontWeight: 600,
+        cursor: "pointer"
+      }
+    }, "✕ Réinitialiser les filtres")), /*#__PURE__*/React.createElement(SectionCard, {
+      title: "Filtres",
+      subtitle: "Combinez une période, des catégories bancaires et des lignes de budget (sélection multiple)."
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 16,
+        alignItems: "flex-end"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        textTransform: "uppercase",
+        letterSpacing: 0.4,
+        color: C?.inkSoft || "#6B7278",
+        fontWeight: 600,
+        marginBottom: 5
+      }
+    }, "Du"), /*#__PURE__*/React.createElement("input", {
+      type: "date",
+      value: customDateFrom,
+      onChange: e => setCustomDateFrom(e.target.value),
+      style: inputStyle
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        textTransform: "uppercase",
+        letterSpacing: 0.4,
+        color: C?.inkSoft || "#6B7278",
+        fontWeight: 600,
+        marginBottom: 5
+      }
+    }, "Au"), /*#__PURE__*/React.createElement("input", {
+      type: "date",
+      value: customDateTo,
+      onChange: e => setCustomDateTo(e.target.value),
+      style: inputStyle
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        textTransform: "uppercase",
+        letterSpacing: 0.4,
+        color: C?.inkSoft || "#6B7278",
+        fontWeight: 600,
+        marginBottom: 5
+      }
+    }, "Catégories"), /*#__PURE__*/React.createElement(MultiSelectDropdown, {
+      items: categoryOptions,
+      selectedIds: customCategoryIds,
+      onChange: setCustomCategoryIds,
+      width: 220
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        textTransform: "uppercase",
+        letterSpacing: 0.4,
+        color: C?.inkSoft || "#6B7278",
+        fontWeight: 600,
+        marginBottom: 5
+      }
+    }, "Lignes de budget"), /*#__PURE__*/React.createElement(MultiSelectDropdown, {
+      items: budgetLineOptions,
+      selectedIds: customBudgetLineIds,
+      onChange: setCustomBudgetLineIds,
+      width: 240
+    })))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 14,
+        flexWrap: "wrap",
+        marginBottom: 18
+      }
+    }, /*#__PURE__*/React.createElement(KPI, {
+      label: "Opérations trouvées",
+      value: String(customKpis.count)
+    }), /*#__PURE__*/React.createElement(KPI, {
+      label: "Total dépenses",
+      value: eur(customKpis.sumExpenses),
+      accent: C?.brick || "#A8503C"
+    }), /*#__PURE__*/React.createElement(KPI, {
+      label: "Total recettes",
+      value: eur(customKpis.sumIncome),
+      accent: C?.pine || "#2F5D50"
+    }), /*#__PURE__*/React.createElement(KPI, {
+      label: "Dépense moyenne",
+      value: eur(customKpis.avgExpense),
+      accent: C?.brick || "#A8503C"
+    }), /*#__PURE__*/React.createElement(KPI, {
+      label: "Recette moyenne",
+      value: eur(customKpis.avgIncome),
+      accent: C?.pine || "#2F5D50"
+    })), /*#__PURE__*/React.createElement(SectionCard, {
+      title: "Détail des opérations",
+      subtitle: `${customFilteredOps.length} opération(s) correspondant aux filtres actifs (comptabilisées + en attente)`
+    }, customFilteredOps.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: C?.inkSoft || "#6B7278",
+        fontSize: 13,
+        padding: "16px 4px"
+      }
+    }, "Aucune opération ne correspond aux filtres sélectionnés.") : /*#__PURE__*/React.createElement("div", {
+      style: {
+        overflowX: "auto",
+        overflowY: "auto",
+        maxHeight: 480,
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        borderRadius: 10,
+        background: C?.panel || "#FFFFFF"
+      }
+    }, /*#__PURE__*/React.createElement("table", {
+      style: {
+        width: "100%",
+        borderCollapse: "collapse",
+        minWidth: 780,
+        fontSize: 12.5
+      }
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", hdrCellCustom("date"), "Date", customIcon("date")), /*#__PURE__*/React.createElement("th", hdrCellCustom("origin"), "Statut", customIcon("origin")), /*#__PURE__*/React.createElement("th", hdrCellCustom("label"), "Libellé", customIcon("label")), /*#__PURE__*/React.createElement("th", hdrCellCustom("categoryLabel"), "Catégorie", customIcon("categoryLabel")), /*#__PURE__*/React.createElement("th", hdrCellCustom("budgetLineLabel"), "Ligne de budget", customIcon("budgetLineLabel")), /*#__PURE__*/React.createElement("th", hdrCellCustom("amount", "right"), "Montant", customIcon("amount")))), /*#__PURE__*/React.createElement("tbody", null, customFilteredOps.map(op => {
+      const om = originMeta(op.origin);
+      const cellS = {
+        padding: "8px 10px",
+        borderBottom: `1px solid ${C?.line || "#DED6C4"}`,
+        verticalAlign: "middle"
+      };
+      return /*#__PURE__*/React.createElement("tr", {
+        key: op.key
+      }, /*#__PURE__*/React.createElement("td", {
+        style: {
+          ...cellS,
+          fontFamily: "'IBM Plex Mono', monospace",
+          whiteSpace: "nowrap"
+        }
+      }, op.date ? new Date(op.date).toLocaleDateString("fr-FR") : "—"), /*#__PURE__*/React.createElement("td", {
+        style: cellS
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "3px 9px",
+          borderRadius: 12,
+          fontSize: 11,
+          fontWeight: 700,
+          background: om.bg,
+          border: `1px solid ${om.border}`,
+          color: om.dot,
+          whiteSpace: "nowrap"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          background: om.dot
+        }
+      }), om.label)), /*#__PURE__*/React.createElement("td", {
+        style: {
+          ...cellS,
+          fontWeight: 600,
+          maxWidth: 220,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        },
+        title: op.label
+      }, op.label), /*#__PURE__*/React.createElement("td", {
+        style: {
+          ...cellS,
+          maxWidth: 180,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        },
+        title: op.categoryLabel
+      }, op.categoryLabel), /*#__PURE__*/React.createElement("td", {
+        style: {
+          ...cellS,
+          maxWidth: 200,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        },
+        title: op.budgetLineLabel
+      }, op.budgetLineLabel), /*#__PURE__*/React.createElement("td", {
+        style: {
+          ...cellS,
+          textAlign: "right",
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontWeight: 600,
+          color: op.amount < 0 ? C?.brick || "#A8503C" : C?.pine || "#2F5D50"
+        }
+      }, `${op.amount >= 0 ? "+" : ""}${eurExact(op.amount)}`));
+    })))))));
   }
   exports.AnalyseView = AnalyseView;
 })(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);
