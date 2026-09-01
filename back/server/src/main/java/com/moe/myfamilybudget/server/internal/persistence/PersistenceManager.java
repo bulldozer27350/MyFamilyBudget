@@ -153,17 +153,21 @@ public class PersistenceManager {
         if (budgetDataRepository != null) {
             Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
             if (existingData.isPresent()) {
-                BudgetDataModel loaded = EntityModelConverter.toModel(existingData.get());
-                BankImportModel bi = loadBankImport(existingData.get().getId());
-                BudgetDataModel complete = new BudgetDataModel(
-                        loaded.settings(), loaded.incomes(), loaded.charges(), loaded.placements(),
-                        loaded.realEstate(), loaded.retirement(), loaded.taxChildren(), loaded.taxBrackets(),
-                        loaded.taxRateOverrides(), loaded.taxActualOverrides(), loaded.oneoff(),
-                        loaded.transfers(), loaded.variableIncomes(), loaded.variableOverrides(),
-                        bi != null ? bi : new BankImportModel(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
-                        loaded.assetCategories(),
-                        loaded.loans()
-                );
+                // NOTE: comme pour saveToDatabase() plus bas, ce bloc s'exécute en
+                // self-invocation depuis @PostConstruct, donc hors du proxy AOP
+                // @Transactional de la classe. Sans transaction explicite, la connexion
+                // JDBC reste en autocommit, ce qui fait échouer la lecture paresseuse de
+                // BankImportEntity.jsonData (mappé en Large Object côté PostgreSQL) avec
+                // "Large Objects may not be used in auto-commit mode" — mais uniquement
+                // dès qu'une ligne bank_import existe déjà en base. Le tout premier
+                // démarrage sur une base vide ne déclenche jamais ce chemin (existingData
+                // est alors absent), d'où un bug invisible en test initial et bloquant dès
+                // le redémarrage suivant. On ouvre donc explicitement une transaction
+                // programmatique autour de la lecture, au même titre que l'écriture.
+                BudgetDataEntity entityToLoad = existingData.get();
+                BudgetDataModel complete = (transactionTemplate != null)
+                        ? transactionTemplate.execute(status -> loadCompleteBudgetData(entityToLoad))
+                        : loadCompleteBudgetData(entityToLoad);
                 currentBudget.set(complete);
                 return;
             }
@@ -186,6 +190,20 @@ public class PersistenceManager {
             saveToDatabase(defaultData);
         }
         currentBudget.set(defaultData);
+    }
+
+    private BudgetDataModel loadCompleteBudgetData(BudgetDataEntity entity) {
+        BudgetDataModel loaded = EntityModelConverter.toModel(entity);
+        BankImportModel bi = loadBankImport(entity.getId());
+        return new BudgetDataModel(
+                loaded.settings(), loaded.incomes(), loaded.charges(), loaded.placements(),
+                loaded.realEstate(), loaded.retirement(), loaded.taxChildren(), loaded.taxBrackets(),
+                loaded.taxRateOverrides(), loaded.taxActualOverrides(), loaded.oneoff(),
+                loaded.transfers(), loaded.variableIncomes(), loaded.variableOverrides(),
+                bi != null ? bi : new BankImportModel(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+                loaded.assetCategories(),
+                loaded.loans()
+        );
     }
     
     private void saveToDatabase(BudgetDataModel model) {

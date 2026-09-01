@@ -43,6 +43,6 @@ ENV SPRING_PROFILES_ACTIVE=docker
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=5 \
-    CMD wget -qO- http://localhost:8080/api/v1/index.html >/dev/null 2>&1 || exit 1
+    CMD wget -qO- http://localhost:8080/myfamilybudget/index.html >/dev/null 2>&1 || exit 1
 
 ENTRYPOINT ["java", "-Xms64m", "-Xmx512m", "-jar", "/app/app.jar"]

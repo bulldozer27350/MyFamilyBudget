@@ -2,6 +2,12 @@
 # Ce profil ne remplace pas le profil par défaut (H2, distribution portable) :
 # il vient uniquement le surcharger pour un déploiement conteneurisé avec PostgreSQL.
 
+server:
+  servlet:
+    # Exposé en prod sous /myfamilybudget (accès via Tailscale : http://server/myfamilybudget),
+    # au lieu du /api/v1 utilisé en développement local (profil par défaut, inchangé).
+    context-path: /myfamilybudget
+
 spring:
   main:
     headless: true
