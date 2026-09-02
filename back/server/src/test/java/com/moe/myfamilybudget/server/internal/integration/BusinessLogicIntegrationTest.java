@@ -685,6 +685,7 @@ class BusinessLogicIntegrationTest {
     @Order(33)
     @DisplayName("POST /budget/import avec transactions, catégories et matchings => GET /analyse préserve les catégories et calcule les KPIs")
     void testAnalyseWithRealTransactions() throws Exception {
+        String currentMonth = java.time.LocalDate.now().toString().substring(0, 7);
         String budgetWithTxs = """
         {
           "settings": {
@@ -710,22 +711,22 @@ class BusinessLogicIntegrationTest {
               { "id": "cat_salaire", "label": "Revenus", "kind": "Revenu", "compressible": "Non" }
             ],
             "transactions": [
-              { "id": "tx_1", "date": "2026-08-05", "label": "Paiement Loyer", "type": "VIR", "amount": -800, "categoryId": "cat_loyer" },
-              { "id": "tx_2", "date": "2026-08-10", "label": "Supermarché", "type": "CB", "amount": -150, "categoryId": "cat_courses" },
-              { "id": "tx_3", "date": "2026-08-28", "label": "Virement Employeur", "type": "VIR", "amount": 2500, "categoryId": "cat_salaire" }
+              { "id": "tx_1", "date": "%s-05", "label": "Paiement Loyer", "type": "VIR", "amount": -800, "categoryId": "cat_loyer" },
+              { "id": "tx_2", "date": "%s-10", "label": "Supermarché", "type": "CB", "amount": -150, "categoryId": "cat_courses" },
+              { "id": "tx_3", "date": "%s-28", "label": "Virement Employeur", "type": "VIR", "amount": 2500, "categoryId": "cat_salaire" }
             ],
             "matchings": [
-              { "month": "2026-08", "links": [
+              { "month": "%s", "links": [
                 { "budgetLineId": "chg_loyer", "txIds": ["tx_1"] },
                 { "budgetLineId": "chg_courses", "txIds": ["tx_2"] }
               ]}
             ],
             "pendingOperations": [
-              { "id": "pop_1", "date": "2026-08-20", "label": "Courses Drive", "amount": -80, "type": "cb", "categoryId": "cat_courses", "status": "pending", "budgetLineId": "chg_courses" }
+              { "id": "pop_1", "date": "%s-20", "label": "Courses Drive", "amount": -80, "type": "cb", "categoryId": "cat_courses", "status": "pending", "budgetLineId": "chg_courses" }
             ]
           }
         }
-        """;
+        """.formatted(currentMonth, currentMonth, currentMonth, currentMonth, currentMonth);
 
         mockMvc.perform(post("/api/v1/budget/import")
                 .contextPath("/api/v1")

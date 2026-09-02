@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.moe.myfamilybudget.api.controller.ImportBancaireApi;
 import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
+import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
@@ -164,6 +166,113 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
         persistenceManager.updateBankImport(updatedModel);
         return ResponseEntity.ok().build();
+    }
+
+    // ---------------------------------------------------------------------------
+    // CRUD Catégories & Règles (add / update / remove)
+    // ---------------------------------------------------------------------------
+
+    @Override
+    public ResponseEntity<Object> addBankImportLigne(String listKey, Object body) {
+        BankImportModel current = persistenceManager.getBankImport();
+        Map<String, Object> bodyMap = toMap(body);
+
+        if ("categories".equals(listKey)) {
+            BankImportModel.CategoryModel newCat = mapper.toCategoryModel(bodyMap);
+            List<BankImportModel.CategoryModel> cats = new ArrayList<>(current.categories());
+            cats.add(newCat);
+            persistenceManager.updateBankImport(new BankImportModel(
+                    current.columnMapping(), cats, current.rules(),
+                    current.transactions(), current.pendingOperations(), current.matchings()));
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                    .body(mapper.toCategoryMap(newCat));
+        } else if ("rules".equals(listKey)) {
+            BankImportModel.BankImportRuleModel newRule = mapper.toRuleModel(bodyMap);
+            List<BankImportModel.BankImportRuleModel> rules = new ArrayList<>(current.rules());
+            rules.add(newRule);
+            persistenceManager.updateBankImport(new BankImportModel(
+                    current.columnMapping(), current.categories(), rules,
+                    current.transactions(), current.pendingOperations(), current.matchings()));
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                    .body(mapper.toRuleMap(newRule));
+        }
+        return ResponseEntity.badRequest().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> updateBankImportLigne(String listKey, String id,
+            UpdateBankImportLigneRequestDto body) {
+        if (body == null) return ResponseEntity.badRequest().build();
+        String field = body.getField();
+        Object value = body.getValue();
+
+        BankImportModel current = persistenceManager.getBankImport();
+
+        if ("categories".equals(listKey)) {
+            List<BankImportModel.CategoryModel> cats = current.categories();
+            int idx = -1;
+            for (int i = 0; i < cats.size(); i++) {
+                if (cats.get(i).id().equals(id)) { idx = i; break; }
+            }
+            if (idx == -1) return ResponseEntity.notFound().build();
+
+            BankImportModel.CategoryModel existing = cats.get(idx);
+            String label = "label".equals(field) ? String.valueOf(value) : existing.label();
+            String kind = "kind".equals(field) ? String.valueOf(value) : existing.kind();
+            String compressible = "compressible".equals(field) ? String.valueOf(value) : existing.compressible();
+
+            List<BankImportModel.CategoryModel> updated = new ArrayList<>(cats);
+            updated.set(idx, new BankImportModel.CategoryModel(existing.id(), label, kind, compressible));
+            persistenceManager.updateBankImport(new BankImportModel(
+                    current.columnMapping(), updated, current.rules(),
+                    current.transactions(), current.pendingOperations(), current.matchings()));
+            return ResponseEntity.ok().build();
+
+        } else if ("rules".equals(listKey)) {
+            List<BankImportModel.BankImportRuleModel> rules = current.rules();
+            int idx = -1;
+            for (int i = 0; i < rules.size(); i++) {
+                if (rules.get(i).id().equals(id)) { idx = i; break; }
+            }
+            if (idx == -1) return ResponseEntity.notFound().build();
+
+            BankImportModel.BankImportRuleModel existing = rules.get(idx);
+            String matchText = "matchText".equals(field) ? String.valueOf(value) : existing.matchText();
+            String categoryId = "categoryId".equals(field) ? String.valueOf(value) : existing.categoryId();
+
+            List<BankImportModel.BankImportRuleModel> updated = new ArrayList<>(rules);
+            updated.set(idx, new BankImportModel.BankImportRuleModel(existing.id(), matchText, categoryId));
+            persistenceManager.updateBankImport(new BankImportModel(
+                    current.columnMapping(), current.categories(), updated,
+                    current.transactions(), current.pendingOperations(), current.matchings()));
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.badRequest().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> removeBankImportLigne(String listKey, String id) {
+        BankImportModel current = persistenceManager.getBankImport();
+
+        if ("categories".equals(listKey)) {
+            List<BankImportModel.CategoryModel> cats = current.categories().stream()
+                    .filter(c -> !c.id().equals(id))
+                    .collect(Collectors.toList());
+            persistenceManager.updateBankImport(new BankImportModel(
+                    current.columnMapping(), cats, current.rules(),
+                    current.transactions(), current.pendingOperations(), current.matchings()));
+            return ResponseEntity.noContent().build();
+
+        } else if ("rules".equals(listKey)) {
+            List<BankImportModel.BankImportRuleModel> rules = current.rules().stream()
+                    .filter(r -> !r.id().equals(id))
+                    .collect(Collectors.toList());
+            persistenceManager.updateBankImport(new BankImportModel(
+                    current.columnMapping(), current.categories(), rules,
+                    current.transactions(), current.pendingOperations(), current.matchings()));
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.badRequest().build();
     }
 
     // --- Utility ---

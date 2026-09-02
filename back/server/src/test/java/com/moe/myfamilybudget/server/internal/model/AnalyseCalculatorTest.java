@@ -107,13 +107,14 @@ class AnalyseCalculatorTest {
         // 1 transaction of 100€ split: 60€ cat_food, 40€ cat_clothes
         BankImportModel.BankTransactionSplitModel s1 = new BankImportModel.BankTransactionSplitModel("s1", "cat_food", new BigDecimal("-60.00"), "Courses");
         BankImportModel.BankTransactionSplitModel s2 = new BankImportModel.BankTransactionSplitModel("s2", "cat_clothes", new BigDecimal("-40.00"), "Pantalon");
+        String currentMonth = java.time.LocalDate.now().toString().substring(0, 7);
         BankTransactionModel txSplit = new BankTransactionModel(
-                "tx_split", "2026-08-10", "HYPERMARCHE", "cb", new BigDecimal("-100.00"), "cat_default", List.of(s1, s2)
+                "tx_split", currentMonth + "-10", "HYPERMARCHE", "cb", new BigDecimal("-100.00"), "cat_default", List.of(s1, s2)
         );
 
         MatchingLinkModel linkFood = new MatchingLinkModel("c_food", List.of("tx_split#s1"));
         MatchingLinkModel linkClothes = new MatchingLinkModel("c_clothes", List.of("tx_split#s2"));
-        MatchingModel matching = new MatchingModel("2026-08", List.of(linkFood, linkClothes));
+        MatchingModel matching = new MatchingModel(currentMonth, List.of(linkFood, linkClothes));
 
         BankImportModel bankImport = new BankImportModel(
                 null,

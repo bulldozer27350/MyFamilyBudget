@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
+import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
@@ -111,5 +112,66 @@ class StatementBankImportServiceImplIntegrationTest {
         assertThat(merged.status()).isEqualTo("pending");
         assertThat(merged.linkedTxId()).isNull();
         assertThat(merged.clearedDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("End-to-end CRUD for categories and rules: Add -> Update -> Delete")
+    void testCategoriesAndRulesCrudFlow() {
+        // 1. Add Category
+        ResponseEntity<Object> addCatResp = service.addBankImportLigne("categories", Map.of(
+                "label", "Loisirs & Vacances",
+                "kind", "Dépense",
+                "compressible", "Oui"
+        ));
+        assertThat(addCatResp.getStatusCode().value()).isEqualTo(201);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> catMap = (Map<String, Object>) addCatResp.getBody();
+        String catId = (String) catMap.get("id");
+        assertThat(catId).isNotBlank();
+
+        // 2. Add Rule referencing category
+        ResponseEntity<Object> addRuleResp = service.addBankImportLigne("rules", Map.of(
+                "matchText", "AIRBNB",
+                "categoryId", catId
+        ));
+        assertThat(addRuleResp.getStatusCode().value()).isEqualTo(201);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> ruleMap = (Map<String, Object>) addRuleResp.getBody();
+        String ruleId = (String) ruleMap.get("id");
+        assertThat(ruleId).isNotBlank();
+
+        // 3. Update Category label
+        UpdateBankImportLigneRequestDto updateCat = new UpdateBankImportLigneRequestDto();
+        updateCat.setField("label");
+        updateCat.setValue("Vacances & Voyages");
+        ResponseEntity<Void> updateCatResp = service.updateBankImportLigne("categories", catId, updateCat);
+        assertThat(updateCatResp.getStatusCode().is2xxSuccessful()).isTrue();
+
+        // 4. Update Rule matchText
+        UpdateBankImportLigneRequestDto updateRule = new UpdateBankImportLigneRequestDto();
+        updateRule.setField("matchText");
+        updateRule.setValue("AIRBNB RESERVATION");
+        ResponseEntity<Void> updateRuleResp = service.updateBankImportLigne("rules", ruleId, updateRule);
+        assertThat(updateRuleResp.getStatusCode().is2xxSuccessful()).isTrue();
+
+        // 5. Verify in getBankImport()
+        ResponseEntity<Object> getResp = service.getBankImport();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> getMap = (Map<String, Object>) getResp.getBody();
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> categories = (java.util.List<Map<String, Object>>) getMap.get("categories");
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> rules = (java.util.List<Map<String, Object>>) getMap.get("rules");
+
+        assertThat(categories).anyMatch(c -> c.get("id").equals(catId) && c.get("label").equals("Vacances & Voyages"));
+        assertThat(rules).anyMatch(r -> r.get("id").equals(ruleId) && r.get("matchText").equals("AIRBNB RESERVATION"));
+
+        // 6. Delete Rule & Category
+        assertThat(service.removeBankImportLigne("rules", ruleId).getStatusCode().value()).isEqualTo(204);
+        assertThat(service.removeBankImportLigne("categories", catId).getStatusCode().value()).isEqualTo(204);
+
+        BankImportModel afterDelete = persistenceManager.getBankImport();
+        assertThat(afterDelete.categories()).noneMatch(c -> c.id().equals(catId));
+        assertThat(afterDelete.rules()).noneMatch(r -> r.id().equals(ruleId));
     }
 }

@@ -503,6 +503,21 @@
      * @returns {Promise<void>}
      */
     async addBankImportCategory(category) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank-import/categories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(category || {})
+          });
+          if (res && res.ok) {
+            app().BankImportService.addBankImportCategory(category);
+            return;
+          }
+        } catch (e) {
+          console.error("Échec ajout catégorie sur le backend", e);
+        }
+      }
       return Promise.resolve(app().BankImportService.addBankImportCategory(category));
     },
 
@@ -511,6 +526,21 @@
      * @returns {Promise<void>}
      */
     async updateBankImportCategory(id, field, value) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank-import/categories/' + encodeURIComponent(id), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field, value })
+          });
+          if (res && res.ok) {
+            app().BankImportService.updateBankImportCategory(id, field, value);
+            return;
+          }
+        } catch (e) {
+          console.error("Échec mise à jour catégorie sur le backend", e);
+        }
+      }
       return Promise.resolve(app().BankImportService.updateBankImportCategory(id, field, value));
     },
 
@@ -519,6 +549,19 @@
      * @returns {Promise<void>}
      */
     async removeBankImportCategory(id) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank-import/categories/' + encodeURIComponent(id), {
+            method: 'DELETE'
+          });
+          if (res && res.ok) {
+            app().BankImportService.removeBankImportCategory(id);
+            return;
+          }
+        } catch (e) {
+          console.error("Échec suppression catégorie sur le backend", e);
+        }
+      }
       return Promise.resolve(app().BankImportService.removeBankImportCategory(id));
     },
 
@@ -527,6 +570,21 @@
      * @returns {Promise<void>}
      */
     async addBankImportRule(rule) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank-import/rules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(rule || {})
+          });
+          if (res && res.ok) {
+            app().BankImportService.addBankImportRule(rule);
+            return;
+          }
+        } catch (e) {
+          console.error("Échec ajout règle sur le backend", e);
+        }
+      }
       return Promise.resolve(app().BankImportService.addBankImportRule(rule));
     },
 
@@ -535,6 +593,21 @@
      * @returns {Promise<void>}
      */
     async updateBankImportRule(id, field, value) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank-import/rules/' + encodeURIComponent(id), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field, value })
+          });
+          if (res && res.ok) {
+            app().BankImportService.updateBankImportRule(id, field, value);
+            return;
+          }
+        } catch (e) {
+          console.error("Échec mise à jour règle sur le backend", e);
+        }
+      }
       return Promise.resolve(app().BankImportService.updateBankImportRule(id, field, value));
     },
 
@@ -543,6 +616,19 @@
      * @returns {Promise<void>}
      */
     async removeBankImportRule(id) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank-import/rules/' + encodeURIComponent(id), {
+            method: 'DELETE'
+          });
+          if (res && res.ok) {
+            app().BankImportService.removeBankImportRule(id);
+            return;
+          }
+        } catch (e) {
+          console.error("Échec suppression règle sur le backend", e);
+        }
+      }
       return Promise.resolve(app().BankImportService.removeBankImportRule(id));
     },
 

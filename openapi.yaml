@@ -518,6 +518,83 @@ paths:
         '404':
           description: Transaction non trouvée
 
+  /bank-import/{listKey}:
+    post:
+      summary: Ajoute une entree dans une section d'import bancaire (categorie ou regle)
+      operationId: addBankImportLigne
+      tags:
+        - Import Bancaire
+      parameters:
+        - name: listKey
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [categories, rules]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Entree ajoutee avec succes
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /bank-import/{listKey}/{id}:
+    put:
+      summary: Met a jour un champ d'une entree d'import bancaire
+      operationId: updateBankImportLigne
+      tags:
+        - Import Bancaire
+      parameters:
+        - name: listKey
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [categories, rules]
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBankImportLigneRequestDto'
+      responses:
+        '200':
+          description: Entree mise a jour
+        '404':
+          description: Entree non trouvee
+    delete:
+      summary: Supprime une entree d'import bancaire
+      operationId: removeBankImportLigne
+      tags:
+        - Import Bancaire
+      parameters:
+        - name: listKey
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [categories, rules]
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Entree supprimee
+
   # ---------------------------------------------------------------------------
   # OPERATIONS EN COURS (PENDING)
   # ---------------------------------------------------------------------------
@@ -1370,6 +1447,16 @@ components:
             $ref: '#/components/schemas/VariablePreviewCellDto'
 
     UpdateTresorerieLigneRequestDto:
+      type: object
+      required: [field]
+      properties:
+        field:
+          type: string
+        value:
+          nullable: true
+          description: Nouvelle valeur du champ (chaine, nombre, booleen...)
+
+    UpdateBankImportLigneRequestDto:
       type: object
       required: [field]
       properties:
