@@ -165,6 +165,38 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
     }
 
     @Override
+    public ResponseEntity<Object> forceImportBankTransaction(Object body) {
+        if (body == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        Map<String, Object> txMap = toMap(body);
+        BankImportModel.BankTransactionModel tx = mapper.toTransactionModel(txMap);
+
+        BankImportModel current = persistenceManager.getBankImport();
+        List<BankImportModel.BankImportRuleModel> rules = current.rules() != null ? current.rules() : Collections.emptyList();
+
+        List<BankImportModel.BankTransactionModel> categorized = BankImportCalculator.applyRulesToTransactions(List.of(tx), rules);
+        BankImportModel.BankTransactionModel finalTx = (!categorized.isEmpty()) ? categorized.get(0) : tx;
+
+        List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>(
+                current.transactions() != null ? current.transactions() : Collections.emptyList()
+        );
+        updatedTxs.add(finalTx);
+
+        BankImportModel updatedModel = new BankImportModel(
+                current.columnMapping(),
+                current.categories(),
+                current.rules(),
+                updatedTxs,
+                current.pendingOperations(),
+                current.matchings()
+        );
+
+        persistenceManager.updateBankImport(updatedModel);
+        return ResponseEntity.ok(mapper.toTransactionMap(finalTx));
+    }
+
+    @Override
     public ResponseEntity<Void> updateBankTransactionSplits(String txId,
             @Valid List<@Valid BankTransactionSplitDto> bankTransactionSplitDto) {
         BankImportModel current = persistenceManager.getBankImport();

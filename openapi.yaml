@@ -647,6 +647,26 @@ paths:
               schema:
                 type: object
 
+  /bank-import/transactions/force:
+    post:
+      summary: Force l'import d'une transaction marquee comme doublon
+      operationId: forceImportBankTransaction
+      tags:
+        - Import Bancaire
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Transaction importee avec succes
+          content:
+            application/json:
+              schema:
+                type: object
+
   # ---------------------------------------------------------------------------
   # OPERATIONS EN COURS (PENDING)
   # ---------------------------------------------------------------------------
