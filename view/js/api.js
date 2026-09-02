@@ -487,7 +487,7 @@
      * @returns {Promise<Object>} modèle de lecture de l'onglet Import
      */
     async getBankImport() {
-      return Promise.resolve(app().BankImportService.buildBankImport());
+      return fetchJsonOrFallback('/bank-import', () => app().BankImportService.buildBankImport());
     },
 
     /**
