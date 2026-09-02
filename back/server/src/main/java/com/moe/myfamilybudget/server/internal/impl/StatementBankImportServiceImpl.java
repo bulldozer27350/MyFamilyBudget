@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.moe.myfamilybudget.api.controller.ImportBancaireApi;
 import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
+import com.moe.myfamilybudget.api.model.ImportBankTransactionsRequestDto;
 import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
@@ -116,6 +117,51 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
         persistenceManager.updateBankImport(updatedModel);
         return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<Object> importBankTransactions(
+            @Valid ImportBankTransactionsRequestDto request) {
+        if (request == null || request.getRawRows() == null || request.getColRoles() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Données d'import manquantes."));
+        }
+
+        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel.BankColumnMappingModel mappingModel;
+        if (request.getMapping() != null) {
+            mappingModel = mapper.toColumnMappingModel(toMap(request.getMapping()));
+        } else {
+            mappingModel = current.columnMapping();
+        }
+
+        try {
+            BankImportSummaryModel summary = BankImportCalculator.importTransactions(
+                    request.getRawRows(),
+                    request.getColRoles(),
+                    mappingModel,
+                    current.transactions(),
+                    current.rules()
+            );
+
+            List<BankImportModel.BankTransactionModel> allTransactions = new ArrayList<>(
+                    current.transactions() != null ? current.transactions() : Collections.emptyList()
+            );
+            allTransactions.addAll(summary.newTransactions());
+
+            BankImportModel updatedModel = new BankImportModel(
+                    summary.updatedMapping(),
+                    current.categories(),
+                    current.rules(),
+                    allTransactions,
+                    current.pendingOperations(),
+                    current.matchings()
+            );
+
+            persistenceManager.updateBankImport(updatedModel);
+            return ResponseEntity.ok(mapper.toImportSummaryMap(summary));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @Override

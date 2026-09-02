@@ -627,6 +627,26 @@ paths:
         '200':
           description: Regles reappliquees
 
+  /bank-import/import:
+    post:
+      summary: Importe des transactions bancaires a partir de lignes CSV pre-parsees et roles de colonnes
+      operationId: importBankTransactions
+      tags:
+        - Import Bancaire
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportBankTransactionsRequestDto'
+      responses:
+        '200':
+          description: Resume de l'import bancaire
+          content:
+            application/json:
+              schema:
+                type: object
+
   # ---------------------------------------------------------------------------
   # OPERATIONS EN COURS (PENDING)
   # ---------------------------------------------------------------------------
@@ -1508,6 +1528,24 @@ components:
           type: string
           nullable: true
           description: Mot-clé pour créer ou mettre à jour une règle de catégorisation (optionnel)
+
+    ImportBankTransactionsRequestDto:
+      type: object
+      required: [rawRows, colRoles]
+      properties:
+        rawRows:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        colRoles:
+          type: array
+          items:
+            type: string
+        mapping:
+          type: object
+          nullable: true
 
     TresorerieAjustementRequestDto:
       type: object

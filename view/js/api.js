@@ -736,6 +736,24 @@
      * @returns {Promise<Object>} Résumé de l'import
      */
     async importBankTransactions(rawRows, colRoles, mapping) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank-import/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawRows, colRoles, mapping })
+          });
+          if (res && res.ok) {
+            const summary = await res.json();
+            if (app().BankImportService && app().BankImportService.importBankTransactions) {
+              app().BankImportService.importBankTransactions(rawRows, colRoles, mapping);
+            }
+            return summary;
+          }
+        } catch (e) {
+          console.error("Échec import bancaire sur le backend", e);
+        }
+      }
       return Promise.resolve(app().BankImportService.importBankTransactions(rawRows, colRoles, mapping));
     },
 

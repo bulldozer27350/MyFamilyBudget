@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
 import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
+import com.moe.myfamilybudget.api.model.ImportBankTransactionsRequestDto;
 import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
@@ -366,5 +367,39 @@ class StatementBankImportServiceImplTest {
         assertThat(stored.transactions().stream().filter(t -> t.id().equals("tx_net")).findFirst().get().categoryId()).isEqualTo("cat_streaming");
         // txAlreadyCat should keep cat_custom
         assertThat(stored.transactions().stream().filter(t -> t.id().equals("tx_manual")).findFirst().get().categoryId()).isEqualTo("cat_custom");
+    }
+
+    @Test
+    @DisplayName("importBankTransactions imports parsed rows with explicit colRoles, deduplicates and categorizes")
+    void testImportBankTransactions() {
+        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel.BankImportRuleModel rule = new BankImportModel.BankImportRuleModel("r_leclerc", "LECLERC", "cat_supermarche");
+        persistenceManager.updateBankImport(new BankImportModel(
+                current.columnMapping(), current.categories(), java.util.List.of(rule),
+                java.util.List.of(), current.pendingOperations(), current.matchings()
+        ));
+
+        ImportBankTransactionsRequestDto request = new ImportBankTransactionsRequestDto();
+        request.setColRoles(java.util.List.of("date", "ignore", "label", "amount"));
+        request.setRawRows(java.util.List.of(
+                java.util.List.of("15/01/2026", "ignored_col", "LECLERC SUPER", "-85.50"),
+                java.util.List.of("16/01/2026", "ignored_col", "PHARMACIE CENTRALE", "-22.10")
+        ));
+        request.setMapping(Map.of("dateFormat", "DD/MM/YYYY", "delimiter", ";"));
+
+        ResponseEntity<Object> response = service.importBankTransactions(request);
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.get("imported")).isEqualTo(2);
+        assertThat(body.get("duplicates")).isEqualTo(0);
+        assertThat(body.get("autoCategorized")).isEqualTo(1);
+
+        BankImportModel stored = persistenceManager.getBankImport();
+        assertThat(stored.transactions()).hasSize(2);
+        assertThat(stored.transactions().get(0).categoryId()).isEqualTo("cat_supermarche");
+        assertThat(stored.transactions().get(1).categoryId()).isEmpty();
     }
 }

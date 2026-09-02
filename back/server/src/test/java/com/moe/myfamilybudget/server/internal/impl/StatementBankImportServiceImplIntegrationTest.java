@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
+import com.moe.myfamilybudget.api.model.ImportBankTransactionsRequestDto;
 import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
@@ -222,5 +223,53 @@ class StatementBankImportServiceImplIntegrationTest {
 
         BankImportModel afterRecalc = persistenceManager.getBankImport();
         assertThat(afterRecalc.transactions().stream().filter(t -> t.id().equals("tx_spotify_3")).findFirst().get().categoryId()).isEqualTo("cat_musique");
+    }
+
+    @Test
+    @DisplayName("End-to-end flow: Import parsed transactions with custom column mapping & deduplication check")
+    void testImportBankTransactionsFlow() {
+        // Pre-configure a rule
+        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel.BankImportRuleModel rule = new BankImportModel.BankImportRuleModel("r_sncf", "SNCF", "cat_transport");
+        persistenceManager.updateBankImport(new BankImportModel(
+                current.columnMapping(), current.categories(), java.util.List.of(rule),
+                java.util.List.of(), current.pendingOperations(), current.matchings()
+        ));
+
+        // First import batch
+        ImportBankTransactionsRequestDto req1 = new ImportBankTransactionsRequestDto();
+        req1.setColRoles(java.util.List.of("date", "label", "amount"));
+        req1.setRawRows(java.util.List.of(
+                java.util.List.of("01/02/2026", "BILLET SNCF PARIS", "-45.00"),
+                java.util.List.of("02/02/2026", "RESTAURANT LE BISTROT", "-32.50")
+        ));
+        req1.setMapping(Map.of("dateFormat", "DD/MM/YYYY", "delimiter", ";"));
+
+        ResponseEntity<Object> resp1 = service.importBankTransactions(req1);
+        assertThat(resp1.getStatusCode().is2xxSuccessful()).isTrue();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> summary1 = (Map<String, Object>) resp1.getBody();
+        assertThat(summary1.get("imported")).isEqualTo(2);
+        assertThat(summary1.get("duplicates")).isEqualTo(0);
+        assertThat(summary1.get("autoCategorized")).isEqualTo(1);
+
+        // Second import with a duplicate
+        ImportBankTransactionsRequestDto req2 = new ImportBankTransactionsRequestDto();
+        req2.setColRoles(java.util.List.of("date", "label", "amount"));
+        req2.setRawRows(java.util.List.of(
+                java.util.List.of("01/02/2026", "BILLET SNCF PARIS", "-45.00"), // duplicate
+                java.util.List.of("05/02/2026", "PHARMACIE DE LA GARE", "-15.00") // new
+        ));
+        req2.setMapping(Map.of("dateFormat", "DD/MM/YYYY", "delimiter", ";"));
+
+        ResponseEntity<Object> resp2 = service.importBankTransactions(req2);
+        assertThat(resp2.getStatusCode().is2xxSuccessful()).isTrue();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> summary2 = (Map<String, Object>) resp2.getBody();
+        assertThat(summary2.get("imported")).isEqualTo(1);
+        assertThat(summary2.get("duplicates")).isEqualTo(1);
+
+        BankImportModel stored = persistenceManager.getBankImport();
+        assertThat(stored.transactions()).hasSize(3);
     }
 }
