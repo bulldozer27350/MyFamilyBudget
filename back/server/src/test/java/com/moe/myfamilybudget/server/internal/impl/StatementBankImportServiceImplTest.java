@@ -402,4 +402,65 @@ class StatementBankImportServiceImplTest {
         assertThat(stored.transactions().get(0).categoryId()).isEqualTo("cat_supermarche");
         assertThat(stored.transactions().get(1).categoryId()).isEmpty();
     }
+
+    @Test
+    @DisplayName("forceImportBankTransaction adds the transaction despite being a duplicate, applying rules")
+    void testForceImportBankTransactionAppliesRules() {
+        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel.BankImportRuleModel rule = new BankImportModel.BankImportRuleModel("r_edf", "EDF", "cat_energie");
+        persistenceManager.updateBankImport(new BankImportModel(
+                current.columnMapping(), current.categories(), java.util.List.of(rule),
+                java.util.List.of(), current.pendingOperations(), current.matchings()
+        ));
+
+        Map<String, Object> tx = Map.of(
+                "id", "tx_dup_1",
+                "date", "2026-01-20",
+                "label", "EDF FACTURE ELEC",
+                "type", "prelevement",
+                "amount", "-64.30",
+                "categoryId", ""
+        );
+
+        ResponseEntity<Object> response = service.forceImportBankTransaction(tx);
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBody();
+        assertThat(body.get("id")).isEqualTo("tx_dup_1");
+        assertThat(body.get("categoryId")).isEqualTo("cat_energie");
+
+        BankImportModel stored = persistenceManager.getBankImport();
+        assertThat(stored.transactions()).hasSize(1);
+        assertThat(stored.transactions().get(0).id()).isEqualTo("tx_dup_1");
+        assertThat(stored.transactions().get(0).categoryId()).isEqualTo("cat_energie");
+    }
+
+    @Test
+    @DisplayName("forceImportBankTransaction appends to existing transactions without touching them")
+    void testForceImportBankTransactionKeepsExistingTransactions() {
+        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel.BankTransactionModel existing = new BankImportModel.BankTransactionModel(
+                "tx_existing", "2026-01-10", "LOYER", "", new java.math.BigDecimal("-750.00"), "cat_logement"
+        );
+        persistenceManager.updateBankImport(new BankImportModel(
+                current.columnMapping(), current.categories(), current.rules(),
+                java.util.List.of(existing), current.pendingOperations(), current.matchings()
+        ));
+
+        Map<String, Object> tx = Map.of(
+                "id", "tx_dup_2",
+                "date", "2026-01-21",
+                "label", "VIREMENT DIVERS",
+                "amount", "-30.00"
+        );
+
+        ResponseEntity<Object> response = service.forceImportBankTransaction(tx);
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+
+        BankImportModel stored = persistenceManager.getBankImport();
+        assertThat(stored.transactions()).hasSize(2);
+        assertThat(stored.transactions()).anyMatch(t -> t.id().equals("tx_existing"));
+        assertThat(stored.transactions()).anyMatch(t -> t.id().equals("tx_dup_2"));
+    }
 }

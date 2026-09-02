@@ -706,6 +706,21 @@
      * @returns {Promise<void>}
      */
     async forceImportBankTransaction(tx) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank-import/transactions/force', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(tx || {})
+          });
+          if (res && res.ok) {
+            app().BankImportService.forceImportBankTransaction(tx);
+            return;
+          }
+        } catch (e) {
+          console.error("Échec import forcé de la transaction sur le backend", e);
+        }
+      }
       return Promise.resolve(app().BankImportService.forceImportBankTransaction(tx));
     },
 
@@ -745,9 +760,14 @@
           });
           if (res && res.ok) {
             const summary = await res.json();
-            if (app().BankImportService && app().BankImportService.importBankTransactions) {
-              app().BankImportService.importBankTransactions(rawRows, colRoles, mapping);
-            }
+            // Important : on ne rejoue PAS l'import côté local (app().BankImportService.importBankTransactions)
+            // ici. Ce service génère ses propres identifiants via uid(), indépendamment des identifiants
+            // générés côté serveur pour les mêmes lignes. Les deux copies (locale et backend) portant des IDs
+            // différents pour les mêmes transactions, tout écran qui fusionne apiData.transactions et
+            // data.bankImport.transactions par id (ex: pending-view.js) comptait deux fois chaque transaction
+            // importée sur l'appareil ayant fait l'import, faussant le solde. L'écran d'import se resynchronise
+            // de toute façon juste après via BudgetApi.getBankImport(), donc ce miroir local était à la fois
+            // inutile et nuisible.
             return summary;
           }
         } catch (e) {

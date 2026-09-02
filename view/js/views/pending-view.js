@@ -182,21 +182,31 @@
 
       const storeTx = Array.isArray(data?.bankImport?.transactions) ? data.bankImport.transactions : [];
       const apiTx = Array.isArray(apiData?.transactions) ? apiData.transactions : [];
+      // Dédoublonnage par contenu (date+libellé+montant) et non par id : une même transaction importée
+      // peut porter un id différent entre le store local (généré par uid() côté navigateur) et le backend
+      // (généré côté serveur). Fusionner par id ferait doublonner ces transactions et fausserait le solde.
+      // Le backend fait foi ; le store local ne complète que ce qui n'existe pas déjà côté backend.
       const txMap = new Map();
-      apiTx.forEach(t => { if (t && t.id) txMap.set(t.id, t); });
-      storeTx.forEach(t => { if (t && t.id) txMap.set(t.id, t); });
+      apiTx.forEach(t => { if (t) txMap.set(transactionDedupeKey(t), t); });
+      storeTx.forEach(t => { if (t && !txMap.has(transactionDedupeKey(t))) txMap.set(transactionDedupeKey(t), t); });
       const mergedTx = Array.from(txMap.values());
 
-      const cats = (Array.isArray(data?.bankImport?.categories) && data.bankImport.categories.length)
-        ? data.bankImport.categories
-        : (Array.isArray(apiData?.categories) ? apiData.categories : []);
-      const rls = (Array.isArray(data?.bankImport?.rules) && data.bankImport.rules.length)
-        ? data.bankImport.rules
-        : (Array.isArray(apiData?.rules) ? apiData.rules : []);
-      const chg = Array.isArray(data?.charges) ? data.charges : (Array.isArray(apiData?.charges) ? apiData.charges : []);
-      const inc = Array.isArray(data?.incomes) ? data.incomes : (Array.isArray(apiData?.incomes) ? apiData.incomes : []);
-      const one = Array.isArray(data?.oneoff) ? data.oneoff : (Array.isArray(apiData?.oneoff) ? apiData.oneoff : []);
-      const set = data?.settings || apiData?.settings || {};
+      // Même principe que pour les transactions et les settings : le backend fait foi. Un store local non
+      // vide mais périmé (ex : données d'exemple jamais nettoyées sur un appareil) ne doit pas masquer des
+      // données backend à jour.
+      const cats = (Array.isArray(apiData?.categories) && apiData.categories.length)
+        ? apiData.categories
+        : (Array.isArray(data?.bankImport?.categories) ? data.bankImport.categories : []);
+      const rls = (Array.isArray(apiData?.rules) && apiData.rules.length)
+        ? apiData.rules
+        : (Array.isArray(data?.bankImport?.rules) ? data.bankImport.rules : []);
+      const chg = Array.isArray(apiData?.charges) ? apiData.charges : (Array.isArray(data?.charges) ? data.charges : []);
+      const inc = Array.isArray(apiData?.incomes) ? apiData.incomes : (Array.isArray(data?.incomes) ? data.incomes : []);
+      const one = Array.isArray(apiData?.oneoff) ? apiData.oneoff : (Array.isArray(data?.oneoff) ? data.oneoff : []);
+      // Le backend fait foi pour les settings (startBalance, pivotMode...) : le store local d'un appareil
+      // qui n'a jamais servi à modifier les paramètres peut rester bloqué sur d'anciennes valeurs par défaut
+      // (ex : startBalance à 0, pivotMode "manual") alors que le backend a les bonnes valeurs synchronisées.
+      const set = apiData?.settings || data?.settings || {};
 
       return {
         pendingOperations: mergedPending,

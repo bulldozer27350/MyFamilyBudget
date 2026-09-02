@@ -272,4 +272,42 @@ class StatementBankImportServiceImplIntegrationTest {
         BankImportModel stored = persistenceManager.getBankImport();
         assertThat(stored.transactions()).hasSize(3);
     }
+
+    @Test
+    @DisplayName("End-to-end flow: import detects a duplicate, then forceImportBankTransaction adds it anyway")
+    void testForceImportDuplicateAfterImportFlow() {
+        // First import
+        ImportBankTransactionsRequestDto req1 = new ImportBankTransactionsRequestDto();
+        req1.setColRoles(java.util.List.of("date", "label", "amount"));
+        req1.setRawRows(java.util.List.of(
+                java.util.List.of("10/03/2026", "ABONNEMENT SALLE DE SPORT", "-29.90")
+        ));
+        req1.setMapping(Map.of("dateFormat", "DD/MM/YYYY", "delimiter", ";"));
+        service.importBankTransactions(req1);
+
+        // Second import: same line is flagged as duplicate
+        ImportBankTransactionsRequestDto req2 = new ImportBankTransactionsRequestDto();
+        req2.setColRoles(java.util.List.of("date", "label", "amount"));
+        req2.setRawRows(java.util.List.of(
+                java.util.List.of("10/03/2026", "ABONNEMENT SALLE DE SPORT", "-29.90")
+        ));
+        req2.setMapping(Map.of("dateFormat", "DD/MM/YYYY", "delimiter", ";"));
+        ResponseEntity<Object> resp2 = service.importBankTransactions(req2);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> summary2 = (Map<String, Object>) resp2.getBody();
+        assertThat(summary2.get("duplicates")).isEqualTo(1);
+
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> ignored = (java.util.List<Map<String, Object>>) summary2.get("ignoredDuplicates");
+        assertThat(ignored).hasSize(1);
+        Map<String, Object> duplicateTx = ignored.get(0);
+
+        // User explicitly forces the import of the flagged duplicate
+        ResponseEntity<Object> forceResp = service.forceImportBankTransaction(duplicateTx);
+        assertThat(forceResp.getStatusCode().is2xxSuccessful()).isTrue();
+
+        BankImportModel stored = persistenceManager.getBankImport();
+        assertThat(stored.transactions()).hasSize(2);
+        assertThat(stored.transactions().stream().filter(t -> t.label().equals("ABONNEMENT SALLE DE SPORT")).count()).isEqualTo(2);
+    }
 }
