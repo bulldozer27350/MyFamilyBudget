@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
+import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
@@ -173,5 +174,53 @@ class StatementBankImportServiceImplIntegrationTest {
         BankImportModel afterDelete = persistenceManager.getBankImport();
         assertThat(afterDelete.categories()).noneMatch(c -> c.id().equals(catId));
         assertThat(afterDelete.rules()).noneMatch(r -> r.id().equals(ruleId));
+    }
+
+    @Test
+    @DisplayName("End-to-end flow: Manual categorization with rule creation -> CSV import -> Recalculate rules")
+    void testManualCategorizationAndRuleRecalculateFlow() {
+        // 1. Initial transaction without category
+        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel.BankTransactionModel tx1 = new BankImportModel.BankTransactionModel(
+                "tx_spotify_1", "2026-01-05", "SPOTIFY AB STOCKHOLM", "cb", new java.math.BigDecimal("-10.99"), ""
+        );
+        BankImportModel.BankTransactionModel tx2 = new BankImportModel.BankTransactionModel(
+                "tx_spotify_2", "2026-01-15", "SPOTIFY AB STOCKHOLM", "cb", new java.math.BigDecimal("-10.99"), ""
+        );
+        persistenceManager.updateBankImport(new BankImportModel(
+                current.columnMapping(), current.categories(), current.rules(),
+                java.util.List.of(tx1, tx2), current.pendingOperations(), current.matchings()
+        ));
+
+        // 2. Set category for tx1 and create rule "SPOTIFY"
+        SetBankTransactionCategoryRequestDto setCatDto = new SetBankTransactionCategoryRequestDto();
+        setCatDto.setCategoryId("cat_musique");
+        setCatDto.setRuleKeyword("SPOTIFY");
+
+        ResponseEntity<Void> setCatResp = service.setBankImportTransactionCategory("tx_spotify_1", setCatDto);
+        assertThat(setCatResp.getStatusCode().is2xxSuccessful()).isTrue();
+
+        // 3. Verify tx1 and tx2 are both categorized as cat_musique
+        BankImportModel stored = persistenceManager.getBankImport();
+        assertThat(stored.rules()).anyMatch(r -> r.matchText().equals("SPOTIFY") && r.categoryId().equals("cat_musique"));
+        assertThat(stored.transactions().stream().filter(t -> t.id().equals("tx_spotify_1")).findFirst().get().categoryId()).isEqualTo("cat_musique");
+        assertThat(stored.transactions().stream().filter(t -> t.id().equals("tx_spotify_2")).findFirst().get().categoryId()).isEqualTo("cat_musique");
+
+        // 4. Add new uncategorized transaction manually and trigger recalculate
+        BankImportModel.BankTransactionModel tx3 = new BankImportModel.BankTransactionModel(
+                "tx_spotify_3", "2026-02-05", "SPOTIFY SUBSCRIPTION", "cb", new java.math.BigDecimal("-10.99"), ""
+        );
+        java.util.List<BankImportModel.BankTransactionModel> allTxs = new java.util.ArrayList<>(stored.transactions());
+        allTxs.add(tx3);
+        persistenceManager.updateBankImport(new BankImportModel(
+                stored.columnMapping(), stored.categories(), stored.rules(),
+                allTxs, stored.pendingOperations(), stored.matchings()
+        ));
+
+        ResponseEntity<Void> recalcResp = service.recalculateBankImportRules();
+        assertThat(recalcResp.getStatusCode().is2xxSuccessful()).isTrue();
+
+        BankImportModel afterRecalc = persistenceManager.getBankImport();
+        assertThat(afterRecalc.transactions().stream().filter(t -> t.id().equals("tx_spotify_3")).findFirst().get().categoryId()).isEqualTo("cat_musique");
     }
 }

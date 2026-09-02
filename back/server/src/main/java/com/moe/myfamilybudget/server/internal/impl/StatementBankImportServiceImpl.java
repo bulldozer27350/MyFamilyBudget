@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.moe.myfamilybudget.api.controller.ImportBancaireApi;
 import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
+import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
@@ -273,6 +274,87 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.badRequest().build();
+    }
+
+    // ---------------------------------------------------------------------------
+    // Catégorisation manuelle & Recalcul de règles
+    // ---------------------------------------------------------------------------
+
+    @Override
+    public ResponseEntity<Void> setBankImportTransactionCategory(String txId,
+            SetBankTransactionCategoryRequestDto body) {
+        if (body == null || body.getCategoryId() == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        String categoryId = body.getCategoryId();
+        String ruleKeyword = body.getRuleKeyword();
+
+        BankImportModel current = persistenceManager.getBankImport();
+        List<BankImportModel.BankImportRuleModel> currentRules = current.rules() != null ? current.rules() : Collections.emptyList();
+        List<BankImportModel.BankImportRuleModel> newRules = new ArrayList<>(currentRules);
+
+        if (ruleKeyword != null && !ruleKeyword.trim().isEmpty()) {
+            String key = ruleKeyword.trim().toUpperCase();
+            boolean found = false;
+            for (int i = 0; i < newRules.size(); i++) {
+                BankImportModel.BankImportRuleModel r = newRules.get(i);
+                if (r.matchText() != null && r.matchText().trim().toUpperCase().equals(key)) {
+                    newRules.set(i, new BankImportModel.BankImportRuleModel(r.id(), r.matchText(), categoryId));
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                newRules.add(new BankImportModel.BankImportRuleModel(null, ruleKeyword.trim(), categoryId));
+            }
+        }
+
+        List<BankImportModel.BankTransactionModel> currentTxs = current.transactions() != null ? current.transactions() : Collections.emptyList();
+        List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>();
+        for (BankImportModel.BankTransactionModel t : currentTxs) {
+            if (t.id() != null && t.id().equals(txId)) {
+                updatedTxs.add(new BankImportModel.BankTransactionModel(
+                        t.id(), t.date(), t.label(), t.type(), t.amount(), categoryId, t.splits()
+                ));
+            } else {
+                updatedTxs.add(t);
+            }
+        }
+
+        List<BankImportModel.BankTransactionModel> finalTxs = BankImportCalculator.applyRulesToTransactions(updatedTxs, newRules);
+
+        BankImportModel updatedModel = new BankImportModel(
+                current.columnMapping(),
+                current.categories(),
+                newRules,
+                finalTxs,
+                current.pendingOperations(),
+                current.matchings()
+        );
+
+        persistenceManager.updateBankImport(updatedModel);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> recalculateBankImportRules() {
+        BankImportModel current = persistenceManager.getBankImport();
+        List<BankImportModel.BankTransactionModel> currentTxs = current.transactions() != null ? current.transactions() : Collections.emptyList();
+        List<BankImportModel.BankImportRuleModel> currentRules = current.rules() != null ? current.rules() : Collections.emptyList();
+
+        List<BankImportModel.BankTransactionModel> recalculated = BankImportCalculator.applyRulesToTransactions(currentTxs, currentRules);
+
+        BankImportModel updatedModel = new BankImportModel(
+                current.columnMapping(),
+                current.categories(),
+                currentRules,
+                recalculated,
+                current.pendingOperations(),
+                current.matchings()
+        );
+
+        persistenceManager.updateBankImport(updatedModel);
+        return ResponseEntity.ok().build();
     }
 
     // --- Utility ---

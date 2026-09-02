@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
 import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
+import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
@@ -279,5 +280,91 @@ class StatementBankImportServiceImplTest {
 
         stored = persistenceManager.getBankImport();
         assertThat(stored.rules()).noneMatch(r -> r.id().equals(ruleId));
+    }
+
+    @Test
+    @DisplayName("setBankImportTransactionCategory updates tx category, creates new rule, and applies rules to other txs")
+    void testSetBankImportTransactionCategoryWithNewRule() {
+        // Setup initial transactions
+        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel.BankTransactionModel tx1 = new BankImportModel.BankTransactionModel(
+                "tx_cat_1", "2026-01-15", "BOULANGERIE PAUL", "", new java.math.BigDecimal("-12.50"), ""
+        );
+        BankImportModel.BankTransactionModel tx2 = new BankImportModel.BankTransactionModel(
+                "tx_cat_2", "2026-01-18", "BOULANGERIE PAUL SUD", "", new java.math.BigDecimal("-8.00"), ""
+        );
+        persistenceManager.updateBankImport(new BankImportModel(
+                current.columnMapping(), current.categories(), current.rules(),
+                java.util.List.of(tx1, tx2), current.pendingOperations(), current.matchings()
+        ));
+
+        SetBankTransactionCategoryRequestDto request = new SetBankTransactionCategoryRequestDto();
+        request.setCategoryId("cat_boulangerie");
+        request.setRuleKeyword("BOULANGERIE");
+
+        ResponseEntity<Void> response = service.setBankImportTransactionCategory("tx_cat_1", request);
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+
+        BankImportModel stored = persistenceManager.getBankImport();
+        // Check rule created
+        assertThat(stored.rules()).anyMatch(r -> r.matchText().equals("BOULANGERIE") && r.categoryId().equals("cat_boulangerie"));
+        // Check tx1 categorized
+        assertThat(stored.transactions().stream().filter(t -> t.id().equals("tx_cat_1")).findFirst().get().categoryId()).isEqualTo("cat_boulangerie");
+        // Check tx2 auto-categorized by the new rule
+        assertThat(stored.transactions().stream().filter(t -> t.id().equals("tx_cat_2")).findFirst().get().categoryId()).isEqualTo("cat_boulangerie");
+    }
+
+    @Test
+    @DisplayName("setBankImportTransactionCategory updates existing rule if keyword already exists (case-insensitive)")
+    void testSetBankImportTransactionCategoryWithExistingRuleUpdate() {
+        // Setup initial rule and transaction
+        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel.BankImportRuleModel rule = new BankImportModel.BankImportRuleModel("r_exist", "AUCHAN", "cat_old");
+        BankImportModel.BankTransactionModel tx = new BankImportModel.BankTransactionModel(
+                "tx_auchan", "2026-01-15", "AUCHAN DRIVE", "", new java.math.BigDecimal("-50.00"), ""
+        );
+        persistenceManager.updateBankImport(new BankImportModel(
+                current.columnMapping(), current.categories(), java.util.List.of(rule),
+                java.util.List.of(tx), current.pendingOperations(), current.matchings()
+        ));
+
+        SetBankTransactionCategoryRequestDto request = new SetBankTransactionCategoryRequestDto();
+        request.setCategoryId("cat_new");
+        request.setRuleKeyword("  auchan  "); // with whitespace and lowercase
+
+        ResponseEntity<Void> response = service.setBankImportTransactionCategory("tx_auchan", request);
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+
+        BankImportModel stored = persistenceManager.getBankImport();
+        // Check rule updated, not duplicated
+        assertThat(stored.rules()).hasSize(1);
+        assertThat(stored.rules().get(0).categoryId()).isEqualTo("cat_new");
+        assertThat(stored.transactions().get(0).categoryId()).isEqualTo("cat_new");
+    }
+
+    @Test
+    @DisplayName("recalculateBankImportRules applies all existing rules to uncategorized transactions")
+    void testRecalculateBankImportRules() {
+        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel.BankImportRuleModel rule = new BankImportModel.BankImportRuleModel("r1", "NETFLIX", "cat_streaming");
+        BankImportModel.BankTransactionModel txUncat = new BankImportModel.BankTransactionModel(
+                "tx_net", "2026-01-10", "NETFLIX COM", "", new java.math.BigDecimal("-15.99"), ""
+        );
+        BankImportModel.BankTransactionModel txAlreadyCat = new BankImportModel.BankTransactionModel(
+                "tx_manual", "2026-01-11", "NETFLIX COM", "", new java.math.BigDecimal("-15.99"), "cat_custom"
+        );
+        persistenceManager.updateBankImport(new BankImportModel(
+                current.columnMapping(), current.categories(), java.util.List.of(rule),
+                java.util.List.of(txUncat, txAlreadyCat), current.pendingOperations(), current.matchings()
+        ));
+
+        ResponseEntity<Void> response = service.recalculateBankImportRules();
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+
+        BankImportModel stored = persistenceManager.getBankImport();
+        // txUncat should now have cat_streaming
+        assertThat(stored.transactions().stream().filter(t -> t.id().equals("tx_net")).findFirst().get().categoryId()).isEqualTo("cat_streaming");
+        // txAlreadyCat should keep cat_custom
+        assertThat(stored.transactions().stream().filter(t -> t.id().equals("tx_manual")).findFirst().get().categoryId()).isEqualTo("cat_custom");
     }
 }

@@ -637,6 +637,19 @@
      * @returns {Promise<void>}
      */
     async recalculateBankImportRules() {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank-import/rules/recalculate', {
+            method: 'POST'
+          });
+          if (res && res.ok) {
+            app().BankImportService.recalculateBankImportRules();
+            return;
+          }
+        } catch (e) {
+          console.error("Échec recalcul des règles sur le backend", e);
+        }
+      }
       return Promise.resolve(app().BankImportService.recalculateBankImportRules());
     },
 
@@ -645,6 +658,21 @@
      * @returns {Promise<void>}
      */
     async setBankImportTransactionCategory(txId, categoryId, ruleKeyword) {
+      if (typeof fetch !== 'undefined') {
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank-import/transactions/' + encodeURIComponent(txId) + '/category', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categoryId, ruleKeyword })
+          });
+          if (res && res.ok) {
+            app().BankImportService.setBankImportTransactionCategory(txId, categoryId, ruleKeyword);
+            return;
+          }
+        } catch (e) {
+          console.error("Échec catégorisation transaction sur le backend", e);
+        }
+      }
       return Promise.resolve(app().BankImportService.setBankImportTransactionCategory(txId, categoryId, ruleKeyword));
     },
 

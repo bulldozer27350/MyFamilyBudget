@@ -595,6 +595,38 @@ paths:
         '204':
           description: Entree supprimee
 
+  /bank-import/transactions/{txId}/category:
+    put:
+      summary: Met a jour la categorie d'une transaction et cree optionnellement une regle
+      operationId: setBankImportTransactionCategory
+      tags:
+        - Import Bancaire
+      parameters:
+        - name: txId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetBankTransactionCategoryRequestDto'
+      responses:
+        '200':
+          description: Categorie de transaction mise a jour
+
+  /bank-import/rules/recalculate:
+    post:
+      summary: Reapplique les regles aux transactions non categorisees
+      operationId: recalculateBankImportRules
+      tags:
+        - Import Bancaire
+      responses:
+        '200':
+          description: Regles reappliquees
+
   # ---------------------------------------------------------------------------
   # OPERATIONS EN COURS (PENDING)
   # ---------------------------------------------------------------------------
@@ -1465,6 +1497,17 @@ components:
         value:
           nullable: true
           description: Nouvelle valeur du champ (chaine, nombre, booleen...)
+
+    SetBankTransactionCategoryRequestDto:
+      type: object
+      required: [categoryId]
+      properties:
+        categoryId:
+          type: string
+        ruleKeyword:
+          type: string
+          nullable: true
+          description: Mot-clé pour créer ou mettre à jour une règle de catégorisation (optionnel)
 
     TresorerieAjustementRequestDto:
       type: object
