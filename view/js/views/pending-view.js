@@ -233,13 +233,30 @@
 
       const storeTx = Array.isArray(data?.bankImport?.transactions) ? data.bankImport.transactions : [];
       const apiTx = Array.isArray(apiData?.transactions) ? apiData.transactions : [];
-      // Dédoublonnage par contenu (date+libellé+montant) et non par id : une même transaction importée
-      // peut porter un id différent entre le store local (généré par uid() côté navigateur) et le backend
-      // (généré côté serveur). Fusionner par id ferait doublonner ces transactions et fausserait le solde.
-      // Le backend fait foi ; le store local ne complète que ce qui n'existe pas déjà côté backend.
+      // Le backend fait foi : toutes ses transactions sont conservées, indexées par id (identifiant
+      // unique généré côté serveur). On ne peut PAS les indexer par contenu (date+libellé+montant) car
+      // deux opérations bancaires réellement distinctes peuvent parfaitement partager la même date, le
+      // même libellé et le même montant (ex : deux achats identiques le même jour) ; les indexer par
+      // contenu les ferait fusionner à tort en une seule transaction et en ferait disparaître une des
+      // deux du rapprochement (voir bug #rapprochement-doublons).
+      // Le store local ne complète que ce qui n'existe pas déjà côté backend : une même transaction
+      // importée peut porter un id différent entre le store local (généré par uid() côté navigateur) et
+      // le backend (généré côté serveur), donc on écarte aussi toute entrée locale dont le contenu
+      // correspond déjà à une transaction backend existante (sous un id différent), pour ne pas la
+      // dupliquer et fausser le solde.
       const txMap = new Map();
-      apiTx.forEach(t => { if (t) txMap.set(transactionDedupeKey(t), t); });
-      storeTx.forEach(t => { if (t && !txMap.has(transactionDedupeKey(t))) txMap.set(transactionDedupeKey(t), t); });
+      const apiTxContentKeys = new Set();
+      apiTx.forEach(t => {
+        if (t && t.id) {
+          txMap.set(t.id, t);
+          apiTxContentKeys.add(transactionDedupeKey(t));
+        }
+      });
+      storeTx.forEach(t => {
+        if (t && t.id && !txMap.has(t.id) && !apiTxContentKeys.has(transactionDedupeKey(t))) {
+          txMap.set(t.id, t);
+        }
+      });
       const mergedTx = Array.from(txMap.values());
 
       // Même principe que pour les transactions et les settings : le backend fait foi. Un store local non
