@@ -35,6 +35,70 @@
     color: C?.ink || "#232A2E",
     cursor: "pointer"
   };
+
+  // Délai (ms) avant qu'une saisie clavier ne soit répercutée vers l'API des paramètres
+  // (sauvegarde + rechargement complet des settings). Même valeur et même principe que le
+  // debounce du composant Field générique (view/js/components/ui-base.js) : évite un appel
+  // réseau à chaque frappe sur les champs texte/nombre/date de la vue Paramètres.
+  const SETTINGS_FIELD_DEBOUNCE_MS = 500;
+
+  // Champ texte/nombre/date debouncé : affiche la saisie localement en temps réel, et ne
+  // répercute la valeur au parent (onChange) qu'après une pause de frappe, ou immédiatement
+  // au blur. Reprend le même mécanisme que Field (ui-base.js) pour rester cohérent avec le
+  // reste de l'application.
+  function DebouncedInput({
+    value,
+    onChange,
+    ...rest
+  }) {
+    const { useState, useEffect, useRef } = React;
+    const [localValue, setLocalValue] = useState(value ?? "");
+    const debounceTimerRef = useRef(null);
+    const isTypingRef = useRef(false);
+
+    // Garde le champ synchronisé si la valeur change depuis l'extérieur (rechargement des
+    // settings, synchronisation...), sauf pendant que l'utilisateur est en train de taper.
+    useEffect(() => {
+      if (!isTypingRef.current) {
+        setLocalValue(value ?? "");
+      }
+    }, [value]);
+
+    useEffect(() => {
+      return () => {
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      };
+    }, []);
+
+    function handleChange(e) {
+      const v = e.target.value;
+      setLocalValue(v);
+      isTypingRef.current = true;
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        debounceTimerRef.current = null;
+        isTypingRef.current = false;
+        onChange(v);
+      }, SETTINGS_FIELD_DEBOUNCE_MS);
+    }
+
+    function flush() {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+        isTypingRef.current = false;
+        onChange(localValue);
+      }
+    }
+
+    return /*#__PURE__*/React.createElement("input", {
+      ...rest,
+      value: localValue ?? "",
+      onChange: handleChange,
+      onBlur: flush
+    });
+  }
+
   function SettingsView({
     openHelp
   }) {
@@ -143,10 +207,10 @@
         color: C?.inkSoft || "#6B7278",
         marginBottom: 6
       }
-    }, "Année de naissance (parent référent)"), /*#__PURE__*/React.createElement("input", {
+    }, "Année de naissance (parent référent)"), /*#__PURE__*/React.createElement(DebouncedInput, {
       type: "number",
       value: data?.settings?.birthYear ?? 1985,
-      onChange: e => updateSettingsField("birthYear", e.target.value),
+      onChange: v => updateSettingsField("birthYear", v),
       style: inputStyle
     })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -154,10 +218,10 @@
         color: C?.inkSoft || "#6B7278",
         marginBottom: 6
       }
-    }, "Âge de départ à la retraite visé"), /*#__PURE__*/React.createElement("input", {
+    }, "Âge de départ à la retraite visé"), /*#__PURE__*/React.createElement(DebouncedInput, {
       type: "number",
       value: data?.settings?.retireAge ?? 64,
-      onChange: e => updateSettingsField("retireAge", e.target.value),
+      onChange: v => updateSettingsField("retireAge", v),
       style: inputStyle
     })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -165,10 +229,10 @@
         color: C?.inkSoft || "#6B7278",
         marginBottom: 6
       }
-    }, "Simuler la retraite jusqu'à l'âge de"), /*#__PURE__*/React.createElement("input", {
+    }, "Simuler la retraite jusqu'à l'âge de"), /*#__PURE__*/React.createElement(DebouncedInput, {
       type: "number",
       value: data?.settings?.simulateUntilAge ?? 85,
-      onChange: e => updateSettingsField("simulateUntilAge", e.target.value),
+      onChange: v => updateSettingsField("simulateUntilAge", v),
       style: inputStyle
     }), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -183,10 +247,10 @@
         color: C?.inkSoft || "#6B7278",
         marginBottom: 6
       }
-    }, "Trésorerie disponible de départ (€)"), /*#__PURE__*/React.createElement("input", {
+    }, "Trésorerie disponible de départ (€)"), /*#__PURE__*/React.createElement(DebouncedInput, {
       type: "number",
       value: data?.settings?.startBalance ?? 0,
-      onChange: e => updateSettingsField("startBalance", e.target.value),
+      onChange: v => updateSettingsField("startBalance", v),
       style: inputStyle
     }), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -201,11 +265,11 @@
         color: C?.inkSoft || "#6B7278",
         marginBottom: 6
       }
-    }, "Taux d'inflation estimé (%)"), /*#__PURE__*/React.createElement("input", {
+    }, "Taux d'inflation estimé (%)"), /*#__PURE__*/React.createElement(DebouncedInput, {
       type: "number",
       step: "0.1",
       value: (Number(data?.settings?.inflationRate) || 0.02) * 100,
-      onChange: e => updateSettingsField("inflationRate", (parseFloat(e.target.value || 0) || 0) / 100),
+      onChange: v => updateSettingsField("inflationRate", (parseFloat(v || 0) || 0) / 100),
       style: inputStyle
     }))), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -300,10 +364,10 @@
           color: C?.inkSoft || "#6B7278",
           marginBottom: 6
         }
-      }, "Date Pivot"), /*#__PURE__*/React.createElement("input", {
+      }, "Date Pivot"), /*#__PURE__*/React.createElement(DebouncedInput, {
         type: "date",
         value: data?.settings?.pivotDate || "",
-        onChange: e => updateSettingsField("pivotDate", e.target.value),
+        onChange: v => updateSettingsField("pivotDate", v),
         style: {
           ...inputStyle,
           minWidth: 160
@@ -462,11 +526,11 @@
         color: C?.inkSoft || "#6B7278",
         marginBottom: 6
       }
-    }, "Seuil haut — versement vers l'épargne (€)"), /*#__PURE__*/React.createElement("input", {
+    }, "Seuil haut — versement vers l'épargne (€)"), /*#__PURE__*/React.createElement(DebouncedInput, {
       type: "number",
       value: data?.settings?.cashCeiling ?? "",
       placeholder: "ex. 15000",
-      onChange: e => updateSettingsField("cashCeiling", e.target.value),
+      onChange: v => updateSettingsField("cashCeiling", v),
       style: inputStyle
     })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -474,11 +538,11 @@
         color: C?.inkSoft || "#6B7278",
         marginBottom: 6
       }
-    }, "Seuil bas — retrait depuis l'épargne (€)"), /*#__PURE__*/React.createElement("input", {
+    }, "Seuil bas — retrait depuis l'épargne (€)"), /*#__PURE__*/React.createElement(DebouncedInput, {
       type: "number",
       value: data?.settings?.cashFloor ?? "",
       placeholder: "ex. 3000",
-      onChange: e => updateSettingsField("cashFloor", e.target.value),
+      onChange: v => updateSettingsField("cashFloor", v),
       style: inputStyle
     })))), /*#__PURE__*/React.createElement("div", {
       style: {
