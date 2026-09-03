@@ -23,6 +23,60 @@ function deps() {
     return typeof window !== 'undefined' ? window.BudgetApp || exports : exports;
   }
 
+  /**
+   * Compare la catégorisation (categoryId simple, ou ensemble des categoryId des splits) de deux
+   * entités (une opération en attente et une transaction bancaire, dans n'importe quel ordre).
+   * Deux entités sans aucune catégorisation (ni categoryId, ni splits) sont considérées identiques
+   * (rien à réconcilier). Une entité avec des splits n'est JAMAIS considérée identique à une entité
+   * en catégorie simple, même si celle-ci est vide : toute différence, y compris "un seul des deux
+   * côtés est catégorisé", doit être arbitrée par l'opérateur plutôt que devinée par l'application.
+   * Les montants des splits sont ignorés dans la comparaison (le montant de l'opération en attente
+   * n'est qu'une estimation du montant bancaire réel).
+   */
+  function categorizationsMatch(entityA, entityB) {
+    const hasSplitsA = Array.isArray(entityA?.splits) && entityA.splits.length > 0;
+    const hasSplitsB = Array.isArray(entityB?.splits) && entityB.splits.length > 0;
+    if (hasSplitsA !== hasSplitsB) return false;
+    if (hasSplitsA) {
+      const idsA = Array.from(new Set(entityA.splits.map(s => s.categoryId).filter(Boolean))).sort();
+      const idsB = Array.from(new Set(entityB.splits.map(s => s.categoryId).filter(Boolean))).sort();
+      return idsA.length === idsB.length && idsA.every((id, i) => id === idsB[i]);
+    }
+    return (entityA?.categoryId || "") === (entityB?.categoryId || "");
+  }
+
+  /**
+   * Réajuste une liste de splits pour que leur somme corresponde exactement à targetAmount (le
+   * montant réel de la transaction bancaire), en conservant le poids relatif de chaque split. L'écart
+   * d'arrondi est absorbé par le dernier split.
+   */
+  function rescaleSplitsToAmount(splits, targetAmount) {
+    if (!Array.isArray(splits) || splits.length === 0) return [];
+    const { uid } = deps();
+    const sum = splits.reduce((s, sp) => s + (Number(sp.amount) || 0), 0);
+    let out;
+    if (Math.abs(sum) > 0.001 && Math.abs(targetAmount - sum) > 0.001) {
+      const ratio = targetAmount / sum;
+      out = splits.map(sp => ({
+        ...sp,
+        id: sp.id || (uid ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+        amount: Math.round((Number(sp.amount) || 0) * ratio * 100) / 100
+      }));
+      const newSum = out.reduce((s, sp) => s + sp.amount, 0);
+      const diff = Math.round((targetAmount - newSum) * 100) / 100;
+      if (diff !== 0 && out.length > 0) {
+        out[out.length - 1] = { ...out[out.length - 1], amount: Math.round((out[out.length - 1].amount + diff) * 100) / 100 };
+      }
+    } else {
+      out = splits.map(sp => ({
+        ...sp,
+        id: sp.id || (uid ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+        amount: Number(sp.amount) || 0
+      }));
+    }
+    return out;
+  }
+
   /* Projection du patrimoine financier mobilisable à l'année de retraite (3 scénarios) */
   function computeFinancialOnlyPatrimoine(data, patrimoine, years, retireYear, deflator) {
     const idx = years.indexOf(retireYear);
@@ -1387,20 +1441,71 @@ function deps() {
 
   /**
    * Lie manuellement une opération en cours avec une transaction bancaire (rapprochement).
-   * Si l'opération en cours possède des ventilations (splits), elles sont transférées
-   * et ajustées sur la transaction bancaire réelle.
+   *
+   * Les deux entités (opération en attente et transaction bancaire) sont deux représentations de la
+   * même donnée : leur catégorisation doit redevenir cohérente à l'issue du rapprochement.
+   * - Si les catégorisations sont déjà identiques (voir categorizationsMatch), rien à arbitrer : si
+   *   l'opération porte des splits, ils sont transférés et réajustés sur le montant réel de la
+   *   transaction (comportement historique).
+   * - Si elles diffèrent (y compris quand un seul des deux côtés est catégorisé), l'appelant DOIT
+   *   fournir categorizationChoice ("pending" ou "import") pour indiquer quel côté a été retenu par
+   *   l'opérateur ; l'application ne choisit jamais à sa place. Le côté "perdant" est aligné sur le
+   *   côté "gagnant" (categoryId ou splits, selon le cas), sans jamais aplatir un split en catégorie
+   *   unique ni l'inverse.
+   *
    * Si l'opération possède un budgetLineId, il est automatiquement propagé dans les matchings.
+   *
+   * @param {string} opId
+   * @param {string} txId
+   * @param {string} txDate
+   * @param {"pending"|"import"|null} [categorizationChoice] Côté à retenir en cas de conflit de catégorisation.
    */
-  function linkPendingOperation(opId, txId, txDate) {
+  function linkPendingOperation(opId, txId, txDate, categorizationChoice) {
     const currentData = loadFullData();
     if (!currentData.bankImport?.pendingOperations) return null;
+    const allTx = currentData.bankImport.transactions || [];
+    const matchedTx = allTx.find(t => t.id === txId) || null;
+
     let linked = null;
     let targetOp = null;
     currentData.bankImport.pendingOperations = currentData.bankImport.pendingOperations.map(o => {
       if (o.id === opId) {
         targetOp = o;
+        return o; // finalized below once we know the resolved categorization
+      }
+      return o;
+    });
+    if (!targetOp) return null;
+
+    const isEqual = matchedTx ? categorizationsMatch(targetOp, matchedTx) : true;
+    let opCategoryOverride = null; // { categoryId, splits } applied to the pending op, if any
+    let txCategoryOverride = null; // { categoryId, splits } applied to the bank transaction, if any
+
+    if (isEqual) {
+      if (Array.isArray(targetOp.splits) && targetOp.splits.length > 0 && matchedTx) {
+        txCategoryOverride = { categoryId: "", splits: rescaleSplitsToAmount(targetOp.splits, Number(matchedTx.amount) || 0) };
+      }
+    } else if (categorizationChoice === "pending") {
+      if (Array.isArray(targetOp.splits) && targetOp.splits.length > 0) {
+        txCategoryOverride = { categoryId: "", splits: rescaleSplitsToAmount(targetOp.splits, Number(matchedTx?.amount) || 0) };
+      } else {
+        txCategoryOverride = { categoryId: targetOp.categoryId || "", splits: [] };
+      }
+    } else if (categorizationChoice === "import") {
+      if (matchedTx && Array.isArray(matchedTx.splits) && matchedTx.splits.length > 0) {
+        opCategoryOverride = { categoryId: "", splits: matchedTx.splits };
+      } else {
+        opCategoryOverride = { categoryId: matchedTx?.categoryId || "", splits: [] };
+      }
+    }
+    // else: conflict left unresolved by the caller - link anyway (status/linkedTxId still set below)
+    // but neither side's categorization is touched, so the discrepancy remains visible for a later fix.
+
+    currentData.bankImport.pendingOperations = currentData.bankImport.pendingOperations.map(o => {
+      if (o.id === opId) {
         linked = {
           ...o,
+          ...(opCategoryOverride || {}),
           status: "cleared",
           linkedTxId: txId,
           clearedDate: txDate
@@ -1410,40 +1515,10 @@ function deps() {
       return o;
     });
 
-    if (targetOp && Array.isArray(targetOp.splits) && targetOp.splits.length > 0) {
-      if (currentData.bankImport.transactions) {
-        currentData.bankImport.transactions = currentData.bankImport.transactions.map(t => {
-          if (t.id === txId) {
-            const realAmt = Number(t.amount) || 0;
-            const opSplitSum = targetOp.splits.reduce((s, sp) => s + (Number(sp.amount) || 0), 0);
-            let transferredSplits = [];
-            if (Math.abs(opSplitSum) > 0.001 && Math.abs(realAmt - opSplitSum) > 0.001) {
-              const ratio = realAmt / opSplitSum;
-              transferredSplits = targetOp.splits.map(sp => ({
-                ...sp,
-                id: sp.id || (uid ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
-                amount: Math.round((Number(sp.amount) || 0) * ratio * 100) / 100
-              }));
-              const newSum = transferredSplits.reduce((s, sp) => s + sp.amount, 0);
-              const diff = Math.round((realAmt - newSum) * 100) / 100;
-              if (diff !== 0 && transferredSplits.length > 0) {
-                transferredSplits[transferredSplits.length - 1].amount = Math.round((transferredSplits[transferredSplits.length - 1].amount + diff) * 100) / 100;
-              }
-            } else {
-              transferredSplits = targetOp.splits.map(sp => ({
-                ...sp,
-                id: sp.id || (uid ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
-                amount: Number(sp.amount) || 0
-              }));
-            }
-            return {
-              ...t,
-              splits: transferredSplits
-            };
-          }
-          return t;
-        });
-      }
+    if (txCategoryOverride && currentData.bankImport.transactions) {
+      currentData.bankImport.transactions = currentData.bankImport.transactions.map(t =>
+        t.id === txId ? { ...t, ...txCategoryOverride } : t
+      );
     }
 
     // Propagation automatique du budgetLineId dans les matchings de pointage
@@ -1465,6 +1540,12 @@ function deps() {
 
   /**
    * Algorithme métier de rapprochement automatique entre opérations en cours et relevés bancaires.
+   *
+   * Une paire candidate n'est rapprochée automatiquement que si les catégorisations des deux côtés
+   * sont déjà identiques (voir categorizationsMatch). Si elles diffèrent - y compris quand un seul des
+   * deux côtés est catégorisé - l'opération reste "en attente" (non liée) : l'application ne choisit
+   * jamais une catégorie à la place de l'opérateur. Ces paires sont comptabilisées dans
+   * needsReviewCount et devront être traitées via le rapprochement manuel, qui proposera un choix.
    */
   function autoMatchPendingOperations() {
     const currentData = loadFullData();
@@ -1472,6 +1553,7 @@ function deps() {
     let transactions = currentData?.bankImport?.transactions || [];
 
     let matchCount = 0;
+    let needsReviewCount = 0;
     const currentlyLinked = new Set();
     pendingOps.forEach(op => {
       if (op.linkedTxId) currentlyLinked.add(op.linkedTxId);
@@ -1514,39 +1596,19 @@ function deps() {
       }
 
       if (matchedTx) {
+        if (!categorizationsMatch(op, matchedTx)) {
+          needsReviewCount++;
+          return op;
+        }
+
         currentlyLinked.add(matchedTx.id);
         matchCount++;
 
-        // Transfert des ventilations si présentes
+        // Transfert des ventilations si présentes (catégorisations déjà identiques, seuls les
+        // montants doivent être réajustés sur le montant réel de la transaction bancaire).
         if (Array.isArray(op.splits) && op.splits.length > 0) {
-          transactions = transactions.map(t => {
-            if (t.id === matchedTx.id) {
-              const realAmt = Number(t.amount) || 0;
-              const opSplitSum = op.splits.reduce((s, sp) => s + (Number(sp.amount) || 0), 0);
-              let transferredSplits = [];
-              if (Math.abs(opSplitSum) > 0.001 && Math.abs(realAmt - opSplitSum) > 0.001) {
-                const ratio = realAmt / opSplitSum;
-                transferredSplits = op.splits.map(sp => ({
-                  ...sp,
-                  id: sp.id || (uid ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
-                  amount: Math.round((Number(sp.amount) || 0) * ratio * 100) / 100
-                }));
-                const newSum = transferredSplits.reduce((s, sp) => s + sp.amount, 0);
-                const diff = Math.round((realAmt - newSum) * 100) / 100;
-                if (diff !== 0 && transferredSplits.length > 0) {
-                  transferredSplits[transferredSplits.length - 1].amount = Math.round((transferredSplits[transferredSplits.length - 1].amount + diff) * 100) / 100;
-                }
-              } else {
-                transferredSplits = op.splits.map(sp => ({
-                  ...sp,
-                  id: sp.id || (uid ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
-                  amount: Number(sp.amount) || 0
-                }));
-              }
-              return { ...t, splits: transferredSplits };
-            }
-            return t;
-          });
+          const rescaled = rescaleSplitsToAmount(op.splits, Number(matchedTx.amount) || 0);
+          transactions = transactions.map(t => t.id === matchedTx.id ? { ...t, splits: rescaled } : t);
         }
 
         return {
@@ -1566,7 +1628,7 @@ function deps() {
       saveFullData(currentData);
     }
 
-    return { matchCount, updatedPendingOperations: updated };
+    return { matchCount, needsReviewCount, updatedPendingOperations: updated };
   }
 
   /**

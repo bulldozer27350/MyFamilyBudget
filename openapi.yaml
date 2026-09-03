@@ -686,7 +686,7 @@ paths:
 
   /pending-operations/reconcile:
     post:
-      summary: Effectue le rapprochement d'une operation en cours
+      summary: Effectue le rapprochement automatique des operations en cours avec le releve bancaire
       operationId: reconcilePendingOperations
       tags:
         - Operations en cours
@@ -698,7 +698,24 @@ paths:
               type: object
       responses:
         '200':
-          description: Operation rapprochee
+          description: >
+            Resultat du rapprochement automatique. Les paires dont la categorisation differe entre
+            l'operation en attente et la transaction bancaire (categoryId ou splits) ne sont PAS
+            rapprochees automatiquement et sont comptabilisees dans needsReviewCount ; elles doivent
+            etre traitees manuellement, ou l'operateur sera invite a arbitrer.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matchCount:
+                    type: integer
+                    description: Nombre d'operations en attente effectivement rapprochees.
+                  needsReviewCount:
+                    type: integer
+                    description: >
+                      Nombre de paires candidates trouvees mais non rapprochees automatiquement car
+                      les categorisations different entre l'operation en attente et la transaction.
 
   /pending-operations/ignore:
     post:

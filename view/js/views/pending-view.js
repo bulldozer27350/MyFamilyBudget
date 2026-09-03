@@ -67,6 +67,56 @@
     fontSize: 14,
     width: 140
   };
+
+  /**
+   * Compare la catégorisation (categoryId simple, ou ensemble des categoryId des splits) de deux
+   * entités (une opération en attente et une transaction bancaire, dans n'importe quel ordre).
+   * Deux entités sans aucune catégorisation sont considérées identiques (rien à réconcilier). Une
+   * entité avec des splits n'est jamais considérée identique à une entité en catégorie simple, même
+   * si celle-ci est vide : toute différence doit être arbitrée par l'opérateur.
+   */
+  function categorizationsMatch(entityA, entityB) {
+    const hasSplitsA = Array.isArray(entityA?.splits) && entityA.splits.length > 0;
+    const hasSplitsB = Array.isArray(entityB?.splits) && entityB.splits.length > 0;
+    if (hasSplitsA !== hasSplitsB) return false;
+    if (hasSplitsA) {
+      const idsA = Array.from(new Set(entityA.splits.map(s => s.categoryId).filter(Boolean))).sort();
+      const idsB = Array.from(new Set(entityB.splits.map(s => s.categoryId).filter(Boolean))).sort();
+      return idsA.length === idsB.length && idsA.every((id, i) => id === idsB[i]);
+    }
+    return (entityA?.categoryId || "") === (entityB?.categoryId || "");
+  }
+
+  /**
+   * Réajuste une liste de splits pour que leur somme corresponde exactement à targetAmount, en
+   * conservant le poids relatif de chaque split. L'écart d'arrondi est absorbé par le dernier split.
+   */
+  function rescaleSplitsToAmount(splits, targetAmount) {
+    if (!Array.isArray(splits) || splits.length === 0) return [];
+    const sum = splits.reduce((s, sp) => s + (Number(sp.amount) || 0), 0);
+    let out;
+    if (Math.abs(sum) > 0.001 && Math.abs(targetAmount - sum) > 0.001) {
+      const ratio = targetAmount / sum;
+      out = splits.map(sp => ({
+        ...sp,
+        id: sp.id || (typeof uid === 'function' ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+        amount: Math.round((Number(sp.amount) || 0) * ratio * 100) / 100
+      }));
+      const newSum = out.reduce((s, sp) => s + sp.amount, 0);
+      const diff = Math.round((targetAmount - newSum) * 100) / 100;
+      if (diff !== 0 && out.length > 0) {
+        out[out.length - 1] = { ...out[out.length - 1], amount: Math.round((out[out.length - 1].amount + diff) * 100) / 100 };
+      }
+    } else {
+      out = splits.map(sp => ({
+        ...sp,
+        id: sp.id || (typeof uid === 'function' ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
+        amount: Number(sp.amount) || 0
+      }));
+    }
+    return out;
+  }
+
   function PendingOperationsView({
     data,
     update,
@@ -100,6 +150,7 @@
     });
     const [matchingOp, setMatchingOp] = useState(null);
     const [matchingSearch, setMatchingSearch] = useState("");
+    const [categorizationConflict, setCategorizationConflict] = useState(null);
     const [toast, setToast] = useState(null);
     const [showReliquats, setShowReliquats] = useState(true);
 
@@ -626,82 +677,107 @@
       });
     }, [matchingOp, transactions, usedTxIds, matchingSearch]);
 
-    const handleLinkTransaction = async tx => {
-      if (!matchingOp) return;
-      const targetOpId = matchingOp.id;
+    /**
+     * Finalise le rapprochement d'une opération en cours avec une transaction bancaire, en appliquant
+     * la catégorisation résolue (categorizationOverride) aux deux représentations de la donnée.
+     * - categorizationOverride === null : catégorisations déjà identiques, rien à arbitrer. Si
+     *   l'opération porte des splits, ils sont transférés et réajustés sur le montant réel.
+     * - categorizationOverride === { source: "pending" } : la catégorisation de l'opération en
+     *   attente est retenue et appliquée à la transaction bancaire (côté "import" aligné).
+     * - categorizationOverride === { source: "import" } : la catégorisation de la transaction
+     *   bancaire est retenue et appliquée à l'opération en attente (côté "pending" aligné).
+     */
+    const commitLink = async (op, tx, categorizationOverride) => {
+      let opFields = null; // champs à appliquer sur l'opération en attente, en plus du statut
+      let txFields = null; // champs à appliquer sur la transaction bancaire
 
-      let transferredSplits = null;
-      if (Array.isArray(matchingOp.splits) && matchingOp.splits.length > 0) {
-        const realAmt = Number(tx.amount) || 0;
-        const opSplitSum = matchingOp.splits.reduce((s, sp) => s + (Number(sp.amount) || 0), 0);
-        if (Math.abs(opSplitSum) > 0.001 && Math.abs(realAmt - opSplitSum) > 0.001) {
-          const ratio = realAmt / opSplitSum;
-          transferredSplits = matchingOp.splits.map(sp => ({
-            ...sp,
-            id: sp.id || (typeof uid === 'function' ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
-            amount: Math.round((Number(sp.amount) || 0) * ratio * 100) / 100
-          }));
-          const newSum = transferredSplits.reduce((s, sp) => s + sp.amount, 0);
-          const diff = Math.round((realAmt - newSum) * 100) / 100;
-          if (diff !== 0 && transferredSplits.length > 0) {
-            transferredSplits[transferredSplits.length - 1].amount = Math.round((transferredSplits[transferredSplits.length - 1].amount + diff) * 100) / 100;
-          }
+      if (!categorizationOverride) {
+        if (Array.isArray(op.splits) && op.splits.length > 0) {
+          txFields = { categoryId: "", splits: rescaleSplitsToAmount(op.splits, Number(tx.amount) || 0) };
+        }
+      } else if (categorizationOverride.source === "pending") {
+        if (Array.isArray(op.splits) && op.splits.length > 0) {
+          txFields = { categoryId: "", splits: rescaleSplitsToAmount(op.splits, Number(tx.amount) || 0) };
         } else {
-          transferredSplits = matchingOp.splits.map(sp => ({
-            ...sp,
-            id: sp.id || (typeof uid === 'function' ? uid() : `split_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`),
-            amount: Number(sp.amount) || 0
-          }));
+          txFields = { categoryId: op.categoryId || "", splits: [] };
+        }
+      } else if (categorizationOverride.source === "import") {
+        if (Array.isArray(tx.splits) && tx.splits.length > 0) {
+          opFields = { categoryId: "", splits: tx.splits };
+        } else {
+          opFields = { categoryId: tx.categoryId || "", splits: [] };
         }
       }
+
+      const finalOpFields = { ...(opFields || {}), status: "cleared", linkedTxId: tx.id, clearedDate: tx.date };
 
       if (update) {
         update("bankImport", b => ({
           ...b,
-          pendingOperations: (b?.pendingOperations || []).map(op => op.id === targetOpId ? {
-            ...op,
-            status: "cleared",
-            linkedTxId: tx.id,
-            clearedDate: tx.date
-          } : op),
-          transactions: transferredSplits ? (b?.transactions || []).map(t => t.id === tx.id ? { ...t, splits: transferredSplits } : t) : (b?.transactions || [])
+          pendingOperations: (b?.pendingOperations || []).map(o => o.id === op.id ? { ...o, ...finalOpFields } : o),
+          transactions: txFields ? (b?.transactions || []).map(t => t.id === tx.id ? { ...t, ...txFields } : t) : (b?.transactions || [])
         }));
       }
       setApiData(prev => {
         if (!prev) return prev;
         return {
           ...prev,
-          pendingOperations: (prev.pendingOperations || []).map(op => op.id === targetOpId ? {
-            ...op,
-            status: "cleared",
-            linkedTxId: tx.id,
-            clearedDate: tx.date
-          } : op),
-          transactions: transferredSplits ? (prev.transactions || []).map(t => t.id === tx.id ? { ...t, splits: transferredSplits } : t) : (prev.transactions || [])
+          pendingOperations: (prev.pendingOperations || []).map(o => o.id === op.id ? { ...o, ...finalOpFields } : o),
+          transactions: txFields ? (prev.transactions || []).map(t => t.id === tx.id ? { ...t, ...txFields } : t) : (prev.transactions || [])
         };
       });
+
       const apiInstance = getApi();
-      if (apiInstance && apiInstance.linkPendingOperation) {
-        apiInstance.linkPendingOperation(targetOpId, tx.id, tx.date).catch(err => console.error(err));
+      // Persiste le statut/lien de l'opération (et sa catégorisation si le côté "import" a gagné) sur
+      // le backend via l'endpoint déjà relié /pending-operations/force.
+      if (apiInstance && apiInstance.savePendingOperation) {
+        apiInstance.savePendingOperation({ ...op, ...finalOpFields }, op.id).catch(err => console.error(err));
+      } else if (apiInstance && apiInstance.linkPendingOperation) {
+        apiInstance.linkPendingOperation(op.id, tx.id, tx.date, categorizationOverride ? categorizationOverride.source : null).catch(err => console.error(err));
       }
-      if (transferredSplits && apiInstance && apiInstance.updateBankTransactionSplits) {
-        apiInstance.updateBankTransactionSplits(tx.id, transferredSplits).catch(err => console.error(err));
+      // Persiste la catégorisation de la transaction bancaire (si le côté "pending" a gagné, ou en
+      // l'absence de conflit avec des splits à réajuster) sur le backend.
+      if (txFields) {
+        if (txFields.splits && txFields.splits.length > 0 && apiInstance && apiInstance.updateBankTransactionSplits) {
+          apiInstance.updateBankTransactionSplits(tx.id, txFields.splits).catch(err => console.error(err));
+        } else if ((!txFields.splits || txFields.splits.length === 0) && apiInstance && apiInstance.setBankImportTransactionCategory) {
+          apiInstance.setBankImportTransactionCategory(tx.id, txFields.categoryId || "", null).catch(err => console.error(err));
+        }
       }
-      showToast(`Opération rapprochée avec le débit du ${tx.date.split("-").reverse().join("/")}${transferredSplits ? " (ventilations transférées)" : ""}.`);
+
+      const splitsNote = txFields?.splits?.length ? " (ventilations transférées)" : "";
+      showToast(`Opération rapprochée avec le débit du ${tx.date.split("-").reverse().join("/")}${splitsNote}.`);
       setMatchingOp(null);
+      setCategorizationConflict(null);
     };
+
+    const handleLinkTransaction = async tx => {
+      if (!matchingOp) return;
+      if (categorizationsMatch(matchingOp, tx)) {
+        await commitLink(matchingOp, tx, null);
+      } else {
+        // Les deux représentations de cette opération ne sont pas catégorisées de la même façon :
+        // l'application ne peut pas choisir à la place de l'opérateur.
+        setCategorizationConflict({ op: matchingOp, tx });
+      }
+    };
+
     const handleAutoMatch = async () => {
       if (api && api.autoMatchPendingOperations) {
         const res = await api.autoMatchPendingOperations();
         await loadDataFromApi();
+        const reviewCount = res?.needsReviewCount || 0;
         if (res && res.matchCount > 0) {
-          showToast(`🎉 ${res.matchCount} opération(s) rapprochée(s) automatiquement !`);
+          showToast(`🎉 ${res.matchCount} opération(s) rapprochée(s) automatiquement !${reviewCount > 0 ? ` ${reviewCount} nécessite(nt) une confirmation (catégories différentes) — à traiter via 🔗 Pointer.` : ""}`);
+        } else if (reviewCount > 0) {
+          showToast(`ℹ️ Aucune correspondance sans ambiguïté. ${reviewCount} opération(s) nécessite(nt) une confirmation (catégories différentes) — à traiter via 🔗 Pointer.`);
         } else {
           showToast("ℹ️ Aucune nouvelle correspondance automatique évidente trouvée.");
         }
         return;
       }
       let matchCount = 0;
+      let needsReviewCount = 0;
       const currentlyLinked = new Set();
       pendingOperations.forEach(op => {
         if (op.linkedTxId) currentlyLinked.add(op.linkedTxId);
@@ -709,40 +785,37 @@
       const updated = pendingOperations.map(op => {
         if (op.status === "cleared" && op.linkedTxId) return op;
         const opTargetAmt = Number(op.amount) || 0;
+        let candidate = null;
         if (op.refNumber && op.refNumber.length >= 3) {
-          const foundByRef = transactions.find(t => !currentlyLinked.has(t.id) && (t.label || "").toLowerCase().includes(op.refNumber.toLowerCase()) && Math.abs(Math.abs(Number(t.amount) || 0) - Math.abs(opTargetAmt)) < 0.01);
-          if (foundByRef) {
-            currentlyLinked.add(foundByRef.id);
-            matchCount++;
-            return {
-              ...op,
-              status: "cleared",
-              linkedTxId: foundByRef.id,
-              clearedDate: foundByRef.date
-            };
-          }
+          candidate = transactions.find(t => !currentlyLinked.has(t.id) && (t.label || "").toLowerCase().includes(op.refNumber.toLowerCase()) && Math.abs(Math.abs(Number(t.amount) || 0) - Math.abs(opTargetAmt)) < 0.01) || null;
         }
-        const opDateMs = op.date ? new Date(op.date).getTime() : 0;
-        const exactCandidates = transactions.filter(t => {
-          if (currentlyLinked.has(t.id)) return false;
-          const txAmt = Number(t.amount) || 0;
-          if (Math.abs(Math.abs(txAmt) - Math.abs(opTargetAmt)) >= 0.01) return false;
-          if (opDateMs && t.date) {
-            const tDateMs = new Date(t.date).getTime();
-            const diffDays = Math.abs(tDateMs - opDateMs) / (1000 * 60 * 60 * 24);
-            if (diffDays > 90) return false;
+        if (!candidate) {
+          const opDateMs = op.date ? new Date(op.date).getTime() : 0;
+          const exactCandidates = transactions.filter(t => {
+            if (currentlyLinked.has(t.id)) return false;
+            const txAmt = Number(t.amount) || 0;
+            if (Math.abs(Math.abs(txAmt) - Math.abs(opTargetAmt)) >= 0.01) return false;
+            if (opDateMs && t.date) {
+              const tDateMs = new Date(t.date).getTime();
+              const diffDays = Math.abs(tDateMs - opDateMs) / (1000 * 60 * 60 * 24);
+              if (diffDays > 90) return false;
+            }
+            return true;
+          });
+          if (exactCandidates.length === 1) candidate = exactCandidates[0];
+        }
+        if (candidate) {
+          if (!categorizationsMatch(op, candidate)) {
+            needsReviewCount++;
+            return op;
           }
-          return true;
-        });
-        if (exactCandidates.length === 1) {
-          const found = exactCandidates[0];
-          currentlyLinked.add(found.id);
+          currentlyLinked.add(candidate.id);
           matchCount++;
           return {
             ...op,
             status: "cleared",
-            linkedTxId: found.id,
-            clearedDate: found.date
+            linkedTxId: candidate.id,
+            clearedDate: candidate.date
           };
         }
         return op;
@@ -754,7 +827,9 @@
             pendingOperations: updated
           }));
         }
-        showToast(`🎉 ${matchCount} opération(s) rapprochée(s) automatiquement !`);
+        showToast(`🎉 ${matchCount} opération(s) rapprochée(s) automatiquement !${needsReviewCount > 0 ? ` ${needsReviewCount} nécessite(nt) une confirmation (catégories différentes).` : ""}`);
+      } else if (needsReviewCount > 0) {
+        showToast(`ℹ️ Aucune correspondance sans ambiguïté. ${needsReviewCount} opération(s) nécessite(nt) une confirmation (catégories différentes).`);
       } else {
         showToast("ℹ️ Aucune nouvelle correspondance automatique évidente trouvée.");
       }
@@ -2899,7 +2974,140 @@
         color: C?.inkSoft || "#6B7278",
         cursor: "pointer"
       }
-    }, "Fermer")))), showImportModal && /*#__PURE__*/React.createElement("div", {
+    }, "Fermer")))), categorizationConflict && (() => {
+      const { op: cOp, tx: cTx } = categorizationConflict;
+      const describe = entity => {
+        if (Array.isArray(entity.splits) && entity.splits.length > 0) {
+          return {
+            kind: "splits",
+            lines: entity.splits.map(sp => ({
+              label: (categories.find(c => c.id === sp.categoryId) || {}).label || "Non catégorisé",
+              amount: sp.amount
+            }))
+          };
+        }
+        if (entity.categoryId) {
+          return { kind: "single", label: (categories.find(c => c.id === entity.categoryId) || {}).label || entity.categoryId };
+        }
+        return { kind: "none", label: "Non catégorisé" };
+      };
+      const pendingDesc = describe(cOp);
+      const importDesc = describe(cTx);
+      const renderSide = (title, badgeBg, badgeColor, desc, onChoose) => /*#__PURE__*/React.createElement("div", {
+        style: {
+          border: `1px solid ${C?.line || "#DED6C4"}`,
+          borderRadius: 10,
+          background: C?.panel || "#FFFFFF",
+          padding: 14,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          alignSelf: "flex-start",
+          fontSize: 11,
+          fontWeight: 700,
+          background: badgeBg,
+          color: badgeColor,
+          padding: "2px 8px",
+          borderRadius: 4
+        }
+      }, title), desc.kind === "splits" ? /*#__PURE__*/React.createElement("div", {
+        style: { display: "flex", flexDirection: "column", gap: 4 }
+      }, desc.lines.map((l, i) => /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: { display: "flex", justifyContent: "space-between", fontSize: 12.5 }
+      }, /*#__PURE__*/React.createElement("span", null, "📁 ", l.label), /*#__PURE__*/React.createElement("span", {
+        style: { fontFamily: "'IBM Plex Mono', monospace", color: C?.inkSoft || "#6B7278" }
+      }, eurExact(l.amount))))) : /*#__PURE__*/React.createElement("div", {
+        style: { fontSize: 13, fontWeight: 600, color: desc.kind === "none" ? (C?.inkSoft || "#6B7278") : (C?.ink || "#232A2E") }
+      }, desc.kind === "none" ? desc.label : `📁 ${desc.label}`), /*#__PURE__*/React.createElement("button", {
+        type: "button",
+        onClick: onChoose,
+        style: {
+          padding: "7px 12px",
+          borderRadius: 7,
+          fontSize: 12,
+          fontWeight: 700,
+          background: C?.pine || "#2F5D50",
+          color: "#fff",
+          border: "none",
+          cursor: "pointer"
+        }
+      }, "Garder cette catégorisation"));
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0,0,0,0.5)",
+          backdropFilter: "blur(3px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1300,
+          padding: 16
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          background: C?.panel || "#FFFFFF",
+          border: `1px solid ${C?.line || "#DED6C4"}`,
+          borderRadius: 14,
+          width: "100%",
+          maxWidth: 560,
+          maxHeight: "88vh",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 12px 36px rgba(0,0,0,0.3)",
+          overflow: "hidden"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          padding: "16px 20px",
+          borderBottom: `1px solid ${C?.line || "#DED6C4"}`,
+          background: "#FFFBEB",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }
+      }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+        style: { fontWeight: 700, fontSize: 15, color: "#B45309" }
+      }, "⚖️ Catégorisation différente"), /*#__PURE__*/React.createElement("div", {
+        style: { fontSize: 12, color: C?.inkSoft || "#6B7278", marginTop: 2 }
+      }, "L'opération en attente et la transaction bancaire représentent la même donnée mais ne sont pas catégorisées pareil. Choisissez laquelle conserver — l'autre sera alignée dessus.")), /*#__PURE__*/React.createElement("button", {
+        type: "button",
+        onClick: () => setCategorizationConflict(null),
+        style: { background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C?.inkSoft || "#6B7278" }
+      }, "✕")), /*#__PURE__*/React.createElement("div", {
+        style: { padding: 16, display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: { fontSize: 12.5, color: C?.inkSoft || "#6B7278" }
+      }, cOp.label, " • ", eurExact(cOp.amount)), renderSide("OPÉRATION EN ATTENTE", "#EFF6FF", "#2563EB", pendingDesc, () => commitLink(cOp, cTx, { source: "pending" })), renderSide("TRANSACTION BANCAIRE (IMPORT)", C?.pine || "#2F5D50", "#fff", importDesc, () => commitLink(cOp, cTx, { source: "import" }))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          padding: "12px 20px",
+          borderTop: `1px solid ${C?.line || "#DED6C4"}`,
+          background: C?.panelAlt || "#EFEAE0",
+          display: "flex",
+          justifyContent: "flex-end"
+        }
+      }, /*#__PURE__*/React.createElement("button", {
+        type: "button",
+        onClick: () => setCategorizationConflict(null),
+        style: {
+          padding: "7px 16px",
+          borderRadius: 7,
+          fontSize: 12.5,
+          fontWeight: 600,
+          background: C?.panel || "#FFFFFF",
+          border: `1px solid ${C?.line || "#DED6C4"}`,
+          color: C?.inkSoft || "#6B7278",
+          cursor: "pointer"
+        }
+      }, "Annuler (ne pas rapprocher)"))));
+    })(), showImportModal && /*#__PURE__*/React.createElement("div", {
       style: {
         position: "fixed",
         top: 0,

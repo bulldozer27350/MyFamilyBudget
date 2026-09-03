@@ -45,7 +45,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
     }
 
     @Override
-    public ResponseEntity<Void> reconcilePendingOperations(Object body) {
+    public ResponseEntity<Object> reconcilePendingOperations(Object body) {
         BankImportModel current = persistenceManager.getBankImport();
         AutoMatchResultModel matchResult = BankImportCalculator.autoMatchPendingOperations(
                 current.pendingOperations(), current.transactions()
@@ -54,12 +54,12 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         if (matchResult.matchCount() > 0) {
             BankImportModel updated = new BankImportModel(
                     current.columnMapping(), current.categories(), current.rules(),
-                    current.transactions(), matchResult.updatedOperations(), current.matchings()
+                    matchResult.updatedTransactions(), matchResult.updatedOperations(), current.matchings()
             );
             persistenceManager.updateBankImport(updated);
         }
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(mapper.toAutoMatchResultMap(matchResult));
     }
 
     @Override

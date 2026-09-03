@@ -224,6 +224,11 @@ $$\text{Solde Disponible Réel} = \text{Solde Banque (Relevé)} - \sum \text{Ch�
 ### 8.5 Rapprochement bancaire (Pointage)
 - **Manuel (`🔗 Pointer`)** : Ouvre le volet des transactions bancaires candidates avec suggestions automatiques (montant identique ou n° de chèque détecté).
 - **Automatique (`⚡ Rapprochement auto`)** : Rapproche en un clic les chèques identifiés par leur numéro et les montants uniques non ambigus.
+- **Cohérence des catégories entre l'opération en attente et la transaction importée** : une opération en attente et la transaction bancaire qui la solde sont deux représentations de la même donnée ; leur catégorisation (catégorie simple ou ventilation/splits) doit redevenir cohérente au moment du rapprochement.
+  - Si les deux côtés portent **exactement** la même catégorisation (même catégorie, ou même ensemble de catégories en cas de splits), le rapprochement se fait directement, sans question.
+  - Dans **tous les autres cas** — catégorisations différentes, ou un seul des deux côtés catégorisé — l'application ne choisit jamais à votre place, car il est possible que vous ayez fait des choix incohérents de part et d'autre :
+    - En rapprochement **manuel**, une fenêtre « ⚖️ Catégorisation différente » s'ouvre et présente les deux catégorisations côte à côte (« Opération en attente » / « Transaction bancaire (import) »). Vous choisissez laquelle conserver ; l'autre est alignée dessus (montants des splits réajustés sur le montant réel débité, le cas échéant). Une ventilation (splits) choisie est toujours conservée telle quelle, jamais transformée en catégorie unique.
+    - En rapprochement **automatique**, les paires en conflit ne sont **pas** rapprochées : elles restent « en attente », et le message de synthèse indique combien d'opérations nécessitent une confirmation manuelle (`🔗 Pointer`).
 
 ---
 

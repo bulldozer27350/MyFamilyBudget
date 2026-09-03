@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -324,24 +325,114 @@ public final class BankImportCalculator {
     }
 
     /**
+     * Compares the categorization (single categoryId, or the set of category ids used across splits)
+     * of two entities (a pending operation and a bank transaction, in any order). Two entities with no
+     * categorization at all (no categoryId, no splits) are considered equal (nothing to reconcile). An
+     * entity with splits is only considered equal to another entity that ALSO has splits covering the
+     * exact same set of category ids - split amounts are intentionally ignored since the pending
+     * operation's amount is only an estimate of the real bank amount. A splits-based categorization is
+     * NEVER considered equal to a single-category (or uncategorized) representation, even if one side
+     * is blank: any difference, including "one side has a categorization and the other doesn't", must
+     * be arbitrated by the operator rather than guessed by the application.
+     */
+    public static boolean categorizationsMatch(
+            String categoryIdA, List<BankImportModel.BankTransactionSplitModel> splitsA,
+            String categoryIdB, List<BankImportModel.BankTransactionSplitModel> splitsB
+    ) {
+        boolean aHasSplits = splitsA != null && !splitsA.isEmpty();
+        boolean bHasSplits = splitsB != null && !splitsB.isEmpty();
+        if (aHasSplits != bHasSplits) {
+            return false;
+        }
+        if (aHasSplits) {
+            Set<String> idsA = splitsA.stream()
+                    .map(BankImportModel.BankTransactionSplitModel::categoryId)
+                    .filter(id -> id != null && !id.isBlank())
+                    .collect(Collectors.toCollection(TreeSet::new));
+            Set<String> idsB = splitsB.stream()
+                    .map(BankImportModel.BankTransactionSplitModel::categoryId)
+                    .filter(id -> id != null && !id.isBlank())
+                    .collect(Collectors.toCollection(TreeSet::new));
+            return idsA.equals(idsB);
+        }
+        String a = categoryIdA != null ? categoryIdA : "";
+        String b = categoryIdB != null ? categoryIdB : "";
+        return a.equals(b);
+    }
+
+    /**
+     * Rescales a set of splits so that their sum matches exactly {@code targetAmount} (the real bank
+     * transaction amount), preserving the relative weight of each split. The rounding remainder is
+     * absorbed by the last split. IDs are preserved when present, generated otherwise.
+     */
+    public static List<BankImportModel.BankTransactionSplitModel> rescaleSplitsToAmount(
+            List<BankImportModel.BankTransactionSplitModel> splits,
+            BigDecimal targetAmount
+    ) {
+        if (splits == null || splits.isEmpty()) {
+            return Collections.emptyList();
+        }
+        BigDecimal target = targetAmount != null ? targetAmount : BigDecimal.ZERO;
+        BigDecimal sum = splits.stream()
+                .map(sp -> sp.amount() != null ? sp.amount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<BankImportModel.BankTransactionSplitModel> rescaled = new ArrayList<>();
+        if (sum.abs().compareTo(new BigDecimal("0.001")) > 0
+                && target.subtract(sum).abs().compareTo(new BigDecimal("0.001")) > 0) {
+            BigDecimal ratio = target.divide(sum, 10, RoundingMode.HALF_UP);
+            for (BankImportModel.BankTransactionSplitModel sp : splits) {
+                BigDecimal amt = (sp.amount() != null ? sp.amount() : BigDecimal.ZERO)
+                        .multiply(ratio).setScale(2, RoundingMode.HALF_UP);
+                rescaled.add(new BankImportModel.BankTransactionSplitModel(null, sp.categoryId(), amt, sp.label()));
+            }
+            BigDecimal newSum = rescaled.stream().map(BankImportModel.BankTransactionSplitModel::amount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal diff = target.subtract(newSum).setScale(2, RoundingMode.HALF_UP);
+            if (diff.compareTo(BigDecimal.ZERO) != 0 && !rescaled.isEmpty()) {
+                int lastIdx = rescaled.size() - 1;
+                BankImportModel.BankTransactionSplitModel last = rescaled.get(lastIdx);
+                rescaled.set(lastIdx, new BankImportModel.BankTransactionSplitModel(
+                        last.id(), last.categoryId(), last.amount().add(diff), last.label()));
+            }
+        } else {
+            for (BankImportModel.BankTransactionSplitModel sp : splits) {
+                rescaled.add(new BankImportModel.BankTransactionSplitModel(
+                        null, sp.categoryId(), sp.amount() != null ? sp.amount() : BigDecimal.ZERO, sp.label()));
+            }
+        }
+        return rescaled;
+    }
+
+    /**
      * Auto-reconciles pending operations against bank transactions.
+     * <p>
+     * A candidate pair (pending operation / bank transaction) found by reference number or by unique
+     * amount is only reconciled automatically when both sides already carry the SAME categorization
+     * (see {@link #categorizationsMatch}). If they differ - including when only one side has been
+     * categorized - the application does NOT decide on the operator's behalf: the pending operation is
+     * left "pending" (unlinked) so it can be resolved manually, where the operator is asked to arbitrate.
      */
     public static AutoMatchResultModel autoMatchPendingOperations(
             List<BankImportModel.PendingOperationModel> pendingOps,
             List<BankImportModel.BankTransactionModel> transactions
     ) {
         if (pendingOps == null) {
-            return new AutoMatchResultModel(0, Collections.emptyList());
+            return new AutoMatchResultModel(0, Collections.emptyList(), Collections.emptyList(), 0);
         }
         List<BankImportModel.BankTransactionModel> txs = transactions != null ? transactions : Collections.emptyList();
 
         int matchCount = 0;
+        int needsReviewCount = 0;
         Set<String> currentlyLinked = new HashSet<>();
         for (BankImportModel.PendingOperationModel op : pendingOps) {
             if (op.linkedTxId() != null && !op.linkedTxId().isBlank()) {
                 currentlyLinked.add(op.linkedTxId());
             }
         }
+
+        // Transactions whose categorization gets aligned on a matched pending operation (id -> updated tx).
+        Map<String, BankImportModel.BankTransactionModel> txOverrides = new HashMap<>();
 
         List<BankImportModel.PendingOperationModel> updatedOps = new ArrayList<>();
         for (BankImportModel.PendingOperationModel op : pendingOps) {
@@ -351,7 +442,7 @@ public final class BankImportCalculator {
             }
 
             BigDecimal targetAmt = op.amount() != null ? op.amount() : BigDecimal.ZERO;
-            boolean matched = false;
+            boolean handled = false;
 
             // 1. Search by exact refNumber (>= 3 chars)
             if (op.refNumber() != null && op.refNumber().trim().length() >= 3) {
@@ -364,18 +455,26 @@ public final class BankImportCalculator {
 
                 if (foundByRef.isPresent()) {
                     BankImportModel.BankTransactionModel found = foundByRef.get();
-                    currentlyLinked.add(found.id());
-                    matchCount++;
-                    updatedOps.add(new BankImportModel.PendingOperationModel(
-                            op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
-                            op.label(), op.amount(), op.categoryId(), "cleared", found.id(),
-                            found.date(), op.notes(), op.splits()
-                    ));
-                    matched = true;
+                    handled = true;
+                    if (categorizationsMatch(op.categoryId(), op.splits(), found.categoryId(), found.splits())) {
+                        currentlyLinked.add(found.id());
+                        matchCount++;
+                        if (op.splits() != null && !op.splits().isEmpty()) {
+                            txOverrides.put(found.id(), withCategorization(found, "", rescaleSplitsToAmount(op.splits(), found.amount())));
+                        }
+                        updatedOps.add(new BankImportModel.PendingOperationModel(
+                                op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
+                                op.label(), op.amount(), op.categoryId(), "cleared", found.id(),
+                                found.date(), op.notes(), op.splits(), op.budgetLineId()
+                        ));
+                    } else {
+                        needsReviewCount++;
+                        updatedOps.add(op);
+                    }
                 }
             }
 
-            if (matched) continue;
+            if (handled) continue;
 
             // 2. Search by unique exact amount within 90 days window
             LocalDate opDate = parseLocalDate(op.date());
@@ -393,19 +492,41 @@ public final class BankImportCalculator {
 
             if (candidates.size() == 1) {
                 BankImportModel.BankTransactionModel found = candidates.get(0);
-                currentlyLinked.add(found.id());
-                matchCount++;
-                updatedOps.add(new BankImportModel.PendingOperationModel(
-                        op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
-                        op.label(), op.amount(), op.categoryId(), "cleared", found.id(),
-                        found.date(), op.notes(), op.splits()
-                ));
+                if (categorizationsMatch(op.categoryId(), op.splits(), found.categoryId(), found.splits())) {
+                    currentlyLinked.add(found.id());
+                    matchCount++;
+                    if (op.splits() != null && !op.splits().isEmpty()) {
+                        txOverrides.put(found.id(), withCategorization(found, "", rescaleSplitsToAmount(op.splits(), found.amount())));
+                    }
+                    updatedOps.add(new BankImportModel.PendingOperationModel(
+                            op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
+                            op.label(), op.amount(), op.categoryId(), "cleared", found.id(),
+                            found.date(), op.notes(), op.splits(), op.budgetLineId()
+                    ));
+                } else {
+                    needsReviewCount++;
+                    updatedOps.add(op);
+                }
             } else {
                 updatedOps.add(op);
             }
         }
 
-        return new AutoMatchResultModel(matchCount, updatedOps);
+        List<BankImportModel.BankTransactionModel> updatedTransactions = txOverrides.isEmpty()
+                ? txs
+                : txs.stream().map(t -> txOverrides.getOrDefault(t.id(), t)).collect(Collectors.toList());
+
+        return new AutoMatchResultModel(matchCount, updatedOps, updatedTransactions, needsReviewCount);
+    }
+
+    private static BankImportModel.BankTransactionModel withCategorization(
+            BankImportModel.BankTransactionModel tx,
+            String categoryId,
+            List<BankImportModel.BankTransactionSplitModel> splits
+    ) {
+        return new BankImportModel.BankTransactionModel(
+                tx.id(), tx.date(), tx.label(), tx.type(), tx.amount(), categoryId, splits
+        );
     }
 
     /**

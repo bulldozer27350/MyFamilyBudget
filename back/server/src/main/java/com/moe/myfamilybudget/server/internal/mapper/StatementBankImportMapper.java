@@ -257,6 +257,7 @@ public class StatementBankImportMapper {
         if (result == null) return Collections.emptyMap();
         Map<String, Object> map = new HashMap<>();
         map.put("matchCount", result.matchCount());
+        map.put("needsReviewCount", result.needsReviewCount());
         map.put("updatedOperations", result.updatedOperations() != null ? result.updatedOperations().stream().map(this::toPendingOperationMap).collect(Collectors.toList()) : Collections.emptyList());
         return map;
     }

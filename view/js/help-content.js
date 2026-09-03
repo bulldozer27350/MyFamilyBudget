@@ -260,6 +260,9 @@
         content: `
             - **Manuel** : Cliquez sur *🔗 Pointer* sur une ligne pour ouvrir le volet de sélection des transactions bancaires importées. Les correspondances de montant exact ou de numéro de chèque sont suggérées en tête de liste.
             - **Automatique** : Le bouton *⚡ Rapprochement automatique* analyse les libellés bancaires (numéros de chèque) et les montants uniques pour lier les opérations en un seul clic.
+            - **Cohérence des catégories** : l'opération en attente et la transaction bancaire importée sont deux représentations de la même donnée. Si elles portent exactement la même catégorisation (catégorie ou ventilation/splits), le rapprochement se fait sans question. Sinon — catégorisations différentes, ou un seul des deux côtés catégorisé — l'application ne tranche jamais à votre place :
+              - En rapprochement manuel, une fenêtre *⚖️ Catégorisation différente* vous laisse choisir laquelle des deux conserver ; l'autre est alignée dessus (une ventilation choisie reste une ventilation, jamais aplatie en catégorie unique).
+              - En rapprochement automatique, ces paires en conflit sont laissées de côté (opération toujours *« en attente »*) et comptabilisées dans le message de synthèse — traitez-les ensuite une par une via *🔗 Pointer*.
           `
       }]
     },

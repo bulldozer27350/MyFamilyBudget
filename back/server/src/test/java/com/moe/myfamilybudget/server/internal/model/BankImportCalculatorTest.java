@@ -349,16 +349,57 @@ class BankImportCalculatorTest {
             assertThat(ruleApplied.get(0).splits()).hasSize(2);
             assertThat(ruleApplied.get(0).notes()).isEqualTo("Course de la semaine");
 
-            // Auto match
+            // Auto match: the pending operation is split across 2 categories while the bank transaction
+            // only carries a single category ("cat_food"). This is a categorization conflict (a split
+            // representation is never considered equivalent to a single-category one, even when one of
+            // the split categories matches) - the operator must arbitrate manually, the application must
+            // NOT silently pick a side. So the pair is left unmatched and flagged for manual review.
             BankImportModel.BankTransactionModel matchedTx = new BankImportModel.BankTransactionModel(
                     "tx_bank_1", "2026-02-12", "AUCHAN DRIVE VALENCE", "", new BigDecimal("-100.00"), "cat_food"
             );
             AutoMatchResultModel matchResult = BankImportCalculator.autoMatchPendingOperations(ruleApplied, List.of(matchedTx));
-            assertThat(matchResult.matchCount()).isEqualTo(1);
-            assertThat(matchResult.updatedOperations().get(0).status()).isEqualTo("cleared");
-            assertThat(matchResult.updatedOperations().get(0).linkedTxId()).isEqualTo("tx_bank_1");
+            assertThat(matchResult.matchCount()).isEqualTo(0);
+            assertThat(matchResult.needsReviewCount()).isEqualTo(1);
+            assertThat(matchResult.updatedOperations().get(0).status()).isEqualTo("pending");
+            assertThat(matchResult.updatedOperations().get(0).linkedTxId()).isNull();
             assertThat(matchResult.updatedOperations().get(0).splits()).hasSize(2);
             assertThat(matchResult.updatedOperations().get(0).notes()).isEqualTo("Course de la semaine");
+        }
+
+        @Test
+        @DisplayName("autoMatchPendingOperations reconciles automatically when categorizations already match")
+        void testAutoMatchAppliesWhenCategorizationsAreIdentical() {
+            List<BankImportModel.PendingOperationModel> pendingOps = List.of(
+                    new BankImportModel.PendingOperationModel("op3", "2026-03-01", "2026-03-01", "cb", "", "SUPERMARCHE", new BigDecimal("-55.00"), "cat_food", "pending", null, null, "")
+            );
+            List<BankImportModel.BankTransactionModel> txs = List.of(
+                    new BankImportModel.BankTransactionModel("tx3", "2026-03-02", "CB SUPERMARCHE", "", new BigDecimal("-55.00"), "cat_food")
+            );
+
+            AutoMatchResultModel result = BankImportCalculator.autoMatchPendingOperations(pendingOps, txs);
+
+            assertThat(result.matchCount()).isEqualTo(1);
+            assertThat(result.needsReviewCount()).isEqualTo(0);
+            assertThat(result.updatedOperations().get(0).status()).isEqualTo("cleared");
+        }
+
+        @Test
+        @DisplayName("autoMatchPendingOperations leaves the pair unmatched when only one side is categorized")
+        void testAutoMatchSkipsWhenOnlyOneSideCategorized() {
+            List<BankImportModel.PendingOperationModel> pendingOps = List.of(
+                    new BankImportModel.PendingOperationModel("op4", "2026-03-01", "2026-03-01", "cb", "", "PHARMACIE", new BigDecimal("-22.50"), "cat_sante", "pending", null, null, "")
+            );
+            // Imported transaction has no rule-based category yet.
+            List<BankImportModel.BankTransactionModel> txs = List.of(
+                    new BankImportModel.BankTransactionModel("tx4", "2026-03-02", "CB PHARMACIE", "", new BigDecimal("-22.50"), "")
+            );
+
+            AutoMatchResultModel result = BankImportCalculator.autoMatchPendingOperations(pendingOps, txs);
+
+            assertThat(result.matchCount()).isEqualTo(0);
+            assertThat(result.needsReviewCount()).isEqualTo(1);
+            assertThat(result.updatedOperations().get(0).status()).isEqualTo("pending");
+            assertThat(result.updatedTransactions().get(0).categoryId()).isEmpty();
         }
     }
 }

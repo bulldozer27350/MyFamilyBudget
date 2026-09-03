@@ -858,18 +858,31 @@
 
     /**
      * Lie manuellement une opération en cours à une transaction bancaire (rapprochement).
+     *
+     * ⚠️ Persistance locale uniquement : cet appel n'atteint pas le backend (pas d'endpoint
+     * `/pending-operations/link`), il ne fait que garder le cache localStorage cohérent. La
+     * persistance réelle du statut "cleared"/linkedTxId sur le serveur passe par
+     * `savePendingOperation` (voir handleLinkTransaction dans pending-view.js), et la
+     * catégorisation de la transaction bancaire par `setBankImportTransactionCategory` /
+     * `updateBankTransactionSplits`, qui sont eux bien reliés au backend.
      * @param {string} opId Identifiant de l'opération
      * @param {string} txId Identifiant de la transaction bancaire
      * @param {string} txDate Date de la transaction bancaire
+     * @param {"pending"|"import"|null} [categorizationChoice] Côté retenu par l'opérateur en cas de conflit de catégorisation
      * @returns {Promise<Array>} Liste mise à jour des opérations en cours
      */
-    async linkPendingOperation(opId, txId, txDate) {
-      return Promise.resolve(app().PendingOperationsService.linkPendingOperation(opId, txId, txDate));
+    async linkPendingOperation(opId, txId, txDate, categorizationChoice) {
+      return Promise.resolve(app().PendingOperationsService.linkPendingOperation(opId, txId, txDate, categorizationChoice));
     },
 
     /**
      * Déclenche l'algorithme de rapprochement automatique.
-     * @returns {Promise<{matchCount: number, updatedOperations: Array}>}
+     * Seules les paires (opération en attente / transaction bancaire) dont la catégorisation est déjà
+     * identique des deux côtés sont rapprochées automatiquement. Les paires dont les catégories
+     * diffèrent (y compris quand un seul des deux côtés est catégorisé) sont volontairement laissées
+     * "en attente" : elles apparaissent dans needsReviewCount et doivent être traitées via le
+     * rapprochement manuel, qui proposera un choix à l'opérateur.
+     * @returns {Promise<{matchCount: number, needsReviewCount: number, updatedOperations: Array}>}
      */
     async autoMatchPendingOperations() {
       if (typeof fetch !== 'undefined') {
@@ -880,9 +893,11 @@
             body: JSON.stringify({})
           });
           if (res.ok) {
+            const result = await res.json().catch(() => ({}));
             const updated = await this.getPendingOperations();
             return {
-              matchCount: 0,
+              matchCount: Number(result.matchCount) || 0,
+              needsReviewCount: Number(result.needsReviewCount) || 0,
               updatedOperations: updated.pendingOperations || []
             };
           }
