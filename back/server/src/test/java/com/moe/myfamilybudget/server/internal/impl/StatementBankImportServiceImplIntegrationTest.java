@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
 import com.moe.myfamilybudget.api.model.ImportBankTransactionsRequestDto;
+import com.moe.myfamilybudget.api.model.ReconcilePendingOperations200Response;
 import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
@@ -59,7 +60,7 @@ class StatementBankImportServiceImplIntegrationTest {
         assertThat(afterImport.transactions().get(0).label()).isEqualTo("E.LECLERC DRIVE");
 
         // 3. Reconcile Pending Operations
-        ResponseEntity<Void> reconcileResp = pendingService.reconcilePendingOperations(Map.of());
+        ResponseEntity<ReconcilePendingOperations200Response> reconcileResp = pendingService.reconcilePendingOperations(Map.of());
         assertThat(reconcileResp.getStatusCode().is2xxSuccessful()).isTrue();
 
         // 4. Verify GET /bank-import response

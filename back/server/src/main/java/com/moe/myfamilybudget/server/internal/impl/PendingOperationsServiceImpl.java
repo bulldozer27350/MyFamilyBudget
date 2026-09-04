@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.OperationsEnCoursApi;
+import com.moe.myfamilybudget.api.model.ReconcilePendingOperations200Response;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.AutoMatchResultModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
@@ -45,7 +46,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
     }
 
     @Override
-    public ResponseEntity<Object> reconcilePendingOperations(Object body) {
+    public ResponseEntity<ReconcilePendingOperations200Response> reconcilePendingOperations(Object body) {
         BankImportModel current = persistenceManager.getBankImport();
         AutoMatchResultModel matchResult = BankImportCalculator.autoMatchPendingOperations(
                 current.pendingOperations(), current.transactions()
@@ -59,7 +60,10 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
             persistenceManager.updateBankImport(updated);
         }
 
-        return ResponseEntity.ok(mapper.toAutoMatchResultMap(matchResult));
+        ReconcilePendingOperations200Response response = new ReconcilePendingOperations200Response();
+        response.setMatchCount(matchResult.matchCount());
+        response.setNeedsReviewCount(matchResult.needsReviewCount());
+        return ResponseEntity.ok(response);
     }
 
     @Override

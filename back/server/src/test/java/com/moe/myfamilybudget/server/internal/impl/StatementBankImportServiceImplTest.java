@@ -12,6 +12,7 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
 import com.moe.myfamilybudget.api.model.ImportBankTransactionsRequestDto;
+import com.moe.myfamilybudget.api.model.ReconcilePendingOperations200Response;
 import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
@@ -179,7 +180,7 @@ class StatementBankImportServiceImplTest {
         ResponseEntity<Object> getResp = pendingService.getPendingOperations();
         assertThat(getResp.getStatusCode().is2xxSuccessful()).isTrue();
 
-        ResponseEntity<Void> reconcileResp = pendingService.reconcilePendingOperations(Map.of());
+        ResponseEntity<ReconcilePendingOperations200Response> reconcileResp = pendingService.reconcilePendingOperations(Map.of());
         assertThat(reconcileResp.getStatusCode().is2xxSuccessful()).isTrue();
 
         ResponseEntity<Void> ignoreResp = pendingService.ignorePendingOperation(Map.of("id", "op123"));

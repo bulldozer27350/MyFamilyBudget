@@ -327,23 +327,40 @@
 
     // Chargement des données via l'API asynchrone
     React.useEffect(() => {
+      let cancelled = false;
       const loadRetraiteData = async () => {
         setLoading(true);
         try {
           const api = window.BudgetApp?.BudgetApi;
           if (api) {
             const result = await api.getRetraiteData();
+            if (cancelled) return;
             setApiData(result);
+            // Règle "le backend prime" : si le backend (ou son fallback JS local)
+            // renvoie des données de retraite, elles remplacent le store local.
+            // Indispensable sur un appareil qui n'a jamais reçu l'import JSON en
+            // local (ex. mobile) alors que le backend a déjà été alimenté depuis
+            // un autre appareil.
+            if (result?.retirement) {
+              update("retirement", () => result.retirement);
+            }
           }
         } catch (error) {
           console.error("Erreur lors du chargement des données de retraite:", error);
         } finally {
-          setLoading(false);
+          if (!cancelled) setLoading(false);
         }
       };
-      
+
       loadRetraiteData();
-    }, [data?.retirement]);
+      return () => {
+        cancelled = true;
+      };
+      // Chargement une seule fois au montage : le résultat de l'appel API met
+      // lui-même à jour `data.retirement` via `update()`, une dépendance sur
+      // `data?.retirement` provoquerait donc une boucle de rechargement infinie.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const addPerson = async () => {
       const newPerson = {
         id: uid(),

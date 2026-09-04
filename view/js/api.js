@@ -283,22 +283,15 @@
 
     /**
      * Récupère les données de retraite
+     * Tente d'abord le backend (source de vérité partagée entre appareils), puis
+     * retombe sur le service JS local (localStorage) en cas d'échec, conformément
+     * au pattern « Strangler Fig » déjà appliqué aux autres onglets migrés.
      * @returns {Promise<Object>} Données de retraite avec les projections calculées
      */
     async getRetraiteData() {
-      return new Promise((resolve, reject) => {
-        try {
-          // Utilise la fonction de service-metier.js
-          const getRetraiteDataFn = exports.getRetraiteDataFromService || window.BudgetApp?.getRetraiteDataFromService;
-          if (getRetraiteDataFn) {
-            // Enveloppe le traitement synchrone dans Promise.resolve()
-            resolve(Promise.resolve(getRetraiteDataFn()));
-          } else {
-            resolve({});
-          }
-        } catch (error) {
-          reject(error);
-        }
+      return fetchJsonOrFallback('/retraite', () => {
+        const getRetraiteDataFn = exports.getRetraiteDataFromService || window.BudgetApp?.getRetraiteDataFromService;
+        return getRetraiteDataFn ? getRetraiteDataFn() : {};
       });
     },
 
@@ -307,25 +300,28 @@
     },
 
     /**
-     * Sauvegarde les données de retraite
+     * Sauvegarde les données de retraite.
+     * Sauvegarde d'abord dans le service JS local (localStorage, pour une réactivité
+     * immédiate), puis synchronise vers le backend afin que les autres appareils
+     * (ex. mobile via Tailscale) voient les mêmes données.
      * @param {Object} retirementData - Données de retraite à sauvegarder
      * @returns {Promise<void>}
      */
     async saveRetraiteData(retirementData) {
-      return new Promise((resolve, reject) => {
+      const saveRetraiteDataFn = exports.saveRetraiteDataToService || window.BudgetApp?.saveRetraiteDataToService;
+      const localSave = saveRetraiteDataFn ? Promise.resolve(saveRetraiteDataFn(retirementData)) : Promise.resolve();
+      await localSave;
+      if (typeof fetch !== 'undefined') {
         try {
-          // Utilise la fonction de service-metier.js
-          const saveRetraiteDataFn = exports.saveRetraiteDataToService || window.BudgetApp?.saveRetraiteDataToService;
-          if (saveRetraiteDataFn) {
-            // Enveloppe le traitement synchrone dans Promise.resolve()
-            Promise.resolve(saveRetraiteDataFn(retirementData)).then(() => resolve());
-          } else {
-            resolve();
-          }
-        } catch (error) {
-          reject(error);
+          await fetch(API_BASE_URL + '/retraite', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(retirementData)
+          });
+        } catch (e) {
+          console.error("Failed to sync retirement data to backend", e);
         }
-      });
+      }
     },
 
     async saveRetraite(retirementData) {
