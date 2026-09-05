@@ -7,10 +7,15 @@ const fs   = require('fs');
 const API   = 'http://localhost:8080/api/v1';
 const FRONT = 'http://localhost:3000';
 
-// Fichier de donnees de test a la racine du projet ou dans data/
+// Fichier de donnees de test : priorite a un jeu de donnees personnel local
+// (data/ ou racine, jamais commite, cf. .gitignore) pour des essais manuels
+// avec de vraies donnees ; a defaut (poste vierge, CI GitHub Actions), repli
+// sur le fixture synthetique commite dans tests/e2e/fixtures/.
 const JSON_DATASET = fs.existsSync(path.resolve(__dirname, '..', '..', 'data', 'budget-familial.json'))
   ? path.resolve(__dirname, '..', '..', 'data', 'budget-familial.json')
-  : path.resolve(__dirname, '..', '..', 'budget-familial.json');
+  : fs.existsSync(path.resolve(__dirname, '..', '..', 'budget-familial.json'))
+    ? path.resolve(__dirname, '..', '..', 'budget-familial.json')
+    : path.resolve(__dirname, 'fixtures', 'budget-familial.json');
 
 // ---------------------------------------------------------------------------
 // Helpers
