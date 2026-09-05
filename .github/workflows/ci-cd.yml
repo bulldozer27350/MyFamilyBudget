@@ -1,0 +1,102 @@
+name: CI/CD
+
+# Phase 1 du pipeline de deploiement continu :
+#   1) build-and-test  : compile le backend, lance les tests unitaires Java,
+#                         le smoke test JS et la suite e2e Playwright.
+#   2) build-and-push   : uniquement si build-and-test est vert, construit
+#                         l'image Docker et la publie sur Docker Hub
+#                         (moetourneau/myfamilybudget:latest + :sha-xxxxxxx).
+#
+# La recuperation de la nouvelle image sur le mini-PC (Watchtower) est geree
+# separement, cote serveur : ce workflow n'a pas besoin d'atteindre le
+# mini-PC ni le tailnet.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & tests (backend + JS + e2e)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: back/server/pom.xml
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install JS dependencies
+        run: bun install
+
+      - name: Backend unit tests (mvn test)
+        run: mvn -f back/server/pom.xml -B test
+
+      - name: JS smoke test (test-all-apis.js)
+        run: bun run test
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+
+      - name: End-to-end tests (Playwright)
+        run: bun run test:e2e
+
+      - name: Upload Playwright report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/e2e/report
+          retention-days: 7
+
+  build-and-push:
+    name: Build & push image Docker
+    needs: build-and-test
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute short SHA tag
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            moetourneau/myfamilybudget:latest
+            moetourneau/myfamilybudget:sha-${{ steps.vars.outputs.sha_short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
