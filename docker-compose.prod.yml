@@ -34,6 +34,29 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-myfamilybudget}
     ports:
       - "${APP_PORT:-8080}:8080"
+    labels:
+      # Seul ce conteneur porte ce label : watchtower ne surveillera donc que
+      # lui, jamais "db" (une mise a jour automatique de Postgres pourrait
+      # necessiter une migration manuelle, on ne veut pas que ce soit silencieux).
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Watchtower interroge Docker Hub a intervalle regulier ; des qu'une nouvelle
+  # version de moetourneau/myfamilybudget est publiee (typiquement par la CI
+  # GitHub Actions), il la telecharge et redemarre le conteneur "app" avec.
+  # Aucune configuration cote GitHub Actions n'est necessaire : c'est le
+  # mini-PC qui vient chercher la mise a jour, jamais l'inverse.
+  watchtower:
+    image: containrrr/watchtower
+    container_name: myfamilybudget-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_ROLLING_RESTART: "true"
+      WATCHTOWER_POLL_INTERVAL: "${WATCHTOWER_POLL_INTERVAL:-300}"
+      TZ: "${TZ:-Europe/Paris}"
 
 volumes:
   pgdata:
