@@ -213,6 +213,22 @@
     const [mobileOpen, setMobileOpen] = useState(false);
     const sidebarRef = useRef(null);
 
+    /**
+     * Version de build affichee en pied de menu (voir tache "afficher la
+     * version deployee"). Le fichier assets/build-info.json est genere
+     * uniquement par le job GitHub Actions build-and-push (cf. ci-cd.yml) au
+     * moment de la construction de l'image Docker : il n'existe pas en dev
+     * local ni pendant les tests e2e, d'ou le catch silencieux ci-dessous
+     * (aucune version affichee plutot qu'une erreur bloquante).
+     */
+    const [buildInfo, setBuildInfo] = useState(null);
+    useEffect(() => {
+      fetch('assets/build-info.json')
+        .then(res => (res.ok ? res.json() : null))
+        .then(data => data && setBuildInfo(data))
+        .catch(() => {});
+    }, []);
+
     /** Fermeture intelligente : clic sur le backdrop ou en dehors de la sidebar */
     const closeMobileMenu = useCallback(() => {
       setMobileOpen(false);
@@ -487,7 +503,17 @@
       className: "sidebar-btn-icon"
     }, Icon("refresh")), React.createElement("span", {
       className: "sidebar-btn-label"
-    }, "Réinitialiser")))),
+    }, "Réinitialiser")), buildInfo && !collapsed && React.createElement("div", {
+      className: "sidebar-build-version",
+      title: `Construit le ${buildInfo.builtAt || "?"}`,
+      style: {
+        fontSize: 11,
+        color: "#9FB0BE",
+        textAlign: "center",
+        marginTop: 10,
+        opacity: 0.7
+      }
+    }, buildInfo.version || "?"))),
 
     /* ── Zone de contenu principale ── */
     React.createElement("main", {

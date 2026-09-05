@@ -89,6 +89,17 @@ jobs:
         id: vars
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Generate build-info.json (version affichee dans l'app)
+        run: |
+          mkdir -p view/assets
+          cat > view/assets/build-info.json <<EOF
+          {
+            "version": "sha-${{ steps.vars.outputs.sha_short }}",
+            "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          cat view/assets/build-info.json
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
