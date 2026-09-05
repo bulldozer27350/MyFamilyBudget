@@ -10,34 +10,22 @@ const TARGET_SPRINGBOOT = process.env.TARGET_SPRINGBOOT || 'http://localhost:808
 
 const BACKEND_URL = process.env.BACKEND_URL || `${TARGET_SPRINGBOOT}/api/v1`;
 
-// Proxy API requests to Spring Boot backend server
-const apiPaths = [
-  '/overview',
-  '/tresorerie',
-  '/patrimoine',
-  '/retraite',
-  '/impots',
-  '/settings',
-  '/budget',
-  '/bank-import',
-  '/bank',
-  '/pending-operations',
-  '/pointage',
-  '/analyse'
-];
-
-apiPaths.forEach(apiPath => {
-  app.use(apiPath, createProxyMiddleware({
-    target: TARGET_SPRINGBOOT,
-    changeOrigin: true,
-    pathRewrite: (p) => '/api/v1' + p,
-    logLevel: 'warn'
-  }));
-});
-
+// Proxy API requests to Spring Boot backend server.
+//
+// Le front (view/config.js) construit desormais systematiquement ses appels
+// avec le prefixe "/api/v1" (window.API_BASE_URL). Or, quand un middleware
+// est monte via app.use('/api/v1', ...), Express retire ce prefixe de
+// req.url AVANT d'invoquer le middleware : http-proxy-middleware (>= v2)
+// ne le restaure plus automatiquement (contrairement a l'ancienne notion de
+// "context" des versions v0.x/v1.x). Sans pathRewrite pour le rajouter, la
+// requete relayee vers Spring Boot perdait son prefixe "/api/v1" (attendu
+// par le context-path du profil par defaut) et le backend repondait 404
+// (observe sur /api/v1/overview et /api/v1/budget/reset en local et en CI
+// GitHub Actions).
 app.use('/api/v1', createProxyMiddleware({
   target: TARGET_SPRINGBOOT,
   changeOrigin: true,
+  pathRewrite: (p) => '/api/v1' + p,
   logLevel: 'warn'
 }));
 
