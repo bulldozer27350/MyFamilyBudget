@@ -78,7 +78,8 @@
 .app-sidebar.collapsed .sidebar-nav-label,
 .app-sidebar.collapsed .sidebar-btn-label,
 .app-sidebar.collapsed .sidebar-section-title,
-.app-sidebar.collapsed .sidebar-status {
+.app-sidebar.collapsed .sidebar-status,
+.app-sidebar.collapsed .sidebar-build-version {
   display: none;
 }
 
@@ -271,7 +272,8 @@
   .app-sidebar.collapsed .sidebar-nav-label,
   .app-sidebar.collapsed .sidebar-btn-label,
   .app-sidebar.collapsed .sidebar-section-title,
-  .app-sidebar.collapsed .sidebar-status {
+  .app-sidebar.collapsed .sidebar-status,
+  .app-sidebar.collapsed .sidebar-build-version {
     display: block;
   }
   .app-sidebar.collapsed .sidebar-btn-help,

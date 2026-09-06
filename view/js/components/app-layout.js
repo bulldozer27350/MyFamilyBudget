@@ -503,7 +503,7 @@
       className: "sidebar-btn-icon"
     }, Icon("refresh")), React.createElement("span", {
       className: "sidebar-btn-label"
-    }, "Réinitialiser")), buildInfo && !collapsed && React.createElement("div", {
+    }, "Réinitialiser")), buildInfo && React.createElement("div", {
       className: "sidebar-build-version",
       title: `Construit le ${buildInfo.builtAt || "?"}`,
       style: {
