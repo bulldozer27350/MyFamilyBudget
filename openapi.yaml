@@ -1133,6 +1133,8 @@ components:
           type: integer
         incomeLabel:
           type: string
+        cadre:
+          type: boolean
         trimestresValides:
           type: integer
         trimestresDate:

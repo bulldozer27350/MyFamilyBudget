@@ -40,10 +40,15 @@ public record RetirementModel(
         String trimestresDate,
         List<SalaryHistoryModel> salaryHistory,
         BigDecimal agircPoints,
-        BigDecimal ratioPointsParEuro
+        BigDecimal ratioPointsParEuro,
+        Boolean cadre
     ) {
         public int getEffectiveTrimestresValides() {
             return trimestresValides != null ? trimestresValides : 0;
+        }
+
+        public boolean getEffectiveCadre() {
+            return cadre != null && cadre;
         }
 
         public List<SalaryHistoryModel> getEffectiveSalaryHistory() {

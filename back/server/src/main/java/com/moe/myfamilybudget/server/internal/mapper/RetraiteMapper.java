@@ -51,6 +51,7 @@ public class RetraiteMapper {
                     pMap.put("name", person.name());
                     pMap.put("birthYear", person.birthYear());
                     pMap.put("incomeLabel", person.incomeLabel());
+                    pMap.put("cadre", person.cadre() != null && person.cadre());
                     pMap.put("trimestresValides", person.trimestresValides());
                     pMap.put("trimestresDate", person.trimestresDate());
                     pMap.put("agircPoints", person.agircPoints());
@@ -139,6 +140,7 @@ public class RetraiteMapper {
                     String name = getString(pMap, "name", "");
                     Integer birthYear = getInteger(pMap, "birthYear", null);
                     String incomeLabel = getString(pMap, "incomeLabel", "");
+                    Boolean cadre = getBoolean(pMap, "cadre", Boolean.FALSE);
                     Integer trimestresValides = getInteger(pMap, "trimestresValides", 0);
                     String trimestresDate = getString(pMap, "trimestresDate", "");
                     BigDecimal agircPoints = toBigDecimal(pMap.get("agircPoints"), BigDecimal.ZERO);
@@ -159,7 +161,7 @@ public class RetraiteMapper {
                     }
 
                     people.add(new RetirementModel.RetirementPersonModel(
-                        id, name, birthYear, incomeLabel, trimestresValides, trimestresDate, salHistory, agircPoints, ratioPointsParEuro
+                        id, name, birthYear, incomeLabel, trimestresValides, trimestresDate, salHistory, agircPoints, ratioPointsParEuro, cadre
                     ));
                 }
             }
@@ -213,6 +215,13 @@ public class RetraiteMapper {
         } catch (Exception e) {
             return fallback;
         }
+    }
+
+    private Boolean getBoolean(Map<?, ?> map, String key, Boolean fallback) {
+        Object val = map.get(key);
+        if (val == null) return fallback;
+        if (val instanceof Boolean b) return b;
+        return Boolean.parseBoolean(String.valueOf(val).trim());
     }
 
     private BigDecimal toBigDecimal(Object val, BigDecimal fallback) {

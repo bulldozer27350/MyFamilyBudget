@@ -344,6 +344,14 @@
             if (result?.retirement) {
               update("retirement", () => result.retirement);
             }
+            // La liste des revenus (page Trésorerie) est nécessaire pour la
+            // sélection "Revenu lié" et pour la projection des salaires
+            // futurs. Cette page n'appelant jamais /overview, sans cette
+            // synchronisation `data.incomes` reste vide (ou périmé) sur tout
+            // appareil n'ayant jamais visité la page Trésorerie en local.
+            if (Array.isArray(result?.incomes)) {
+              update("incomes", () => result.incomes);
+            }
           }
         } catch (error) {
           console.error("Erreur lors du chargement des données de retraite:", error);

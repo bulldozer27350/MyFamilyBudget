@@ -72,6 +72,7 @@ class RetraiteServiceImplTest {
         personPayload.put("trimestresValides", 120);
         personPayload.put("trimestresDate", "2025-01-01");
         personPayload.put("agircPoints", new BigDecimal("2000"));
+        personPayload.put("cadre", true);
 
         savePayload.put("people", List.of(personPayload));
 
@@ -96,6 +97,7 @@ class RetraiteServiceImplTest {
         List<Map<String, Object>> people = (List<Map<String, Object>>) retirement.get("people");
         assertThat(people).hasSize(1);
         assertEquals("Jean Dupont", people.get(0).get("name"));
+        assertEquals(true, people.get(0).get("cadre"));
     }
 
     @Test
@@ -104,7 +106,7 @@ class RetraiteServiceImplTest {
         BudgetDataModel data = persistenceManager.getBudgetData();
 
         RetirementModel.RetirementPersonModel person = new RetirementModel.RetirementPersonModel(
-            "p1", "Alice", 1985, "", 120, "2025-01-01", List.of(), new BigDecimal("1000"), new BigDecimal("0.0051")
+            "p1", "Alice", 1985, "", 120, "2025-01-01", List.of(), new BigDecimal("1000"), new BigDecimal("0.0051"), false
         );
 
         RetirementProjectionModel projection = service.computeRetirementProjection(data, person, 2049);
@@ -123,7 +125,7 @@ class RetraiteServiceImplTest {
         BudgetDataModel data = persistenceManager.getBudgetData();
 
         RetirementModel.RetirementPersonModel person = new RetirementModel.RetirementPersonModel(
-            "p2", "Bob", 1970, "", 180, "2025-01-01", List.of(), new BigDecimal("3000"), new BigDecimal("0.0051")
+            "p2", "Bob", 1970, "", 180, "2025-01-01", List.of(), new BigDecimal("3000"), new BigDecimal("0.0051"), true
         );
 
         RetirementProjectionModel projection = service.computeRetirementProjection(data, person, 2034);
@@ -155,7 +157,7 @@ class RetraiteServiceImplTest {
         );
 
         RetirementModel.RetirementPersonModel person = new RetirementModel.RetirementPersonModel(
-            "p3", "Charlie", 1980, "", 172, "2025-01-01", List.of(), new BigDecimal("2000"), new BigDecimal("0.0051")
+            "p3", "Charlie", 1980, "", 172, "2025-01-01", List.of(), new BigDecimal("2000"), new BigDecimal("0.0051"), false
         );
 
         RetirementProjectionModel projection = service.computeRetirementProjection(dataWithChildren, person, 2044);

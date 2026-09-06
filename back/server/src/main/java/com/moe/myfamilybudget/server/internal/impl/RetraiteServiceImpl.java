@@ -84,6 +84,7 @@ public class RetraiteServiceImpl implements RetraiteApi {
                     person.salaryHistory(),
                     person.agircPoints(),
                     person.ratioPointsParEuro(),
+                    person.cadre(),
                     proj
                 ));
             }

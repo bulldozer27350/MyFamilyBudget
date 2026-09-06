@@ -16,5 +16,6 @@ public record RetraitePersonWithProjectionModel(
     List<RetirementModel.SalaryHistoryModel> salaryHistory,
     BigDecimal agircPoints,
     BigDecimal ratioPointsParEuro,
+    Boolean cadre,
     RetirementProjectionModel projection
 ) {}
