@@ -672,11 +672,13 @@
      */
     async addBankImportCategory(category) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/bank-import/categories';
+        const body = category || {};
         try {
-          const res = await safeFetch(API_BASE_URL + '/bank-import/categories', {
+          const res = await safeFetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(category || {})
+            body: JSON.stringify(body)
           });
           if (res && res.ok) {
             app().BankImportService.addBankImportCategory(category);
@@ -684,6 +686,15 @@
           }
         } catch (e) {
           console.error("Échec ajout catégorie sur le backend", e);
+        }
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'POST',
+            url,
+            body,
+            description: 'Import bancaire — ajout d\'une catégorie'
+          });
         }
       }
       return Promise.resolve(app().BankImportService.addBankImportCategory(category));
@@ -695,11 +706,13 @@
      */
     async updateBankImportCategory(id, field, value) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/bank-import/categories/' + encodeURIComponent(id);
+        const body = { field, value };
         try {
-          const res = await safeFetch(API_BASE_URL + '/bank-import/categories/' + encodeURIComponent(id), {
+          const res = await safeFetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ field, value })
+            body: JSON.stringify(body)
           });
           if (res && res.ok) {
             app().BankImportService.updateBankImportCategory(id, field, value);
@@ -707,6 +720,15 @@
           }
         } catch (e) {
           console.error("Échec mise à jour catégorie sur le backend", e);
+        }
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'PUT',
+            url,
+            body,
+            description: 'Import bancaire — modification d\'une catégorie'
+          });
         }
       }
       return Promise.resolve(app().BankImportService.updateBankImportCategory(id, field, value));
@@ -718,16 +740,23 @@
      */
     async removeBankImportCategory(id) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/bank-import/categories/' + encodeURIComponent(id);
         try {
-          const res = await safeFetch(API_BASE_URL + '/bank-import/categories/' + encodeURIComponent(id), {
-            method: 'DELETE'
-          });
+          const res = await safeFetch(url, { method: 'DELETE' });
           if (res && res.ok) {
             app().BankImportService.removeBankImportCategory(id);
             return;
           }
         } catch (e) {
           console.error("Échec suppression catégorie sur le backend", e);
+        }
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'DELETE',
+            url,
+            description: 'Import bancaire — suppression d\'une catégorie'
+          });
         }
       }
       return Promise.resolve(app().BankImportService.removeBankImportCategory(id));
@@ -739,11 +768,13 @@
      */
     async addBankImportRule(rule) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/bank-import/rules';
+        const body = rule || {};
         try {
-          const res = await safeFetch(API_BASE_URL + '/bank-import/rules', {
+          const res = await safeFetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(rule || {})
+            body: JSON.stringify(body)
           });
           if (res && res.ok) {
             app().BankImportService.addBankImportRule(rule);
@@ -751,6 +782,15 @@
           }
         } catch (e) {
           console.error("Échec ajout règle sur le backend", e);
+        }
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'POST',
+            url,
+            body,
+            description: 'Import bancaire — ajout d\'une règle de catégorisation'
+          });
         }
       }
       return Promise.resolve(app().BankImportService.addBankImportRule(rule));
@@ -762,11 +802,13 @@
      */
     async updateBankImportRule(id, field, value) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/bank-import/rules/' + encodeURIComponent(id);
+        const body = { field, value };
         try {
-          const res = await safeFetch(API_BASE_URL + '/bank-import/rules/' + encodeURIComponent(id), {
+          const res = await safeFetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ field, value })
+            body: JSON.stringify(body)
           });
           if (res && res.ok) {
             app().BankImportService.updateBankImportRule(id, field, value);
@@ -774,6 +816,15 @@
           }
         } catch (e) {
           console.error("Échec mise à jour règle sur le backend", e);
+        }
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'PUT',
+            url,
+            body,
+            description: 'Import bancaire — modification d\'une règle de catégorisation'
+          });
         }
       }
       return Promise.resolve(app().BankImportService.updateBankImportRule(id, field, value));
@@ -785,16 +836,23 @@
      */
     async removeBankImportRule(id) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/bank-import/rules/' + encodeURIComponent(id);
         try {
-          const res = await safeFetch(API_BASE_URL + '/bank-import/rules/' + encodeURIComponent(id), {
-            method: 'DELETE'
-          });
+          const res = await safeFetch(url, { method: 'DELETE' });
           if (res && res.ok) {
             app().BankImportService.removeBankImportRule(id);
             return;
           }
         } catch (e) {
           console.error("Échec suppression règle sur le backend", e);
+        }
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'DELETE',
+            url,
+            description: 'Import bancaire — suppression d\'une règle de catégorisation'
+          });
         }
       }
       return Promise.resolve(app().BankImportService.removeBankImportRule(id));
@@ -806,16 +864,23 @@
      */
     async recalculateBankImportRules() {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/bank-import/rules/recalculate';
         try {
-          const res = await safeFetch(API_BASE_URL + '/bank-import/rules/recalculate', {
-            method: 'POST'
-          });
+          const res = await safeFetch(url, { method: 'POST' });
           if (res && res.ok) {
             app().BankImportService.recalculateBankImportRules();
             return;
           }
         } catch (e) {
           console.error("Échec recalcul des règles sur le backend", e);
+        }
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'POST',
+            url,
+            description: 'Import bancaire — recalcul des règles de catégorisation'
+          });
         }
       }
       return Promise.resolve(app().BankImportService.recalculateBankImportRules());
@@ -827,11 +892,13 @@
      */
     async setBankImportTransactionCategory(txId, categoryId, ruleKeyword) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/bank-import/transactions/' + encodeURIComponent(txId) + '/category';
+        const body = { categoryId, ruleKeyword };
         try {
-          const res = await safeFetch(API_BASE_URL + '/bank-import/transactions/' + encodeURIComponent(txId) + '/category', {
+          const res = await safeFetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ categoryId, ruleKeyword })
+            body: JSON.stringify(body)
           });
           if (res && res.ok) {
             app().BankImportService.setBankImportTransactionCategory(txId, categoryId, ruleKeyword);
@@ -839,6 +906,15 @@
           }
         } catch (e) {
           console.error("Échec catégorisation transaction sur le backend", e);
+        }
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'PUT',
+            url,
+            body,
+            description: 'Import bancaire — catégorisation d\'une transaction'
+          });
         }
       }
       return Promise.resolve(app().BankImportService.setBankImportTransactionCategory(txId, categoryId, ruleKeyword));
@@ -852,11 +928,13 @@
      */
     async updateBankTransactionSplits(txId, splits) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/bank/transactions/' + encodeURIComponent(txId) + '/splits';
+        const body = splits || [];
         try {
-          const res = await safeFetch(API_BASE_URL + '/bank/transactions/' + encodeURIComponent(txId) + '/splits', {
+          const res = await safeFetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(splits || [])
+            body: JSON.stringify(body)
           });
           if (res && res.ok) {
             app().BankImportService.updateBankTransactionSplits(txId, splits);
@@ -864,6 +942,15 @@
           }
         } catch (e) {
           console.error("Failed to update transaction splits on backend", e);
+        }
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'PUT',
+            url,
+            body,
+            description: 'Import bancaire — ventilation d\'une transaction'
+          });
         }
       }
       return Promise.resolve(app().BankImportService.updateBankTransactionSplits(txId, splits));
@@ -888,6 +975,13 @@
         } catch (e) {
           console.error("Échec import forcé de la transaction sur le backend", e);
         }
+        // Volontairement non mise en file d'attente : "forcer l'import" est une décision
+        // explicite de contournement de la détection de doublon, prise à un instant donné.
+        // La rejouer automatiquement plus tard, sur un état qui a pu changer entretemps
+        // (doublon déjà résolu autrement), risquerait de créer un vrai doublon en base.
+        // On se contente de signaler visuellement le passage hors-ligne ; l'utilisateur
+        // devra relancer l'action lui-même une fois reconnecté.
+        if (app().SyncStatus) app().SyncStatus.reportFailure();
       }
       return Promise.resolve(app().BankImportService.forceImportBankTransaction(tx));
     },
@@ -941,6 +1035,12 @@
         } catch (e) {
           console.error("Échec import bancaire sur le backend", e);
         }
+        // Volontairement non mise en file d'attente : rejouer un import CSV brut plus tard
+        // créerait un second import (avec de nouveaux ids serveur) des mêmes lignes, en plus
+        // de la copie déjà présente dans le service JS local (voir commentaire ci-dessus) —
+        // un vrai risque de doublon, pas juste apparent. L'utilisateur doit relancer l'import
+        // lui-même une fois reconnecté ; il verra le même écran d'aperçu qu'au premier essai.
+        if (app().SyncStatus) app().SyncStatus.reportFailure();
       }
       return Promise.resolve(app().BankImportService.importBankTransactions(rawRows, colRoles, mapping));
     },
@@ -989,13 +1089,25 @@
      */
     async savePendingOperation(opData, opId) {
       const localResult = app().PendingOperationsService.savePendingOperation(opData, opId);
+      const url = API_BASE_URL + '/pending-operations/force';
       try {
-        await safeFetch(API_BASE_URL + '/pending-operations/force', {
+        const res = await safeFetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(localResult)
         });
-      } catch (e) {}
+        if (!res || !res.ok) throw new Error('HTTP ' + (res ? res.status : 'réseau indisponible'));
+      } catch (e) {
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'POST',
+            url,
+            body: localResult,
+            description: 'Opérations en cours — enregistrement d\'une opération'
+          });
+        }
+      }
       return Promise.resolve(localResult);
     },
 
@@ -1005,13 +1117,26 @@
      * @returns {Promise<Array>} Liste mise à jour des opérations en cours
      */
     async deletePendingOperation(opId) {
+      const url = API_BASE_URL + '/pending-operations/ignore';
+      const body = { id: opId, operationId: opId };
       try {
-        await safeFetch(API_BASE_URL + '/pending-operations/ignore', {
+        const res = await safeFetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: opId, operationId: opId })
+          body: JSON.stringify(body)
         });
-      } catch (e) {}
+        if (!res || !res.ok) throw new Error('HTTP ' + (res ? res.status : 'réseau indisponible'));
+      } catch (e) {
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'POST',
+            url,
+            body,
+            description: 'Opérations en cours — suppression d\'une opération'
+          });
+        }
+      }
       return Promise.resolve(app().PendingOperationsService.deletePendingOperation(opId));
     },
 
@@ -1070,6 +1195,11 @@
             };
           }
         } catch (e) {}
+        // Volontairement non mise en file d'attente : le rapprochement automatique dépend de
+        // l'état courant des opérations et transactions au moment où il est déclenché. Le
+        // rejouer plus tard sur un état qui a évolué entretemps n'a pas de sens - l'utilisateur
+        // doit relancer l'action lui-même une fois reconnecté.
+        if (app().SyncStatus) app().SyncStatus.reportFailure();
       }
       return Promise.resolve(app().PendingOperationsService.autoMatchPendingOperations());
     },
@@ -1091,6 +1221,9 @@
           });
           if (res.ok) return await res.json();
         } catch (e) {}
+        // Volontairement non mise en file d'attente : même raisonnement que importBankTransactions
+        // (rejouer un import CSV brut plus tard créerait un second import des mêmes lignes).
+        if (app().SyncStatus) app().SyncStatus.reportFailure();
       }
       return Promise.resolve(app().PendingOperationsService.importPendingCB(rawRows, colRoles, config));
     },
@@ -1111,6 +1244,10 @@
           });
           if (res.ok) return;
         } catch (e) {}
+        // Volontairement non mise en file d'attente : cette fusion cible un appariement
+        // opération/transaction précis, qui peut ne plus être pertinent si l'état a changé
+        // pendant la coupure (rapprochement automatique entretemps, par exemple).
+        if (app().SyncStatus) app().SyncStatus.reportFailure();
       }
       if (app().PendingOperationsService && app().PendingOperationsService.mergePendingOperation) {
         return Promise.resolve(app().PendingOperationsService.mergePendingOperation(manualOpId, bankOp));
@@ -1133,6 +1270,9 @@
           });
           if (res.ok) return;
         } catch (e) {}
+        // Volontairement non mise en file d'attente : même raisonnement que
+        // forceImportBankTransaction (décision explicite de contournement de doublon).
+        if (app().SyncStatus) app().SyncStatus.reportFailure();
       }
       return Promise.resolve(app().PendingOperationsService.forceImportPendingOperation(op));
     },
