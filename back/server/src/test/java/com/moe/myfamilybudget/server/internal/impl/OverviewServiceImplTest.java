@@ -63,7 +63,7 @@ class OverviewServiceImplTest {
         SalaryHistoryModel salary2025 = new SalaryHistoryModel(2025, new BigDecimal("46000"));
 
         RetirementPersonModel person1 = new RetirementPersonModel("p_1", "Moe", 1985, "Salaire 1", 120, "2025-12-31",
-                List.of(salary2023, salary2024, salary2025), new BigDecimal("3500"), new BigDecimal("0.0051"));
+                List.of(salary2023, salary2024, salary2025), new BigDecimal("3500"), new BigDecimal("0.0051"), false);
 
         RetirementModel retirement = new RetirementModel(List.of(person1), new BigDecimal("47100"),
                 new BigDecimal("0.015"), new BigDecimal("1.4386"), "2025-01-01", new BigDecimal("0.01"));
@@ -135,7 +135,7 @@ class OverviewServiceImplTest {
         RetirementModel.RetirementPersonModel person = new RetirementModel.RetirementPersonModel("p_1", "Moe", 1985,
                 "Salaire Moe", 100, "2025-12-31",
                 List.of(new RetirementModel.SalaryHistoryModel(2025, new BigDecimal("48000"))), new BigDecimal("2000"),
-                new BigDecimal("0.0051"));
+                new BigDecimal("0.0051"), false);
 
         BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(income), List.of(), List.of(), List.of(),
                 new RetirementModel(List.of(person), new BigDecimal("47100"), new BigDecimal("0.015"),

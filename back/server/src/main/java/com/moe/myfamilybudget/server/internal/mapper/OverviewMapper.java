@@ -431,7 +431,7 @@ public class OverviewMapper {
                 .collect(Collectors.toList()) : List.of();
         return new RetirementModel.RetirementPersonModel(dto.getId(), dto.getName(), dto.getBirthYear(),
                 dto.getIncomeLabel(), dto.getTrimestresValides(), dto.getTrimestresDate(), sal, dto.getAgircPoints(),
-                dto.getRatioPointsParEuro());
+                dto.getRatioPointsParEuro(), dto.getCadre());
     }
 
     private RetirementPersonDto toRetirementPersonDto(RetirementModel.RetirementPersonModel m) {
@@ -457,6 +457,7 @@ public class OverviewMapper {
         dto.setSalaryHistory(sal);
         dto.setAgircPoints(m.agircPoints());
         dto.setRatioPointsParEuro(m.ratioPointsParEuro());
+        dto.setCadre(m.cadre());
         return dto;
     }
 

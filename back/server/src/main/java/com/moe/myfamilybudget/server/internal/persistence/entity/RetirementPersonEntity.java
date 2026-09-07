@@ -21,6 +21,7 @@ public class RetirementPersonEntity {
     private String trimestresDate;
     private BigDecimal agircPoints;
     private BigDecimal ratioPointsParEuro;
+    private Boolean cadre;
     
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy = "retirementPerson")
     private List<SalaryHistoryEntity> salaryHistory = new ArrayList<>();
@@ -34,7 +35,7 @@ public class RetirementPersonEntity {
     
     public RetirementPersonEntity(String uid, String name, Integer birthYear, String incomeLabel,
                                  Integer trimestresValides, String trimestresDate, BigDecimal agircPoints,
-                                 BigDecimal ratioPointsParEuro) {
+                                 BigDecimal ratioPointsParEuro, Boolean cadre) {
         this.uid = uid;
         this.name = name;
         this.birthYear = birthYear;
@@ -43,6 +44,7 @@ public class RetirementPersonEntity {
         this.trimestresDate = trimestresDate;
         this.agircPoints = agircPoints;
         this.ratioPointsParEuro = ratioPointsParEuro;
+        this.cadre = cadre;
     }
     
     // Getters and Setters
@@ -116,6 +118,14 @@ public class RetirementPersonEntity {
     
     public void setRatioPointsParEuro(BigDecimal ratioPointsParEuro) {
         this.ratioPointsParEuro = ratioPointsParEuro;
+    }
+    
+    public Boolean getCadre() {
+        return cadre;
+    }
+    
+    public void setCadre(Boolean cadre) {
+        this.cadre = cadre;
     }
     
     public List<SalaryHistoryEntity> getSalaryHistory() {

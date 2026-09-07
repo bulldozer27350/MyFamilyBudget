@@ -487,7 +487,8 @@ public class EntityModelConverter {
             model.trimestresValides(),
             model.trimestresDate(),
             model.agircPoints(),
-            model.ratioPointsParEuro()
+            model.ratioPointsParEuro(),
+            model.cadre()
         );
         entity.setRetirement(retirement);
         
@@ -516,7 +517,8 @@ public class EntityModelConverter {
             entity.getTrimestresDate(),
             salaryHistory,
             entity.getAgircPoints(),
-            entity.getRatioPointsParEuro()
+            entity.getRatioPointsParEuro(),
+            entity.getCadre()
         );
     }
 
