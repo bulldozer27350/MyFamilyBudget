@@ -115,13 +115,26 @@
     async updateTresorerieLigne(listKey, id, field, value) {
       const p = Promise.resolve(app().TresorerieService.updateTresorerieLigne(listKey, id, field, value));
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/tresorerie/' + encodeURIComponent(listKey);
+        const body = { id, field, value };
         try {
-          await fetch(API_BASE_URL + '/tresorerie/' + encodeURIComponent(listKey), {
+          const res = await fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, field, value })
+            body: JSON.stringify(body)
           });
-        } catch (e) {}
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+        } catch (e) {
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'PUT',
+              url,
+              body,
+              description: 'Trésorerie (' + listKey + ') — modification de "' + field + '"'
+            });
+          }
+        }
       }
       return p;
     },
@@ -133,13 +146,26 @@
     async addTresorerieLigne(listKey, options) {
       const p = Promise.resolve(app().TresorerieService.addTresorerieLigne(listKey, options));
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/tresorerie/' + encodeURIComponent(listKey);
+        const body = options || {};
         try {
-          await fetch(API_BASE_URL + '/tresorerie/' + encodeURIComponent(listKey), {
+          const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(options || {})
+            body: JSON.stringify(body)
           });
-        } catch (e) {}
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+        } catch (e) {
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'POST',
+              url,
+              body,
+              description: 'Trésorerie (' + listKey + ') — ajout d\'une ligne'
+            });
+          }
+        }
       }
       return p;
     },
@@ -151,11 +177,20 @@
     async removeTresorerieLigne(listKey, id) {
       const p = Promise.resolve(app().TresorerieService.removeTresorerieLigne(listKey, id));
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/tresorerie/' + encodeURIComponent(listKey) + '/' + encodeURIComponent(id);
         try {
-          await fetch(API_BASE_URL + '/tresorerie/' + encodeURIComponent(listKey) + '/' + encodeURIComponent(id), {
-            method: 'DELETE'
-          });
-        } catch (e) {}
+          const res = await fetch(url, { method: 'DELETE' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+        } catch (e) {
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'DELETE',
+              url,
+              description: 'Trésorerie (' + listKey + ') — suppression d\'une ligne'
+            });
+          }
+        }
       }
       return p;
     },
@@ -167,13 +202,26 @@
     async applyTresorerieAjustement(lineId, kind, newMonthly) {
       const p = Promise.resolve(app().TresorerieService.applyTresorerieAjustement(lineId, kind, newMonthly));
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/tresorerie/adjust';
+        const body = { lineId, kind, newMonthly };
         try {
-          await fetch(API_BASE_URL + '/tresorerie/adjust', {
+          const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lineId, kind, newMonthly })
+            body: JSON.stringify(body)
           });
-        } catch (e) {}
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+        } catch (e) {
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'POST',
+              url,
+              body,
+              description: 'Trésorerie — application d\'un ajustement de dérive'
+            });
+          }
+        }
       }
       return p;
     },
@@ -210,20 +258,50 @@
      * @returns {Promise<void>}
      */
     async updatePatrimoineLigne(listKey, id, field, value) {
+      // Snapshot de la ligne AVANT modification locale : sert de référence pour
+      // détecter, au moment d'un rejeu ultérieur (voir sync-status.js), si un
+      // autre appareil a modifié cette même ligne pendant la coupure réseau.
+      let beforeSnapshot = null;
+      try {
+        const beforeList = app().BudgetStore.getData()[listKey] || [];
+        const beforeRow = beforeList.find(r => r.id === id);
+        if (beforeRow) beforeSnapshot = JSON.parse(JSON.stringify(beforeRow));
+      } catch (e) {}
+
       await app().PatrimoineService.updatePatrimoineLigne(listKey, id, field, value);
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/patrimoine/' + encodeURIComponent(listKey);
         try {
           const list = app().BudgetStore.getData()[listKey] || [];
           const row = list.find(r => r.id === id);
           if (row) {
-            await fetch(API_BASE_URL + '/patrimoine/' + encodeURIComponent(listKey), {
+            const res = await fetch(url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(row)
             });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
           }
         } catch (e) {
           console.error("Failed to sync updated patrimoine line to backend", e);
+          // Remplacement complet de la ligne (pas juste le champ modifié) : mise en
+          // file "à valider", jamais rejouée automatiquement. Voir la note sur le
+          // niveau de risque des écritures dans sync-status.js.
+          const list = app().BudgetStore.getData()[listKey] || [];
+          const row = list.find(r => r.id === id);
+          if (row && app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'validate',
+              method: 'POST',
+              url,
+              body: row,
+              description: 'Patrimoine (' + listKey + ') — modification de "' + field + '"',
+              driftCheckUrl: API_BASE_URL + '/patrimoine',
+              beforeSnapshot,
+              driftListKey: listKey,
+              driftEntityId: id
+            });
+          }
         }
       }
     },
@@ -236,21 +314,32 @@
     async addPatrimoineLigne(listKey, row) {
       await app().PatrimoineService.addPatrimoineLigne(listKey, row);
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/patrimoine/' + encodeURIComponent(listKey);
+        let targetRow = row;
         try {
-          let targetRow = row;
           if (!targetRow) {
             const list = app().BudgetStore.getData()[listKey] || [];
             targetRow = list[list.length - 1];
           }
           if (targetRow) {
-            await fetch(API_BASE_URL + '/patrimoine/' + encodeURIComponent(listKey), {
+            const res = await fetch(url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(targetRow)
             });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
           }
         } catch (e) {
           console.error("Failed to sync new patrimoine line to backend", e);
+          if (targetRow && app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'POST',
+              url,
+              body: targetRow,
+              description: 'Patrimoine (' + listKey + ') — ajout d\'une ligne'
+            });
+          }
         }
       }
     },
@@ -262,12 +351,20 @@
     async removePatrimoineLigne(listKey, id) {
       await app().PatrimoineService.removePatrimoineLigne(listKey, id);
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/patrimoine/' + encodeURIComponent(listKey) + '/' + encodeURIComponent(id);
         try {
-          await fetch(API_BASE_URL + '/patrimoine/' + encodeURIComponent(listKey) + '/' + encodeURIComponent(id), {
-            method: 'DELETE'
-          });
+          const res = await fetch(url, { method: 'DELETE' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
         } catch (e) {
           console.error("Failed to sync deleted patrimoine line to backend", e);
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'DELETE',
+              url,
+              description: 'Patrimoine (' + listKey + ') — suppression d\'une ligne'
+            });
+          }
         }
       }
     },
@@ -308,18 +405,45 @@
      * @returns {Promise<void>}
      */
     async saveRetraiteData(retirementData) {
+      // Snapshot AVANT sauvegarde locale, pour référence en cas de rejeu ultérieur.
+      // Note : /retraite renvoie aussi des projections calculées (âge, simulations)
+      // qui peuvent varier avec la date du jour même sans changement des paramètres
+      // saisis. Si la reconnexion survient plusieurs jours après la coupure, cela
+      // peut déclencher un faux positif de dérive (à affiner en Phase 3 si gênant,
+      // en ne comparant que les champs réellement saisis par l'utilisateur).
+      let beforeSnapshot = null;
+      try {
+        const getRetraiteDataFn = exports.getRetraiteDataFromService || window.BudgetApp?.getRetraiteDataFromService;
+        beforeSnapshot = getRetraiteDataFn ? JSON.parse(JSON.stringify(getRetraiteDataFn())) : null;
+      } catch (e) {}
+
       const saveRetraiteDataFn = exports.saveRetraiteDataToService || window.BudgetApp?.saveRetraiteDataToService;
       const localSave = saveRetraiteDataFn ? Promise.resolve(saveRetraiteDataFn(retirementData)) : Promise.resolve();
       await localSave;
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/retraite';
         try {
-          await fetch(API_BASE_URL + '/retraite', {
+          const res = await fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(retirementData)
           });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
         } catch (e) {
           console.error("Failed to sync retirement data to backend", e);
+          // Remplacement complet de l'objet retraite : mise en file "à valider",
+          // jamais rejouée automatiquement (voir sync-status.js).
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'validate',
+              method: 'PUT',
+              url,
+              body: retirementData,
+              description: 'Retraite — mise à jour des paramètres et hypothèses',
+              driftCheckUrl: url,
+              beforeSnapshot
+            });
+          }
         }
       }
     },
@@ -399,14 +523,26 @@
      */
     async updateSettingsField(field, value) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/settings';
+        const body = { field, value };
         try {
-          await fetch(API_BASE_URL + '/settings', {
+          const res = await fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ field, value })
+            body: JSON.stringify(body)
           });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
         } catch (e) {
           console.error("Failed to update settings field on backend", e);
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'PUT',
+              url,
+              body,
+              description: 'Paramètres — modification de "' + field + '"'
+            });
+          }
         }
       }
       return Promise.resolve(app().SettingsService.updateSettingsField(field, value));
@@ -418,14 +554,26 @@
      */
     async updateAssetCategory(id, field, value) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/settings';
+        const body = { action: "updateAssetCategory", id, field, value };
         try {
-          await fetch(API_BASE_URL + '/settings', {
+          const res = await fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: "updateAssetCategory", id, field, value })
+            body: JSON.stringify(body)
           });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
         } catch (e) {
           console.error("Failed to update asset category on backend", e);
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'PUT',
+              url,
+              body,
+              description: 'Paramètres — modification d\'une catégorie d\'actif'
+            });
+          }
         }
       }
       return Promise.resolve(app().SettingsService.updateAssetCategory(id, field, value));
@@ -437,14 +585,26 @@
      */
     async addAssetCategory(row) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/settings';
+        const body = { action: "addAssetCategory", row };
         try {
-          await fetch(API_BASE_URL + '/settings', {
+          const res = await fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: "addAssetCategory", row })
+            body: JSON.stringify(body)
           });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
         } catch (e) {
           console.error("Failed to add asset category on backend", e);
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'PUT',
+              url,
+              body,
+              description: 'Paramètres — ajout d\'une catégorie d\'actif'
+            });
+          }
         }
       }
       return Promise.resolve(app().SettingsService.addAssetCategory(row));
@@ -456,14 +616,26 @@
      */
     async removeAssetCategory(id) {
       if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/settings';
+        const body = { action: "removeAssetCategory", id };
         try {
-          await fetch(API_BASE_URL + '/settings', {
+          const res = await fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: "removeAssetCategory", id })
+            body: JSON.stringify(body)
           });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
         } catch (e) {
           console.error("Failed to remove asset category on backend", e);
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'PUT',
+              url,
+              body,
+              description: 'Paramètres — suppression d\'une catégorie d\'actif'
+            });
+          }
         }
       }
       return Promise.resolve(app().SettingsService.removeAssetCategory(id));

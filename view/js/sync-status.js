@@ -109,6 +109,12 @@
    *   rejeu (uniquement pertinent pour tier='validate')
    * @param {*} [mutation.beforeSnapshot] Etat connu localement avant la modification, compare a
    *   l'etat serveur au moment du rejeu (uniquement pertinent pour tier='validate')
+   * @param {string} [mutation.driftListKey] Si la reponse de driftCheckUrl est un objet contenant
+   *   plusieurs listes (ex. { placements: [...], loans: [...] }), nom de la liste dans laquelle
+   *   chercher la ligne a comparer, plutot que de comparer tout l'objet renvoye (qui contiendrait
+   *   aussi d'autres lignes non concernees par cette modification).
+   * @param {string} [mutation.driftEntityId] Combine a driftListKey : id de la ligne a extraire
+   *   pour la comparaison de derive.
    * @returns {string} identifiant de l'entree en file
    */
   function enqueue(mutation) {
@@ -121,7 +127,9 @@
       body: mutation.body !== undefined ? mutation.body : null,
       description: mutation.description || mutation.url,
       driftCheckUrl: mutation.driftCheckUrl || null,
-      beforeSnapshot: mutation.beforeSnapshot !== undefined ? mutation.beforeSnapshot : null
+      beforeSnapshot: mutation.beforeSnapshot !== undefined ? mutation.beforeSnapshot : null,
+      driftListKey: mutation.driftListKey || null,
+      driftEntityId: mutation.driftEntityId !== undefined ? mutation.driftEntityId : null
     };
     queue[entry.tier].push(entry);
     saveQueue(queue);
@@ -181,6 +189,26 @@
   }
 
   /**
+   * Extrait, depuis la reponse de driftCheckUrl, la seule portion comparable a
+   * beforeSnapshot. Si l'entree porte driftListKey+driftEntityId (cas d'une
+   * ligne au sein d'une liste, ex. une ligne de Patrimoine), on va chercher
+   * uniquement cette ligne dans la liste correspondante plutot que de
+   * comparer tout l'objet renvoye par l'API (qui contient aussi les autres
+   * lignes, non concernees par cette modification). Sinon, l'objet complet
+   * renvoye est compare tel quel (cas d'un objet unique, ex. /retraite).
+   */
+  function extractComparable(serverPayload, entry) {
+    if (entry.driftListKey && entry.driftEntityId !== null && entry.driftEntityId !== undefined) {
+      const list = serverPayload ? serverPayload[entry.driftListKey] : null;
+      if (Array.isArray(list)) {
+        return list.find(function (r) { return r && String(r.id) === String(entry.driftEntityId); }) || null;
+      }
+      return null;
+    }
+    return serverPayload;
+  }
+
+  /**
    * Tente d'envoyer une entree de la file "a valider".
    * Effectue d'abord un controle de derive (sauf si force=true) : si
    * driftCheckUrl est renseignee, recupere l'etat serveur courant et le
@@ -201,11 +229,12 @@
       try {
         const res = await fetch(entry.driftCheckUrl);
         if (res.ok) {
-          const current = await res.json();
-          const drifted = JSON.stringify(current) !== JSON.stringify(entry.beforeSnapshot);
+          const currentPayload = await res.json();
+          const comparable = extractComparable(currentPayload, entry);
+          const drifted = JSON.stringify(comparable) !== JSON.stringify(entry.beforeSnapshot);
           if (drifted) {
-            if (opts.onDrift) opts.onDrift(current, entry);
-            return { sent: false, drift: true, serverValue: current };
+            if (opts.onDrift) opts.onDrift(comparable, entry);
+            return { sent: false, drift: true, serverValue: comparable };
           }
         }
       } catch (e) {
