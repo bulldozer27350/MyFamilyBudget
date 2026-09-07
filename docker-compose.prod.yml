@@ -46,7 +46,13 @@ services:
   # Aucune configuration cote GitHub Actions n'est necessaire : c'est le
   # mini-PC qui vient chercher la mise a jour, jamais l'inverse.
   watchtower:
-    image: containrrr/watchtower
+    # containrrr/watchtower est archive depuis decembre 2025 et son client
+    # Docker interne est fige sur une API trop ancienne (1.25) pour un
+    # Docker Engine recent (v29+, qui exige au moins l'API 1.40) : erreur
+    # "client version 1.25 is too old" en boucle, aucune image jamais tiree.
+    # nickfedor/watchtower est le fork communautaire qui reprend le projet
+    # avec les memes variables d'environnement (remplacement direct).
+    image: nickfedor/watchtower
     container_name: myfamilybudget-watchtower
     restart: unless-stopped
     volumes:
