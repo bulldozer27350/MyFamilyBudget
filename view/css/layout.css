@@ -206,13 +206,38 @@
 .app-main {
   flex: 1;
   padding: 30px 36px;
-  max-width: 1200px;
+  max-width: 1440px;
   width: 100%;
   overflow-x: hidden;
 }
 
 .app-sidebar.collapsed ~ .app-main {
-  max-width: 1360px;
+  max-width: 1600px;
+}
+
+/* ============================================================
+   GRANDS ECRANS — on exploite l'espace disponible sur les
+   moniteurs larges (≥ 1600px / ≥ 1920px), sans affecter le
+   comportement mobile (@media max-width: 900px) ci-dessous.
+   ============================================================ */
+@media (min-width: 1600px) {
+  .app-main {
+    max-width: 1720px;
+  }
+
+  .app-sidebar.collapsed ~ .app-main {
+    max-width: 1960px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .app-main {
+    max-width: 2000px;
+  }
+
+  .app-sidebar.collapsed ~ .app-main {
+    max-width: 2240px;
+  }
 }
 
 /* Le bouton hamburger est invisible par défaut (PC) */
