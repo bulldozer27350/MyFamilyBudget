@@ -19,7 +19,16 @@ public class RetirementEntity {
     private String agircPointDateGlobal;
     private BigDecimal agircPointGrowthRate;
     
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    // ATTENTION : mappedBy="retirement" est indispensable ici. RetirementPersonEntity
+    // possede deja la colonne FK "retirement_id" (cote proprietaire, cf. son champ
+    // @ManyToOne "retirement"). Sans mappedBy, JPA ignore cette colonne et cree en plus
+    // une table de jointure implicite pour gerer cette collection : deux mecanismes de
+    // liaison redondants et non synchronises. Au quotidien le cache memoire
+    // (PersistenceManager#currentBudget) masque le probleme puisque les lectures ne
+    // retournent jamais reellement en base ; il ne se manifeste qu'au redemarrage du
+    // conteneur (@PostConstruct init()), c'est-a-dire a chaque mise a jour de l'image
+    // Docker, moment ou la collection est reellement relue depuis la base.
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy = "retirement")
     private List<RetirementPersonEntity> people = new ArrayList<>();
     
     @ManyToOne(fetch = FetchType.LAZY)

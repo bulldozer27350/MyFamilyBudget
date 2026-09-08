@@ -79,6 +79,40 @@
     return Promise.resolve(fallbackFn());
   }
 
+  /**
+   * Pousse une mutation d'Impôts vers le back-end (PUT /impots), avec mise en
+   * file d'attente SyncStatus en cas d'échec (perte réseau, back-end indisponible…).
+   * Le back-end (ImpotsServiceImpl#saveImpotsConfig) ne remplace que les clés
+   * présentes dans le payload : on peut donc envoyer une seule liste, ou une
+   * action ciblée ("updateSettings" / "resetDefaultTaxBrackets"), sans affecter
+   * le reste de la configuration fiscale.
+   * @param {Object} payload Corps de la requête PUT /impots
+   * @param {string} description Libellé affiché en cas de mise en file d'attente
+   * @returns {Promise<void>}
+   */
+  async function syncImpotsToBackend(payload, description) {
+    if (typeof fetch === 'undefined') return;
+    const url = API_BASE_URL + '/impots';
+    try {
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    } catch (e) {
+      if (app().SyncStatus) {
+        app().SyncStatus.enqueue({
+          tier: 'auto',
+          method: 'PUT',
+          url,
+          body: payload,
+          description
+        });
+      }
+    }
+  }
+
   const BudgetApi = {
     /**
      * Vue d'ensemble : KPIs, projections (trésorerie, patrimoine) et jauges FIRE.
@@ -454,10 +488,26 @@
 
     /**
      * Impôts : foyer fiscal, barème progressif, simulateur PAS et ajustements réels.
+     *
+     * Applique la règle « le backend prime » (cf. getRetraiteData) pour les 4 listes
+     * fiscales : sans ça, taxChildren (et les tranches / ajustements) ne vivaient que
+     * dans le localStorage de l'appareil visité, d'où des écarts entre PC, navigation
+     * privée et mobile (ex. KPI "+10% (3 enfants)" incohérent selon l'appareil). Un
+     * Ctrl+Shift+R ne change rien à ça puisqu'il ne vide que le cache HTTP, pas le
+     * localStorage. On ne touche pas à `settings`, renvoyé partiel par le back-end
+     * (uniquement les champs utiles à l'onglet Impôts) — l'objet local complet reste
+     * la source de vérité pour l'onglet Paramètres.
      * @returns {Promise<Object>} modèle de lecture de l'onglet Impôts
      */
     async getImpots() {
-      return Promise.resolve(app().ImpotsService.buildImpots());
+      const result = await fetchJsonOrFallback('/impots', () => app().ImpotsService.buildImpots());
+      if (result) {
+        app().BudgetStore.update('taxChildren', () => result.taxChildren || []);
+        app().BudgetStore.update('taxBrackets', () => result.taxBrackets || []);
+        app().BudgetStore.update('taxRateOverrides', () => result.taxRateOverrides || []);
+        app().BudgetStore.update('taxActualOverrides', () => result.taxActualOverrides || []);
+      }
+      return result;
     },
 
     /**
@@ -465,7 +515,12 @@
      * @returns {Promise<void>}
      */
     async updateImpotsLigne(listKey, id, field, value) {
-      return Promise.resolve(app().ImpotsService.updateImpotsLigne(listKey, id, field, value));
+      app().ImpotsService.updateImpotsLigne(listKey, id, field, value);
+      const list = app().BudgetStore.getData()[listKey] || [];
+      await syncImpotsToBackend(
+        { [listKey]: list },
+        'Impôts (' + listKey + ') — modification de "' + field + '"'
+      );
     },
 
     /**
@@ -473,7 +528,12 @@
      * @returns {Promise<void>}
      */
     async addImpotsLigne(listKey, rowFactory) {
-      return Promise.resolve(app().ImpotsService.addImpotsLigne(listKey, rowFactory));
+      app().ImpotsService.addImpotsLigne(listKey, rowFactory);
+      const list = app().BudgetStore.getData()[listKey] || [];
+      await syncImpotsToBackend(
+        { [listKey]: list },
+        'Impôts (' + listKey + ') — ajout d\'une ligne'
+      );
     },
 
     /**
@@ -481,7 +541,12 @@
      * @returns {Promise<void>}
      */
     async removeImpotsLigne(listKey, id) {
-      return Promise.resolve(app().ImpotsService.removeImpotsLigne(listKey, id));
+      app().ImpotsService.removeImpotsLigne(listKey, id);
+      const list = app().BudgetStore.getData()[listKey] || [];
+      await syncImpotsToBackend(
+        { [listKey]: list },
+        'Impôts (' + listKey + ') — suppression d\'une ligne'
+      );
     },
 
     /**
@@ -489,7 +554,11 @@
      * @returns {Promise<void>}
      */
     async updateImpotsSettings(field, value) {
-      return Promise.resolve(app().ImpotsService.updateImpotsSettings(field, value));
+      app().ImpotsService.updateImpotsSettings(field, value);
+      await syncImpotsToBackend(
+        { action: 'updateSettings', field, value },
+        'Impôts — paramètre "' + field + '"'
+      );
     },
 
     /**
@@ -497,7 +566,11 @@
      * @returns {Promise<void>}
      */
     async resetDefaultTaxBrackets() {
-      return Promise.resolve(app().ImpotsService.resetDefaultTaxBrackets());
+      app().ImpotsService.resetDefaultTaxBrackets();
+      await syncImpotsToBackend(
+        { action: 'resetDefaultTaxBrackets' },
+        'Impôts — réinitialisation du barème'
+      );
     },
 
     /**
