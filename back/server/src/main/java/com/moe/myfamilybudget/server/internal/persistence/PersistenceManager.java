@@ -151,23 +151,31 @@ public class PersistenceManager {
     public void init() {
         // Try to load from database first
         if (budgetDataRepository != null) {
-            Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
-            if (existingData.isPresent()) {
-                // NOTE: comme pour saveToDatabase() plus bas, ce bloc s'exécute en
-                // self-invocation depuis @PostConstruct, donc hors du proxy AOP
-                // @Transactional de la classe. Sans transaction explicite, la connexion
-                // JDBC reste en autocommit, ce qui fait échouer la lecture paresseuse de
-                // BankImportEntity.jsonData (mappé en Large Object côté PostgreSQL) avec
-                // "Large Objects may not be used in auto-commit mode" — mais uniquement
-                // dès qu'une ligne bank_import existe déjà en base. Le tout premier
-                // démarrage sur une base vide ne déclenche jamais ce chemin (existingData
-                // est alors absent), d'où un bug invisible en test initial et bloquant dès
-                // le redémarrage suivant. On ouvre donc explicitement une transaction
-                // programmatique autour de la lecture, au même titre que l'écriture.
-                BudgetDataEntity entityToLoad = existingData.get();
-                BudgetDataModel complete = (transactionTemplate != null)
-                        ? transactionTemplate.execute(status -> loadCompleteBudgetData(entityToLoad))
-                        : loadCompleteBudgetData(entityToLoad);
+            // NOTE: comme pour saveToDatabase() plus bas, ce bloc s'exécute en
+            // self-invocation depuis @PostConstruct, donc hors du proxy AOP
+            // @Transactional de la classe. Sans transaction explicite, la connexion
+            // JDBC reste en autocommit, ce qui fait échouer la lecture paresseuse de
+            // BankImportEntity.jsonData (mappé en Large Object côté PostgreSQL) avec
+            // "Large Objects may not be used in auto-commit mode" — mais uniquement
+            // dès qu'une ligne bank_import existe déjà en base. Le tout premier
+            // démarrage sur une base vide ne déclenche jamais ce chemin (existingData
+            // est alors absent), d'où un bug invisible en test initial et bloquant dès
+            // le redémarrage suivant. On ouvre donc explicitement une transaction
+            // programmatique autour de la lecture, au même titre que l'écriture.
+            //
+            // IMPORTANT : la requête findFirstByOrderByIdAsc() DOIT elle-même s'exécuter
+            // à l'intérieur de cette transaction, pas avant. Un appel de méthode de
+            // repository Spring Data s'exécute par défaut dans sa propre transaction,
+            // qui se termine dès qu'il retourne : l'entité obtenue serait alors détachée
+            // avant même d'atteindre transactionTemplate.execute(), et toute collection
+            // LAZY qu'elle porte (ex. RetirementEntity.people) échouerait au premier accès
+            // avec "could not initialize proxy - no Session", une nouvelle transaction ne
+            // rattachant pas rétroactivement une entité déjà détachée d'une session
+            // précédente.
+            BudgetDataModel complete = (transactionTemplate != null)
+                    ? transactionTemplate.execute(status -> loadExistingBudgetDataIfPresent())
+                    : loadExistingBudgetDataIfPresent();
+            if (complete != null) {
                 currentBudget.set(complete);
                 return;
             }
@@ -190,6 +198,19 @@ public class PersistenceManager {
             saveToDatabase(defaultData);
         }
         currentBudget.set(defaultData);
+    }
+
+    /**
+     * Cherche la ligne budget_data existante et la convertit intégralement (y compris
+     * ses collections LAZY) en une seule opération, afin de rester dans la même
+     * session/transaction du début à la fin. Voir la note dans init() : séparer la
+     * requête de la conversion détache l'entité avant que ses associations paresseuses
+     * ne soient lues, ce qui casse leur chargement.
+     * @return le modèle complet, ou null si aucune ligne budget_data n'existe encore
+     */
+    private BudgetDataModel loadExistingBudgetDataIfPresent() {
+        Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
+        return existingData.map(this::loadCompleteBudgetData).orElse(null);
     }
 
     private BudgetDataModel loadCompleteBudgetData(BudgetDataEntity entity) {
