@@ -16,6 +16,10 @@
   const {
     HelpModal
   } = exports.HelpModal ? exports : window.BudgetApp || {};
+  const {
+    SyncStatusBanner,
+    SyncReviewModal
+  } = exports.SyncStatusBanner ? exports : window.BudgetApp || {};
   const NAV_ITEMS = [{
     key: "overview",
     label: "Vue d'ensemble",
@@ -201,6 +205,7 @@
       section: currentSection,
       badgeId: null
     });
+    const [syncReviewOpen, setSyncReviewOpen] = useState(false);
     const [collapsed, setCollapsed] = useState(() => {
       try {
         return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
@@ -518,7 +523,9 @@
     /* ── Zone de contenu principale ── */
     React.createElement("main", {
       className: "app-main"
-    }, typeof children === "function" ? children({
+    },
+    React.createElement(SyncStatusBanner, { onOpenReview: () => setSyncReviewOpen(true) }),
+    typeof children === "function" ? children({
       openHelp
     }) : children), 
 
@@ -528,6 +535,12 @@
       onClose: closeHelp,
       initialSection: helpState.section,
       initialBadgeId: helpState.badgeId
+    }),
+
+    /* ── Modal de revue de synchronisation ── */
+    React.createElement(SyncReviewModal, {
+      isOpen: syncReviewOpen,
+      onClose: () => setSyncReviewOpen(false)
     }));
   }
   exports.AppLayout = AppLayout;
