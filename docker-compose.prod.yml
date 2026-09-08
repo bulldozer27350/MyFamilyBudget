@@ -60,7 +60,13 @@ services:
     environment:
       WATCHTOWER_LABEL_ENABLE: "true"
       WATCHTOWER_CLEANUP: "true"
-      WATCHTOWER_ROLLING_RESTART: "true"
+      # Desactive : incompatible avec un conteneur ayant des dependances
+      # (myfamilybudget-app depend de myfamilybudget-db via depends_on) --
+      # Watchtower refuse alors tout redemarrage ("Rolling restart
+      # compatibility validation failed"). Sans interet ici de toute facon :
+      # une seule instance de "app" tourne, il n'y a qu'un mode de
+      # redemarrage possible, le mode standard s'en sort tres bien.
+      WATCHTOWER_ROLLING_RESTART: "false"
       WATCHTOWER_POLL_INTERVAL: "${WATCHTOWER_POLL_INTERVAL:-300}"
       TZ: "${TZ:-Europe/Paris}"
 
