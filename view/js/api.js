@@ -502,10 +502,25 @@
     async getImpots() {
       const result = await fetchJsonOrFallback('/impots', () => app().ImpotsService.buildImpots());
       if (result) {
-        app().BudgetStore.update('taxChildren', () => result.taxChildren || []);
-        app().BudgetStore.update('taxBrackets', () => result.taxBrackets || []);
-        app().BudgetStore.update('taxRateOverrides', () => result.taxRateOverrides || []);
-        app().BudgetStore.update('taxActualOverrides', () => result.taxActualOverrides || []);
+        // IMPORTANT : onImpotsChanged() (voir plus bas) écoute BudgetStore dans son
+        // ensemble (subscribeImpots = BudgetStore.subscribe) et ImpotsView rappelle
+        // getImpots() à chaque notification reçue. Sans la garde ci-dessous,
+        // BudgetStore.update() notifie systématiquement (même à valeur inchangée),
+        // ce qui redéclenche aussitôt un nouvel appel à getImpots() -> nouveaux
+        // BudgetStore.update() -> nouvelle notification -> ... : boucle infinie qui
+        // sature le CPU/mémoire du navigateur et matraque le backend de requêtes
+        // (observé le 08/09 : lenteurs extrêmes, appli inutilisable). On ne met donc
+        // à jour le store, et donc on ne notifie, que pour les listes réellement
+        // différentes de ce qui y est déjà.
+        const store = app().BudgetStore;
+        const current = store.getData();
+        const IMPOTS_KEYS = ['taxChildren', 'taxBrackets', 'taxRateOverrides', 'taxActualOverrides'];
+        IMPOTS_KEYS.forEach(function (key) {
+          const next = result[key] || [];
+          if (JSON.stringify(current[key]) !== JSON.stringify(next)) {
+            store.update(key, () => next);
+          }
+        });
       }
       return result;
     },
