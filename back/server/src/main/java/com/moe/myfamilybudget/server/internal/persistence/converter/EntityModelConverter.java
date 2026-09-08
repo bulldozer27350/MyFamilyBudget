@@ -547,6 +547,16 @@ public class EntityModelConverter {
         
         BudgetDataEntity entity = new BudgetDataEntity();
         entity.setSettings(toEntity(model.settings()));
+        // BUG CORRIGÉ : contrairement à `settings` (rattaché juste au-dessus), `retirement`
+        // n'était jamais rattaché à `entity` ici. Résultat : entity.getRetirement() restait
+        // null, et le cascade ALL sur BudgetDataEntity#retirement (voir son annotation) ne
+        // sauvegardait donc jamais rien — malgré le commentaire de saveToDatabase() affirmant
+        // le contraire. Les données de retraite ne survivaient qu'en mémoire
+        // (PersistenceManager#currentBudget) et disparaissaient à chaque redémarrage du
+        // conteneur, dès que @PostConstruct init() relit réellement depuis la base.
+        // toEntity(RetirementModel, BudgetDataEntity) rattache aussi le FK côté propriétaire
+        // (RetirementEntity#budgetData), donc les deux sens de la relation sont cohérents.
+        entity.setRetirement(toEntity(model.retirement(), entity));
         
         // Lists will be set separately with proper budgetData references
         return entity;
