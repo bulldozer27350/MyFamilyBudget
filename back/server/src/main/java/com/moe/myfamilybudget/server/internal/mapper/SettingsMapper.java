@@ -34,6 +34,9 @@ public class SettingsMapper {
             sMap.put("taxAbattement", s.taxAbattement());
             sMap.put("pass2026", s.pass2026());
             sMap.put("passGrowthRate", s.passGrowthRate());
+            sMap.put("sweepEnabled", s.sweepEnabled());
+            sMap.put("cashCeiling", s.cashCeiling());
+            sMap.put("cashFloor", s.cashFloor());
             response.put("settings", sMap);
         } else {
             response.put("settings", new HashMap<>());
