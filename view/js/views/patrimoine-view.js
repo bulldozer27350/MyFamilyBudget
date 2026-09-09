@@ -20,7 +20,8 @@
     FieldHint
   } = exports.SectionCard ? exports : window.BudgetApp || {};
   const {
-    LineChartJS
+    LineChartJS,
+    InteractivePlacementChart
   } = exports.LineChartJS ? exports : window.BudgetApp || {};
   const {
     HelpBadge
@@ -48,13 +49,15 @@
   function PlacementCard({
     p,
     categories,
-    onClick
+    onClick,
+    onOpenHistory
   }) {
     const theme = getCategoryTheme(p.category, categories);
     const monthlyVal = Number(p.monthly) || 0;
     return /*#__PURE__*/React.createElement("div", {
       onClick: onClick,
       style: {
+        position: "relative",
         background: C?.panel || "#FFFFFF",
         border: `1.5px solid ${C?.line || "#DED6C4"}`,
         borderRadius: 10,
@@ -131,7 +134,30 @@
         padding: "2px 7px",
         borderRadius: 4
       }
-    }, "+", eur(monthlyVal), "/m")));
+    }, "+", eur(monthlyVal), "/m")), onOpenHistory && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      title: "Voir l'historique et les projections de ce placement",
+      onClick: e => {
+        e.stopPropagation();
+        onOpenHistory(p.id);
+      },
+      style: {
+        position: "absolute",
+        top: 8,
+        right: 8,
+        border: "none",
+        background: C?.panelAlt || "#EFEAE0",
+        color: C?.pine || "#2F5D50",
+        borderRadius: "50%",
+        width: 24,
+        height: 24,
+        cursor: "pointer",
+        fontSize: 12,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }
+    }, "📈"));
   }
   function PlacementDrawer({
     placement,
@@ -771,6 +797,174 @@
       }
     }, isNew ? "✓ Créer le placement" : "✓ Enregistrer & Fermer"))));
   }
+
+  /**
+   * Fenêtre dédiée "Historique" d'un placement/compte : saisie périodique des valeurs réelles
+   * constatées (relevé mensuel, annuel…) et courbe d'évolution (réel → aujourd'hui → 3
+   * projections). Volontairement séparée du tiroir d'édition (PlacementDrawer) pour ne pas
+   * surcharger la vue principale, comme demandé.
+   */
+  function PlacementHistoryModal({
+    placementId,
+    onClose
+  }) {
+    const [evolution, setEvolution] = useState(null);
+    const [loaded, setLoaded] = useState(false);
+    useEffect(() => {
+      if (!placementId) return undefined;
+      let cancelled = false;
+      const fetchEvolution = () => {
+        BudgetApi.getPlacementEvolution(placementId).then(result => {
+          if (cancelled) return;
+          setEvolution(result);
+          setLoaded(true);
+        }).catch(err => {
+          console.error("Erreur de chargement de l'historique du placement :", err);
+          if (!cancelled) setLoaded(true);
+        });
+      };
+      fetchEvolution();
+      const unsubscribe = BudgetApi.onPatrimoineChanged(fetchEvolution);
+      return () => {
+        cancelled = true;
+        unsubscribe();
+      };
+    }, [placementId]);
+    if (!placementId) return null;
+    const placement = evolution?.placement || null;
+    const history = (placement?.history || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0, 0, 0, 0.45)",
+        backdropFilter: "blur(2px)",
+        padding: 20,
+        animation: "fadeIn 0.2s ease-out"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        inset: 0
+      },
+      onClick: onClose
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "relative",
+        width: 880,
+        maxWidth: "95vw",
+        maxHeight: "90vh",
+        background: C?.panel || "#FFFFFF",
+        borderRadius: 12,
+        boxShadow: "0 12px 40px rgba(0, 0, 0, 0.25)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "18px 24px",
+        borderBottom: `1px solid ${C?.line || "#DED6C4"}`,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        background: C?.paper || "#F6F3EC"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
+      style: {
+        margin: 0,
+        fontFamily: "'Newsreader', serif",
+        fontSize: 20,
+        color: C?.ink || "#232A2E",
+        fontWeight: 700
+      }
+    }, "Historique — ", placement?.label || "…"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginTop: 2
+      }
+    }, "Valeurs réelles constatées et projections pessimiste / correcte / optimiste")), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: onClose,
+      style: {
+        border: "none",
+        background: C?.panelAlt || "#EFEAE0",
+        borderRadius: "50%",
+        width: 34,
+        height: 34,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 16,
+        color: C?.inkSoft || "#6B7278",
+        fontWeight: 700
+      }
+    }, "✕")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        overflowY: "auto",
+        padding: 24
+      }
+    }, !loaded ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: C?.inkSoft || "#6B7278",
+        fontFamily: "sans-serif",
+        padding: 24
+      }
+    }, "Chargement…") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(InteractivePlacementChart, {
+      points: evolution?.points || [],
+      todayTimestamp: evolution?.todayTimestamp
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 24
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+        color: C?.pine || "#2F5D50",
+        marginBottom: 10
+      }
+    }, "Valeurs saisies"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 12,
+        lineHeight: 1.5
+      }
+    }, "Ajoutez une ligne à chaque relevé (mensuel, annuel, ou toute autre fréquence) pour suivre l'évolution réelle de ce placement. La dernière valeur saisie sert de point de départ aux 3 projections ci-dessus."), /*#__PURE__*/React.createElement(EditableTable, {
+      columns: [{
+        key: "date",
+        label: "Date du relevé",
+        type: "date"
+      }, {
+        key: "value",
+        label: "Valeur constatée (€)",
+        type: "number",
+        align: "right"
+      }, {
+        key: "notes",
+        label: "Notes",
+        type: "text"
+      }],
+      rows: history,
+      onCell: (id, field, value) => BudgetApi.updatePlacementHistoryEntry(placementId, id, field, value),
+      onRemove: id => BudgetApi.removePlacementHistoryEntry(placementId, id),
+      onAdd: () => BudgetApi.addPlacementHistoryEntry(placementId)
+    }))))));
+  }
+
   function PatrimoineView({
     useConstantEuros = false,
     openHelp
@@ -779,6 +973,7 @@
     const [draftPlacement, setDraftPlacement] = useState(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isAddingNew, setIsAddingNew] = useState(false);
+    const [historyPlacementId, setHistoryPlacementId] = useState(null);
     const [model, setModel] = useState(null);
     const [loaded, setLoaded] = useState(false);
     useEffect(() => {
@@ -899,7 +1094,8 @@
       key: p.id,
       p: p,
       categories: assetCategories,
-      onClick: () => handleCardClick(p.id)
+      onClick: () => handleCardClick(p.id),
+      onOpenHistory: id => setHistoryPlacementId(id)
     }))), /*#__PURE__*/React.createElement("button", {
       type: "button",
       onClick: handleAddNew,
@@ -936,6 +1132,9 @@
       onCell: handleCellChange,
       onRemove: id => BudgetApi.removePatrimoineLigne("placements", id),
       isNew: isAddingNew
+    }), historyPlacementId && /*#__PURE__*/React.createElement(PlacementHistoryModal, {
+      placementId: historyPlacementId,
+      onClose: () => setHistoryPlacementId(null)
     }), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Transferts depuis un placement vers le compte courant",
       subtitle: "Simule un retrait pour financer une grosse dépense"

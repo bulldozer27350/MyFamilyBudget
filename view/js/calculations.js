@@ -727,6 +727,119 @@
     }
     return Math.max(0, balance);
   }
+  /**
+   * Construit la chronologie complète d'un placement pour la fenêtre dédiée "Historique" de
+   * l'onglet Patrimoine : un segment "réel" (valeurs saisies à la main, triées par date) suivi
+   * de 3 segments de projection (pessimiste / correct / optimiste) qui repartent tous du
+   * dernier point réel connu — ou, à défaut d'historique saisi, du solde/date de référence du
+   * placement (même point de départ que projectPlacementBalanceAt). La projection reprend
+   * mois par mois exactement la même mécanique que projectPlacementBalanceAt (taux mensuel,
+   * versement mensuel dans sa fenêtre, retraits via `transfers`), mais pour les 3 taux à la
+   * fois et en conservant chaque point intermédiaire (pas seulement le solde final), afin de
+   * pouvoir tracer les 3 courbes.
+   *
+   * @param {Object} placement
+   * @param {Array} transfers - virements depuis un placement (data.transfers)
+   * @param {{horizonYears?: number}} [opts]
+   * @returns {{points: Array<Object>, anchorTimestamp: number|null, todayTimestamp: number}}
+   */
+  function buildPlacementTimeline(placement, transfers, opts) {
+    const horizonYears = (opts && opts.horizonYears) || 15;
+    const monthNames = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+    const formatLabel = d => `${String(d.getDate()).padStart(2, "0")}/${monthNames[d.getMonth()]}/${d.getFullYear()}`;
+    const today = new Date();
+    const todayTimestamp = today.getTime();
+    if (!placement) return { points: [], anchorTimestamp: null, todayTimestamp };
+
+    const history = (Array.isArray(placement.history) ? placement.history : [])
+      .filter(h => h && h.date && !isNaN(new Date(h.date).getTime()))
+      .slice()
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Point d'ancrage : dernière valeur réelle connue, sinon le solde de référence saisi sur
+    // le placement (comportement identique à projectPlacementBalanceAt tant qu'aucun
+    // historique n'a été renseigné).
+    let anchorDate, anchorValue;
+    if (history.length > 0) {
+      const last = history[history.length - 1];
+      anchorDate = new Date(last.date);
+      anchorValue = Number(last.value) || 0;
+    } else if (placement.balanceDate) {
+      anchorDate = new Date(placement.balanceDate);
+      anchorValue = Number(placement.balance) || 0;
+    } else {
+      anchorDate = today;
+      anchorValue = Number(placement.balance) || 0;
+    }
+    if (isNaN(anchorDate.getTime())) anchorDate = today;
+
+    const points = history.map(h => {
+      const d = new Date(h.date);
+      return {
+        timestamp: d.getTime(),
+        dateISO: h.date,
+        label: formatLabel(d),
+        real: Number(h.value) || 0
+      };
+    });
+
+    const anchorISO = anchorDate.toISOString().slice(0, 10);
+    let anchorPoint = points.find(pt => pt.dateISO === anchorISO);
+    if (!anchorPoint) {
+      anchorPoint = {
+        timestamp: anchorDate.getTime(),
+        dateISO: anchorISO,
+        label: formatLabel(anchorDate),
+        real: anchorValue
+      };
+      points.push(anchorPoint);
+      points.sort((a, b) => a.timestamp - b.timestamp);
+    }
+    anchorPoint.pess = anchorValue;
+    anchorPoint.corr = anchorValue;
+    anchorPoint.opti = anchorValue;
+
+    // Projection mensuelle des 3 scénarios à partir du point d'ancrage.
+    const rateKeys = { pess: "ratePess", corr: "rateCorr", opti: "rateOpti" };
+    const running = { pess: anchorValue, corr: anchorValue, opti: anchorValue };
+    const monthlyContrib = Number(placement.monthly) || 0;
+    const monthlyFromRaw = placement.monthlyFrom ? new Date(placement.monthlyFrom) : anchorDate;
+    const monthlyFrom = new Date(monthlyFromRaw.getFullYear(), monthlyFromRaw.getMonth(), 1);
+    const monthlyUntilRaw = placement.monthlyUntil ? new Date(placement.monthlyUntil) : null;
+    let cursor = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
+    const end = new Date(anchorDate.getFullYear() + horizonYears, anchorDate.getMonth(), 1);
+    while (cursor < end) {
+      const withinContribWindow = cursor >= monthlyFrom && (!monthlyUntilRaw || cursor <= monthlyUntilRaw);
+      const withdrawn = (transfers || []).filter(t => {
+        if (t.placement !== placement.label || !t.date) return false;
+        const td = new Date(t.date);
+        return td.getFullYear() === cursor.getFullYear() && td.getMonth() === cursor.getMonth();
+      }).reduce((s, t) => s + (Number(t.amount) || 0), 0);
+      Object.keys(rateKeys).forEach(key => {
+        const monthlyRate = (Number(placement[rateKeys[key]]) || 0) / 12;
+        running[key] = running[key] * (1 + monthlyRate);
+        if (withinContribWindow) running[key] += monthlyContrib;
+        running[key] = Math.max(0, running[key] - withdrawn);
+      });
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      points.push({
+        timestamp: cursor.getTime(),
+        dateISO: cursor.toISOString().slice(0, 10),
+        label: formatLabel(cursor),
+        pess: running.pess,
+        corr: running.corr,
+        opti: running.opti
+      });
+    }
+
+    points.sort((a, b) => a.timestamp - b.timestamp);
+    return {
+      points,
+      anchorTimestamp: anchorPoint.timestamp,
+      todayTimestamp
+    };
+  }
+
   function classifyAllocation(placements, getBalance, initialCash, categories) {
     const C_REF = exports.C || window.BudgetApp && window.BudgetApp.C || {};
     const bucketByCategory = {};
@@ -1106,6 +1219,7 @@
   exports.calculateDetailedFinancialTimeline = calculateDetailedFinancialTimeline;
   exports.projectLoanCrdToDate = projectLoanCrdToDate;
   exports.projectPlacementBalanceAt = projectPlacementBalanceAt;
+  exports.buildPlacementTimeline = buildPlacementTimeline;
   exports.classifyAllocation = classifyAllocation;
   exports.computeFinancialProjections = computeFinancialProjections;
   exports.useFinancialProjections = useFinancialProjections;

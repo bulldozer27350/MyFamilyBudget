@@ -117,7 +117,10 @@
       charges: Array.isArray(base.charges) ? base.charges : DEFAULT_DATA.charges,
       oneoff: Array.isArray(base.oneoff) ? base.oneoff : DEFAULT_DATA.oneoff,
       transfers: Array.isArray(base.transfers) ? base.transfers : DEFAULT_DATA.transfers,
-      placements: Array.isArray(base.placements) ? base.placements : DEFAULT_DATA.placements,
+      placements: (Array.isArray(base.placements) ? base.placements : DEFAULT_DATA.placements).map(p => ({
+        ...p,
+        history: Array.isArray(p.history) ? p.history : []
+      })),
       loans: Array.isArray(base.loans) ? base.loans : DEFAULT_DATA.loans,
       variableIncomes: Array.isArray(base.variableIncomes) ? base.variableIncomes : DEFAULT_DATA.variableIncomes,
       variableOverrides: Array.isArray(base.variableOverrides) ? base.variableOverrides : [],

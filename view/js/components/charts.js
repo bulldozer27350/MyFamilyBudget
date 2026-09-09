@@ -765,7 +765,394 @@
       }
     }, "💡 ", /*#__PURE__*/React.createElement("em", null, "Cliquez sur une courbe ou sur la légende pour l'isoler ou la masquer. Zoomez à la molette pour changer d'échelle et glissez horizontalement pour naviguer dans le temps.")));
   }
+  /**
+   * Graphique interactif d'évolution d'un placement (fenêtre dédiée "Historique" de
+   * l'onglet Patrimoine) : courbe réelle (valeurs saisies) depuis la première valeur
+   * enregistrée jusqu'à aujourd'hui, trait vertical "Aujourd'hui", puis 3 projections
+   * (pessimiste / correct / optimiste) qui repartent du dernier point réel connu. Reprend le
+   * zoom molette, le glissé horizontal et la sélection de courbes (clic pour isoler/masquer)
+   * du graphique de Trésorerie (InteractiveTreasuryChart ci-dessus), appliqués ici aux 3
+   * scénarios d'un seul placement plutôt qu'aux différents comptes.
+   */
+  function InteractivePlacementChart({
+    points,
+    todayTimestamp,
+    height = 340
+  }) {
+    const containerRef = useRef(null);
+    const canvasRef = useRef(null);
+    const chartRef = useRef(null);
+    const [visibleKeys, setVisibleKeys] = useState(null); // null = toutes visibles
+    const [minTime, setMinTime] = useState(null);
+    const [maxTime, setMaxTime] = useState(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragRef = useRef({
+      startX: 0,
+      minTime: 0,
+      maxTime: 0
+    });
+    const seriesDefs = useMemo(() => [{
+      key: "real",
+      label: "Valeur réelle (saisie)",
+      color: C?.navy || "#28394A",
+      width: 3
+    }, {
+      key: "pess",
+      label: "Pessimiste",
+      color: C?.brick || "#A8503C",
+      dash: [6, 4]
+    }, {
+      key: "corr",
+      label: "Correct",
+      color: C?.pine || "#2F5D50",
+      dash: [6, 4],
+      width: 2.5
+    }, {
+      key: "opti",
+      label: "Optimiste",
+      color: C?.gold || "#93802E",
+      dash: [6, 4]
+    }], []);
+    const allKeys = useMemo(() => seriesDefs.map(s => s.key), [seriesDefs]);
+    const effectiveVisible = useMemo(() => visibleKeys === null ? new Set(allKeys) : visibleKeys, [visibleKeys, allKeys]);
+    const handleSeriesClick = key => {
+      const allVisible = visibleKeys === null;
+      const isCurrentlyVisible = allVisible || visibleKeys.has(key);
+      const visibleCount = allVisible ? allKeys.length : visibleKeys.size;
+      if (allVisible) {
+        setVisibleKeys(new Set([key]));
+      } else if (isCurrentlyVisible && visibleCount === 1) {
+        setVisibleKeys(null);
+      } else if (isCurrentlyVisible) {
+        const next = new Set(visibleKeys);
+        next.delete(key);
+        setVisibleKeys(next);
+      } else {
+        const next = new Set(visibleKeys);
+        next.add(key);
+        setVisibleKeys(next);
+      }
+    };
+    const fullBounds = useMemo(() => {
+      if (!points || points.length === 0) return {
+        min: 0,
+        max: 0
+      };
+      return {
+        min: points[0].timestamp,
+        max: points[points.length - 1].timestamp
+      };
+    }, [points]);
+    useEffect(() => {
+      if (!fullBounds.min || !fullBounds.max) return;
+      if (minTime == null || maxTime == null || minTime < fullBounds.min || maxTime > fullBounds.max + 86400000) {
+        setMinTime(fullBounds.min);
+        setMaxTime(fullBounds.max);
+      }
+    }, [fullBounds]);
+    const visiblePoints = useMemo(() => {
+      if (!points || minTime == null || maxTime == null) return [];
+      return points.filter(pt => pt.timestamp >= minTime && pt.timestamp <= maxTime);
+    }, [points, minTime, maxTime]);
+    useEffect(() => {
+      if (!canvasRef.current || visiblePoints.length === 0) return;
+      const labels = visiblePoints.map(pt => pt.label);
+      const filteredSeries = seriesDefs.filter(s => effectiveVisible.has(s.key));
+      const datasets = filteredSeries.map(s => ({
+        label: s.label,
+        data: visiblePoints.map(pt => pt[s.key] ?? null),
+        borderColor: s.color,
+        backgroundColor: "transparent",
+        spanGaps: false,
+        tension: 0.2,
+        pointRadius: visiblePoints.length <= 31 ? 3 : 0,
+        pointHoverRadius: 5,
+        borderDash: s.dash || [],
+        borderWidth: s.width || 2
+      }));
+      const annotations = {};
+      if (todayTimestamp != null && todayTimestamp >= minTime && todayTimestamp <= maxTime) {
+        let bestIdx = 0,
+          bestDiff = Infinity;
+        visiblePoints.forEach((pt, i) => {
+          const diff = Math.abs(pt.timestamp - todayTimestamp);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestIdx = i;
+          }
+        });
+        annotations.today = {
+          type: "line",
+          scaleID: "x",
+          value: bestIdx,
+          borderColor: C?.ink || "#232A2E",
+          borderWidth: 2,
+          label: {
+            display: true,
+            content: "Aujourd'hui",
+            position: "start",
+            backgroundColor: C?.ink || "#232A2E",
+            color: "#FFFFFF",
+            font: {
+              size: 11,
+              weight: "bold"
+            },
+            padding: 4
+          }
+        };
+      }
+      if (chartRef.current) chartRef.current.destroy();
+      if (typeof Chart !== 'undefined' && Chart.register) {
+        if (typeof ChartAnnotation !== 'undefined') {
+          Chart.register(ChartAnnotation);
+        } else if (typeof window !== 'undefined' && window['chartjs-plugin-annotation']) {
+          Chart.register(window['chartjs-plugin-annotation']);
+        }
+      }
+      chartRef.current = new Chart(canvasRef.current.getContext("2d"), {
+        type: "line",
+        data: {
+          labels,
+          datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          interaction: {
+            mode: "index",
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: "top",
+              labels: {
+                font: {
+                  size: 11.5
+                },
+                boxWidth: 14,
+                usePointStyle: true
+              },
+              onClick: (e, legendItem) => {
+                const clickedKey = filteredSeries[legendItem.datasetIndex]?.key;
+                if (clickedKey) handleSeriesClick(clickedKey);
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => ctx.dataset.label + ": " + eur(ctx.parsed.y)
+              }
+            },
+            annotation: {
+              annotations
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                font: {
+                  size: 11
+                },
+                maxRotation: 0
+              }
+            },
+            y: {
+              grid: {
+                color: C?.line || "#DED6C4"
+              },
+              ticks: {
+                font: {
+                  size: 11
+                },
+                callback: v => eur(v)
+              }
+            }
+          }
+        }
+      });
+      return () => {
+        if (chartRef.current) chartRef.current.destroy();
+      };
+    }, [visiblePoints, effectiveVisible, seriesDefs, todayTimestamp]);
+    useEffect(() => {
+      const el = containerRef.current;
+      if (!el) return;
+      const handleWheel = e => {
+        e.preventDefault();
+        if (!fullBounds.min || !fullBounds.max) return;
+        const rect = el.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const ratio = Math.max(0, Math.min(1, mouseX / rect.width));
+        const curMin = minTime || fullBounds.min;
+        const curMax = maxTime || fullBounds.max;
+        const curSpan = curMax - curMin;
+        const factor = e.deltaY > 0 ? 1.25 : 0.8;
+        const minSpanAllowed = 30 * 86400 * 1000;
+        const maxSpanAllowed = fullBounds.max - fullBounds.min;
+        let newSpan = curSpan * factor;
+        if (newSpan < minSpanAllowed) newSpan = minSpanAllowed;
+        if (newSpan > maxSpanAllowed) newSpan = maxSpanAllowed;
+        const mouseTimestamp = curMin + ratio * curSpan;
+        let newMin = mouseTimestamp - ratio * newSpan;
+        let newMax = mouseTimestamp + (1 - ratio) * newSpan;
+        if (newMin < fullBounds.min) {
+          newMin = fullBounds.min;
+          newMax = Math.min(fullBounds.max, newMin + newSpan);
+        }
+        if (newMax > fullBounds.max) {
+          newMax = fullBounds.max;
+          newMin = Math.max(fullBounds.min, newMax - newSpan);
+        }
+        setMinTime(newMin);
+        setMaxTime(newMax);
+      };
+      el.addEventListener("wheel", handleWheel, {
+        passive: false
+      });
+      return () => el.removeEventListener("wheel", handleWheel);
+    }, [minTime, maxTime, fullBounds]);
+    const handlePointerDown = e => {
+      if (!fullBounds.min || !fullBounds.max) return;
+      setIsDragging(true);
+      dragRef.current = {
+        startX: e.clientX,
+        minTime: minTime || fullBounds.min,
+        maxTime: maxTime || fullBounds.max
+      };
+      e.currentTarget.setPointerCapture(e.pointerId);
+    };
+    const handlePointerMove = e => {
+      if (!isDragging) return;
+      const containerWidth = containerRef.current?.clientWidth || 800;
+      const deltaX = e.clientX - dragRef.current.startX;
+      const span = dragRef.current.maxTime - dragRef.current.minTime;
+      const msPerPx = span / containerWidth;
+      const deltaMs = -deltaX * msPerPx;
+      let newMin = dragRef.current.minTime + deltaMs;
+      let newMax = dragRef.current.maxTime + deltaMs;
+      if (newMin < fullBounds.min) {
+        const shift = fullBounds.min - newMin;
+        newMin += shift;
+        newMax += shift;
+      }
+      if (newMax > fullBounds.max) {
+        const shift = newMax - fullBounds.max;
+        newMin -= shift;
+        newMax -= shift;
+      }
+      setMinTime(newMin);
+      setMaxTime(newMax);
+    };
+    const handlePointerUp = e => {
+      setIsDragging(false);
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+    };
+    const setQuickRange = yearsCount => {
+      if (!fullBounds.min || !fullBounds.max) return;
+      if (yearsCount === "all") {
+        setMinTime(fullBounds.min);
+        setMaxTime(fullBounds.max);
+      } else {
+        const endB = fullBounds.max;
+        const targetMin = endB - yearsCount * 365.25 * 86400 * 1000;
+        setMaxTime(endB);
+        setMinTime(Math.max(fullBounds.min, targetMin));
+      }
+    };
+    const isAllVisible = visibleKeys === null;
+    if (!points || points.length === 0) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C?.inkSoft || "#6B7278",
+          fontSize: 13,
+          padding: "20px 0"
+        }
+      }, "Aucune valeur saisie pour l'instant — ajoutez une première ligne ci-dessous pour démarrer l'historique.");
+    }
+    return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 10,
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        flexWrap: "wrap",
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11.5,
+        color: C?.inkSoft || "#6B7278",
+        fontWeight: 600
+      }
+    }, "Courbes :"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setVisibleKeys(null),
+      style: pillStyle(isAllVisible, C?.navy || "#28394A")
+    }, "Toutes"), seriesDefs.map(s => /*#__PURE__*/React.createElement("button", {
+      key: s.key,
+      onClick: () => handleSeriesClick(s.key),
+      style: pillStyle(effectiveVisible.has(s.key), s.color)
+    }, s.label))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11.5,
+        color: C?.inkSoft || "#6B7278"
+      }
+    }, "Zoom rapide :"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setQuickRange("all"),
+      style: btnSmStyle
+    }, "Tout"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setQuickRange(10),
+      style: btnSmStyle
+    }, "10 ans"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setQuickRange(5),
+      style: btnSmStyle
+    }, "5 ans"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setQuickRange(1),
+      style: btnSmStyle
+    }, "1 an"))), /*#__PURE__*/React.createElement("div", {
+      ref: containerRef,
+      onPointerDown: handlePointerDown,
+      onPointerMove: handlePointerMove,
+      onPointerUp: handlePointerUp,
+      onPointerCancel: handlePointerUp,
+      style: {
+        height,
+        position: "relative",
+        cursor: isDragging ? "grabbing" : "grab",
+        userSelect: "none",
+        touchAction: "none"
+      }
+    }, /*#__PURE__*/React.createElement("canvas", {
+      ref: canvasRef
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C?.inkSoft || "#6B7278",
+        marginTop: 8,
+        textAlign: "right"
+      }
+    }, "💡 ", /*#__PURE__*/React.createElement("em", null, "Cliquez sur une courbe ou sur la légende pour l'isoler ou la masquer. Zoomez à la molette pour changer d'échelle et glissez horizontalement pour naviguer dans le temps.")));
+  }
   exports.LineChartJS = LineChartJS;
   exports.AllocationChartJS = AllocationChartJS;
   exports.InteractiveTreasuryChart = InteractiveTreasuryChart;
+  exports.InteractivePlacementChart = InteractivePlacementChart;
 })(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);

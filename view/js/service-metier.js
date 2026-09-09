@@ -372,7 +372,8 @@ function deps() {
         sweepCap: "",
         pauseTriggerBalance: "",
         pausePriority: "",
-        notes: ""
+        notes: "",
+        history: []
       };
     }
     if (listKey === "transfers") {
@@ -859,13 +860,77 @@ function deps() {
     return deps().BudgetStore.subscribe(listener);
   }
 
+  /**
+   * Historique des valeurs réelles d'un placement/compte (Patrimoine → fenêtre dédiée
+   * "Historique"). Purement local pour l'instant (pas encore de persistance back-end Java,
+   * voir doc_technique.md) : les mutations passent directement par BudgetStore, comme le
+   * reste de l'onglet Patrimoine avant sa migration éventuelle vers le back-end.
+   */
+  function newPlacementHistoryEntry() {
+    const uid = deps().uid;
+    return {
+      id: uid(),
+      date: new Date().toISOString().slice(0, 10),
+      value: 0,
+      notes: ""
+    };
+  }
+
+  function addPlacementHistoryEntry(placementId, entry) {
+    const uid = deps().uid;
+    const row = entry ? { ...entry, id: entry.id || uid() } : newPlacementHistoryEntry();
+    deps().BudgetStore.updatePath("placements", list => (list || []).map(p => p.id === placementId ? {
+      ...p,
+      history: [...(p.history || []), row]
+    } : p));
+    return row;
+  }
+
+  function updatePlacementHistoryEntry(placementId, entryId, field, value) {
+    deps().BudgetStore.updatePath("placements", list => (list || []).map(p => p.id === placementId ? {
+      ...p,
+      history: (p.history || []).map(h => h.id === entryId ? { ...h, [field]: value } : h)
+    } : p));
+  }
+
+  function removePlacementHistoryEntry(placementId, entryId) {
+    deps().BudgetStore.updatePath("placements", list => (list || []).map(p => p.id === placementId ? {
+      ...p,
+      history: (p.history || []).filter(h => h.id !== entryId)
+    } : p));
+  }
+
+  /**
+   * Construit la chronologie (réel + 3 projections) d'un placement pour la fenêtre
+   * "Historique" : voir calculations.js#buildPlacementTimeline pour le détail du calcul.
+   * @param {string} placementId
+   * @param {{horizonYears?: number}} [options]
+   * @returns {Object|null}
+   */
+  function buildPlacementEvolution(placementId, options) {
+    const { BudgetStore, buildPlacementTimeline } = deps();
+    const data = BudgetStore.getData();
+    const placement = (data?.placements || []).find(p => p.id === placementId);
+    if (!placement) return null;
+    const timeline = buildPlacementTimeline(placement, data.transfers || [], options || {});
+    return {
+      placement,
+      ...timeline
+    };
+  }
+
   exports.PatrimoineService = {
     buildPatrimoine,
     createPatrimoineLigne,
     updatePatrimoineLigne,
     addPatrimoineLigne,
     removePatrimoineLigne,
-    subscribePatrimoine
+    subscribePatrimoine,
+    newPlacementHistoryEntry,
+    addPlacementHistoryEntry,
+    updatePlacementHistoryEntry,
+    removePlacementHistoryEntry,
+    buildPlacementEvolution
   };
 
   /**

@@ -413,6 +413,48 @@
     },
 
     /**
+     * Ajoute une valeur réelle constatée à l'historique d'un placement/compte (fenêtre dédiée
+     * "Historique" de l'onglet Patrimoine). Purement local pour l'instant : pas encore de
+     * persistance back-end Java dédiée (voir PatrimoineService#addPlacementHistoryEntry) — à
+     * la différence des autres mutations Patrimoine, il n'y a donc pas de synchronisation
+     * serveur ni de mise en file d'attente SyncStatus ici.
+     * @param {string} placementId
+     * @param {{date?:string, value?:number, notes?:string}} [entry]
+     * @returns {Promise<Object>} la ligne d'historique créée
+     */
+    async addPlacementHistoryEntry(placementId, entry) {
+      return Promise.resolve(app().PatrimoineService.addPlacementHistoryEntry(placementId, entry));
+    },
+
+    /**
+     * Met à jour une cellule d'une ligne d'historique d'un placement.
+     * @returns {Promise<void>}
+     */
+    async updatePlacementHistoryEntry(placementId, entryId, field, value) {
+      app().PatrimoineService.updatePlacementHistoryEntry(placementId, entryId, field, value);
+      return Promise.resolve();
+    },
+
+    /**
+     * Supprime une ligne d'historique d'un placement.
+     * @returns {Promise<void>}
+     */
+    async removePlacementHistoryEntry(placementId, entryId) {
+      app().PatrimoineService.removePlacementHistoryEntry(placementId, entryId);
+      return Promise.resolve();
+    },
+
+    /**
+     * Chronologie (réel + 3 projections) d'un placement, pour la fenêtre dédiée "Historique".
+     * @param {string} placementId
+     * @param {{horizonYears?: number}} [options]
+     * @returns {Promise<Object|null>}
+     */
+    async getPlacementEvolution(placementId, options) {
+      return Promise.resolve(app().PatrimoineService.buildPlacementEvolution(placementId, options));
+    },
+
+    /**
      * Récupère les données de retraite
      * Tente d'abord le backend (source de vérité partagée entre appareils), puis
      * retombe sur le service JS local (localStorage) en cas d'échec, conformément
