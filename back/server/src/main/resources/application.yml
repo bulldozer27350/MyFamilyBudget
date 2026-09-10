@@ -2,8 +2,11 @@ server:
   port: 8080
   servlet:
     context-path: /api/v1
+  shutdown: graceful
 
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   main:
     headless: false
   application:
