@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: myfamilybudget-app
+  namespace: myfamilybudget
+spec:
+  # NodePort : accessible directement sur l'IP de la machine minikube au
+  # port 30080 (voir k8s/README.md pour le rendre joignable depuis
+  # Tailscale selon le driver minikube choisi).
+  #
+  # C'est ce Service - et lui seul - qui decide ou va le trafic. Tant que
+  # le pod "nouvelle version" n'est pas Ready, il n'apparait pas dans les
+  # endpoints de ce Service : c'est ce qui garantit qu'aucune requete ne
+  # lui est envoyee avant qu'il soit reellement pret.
+  type: NodePort
+  selector:
+    app: myfamilybudget
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080

@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myfamilybudget-app
+  namespace: myfamilybudget
+  labels:
+    app: myfamilybudget
+  annotations:
+    # Remplace le role de Watchtower : Keel (voir k8s/README.md) surveille
+    # moetourneau/myfamilybudget:latest sur Docker Hub et compare le DIGEST
+    # de l'image (le tag ":latest" ne change jamais, seul le contenu change).
+    # "force" = redeployer meme si le tag est identique. "poll" + 5m = memes
+    # 5 minutes maximum que WATCHTOWER_POLL_INTERVAL aujourd'hui.
+    keel.sh/policy: "force"
+    keel.sh/trigger: "poll"
+    keel.sh/pollSchedule: "@every 5m"
+spec:
+  replicas: 1
+  # maxSurge=1 + maxUnavailable=0 : c'est precisement le scenario demande.
+  # Kubernetes cree le pod "nouvelle version" EN PLUS de l'existant (surge),
+  # attend qu'il passe Ready (readinessProbe ci-dessous) avant de lui
+  # envoyer du trafic (via le Service associe), puis seulement ensuite
+  # termine l'ancien pod (maxUnavailable=0 interdit de le tuer avant).
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: myfamilybudget
+  template:
+    metadata:
+      labels:
+        app: myfamilybudget
+    spec:
+      containers:
+        - name: app
+          image: moetourneau/myfamilybudget:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: docker
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://myfamilybudget-db:5432/myfamilybudget
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: myfamilybudget-db-credentials
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: myfamilybudget-db-credentials
+                  key: password
+          # /myfamilybudget/heartbeat existe deja (HeartbeatController) et
+          # ne repond "UP" qu'une fois le contexte Spring pret - dont le
+          # cache PersistenceManager charge au @PostConstruct. Reutilise
+          # tel quel comme signal de disponibilite, pas besoin d'ajouter
+          # Spring Boot Actuator pour ce POC.
+          readinessProbe:
+            httpGet:
+              path: /myfamilybudget/heartbeat
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /myfamilybudget/heartbeat
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "600Mi"

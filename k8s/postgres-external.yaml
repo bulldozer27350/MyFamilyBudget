@@ -1,0 +1,33 @@
+# Postgres reste hors du cluster (conteneur Docker classique, gere comme
+# aujourd'hui par docker-compose.prod.yml, service "db"). Ce fichier ne
+# fait que declarer, cote Kubernetes, comment l'atteindre depuis les pods
+# du cluster : un Service SANS selecteur associe a un objet Endpoints qui
+# pointe vers l'IP reelle de la base. C'est le meme mecanisme que celui
+# utilise en prod pour brancher un cluster sur une base managee externe
+# (RDS, Cloud SQL, etc.) : le cluster ne gere pas la base, il sait juste
+# comment la joindre.
+#
+# /!\ A ADAPTER avant d'appliquer : remplace <HOST_IP> par l'IP de la
+# machine hote vue depuis le cluster minikube. Voir k8s/README.md,
+# section "Adresse IP de l'hote", pour la commande exacte selon le
+# driver minikube choisi.
+apiVersion: v1
+kind: Service
+metadata:
+  name: myfamilybudget-db
+  namespace: myfamilybudget
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: myfamilybudget-db
+  namespace: myfamilybudget
+subsets:
+  - addresses:
+      - ip: <HOST_IP>
+    ports:
+      - port: 5432
