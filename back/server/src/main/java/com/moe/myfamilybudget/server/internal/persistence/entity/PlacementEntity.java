@@ -2,6 +2,8 @@ package com.moe.myfamilybudget.server.internal.persistence.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "placement")
@@ -29,6 +31,13 @@ public class PlacementEntity {
     private BigDecimal pauseTriggerBalance;
     private Integer pausePriority;
     private String categoryId;
+
+    // ATTENTION : mappedBy="placement" est indispensable ici, meme raison que pour
+    // RetirementEntity#people (cf. son commentaire) : PlacementHistoryEntryEntity possede deja
+    // la colonne FK "placement_id" (cote proprietaire, @ManyToOne "placement"). Sans mappedBy,
+    // JPA ignorerait cette colonne et creerait en plus une table de jointure implicite.
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "placement")
+    private List<PlacementHistoryEntryEntity> history = new ArrayList<>();
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "budget_data_id")
@@ -206,6 +215,14 @@ public class PlacementEntity {
 
     public void setCategoryId(String categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public List<PlacementHistoryEntryEntity> getHistory() {
+        return history;
+    }
+
+    public void setHistory(List<PlacementHistoryEntryEntity> history) {
+        this.history = history;
     }
     
     public BudgetDataEntity getBudgetData() {

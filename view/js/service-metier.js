@@ -912,7 +912,13 @@ function deps() {
     const data = BudgetStore.getData();
     const placement = (data?.placements || []).find(p => p.id === placementId);
     if (!placement) return null;
-    const timeline = buildPlacementTimeline(placement, data.transfers || [], options || {});
+    const useConstantEuros = !!(options && options.useConstantEuros);
+    const inflationRate = Number(data?.settings?.inflationRate) || 0;
+    const timeline = buildPlacementTimeline(placement, data.transfers || [], {
+      ...(options || {}),
+      useConstantEuros,
+      inflationRate
+    });
     return {
       placement,
       ...timeline

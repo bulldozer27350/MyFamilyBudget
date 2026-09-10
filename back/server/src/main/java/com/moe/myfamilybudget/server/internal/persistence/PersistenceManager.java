@@ -26,6 +26,7 @@ import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
@@ -901,9 +902,18 @@ public class PersistenceManager {
                 Integer pausePriority = getInteger(body, "pausePriority", null);
                 String categoryId = getString(body, "categoryId", "");
 
+                // L'historique de valorisation (releves reels) n'est pas edite depuis ce
+                // formulaire generique : on le preserve tel quel pour la ligne existante afin
+                // de ne pas l'ecraser a chaque enregistrement du placement.
+                List<PlacementHistoryEntryModel> existingHistory = base.getEffectivePlacements().stream()
+                        .filter(p -> Objects.equals(p.id(), uid))
+                        .findFirst()
+                        .map(PlacementModel::getEffectiveHistory)
+                        .orElse(List.of());
+
                 PlacementModel model = new PlacementModel(uid, label, category, balance, balanceDate, monthly,
                         monthlyFrom, monthlyUntil, ratePess, rateCorr, rateOpti, excludedFromRetirement, notes,
-                        sweepPriority, sweepCap, pauseTriggerBalance, pausePriority, categoryId);
+                        sweepPriority, sweepCap, pauseTriggerBalance, pausePriority, categoryId, existingHistory);
 
                 for (PlacementModel p : base.getEffectivePlacements()) {
                     if (Objects.equals(p.id(), uid)) {
@@ -1229,52 +1239,111 @@ public class PersistenceManager {
     }
 
     /**
-     * Ajoute un point d'historique de valorisation sur un placement.
+     * Ajoute une valeur reelle constatee a l'historique d'un placement (fenetre dediee
+     * "Historique" de l'onglet Patrimoine). Cree une ligne d'historique independante,
+     * conservee telle quelle (contrairement a l'ancienne implementation qui se contentait
+     * d'ecraser le solde de reference du placement).
      */
-    public Map<String, Object> addPlacementHistoriquePoint(String placementId, Map<String, Object> body) {
+    public Map<String, Object> addPlacementHistoryEntry(String placementId, Map<String, Object> body) {
         Map<String, Object> result = new HashMap<>();
         if (placementId == null || body == null) return result;
 
+        String uid = "hist_" + UUID.randomUUID().toString().substring(0, 8);
         String date = getString(body, "date", LocalDate.now().toString());
         BigDecimal value = getBigDecimal(body, "value", BigDecimal.ZERO);
+        String notes = getString(body, "notes", "");
+
+        PlacementHistoryEntryModel entry = new PlacementHistoryEntryModel(uid, date, value, notes);
+        result.put("id", uid);
         result.put("date", date);
         result.put("value", value);
+        result.put("notes", notes);
 
         BudgetDataModel updated = currentBudget.updateAndGet(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
-            List<PlacementModel> list = new ArrayList<>();
-
-            for (PlacementModel p : base.getEffectivePlacements()) {
-                if (Objects.equals(p.id(), placementId)) {
-                    // Update latest balance and date if newer or equal
-                    PlacementModel updatedPlacement = new PlacementModel(
-                            p.id(), p.label(), p.category(), value, date,
-                            p.monthly(), p.monthlyFrom(), p.monthlyUntil(),
-                            p.ratePess(), p.rateCorr(), p.rateOpti(),
-                            p.excludedFromRetirement(), p.notes(),
-                            p.sweepPriority(), p.sweepCap(), p.pauseTriggerBalance(),
-                            p.pausePriority(), p.categoryId()
-                    );
-                    list.add(updatedPlacement);
-                } else {
-                    list.add(p);
-                }
-            }
-
+            List<PlacementModel> list = base.getEffectivePlacements().stream()
+                    .map(p -> {
+                        if (!Objects.equals(p.id(), placementId)) return p;
+                        List<PlacementHistoryEntryModel> history = new ArrayList<>(p.getEffectiveHistory());
+                        history.add(entry);
+                        return withHistory(p, history);
+                    })
+                    .toList();
             return base.withPlacements(list);
         });
-        
-        // Save to database
-        saveToDatabase(updated);
 
+        saveToDatabase(updated);
         return result;
     }
 
     /**
-     * Supprime un point d'historique de valorisation d'un placement.
+     * Met a jour une ligne existante de l'historique d'un placement (date, valeur ou notes).
      */
-    public void deletePlacementHistoriquePoint(String placementId, Integer index) {
-        // En persistance in-memory simple, on conserve la cohérence du placement
+    public Map<String, Object> updatePlacementHistoryEntry(String placementId, String entryId, Map<String, Object> body) {
+        Map<String, Object> result = new HashMap<>();
+        if (placementId == null || entryId == null || body == null) return result;
+
+        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            List<PlacementModel> list = base.getEffectivePlacements().stream()
+                    .map(p -> {
+                        if (!Objects.equals(p.id(), placementId)) return p;
+                        List<PlacementHistoryEntryModel> history = p.getEffectiveHistory().stream()
+                                .map(h -> {
+                                    if (!Objects.equals(h.id(), entryId)) return h;
+                                    String date = body.containsKey("date") ? getString(body, "date", h.date()) : h.date();
+                                    BigDecimal value = body.containsKey("value") ? getBigDecimal(body, "value", h.value()) : h.value();
+                                    String notes = body.containsKey("notes") ? getString(body, "notes", h.notes()) : h.notes();
+                                    return new PlacementHistoryEntryModel(h.id(), date, value, notes);
+                                })
+                                .toList();
+                        return withHistory(p, history);
+                    })
+                    .toList();
+            return base.withPlacements(list);
+        });
+
+        saveToDatabase(updated);
+        return result;
+    }
+
+    /**
+     * Supprime une ligne de l'historique d'un placement.
+     */
+    public void deletePlacementHistoryEntry(String placementId, String entryId) {
+        if (placementId == null || entryId == null) return;
+
+        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            List<PlacementModel> list = base.getEffectivePlacements().stream()
+                    .map(p -> {
+                        if (!Objects.equals(p.id(), placementId)) return p;
+                        List<PlacementHistoryEntryModel> history = p.getEffectiveHistory().stream()
+                                .filter(h -> !Objects.equals(h.id(), entryId))
+                                .toList();
+                        return withHistory(p, history);
+                    })
+                    .toList();
+            return base.withPlacements(list);
+        });
+
+        saveToDatabase(updated);
+    }
+
+    /**
+     * PlacementModel n'a pas de methode "withHistory" (ce n'est pas un besoin ailleurs dans le
+     * code) : ce petit utilitaire local reconstruit un PlacementModel identique avec un
+     * historique different, en reutilisant le constructeur complet (19 champs).
+     */
+    private PlacementModel withHistory(PlacementModel p, List<PlacementHistoryEntryModel> history) {
+        return new PlacementModel(
+                p.id(), p.label(), p.category(), p.balance(), p.balanceDate(),
+                p.monthly(), p.monthlyFrom(), p.monthlyUntil(),
+                p.ratePess(), p.rateCorr(), p.rateOpti(),
+                p.excludedFromRetirement(), p.notes(),
+                p.sweepPriority(), p.sweepCap(), p.pauseTriggerBalance(),
+                p.pausePriority(), p.categoryId(), history
+        );
     }
 
     /**

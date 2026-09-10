@@ -806,6 +806,8 @@
    */
   function PlacementHistoryModal({
     placementId,
+    placement,
+    useConstantEuros = false,
     onClose
   }) {
     const [evolution, setEvolution] = useState(null);
@@ -814,7 +816,9 @@
       if (!placementId) return undefined;
       let cancelled = false;
       const fetchEvolution = () => {
-        BudgetApi.getPlacementEvolution(placementId).then(result => {
+        BudgetApi.getPlacementEvolution(placementId, {
+          useConstantEuros
+        }).then(result => {
           if (cancelled) return;
           setEvolution(result);
           setLoaded(true);
@@ -829,9 +833,8 @@
         cancelled = true;
         unsubscribe();
       };
-    }, [placementId]);
+    }, [placementId, useConstantEuros]);
     if (!placementId) return null;
-    const placement = evolution?.placement || null;
     const history = (placement?.history || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
     return /*#__PURE__*/React.createElement("div", {
       style: {
@@ -891,7 +894,19 @@
         color: C?.inkSoft || "#6B7278",
         marginTop: 2
       }
-    }, "Valeurs réelles constatées et projections pessimiste / correcte / optimiste")), /*#__PURE__*/React.createElement("button", {
+    }, "Valeurs réelles constatées et projections pessimiste / correcte / optimiste", useConstantEuros && /*#__PURE__*/React.createElement("span", {
+      style: {
+        marginLeft: 8,
+        fontSize: 10.5,
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: 0.3,
+        color: C?.pine || "#2F5D50",
+        background: C?.pineSoft || "#E3ECE8",
+        padding: "2px 6px",
+        borderRadius: 4
+      }
+    }, "Euros constants (réglage de la vue principale)"))), /*#__PURE__*/React.createElement("button", {
       type: "button",
       onClick: onClose,
       style: {
@@ -1134,6 +1149,8 @@
       isNew: isAddingNew
     }), historyPlacementId && /*#__PURE__*/React.createElement(PlacementHistoryModal, {
       placementId: historyPlacementId,
+      placement: placements.find(p => p.id === historyPlacementId) || null,
+      useConstantEuros: useConstantEuros,
       onClose: () => setHistoryPlacementId(null)
     }), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Transferts depuis un placement vers le compte courant",

@@ -20,6 +20,8 @@ import com.moe.myfamilybudget.api.model.AddPlacementHistoriquePointRequest;
 import com.moe.myfamilybudget.api.model.LoanDto;
 import com.moe.myfamilybudget.api.model.PatrimoineResponseDto;
 import com.moe.myfamilybudget.api.model.PlacementDto;
+import com.moe.myfamilybudget.api.model.PlacementEvolutionDto;
+import com.moe.myfamilybudget.api.model.PlacementHistoryEntryDto;
 import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
 import com.moe.myfamilybudget.server.internal.mapper.PatrimoineMapper;
@@ -355,7 +357,7 @@ class PatrimoineServiceImplTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void addPlacementHistoriquePoint_updatesPlacementBalance() {
+    void addPlacementHistoriquePoint_addsEntryWithoutChangingReferenceBalance() {
         String plcId = "plc_hist_1";
         Map<String, Object> plc = new HashMap<>();
         plc.put("id", plcId);
@@ -367,27 +369,61 @@ class PatrimoineServiceImplTest {
         point.setDate(LocalDate.of(2026, 6, 30));//2026-06-30
         point.setValue(new BigDecimal("5200"));
 
-        ResponseEntity<Void> pointResp = service.addPlacementHistoriquePoint(plcId, point);
+        ResponseEntity<PlacementHistoryEntryDto> pointResp = service.addPlacementHistoriquePoint(plcId, point);
         assertEquals(HttpStatus.OK, pointResp.getStatusCode());
-        assertNull(pointResp.getBody());
+        assertNotNull(pointResp.getBody());
+        assertNotNull(pointResp.getBody().getId());
+        assertEquals(new BigDecimal("5200"), pointResp.getBody().getValue());
+        String entryId = pointResp.getBody().getId();
 
-        // Vérification de la mise à jour de valorisation
+        // L'historique est une liste independante : le solde de reference du placement
+        // n'est plus ecrase (comportement de l'ancienne implementation, corrige ici).
         ResponseEntity<PatrimoineResponseDto> resp = service.getPatrimoine(false);
         PlacementDto updated = resp.getBody().getPlacements().stream()
                 .filter(p -> plcId.equals(p.getId()))
                 .findFirst()
                 .orElse(null);
         assertNotNull(updated);
-        assertEquals(new BigDecimal("5200"), updated.getBalance());
-        assertEquals("2026-06-30", updated.getBalanceDate());
+        assertEquals(new BigDecimal("5000"), updated.getBalance());
+        assertNotNull(updated.getHistory());
+        assertEquals(1, updated.getHistory().size());
+        assertEquals(entryId, updated.getHistory().get(0).getId());
+        assertEquals("2026-06-30", updated.getHistory().get(0).getDate());
     }
 
     @Test
     void deletePlacementHistoriquePoint_returnsNoContent() {
         String plcId = "plc_hist_2";
-        ResponseEntity<Void> delResp = service.deletePlacementHistoriquePoint(plcId, 0);
+        ResponseEntity<Void> delResp = service.deletePlacementHistoriquePoint(plcId, "entry_does_not_exist");
         assertEquals(HttpStatus.NO_CONTENT, delResp.getStatusCode());
         assertNull(delResp.getBody());
+    }
+
+    @Test
+    void getPlacementEvolution_returnsRealPointThenProjections() {
+        String plcId = "plc_hist_3";
+        Map<String, Object> plc = new HashMap<>();
+        plc.put("id", plcId);
+        plc.put("label", "Livret évolution");
+        plc.put("balance", new BigDecimal("1000"));
+        plc.put("ratePess", new BigDecimal("0.01"));
+        plc.put("rateCorr", new BigDecimal("0.02"));
+        plc.put("rateOpti", new BigDecimal("0.03"));
+        service.savePatrimoineLigne("placements", plc);
+
+        AddPlacementHistoriquePointRequest point = new AddPlacementHistoriquePointRequest();
+        point.setDate(LocalDate.of(2026, 1, 1));
+        point.setValue(new BigDecimal("1000"));
+        service.addPlacementHistoriquePoint(plcId, point);
+
+        ResponseEntity<PlacementEvolutionDto> evoResp = service.getPlacementEvolution(plcId, false);
+        assertEquals(HttpStatus.OK, evoResp.getStatusCode());
+        PlacementEvolutionDto evo = evoResp.getBody();
+        assertNotNull(evo);
+        assertEquals(plcId, evo.getPlacementId());
+        assertFalse(evo.getPoints().isEmpty());
+        assertTrue(evo.getPoints().stream().anyMatch(p -> p.getReal() != null));
+        assertTrue(evo.getPoints().stream().anyMatch(p -> p.getCorr() != null));
     }
 
     // -------------------------------------------------------------------------

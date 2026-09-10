@@ -217,7 +217,7 @@ paths:
 
   /patrimoine/placements/{placementId}/historique:
     post:
-      summary: Ajoute un point d'historique de valeur pour un placement
+      summary: Ajoute une valeur reelle constatee a l'historique d'un placement
       operationId: addPlacementHistoriquePoint
       tags:
         - Patrimoine
@@ -240,13 +240,52 @@ paths:
                   format: date
                 value:
                   type: number
+                notes:
+                  type: string
       responses:
         '200':
           description: Point ajoute
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlacementHistoryEntryDto'
 
-  /patrimoine/placements/{placementId}/historique/{index}:
+  /patrimoine/placements/{placementId}/historique/{entryId}:
+    put:
+      summary: Met a jour une valeur reelle constatee de l'historique d'un placement
+      operationId: updatePlacementHistoriquePoint
+      tags:
+        - Patrimoine
+      parameters:
+        - name: placementId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date
+                value:
+                  type: number
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Point mis a jour
     delete:
-      summary: Supprime un point d'historique de valeur
+      summary: Supprime une valeur reelle constatee de l'historique d'un placement
       operationId: deletePlacementHistoriquePoint
       tags:
         - Patrimoine
@@ -256,14 +295,42 @@ paths:
           required: true
           schema:
             type: string
-        - name: index
+        - name: entryId
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         '204':
           description: Point supprime
+
+  /patrimoine/placements/{placementId}/evolution:
+    get:
+      summary: >
+        Chronologie d'un placement pour la fenetre dediee "Historique" : courbe reelle
+        (valeurs saisies) jusqu'au dernier releve connu, puis 3 projections mensuelles
+        (pessimiste/correcte/optimiste) qui repartent de ce dernier releve.
+      operationId: getPlacementEvolution
+      tags:
+        - Patrimoine
+      parameters:
+        - name: placementId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: useConstantEuros
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Chronologie du placement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlacementEvolutionDto'
 
   # ---------------------------------------------------------------------------
   # RETRAITE
@@ -1065,6 +1132,58 @@ components:
           type: integer
         categoryId:
           type: string
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlacementHistoryEntryDto'
+
+    PlacementHistoryEntryDto:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+          format: date
+        value:
+          type: number
+        notes:
+          type: string
+
+    PlacementEvolutionPointDto:
+      type: object
+      properties:
+        timestamp:
+          type: integer
+          format: int64
+        dateISO:
+          type: string
+        label:
+          type: string
+        real:
+          type: number
+        pess:
+          type: number
+        corr:
+          type: number
+        opti:
+          type: number
+
+    PlacementEvolutionDto:
+      type: object
+      properties:
+        placementId:
+          type: string
+        anchorTimestamp:
+          type: integer
+          format: int64
+        todayTimestamp:
+          type: integer
+          format: int64
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlacementEvolutionPointDto'
 
     LoanDto:
       type: object

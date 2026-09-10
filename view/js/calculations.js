@@ -745,6 +745,8 @@
    */
   function buildPlacementTimeline(placement, transfers, opts) {
     const horizonYears = (opts && opts.horizonYears) || 15;
+    const useConstantEuros = !!(opts && opts.useConstantEuros);
+    const inflationRate = Number(opts && opts.inflationRate) || 0;
     const monthNames = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
     const formatLabel = d => `${String(d.getDate()).padStart(2, "0")}/${monthNames[d.getMonth()]}/${d.getFullYear()}`;
     const today = new Date();
@@ -808,6 +810,7 @@
     const monthlyUntilRaw = placement.monthlyUntil ? new Date(placement.monthlyUntil) : null;
     let cursor = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
     const end = new Date(anchorDate.getFullYear() + horizonYears, anchorDate.getMonth(), 1);
+    let elapsedMonths = 0;
     while (cursor < end) {
       const withinContribWindow = cursor >= monthlyFrom && (!monthlyUntilRaw || cursor <= monthlyUntilRaw);
       const withdrawn = (transfers || []).filter(t => {
@@ -822,13 +825,15 @@
         running[key] = Math.max(0, running[key] - withdrawn);
       });
       cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      elapsedMonths += 1;
+      const deflator = useConstantEuros ? Math.pow(1 / (1 + inflationRate), elapsedMonths / 12) : 1;
       points.push({
         timestamp: cursor.getTime(),
         dateISO: cursor.toISOString().slice(0, 10),
         label: formatLabel(cursor),
-        pess: running.pess,
-        corr: running.corr,
-        opti: running.opti
+        pess: running.pess * deflator,
+        corr: running.corr * deflator,
+        opti: running.opti * deflator
       });
     }
 

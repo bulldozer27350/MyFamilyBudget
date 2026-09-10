@@ -414,16 +414,35 @@
 
     /**
      * Ajoute une valeur réelle constatée à l'historique d'un placement/compte (fenêtre dédiée
-     * "Historique" de l'onglet Patrimoine). Purement local pour l'instant : pas encore de
-     * persistance back-end Java dédiée (voir PatrimoineService#addPlacementHistoryEntry) — à
-     * la différence des autres mutations Patrimoine, il n'y a donc pas de synchronisation
-     * serveur ni de mise en file d'attente SyncStatus ici.
+     * "Historique" de l'onglet Patrimoine). Le serveur génère l'identifiant de la ligne créée
+     * (contrairement aux autres listes Patrimoine où l'id est généré côté client) : on attend
+     * donc sa réponse avant d'insérer la ligne en local, pour rester avec un seul id valable
+     * des deux côtés. Si le back-end est injoignable, on retombe sur une création 100% locale
+     * (id généré côté client) pour ne pas bloquer la saisie hors-ligne — cette ligne sera à
+     * resaisir manuellement une fois la connexion revenue, comme pour toute perte réseau
+     * pendant une saisie non encore mise en file d'attente.
      * @param {string} placementId
      * @param {{date?:string, value?:number, notes?:string}} [entry]
      * @returns {Promise<Object>} la ligne d'historique créée
      */
     async addPlacementHistoryEntry(placementId, entry) {
-      return Promise.resolve(app().PatrimoineService.addPlacementHistoryEntry(placementId, entry));
+      const draft = entry || app().PatrimoineService.newPlacementHistoryEntry();
+      if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/patrimoine/placements/' + encodeURIComponent(placementId) + '/historique';
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: draft.date, value: draft.value, notes: draft.notes })
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const saved = await res.json();
+          return app().PatrimoineService.addPlacementHistoryEntry(placementId, saved);
+        } catch (e) {
+          console.error("Failed to sync new placement history entry to backend, saving locally only", e);
+        }
+      }
+      return app().PatrimoineService.addPlacementHistoryEntry(placementId, draft);
     },
 
     /**
@@ -432,7 +451,28 @@
      */
     async updatePlacementHistoryEntry(placementId, entryId, field, value) {
       app().PatrimoineService.updatePlacementHistoryEntry(placementId, entryId, field, value);
-      return Promise.resolve();
+      if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/patrimoine/placements/' + encodeURIComponent(placementId) + '/historique/' + encodeURIComponent(entryId);
+        try {
+          const res = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [field]: value })
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+        } catch (e) {
+          console.error("Failed to sync updated placement history entry to backend", e);
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'PUT',
+              url,
+              body: { [field]: value },
+              description: 'Historique du placement — modification de "' + field + '"'
+            });
+          }
+        }
+      }
     },
 
     /**
@@ -441,17 +481,41 @@
      */
     async removePlacementHistoryEntry(placementId, entryId) {
       app().PatrimoineService.removePlacementHistoryEntry(placementId, entryId);
-      return Promise.resolve();
+      if (typeof fetch !== 'undefined') {
+        const url = API_BASE_URL + '/patrimoine/placements/' + encodeURIComponent(placementId) + '/historique/' + encodeURIComponent(entryId);
+        try {
+          const res = await fetch(url, { method: 'DELETE' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+        } catch (e) {
+          console.error("Failed to sync deleted placement history entry to backend", e);
+          if (app().SyncStatus) {
+            app().SyncStatus.enqueue({
+              tier: 'auto',
+              method: 'DELETE',
+              url,
+              description: "Historique du placement — suppression d'une ligne"
+            });
+          }
+        }
+      }
     },
 
     /**
      * Chronologie (réel + 3 projections) d'un placement, pour la fenêtre dédiée "Historique".
+     * Le paramètre useConstantEuros doit refléter le même réglage global que la vue
+     * principale (toggle "Euros constants" de app-layout.js) : les 3 projections sont
+     * déflatées en conséquence, les valeurs réelles saisies restent affichées telles quelles.
      * @param {string} placementId
-     * @param {{horizonYears?: number}} [options]
+     * @param {{useConstantEuros?: boolean}} [options]
      * @returns {Promise<Object|null>}
      */
     async getPlacementEvolution(placementId, options) {
-      return Promise.resolve(app().PatrimoineService.buildPlacementEvolution(placementId, options));
+      const query = options?.useConstantEuros ? '?useConstantEuros=true' : '';
+      return fetchJsonOrFallback(
+        '/patrimoine/placements/' + encodeURIComponent(placementId) + '/evolution',
+        () => app().PatrimoineService.buildPlacementEvolution(placementId, options),
+        query
+      );
     },
 
     /**

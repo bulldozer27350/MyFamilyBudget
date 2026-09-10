@@ -14,6 +14,7 @@ import com.moe.myfamilybudget.api.model.PatrimoineProjectionsDto;
 import com.moe.myfamilybudget.api.model.PatrimoineResponseDto;
 import com.moe.myfamilybudget.api.model.PatrimoineYearDto;
 import com.moe.myfamilybudget.api.model.PlacementDto;
+import com.moe.myfamilybudget.api.model.PlacementHistoryEntryDto;
 import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
@@ -24,6 +25,7 @@ import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 
@@ -46,11 +48,22 @@ public class PatrimoineMapper {
         dto.setRateOpti(m.rateOpti());
         dto.setExcludedFromRetirement(m.excludedFromRetirement());
         dto.setNotes(m.notes());
+        dto.setSweepPriority(m.sweepPriority());
+        dto.setSweepCap(m.sweepCap());
+        dto.setPauseTriggerBalance(m.pauseTriggerBalance());
+        dto.setPausePriority(m.pausePriority());
+        dto.setCategoryId(m.categoryId());
+        dto.setHistory(m.getEffectiveHistory().stream()
+                .map(this::toPlacementHistoryEntryDto)
+                .collect(Collectors.toList()));
         return dto;
     }
 
     public PlacementModel toPlacementModel(PlacementDto dto) {
         if (dto == null) return null;
+        List<PlacementHistoryEntryModel> history = dto.getHistory() != null ? dto.getHistory().stream()
+                .map(this::toPlacementHistoryEntryModel)
+                .collect(Collectors.toList()) : Collections.emptyList();
         return new PlacementModel(
                 dto.getId(),
                 dto.getLabel(),
@@ -64,6 +77,32 @@ public class PatrimoineMapper {
                 dto.getRateCorr(),
                 dto.getRateOpti(),
                 dto.getExcludedFromRetirement(),
+                dto.getNotes(),
+                dto.getSweepPriority(),
+                dto.getSweepCap(),
+                dto.getPauseTriggerBalance(),
+                dto.getPausePriority(),
+                dto.getCategoryId(),
+                history
+        );
+    }
+
+    public PlacementHistoryEntryDto toPlacementHistoryEntryDto(PlacementHistoryEntryModel m) {
+        if (m == null) return null;
+        PlacementHistoryEntryDto dto = new PlacementHistoryEntryDto();
+        dto.setId(m.id());
+        dto.setDate(m.date());
+        dto.setValue(m.value());
+        dto.setNotes(m.notes());
+        return dto;
+    }
+
+    public PlacementHistoryEntryModel toPlacementHistoryEntryModel(PlacementHistoryEntryDto dto) {
+        if (dto == null) return null;
+        return new PlacementHistoryEntryModel(
+                dto.getId(),
+                dto.getDate(),
+                dto.getValue(),
                 dto.getNotes()
         );
     }

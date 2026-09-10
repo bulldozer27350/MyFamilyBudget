@@ -136,11 +136,21 @@ public class EntityModelConverter {
         entity.setPausePriority(model.pausePriority());
         entity.setCategoryId(model.categoryId());
         entity.setBudgetData(budgetData);
+
+        // Convert history (valeurs reelles constatees)
+        List<PlacementHistoryEntryEntity> history = model.getEffectiveHistory().stream()
+            .map(h -> toEntity(h, entity))
+            .collect(Collectors.toList());
+        entity.setHistory(history);
+
         return entity;
     }
 
     public static PlacementModel toModel(PlacementEntity entity) {
         if (entity == null) return null;
+        List<PlacementHistoryEntryModel> history = entity.getHistory().stream()
+            .map(EntityModelConverter::toModel)
+            .collect(Collectors.toList());
         return new PlacementModel(
             entity.getUid(),
             entity.getLabel(),
@@ -159,7 +169,31 @@ public class EntityModelConverter {
             entity.getSweepCap(),
             entity.getPauseTriggerBalance(),
             entity.getPausePriority(),
-            entity.getCategoryId()
+            entity.getCategoryId(),
+            history
+        );
+    }
+
+    // PlacementHistoryEntry conversions
+    public static PlacementHistoryEntryEntity toEntity(PlacementHistoryEntryModel model, PlacementEntity placement) {
+        if (model == null) return null;
+        PlacementHistoryEntryEntity entity = new PlacementHistoryEntryEntity(
+            model.id(),
+            model.date(),
+            model.value(),
+            model.notes()
+        );
+        entity.setPlacement(placement);
+        return entity;
+    }
+
+    public static PlacementHistoryEntryModel toModel(PlacementHistoryEntryEntity entity) {
+        if (entity == null) return null;
+        return new PlacementHistoryEntryModel(
+            entity.getUid(),
+            entity.getDate(),
+            entity.getValue(),
+            entity.getNotes()
         );
     }
 
