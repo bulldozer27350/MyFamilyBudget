@@ -11,7 +11,15 @@ metadata:
     # de l'image (le tag ":latest" ne change jamais, seul le contenu change).
     # "force" = redeployer meme si le tag est identique. "poll" + 5m = memes
     # 5 minutes maximum que WATCHTOWER_POLL_INTERVAL aujourd'hui.
+    #
+    # /!\ keel.sh/matchTag: "true" est INDISPENSABLE avec la policy "force"
+    # sur un tag mutable comme ":latest". Sans elle, Keel ignore le tag
+    # ":latest" et retombe sur sa comparaison semver par defaut entre TOUS
+    # les tags du repo Docker Hub - qui peut alors selectionner un tag
+    # semver ancien (ex: "1.4") juge "plus eleve" plutot que de suivre
+    # ":latest". Vecu en direct le 10/09 : Keel avait bascule sur 1.4.
     keel.sh/policy: "force"
+    keel.sh/matchTag: "true"
     keel.sh/trigger: "poll"
     keel.sh/pollSchedule: "@every 5m"
 spec:
