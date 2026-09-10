@@ -109,12 +109,34 @@ Test manuel : `curl http://<HOST_IP>:30080/myfamilybudget/heartbeat`
 
 ## Etape 6 - Installer Keel (detection auto de nouvelle image)
 
+Le projet Keel recommande desormais Helm, avec en alternative un jeu de
+manifests statiques numerotes (le vieux fichier unique
+`deployment/deployment-rbac.yaml` n'existe plus). Sans Helm, applique-les
+dans l'ordre :
+
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/keel-hq/keel/master/deployment/deployment-rbac.yaml
+kubectl apply -f https://raw.githubusercontent.com/keel-hq/keel/master/docs/manifests/keel/00-namespace.yaml
+kubectl apply -f https://raw.githubusercontent.com/keel-hq/keel/master/docs/manifests/keel/10-service-account.yaml
+kubectl apply -f https://raw.githubusercontent.com/keel-hq/keel/master/docs/manifests/keel/11-clusterrole.yaml
+kubectl apply -f https://raw.githubusercontent.com/keel-hq/keel/master/docs/manifests/keel/12-clusterrolebinding.yaml
+
+# Ne pas appliquer 20-secret.yaml (mot de passe en clair dans le fichier) :
+kubectl -n keel create secret generic keel \
+  --from-literal=BASIC_AUTH_PASSWORD='<ton mot de passe>'
+
+kubectl apply -f https://raw.githubusercontent.com/keel-hq/keel/master/docs/manifests/keel/30-deployment.yaml
+kubectl apply -f https://raw.githubusercontent.com/keel-hq/keel/master/docs/manifests/keel/40-service.yaml
 ```
 
-Keel lit les annotations `keel.sh/*` posees sur `app-deployment.yaml` -
-rien d'autre a configurer, comme Watchtower avec son label aujourd'hui.
+Keel tourne dans son propre namespace `keel`, distinct de
+`myfamilybudget` : son ClusterRole lui permet de surveiller des
+Deployments dans n'importe quel namespace, dont le notre, sans
+configuration supplementaire. Il lit les annotations `keel.sh/*` posees
+sur `app-deployment.yaml` - rien d'autre a faire, comme Watchtower avec
+son label aujourd'hui.
+
+Verification : `kubectl -n keel get pods -l app=keel` doit montrer le
+pod Running.
 
 ## Etape 7 - Observer un rolling update en conditions reelles
 
