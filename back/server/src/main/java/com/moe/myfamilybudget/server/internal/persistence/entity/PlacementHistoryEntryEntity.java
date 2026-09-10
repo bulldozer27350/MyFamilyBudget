@@ -17,6 +17,10 @@ public class PlacementHistoryEntryEntity {
 
     private String uid;
     private String date;
+    // "value" est un mot reserve H2 (mot-cle VALUE) : sans @Column explicite, Hibernate
+    // genere une colonne "value" non echappee, ce qui casse le SELECT genere a l'execution
+    // (meme probleme deja rencontre sur SalaryHistoryEntity#year -> "year_value").
+    @Column(name = "value_amount")
     private BigDecimal value;
     private String notes;
 
