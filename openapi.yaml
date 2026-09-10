@@ -1144,7 +1144,6 @@ components:
           type: string
         date:
           type: string
-          format: date
         value:
           type: number
         notes:
