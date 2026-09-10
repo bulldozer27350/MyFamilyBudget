@@ -357,7 +357,7 @@ class PatrimoineServiceImplTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void addPlacementHistoriquePoint_addsEntryWithoutChangingReferenceBalance() {
+    void addPlacementHistoriquePoint_addsEntryAndSyncsReferenceBalance() {
         String plcId = "plc_hist_1";
         Map<String, Object> plc = new HashMap<>();
         plc.put("id", plcId);
@@ -376,15 +376,18 @@ class PatrimoineServiceImplTest {
         assertEquals(new BigDecimal("5200"), pointResp.getBody().getValue());
         String entryId = pointResp.getBody().getId();
 
-        // L'historique est une liste independante : le solde de reference du placement
-        // n'est plus ecrase (comportement de l'ancienne implementation, corrige ici).
+        // Le solde de reference du placement (balance/balanceDate) est resynchronise sur la
+        // derniere valeur d'historique connue : c'est lui qui alimente Tresorerie et Vue
+        // d'ensemble, et il n'est plus saisissable directement depuis la fiche d'edition du
+        // placement (la saisie se fait desormais uniquement via l'historique).
         ResponseEntity<PatrimoineResponseDto> resp = service.getPatrimoine(false);
         PlacementDto updated = resp.getBody().getPlacements().stream()
                 .filter(p -> plcId.equals(p.getId()))
                 .findFirst()
                 .orElse(null);
         assertNotNull(updated);
-        assertEquals(new BigDecimal("5000"), updated.getBalance());
+        assertEquals(new BigDecimal("5200"), updated.getBalance());
+        assertEquals("2026-06-30", updated.getBalanceDate());
         assertNotNull(updated.getHistory());
         assertEquals(1, updated.getHistory().size());
         assertEquals(entryId, updated.getHistory().get(0).getId());
