@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -914,6 +915,7 @@ public class PersistenceManager {
                 PlacementModel model = new PlacementModel(uid, label, category, balance, balanceDate, monthly,
                         monthlyFrom, monthlyUntil, ratePess, rateCorr, rateOpti, excludedFromRetirement, notes,
                         sweepPriority, sweepCap, pauseTriggerBalance, pausePriority, categoryId, existingHistory);
+                model = syncBalanceFromHistory(model);
 
                 for (PlacementModel p : base.getEffectivePlacements()) {
                     if (Objects.equals(p.id(), uid)) {
@@ -1336,8 +1338,35 @@ public class PersistenceManager {
      * historique different, en reutilisant le constructeur complet (19 champs).
      */
     private PlacementModel withHistory(PlacementModel p, List<PlacementHistoryEntryModel> history) {
-        return new PlacementModel(
+        PlacementModel next = new PlacementModel(
                 p.id(), p.label(), p.category(), p.balance(), p.balanceDate(),
+                p.monthly(), p.monthlyFrom(), p.monthlyUntil(),
+                p.ratePess(), p.rateCorr(), p.rateOpti(),
+                p.excludedFromRetirement(), p.notes(),
+                p.sweepPriority(), p.sweepCap(), p.pauseTriggerBalance(),
+                p.pausePriority(), p.categoryId(), history
+        );
+        return syncBalanceFromHistory(next);
+    }
+
+    /**
+     * Le solde de reference (balance/balanceDate) du placement reste la source utilisee par
+     * Tresorerie et Vue d'ensemble (calculateDetailedFinancialTimeline cote front, projections
+     * cote back). Depuis que la saisie du solde a ete retiree du formulaire d'edition du
+     * placement (elle se fait desormais uniquement via l'historique), on le resynchronise ici
+     * automatiquement sur la derniere valeur d'historique connue a chaque mutation, pour que
+     * ces deux vues restent a jour sans action supplementaire de l'utilisateur. Les dates ISO
+     * (yyyy-MM-dd) se comparent correctement en tant que chaines, pas besoin de les parser.
+     */
+    private PlacementModel syncBalanceFromHistory(PlacementModel p) {
+        List<PlacementHistoryEntryModel> history = p.getEffectiveHistory();
+        PlacementHistoryEntryModel latest = history.stream()
+                .filter(h -> h.date() != null)
+                .max(Comparator.comparing(PlacementHistoryEntryModel::date))
+                .orElse(null);
+        if (latest == null) return p;
+        return new PlacementModel(
+                p.id(), p.label(), p.category(), latest.getEffectiveValue(), latest.date(),
                 p.monthly(), p.monthlyFrom(), p.monthlyUntil(),
                 p.ratePess(), p.rateCorr(), p.rateOpti(),
                 p.excludedFromRetirement(), p.notes(),

@@ -862,9 +862,12 @@ function deps() {
 
   /**
    * Historique des valeurs réelles d'un placement/compte (Patrimoine → fenêtre dédiée
-   * "Historique"). Purement local pour l'instant (pas encore de persistance back-end Java,
-   * voir doc_technique.md) : les mutations passent directement par BudgetStore, comme le
-   * reste de l'onglet Patrimoine avant sa migration éventuelle vers le back-end.
+   * "Historique"). Depuis que le solde n'est plus saisi directement sur le placement (voir
+   * PlacementDrawer), 'balance'/'balanceDate' sont resynchronisés ici sur la dernière valeur
+   * d'historique connue à chaque mutation — ces deux champs restent la source utilisée par
+   * Trésorerie et Vue d'ensemble (calculateDetailedFinancialTimeline), qui ne lisent pas
+   * l'historique directement. Les dates ISO (yyyy-MM-dd) se comparent correctement en tant que
+   * chaînes, pas besoin de les parser.
    */
   function newPlacementHistoryEntry() {
     const uid = deps().uid;
@@ -876,28 +879,35 @@ function deps() {
     };
   }
 
+  function syncBalanceFromHistory(placement) {
+    const history = Array.isArray(placement.history) ? placement.history : [];
+    const latest = history.reduce((acc, h) => (h && h.date && (!acc || h.date > acc.date)) ? h : acc, null);
+    if (!latest) return placement;
+    return { ...placement, balance: Number(latest.value) || 0, balanceDate: latest.date };
+  }
+
   function addPlacementHistoryEntry(placementId, entry) {
     const uid = deps().uid;
     const row = entry ? { ...entry, id: entry.id || uid() } : newPlacementHistoryEntry();
-    deps().BudgetStore.updatePath("placements", list => (list || []).map(p => p.id === placementId ? {
+    deps().BudgetStore.updatePath("placements", list => (list || []).map(p => p.id === placementId ? syncBalanceFromHistory({
       ...p,
       history: [...(p.history || []), row]
-    } : p));
+    }) : p));
     return row;
   }
 
   function updatePlacementHistoryEntry(placementId, entryId, field, value) {
-    deps().BudgetStore.updatePath("placements", list => (list || []).map(p => p.id === placementId ? {
+    deps().BudgetStore.updatePath("placements", list => (list || []).map(p => p.id === placementId ? syncBalanceFromHistory({
       ...p,
       history: (p.history || []).map(h => h.id === entryId ? { ...h, [field]: value } : h)
-    } : p));
+    }) : p));
   }
 
   function removePlacementHistoryEntry(placementId, entryId) {
-    deps().BudgetStore.updatePath("placements", list => (list || []).map(p => p.id === placementId ? {
+    deps().BudgetStore.updatePath("placements", list => (list || []).map(p => p.id === placementId ? syncBalanceFromHistory({
       ...p,
       history: (p.history || []).filter(h => h.id !== entryId)
-    } : p));
+    }) : p));
   }
 
   /**

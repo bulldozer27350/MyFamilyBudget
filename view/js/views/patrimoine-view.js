@@ -46,6 +46,15 @@
       color
     };
   }
+  function getLatestKnownBalance(p) {
+    const history = Array.isArray(p.history) ? p.history : [];
+    if (history.length === 0) return Number(p.balance) || 0;
+    const latest = history.reduce((acc, h) => {
+      if (!h || !h.date) return acc;
+      return !acc || new Date(h.date) > new Date(acc.date) ? h : acc;
+    }, null);
+    return latest ? Number(latest.value) || 0 : Number(p.balance) || 0;
+  }
   function PlacementCard({
     p,
     categories,
@@ -54,6 +63,7 @@
   }) {
     const theme = getCategoryTheme(p.category, categories);
     const monthlyVal = Number(p.monthly) || 0;
+    const latestBalance = getLatestKnownBalance(p);
     return /*#__PURE__*/React.createElement("div", {
       onClick: onClick,
       style: {
@@ -124,7 +134,7 @@
         fontWeight: 700,
         color: C?.pine || "#2F5D50"
       }
-    }, eur(p.balance)), monthlyVal > 0 && /*#__PURE__*/React.createElement("span", {
+    }, eur(latestBalance)), monthlyVal > 0 && /*#__PURE__*/React.createElement("span", {
       style: {
         fontFamily: "'IBM Plex Mono', monospace",
         fontSize: 11,
@@ -411,58 +421,20 @@
         color: C?.pine || "#2F5D50",
         marginBottom: 12
       }
-    }, "2. Solde actuel & Versements"), /*#__PURE__*/React.createElement("div", {
+    }, "2. Versements"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 12,
+        lineHeight: 1.5
+      }
+    }, "Le solde actuel se saisit désormais depuis la fenêtre ", /*#__PURE__*/React.createElement("strong", null, "📈 Historique"), " (bouton sur la carte du placement), qui conserve chaque relevé daté et sert aussi de base aux projections."), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         flexDirection: "column",
         gap: 12
       }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 12
-      }
     }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-      style: {
-        display: "block",
-        fontSize: 12,
-        fontWeight: 600,
-        color: C?.ink || "#232A2E",
-        marginBottom: 4
-      }
-    }, "Solde actuel (€)"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: C?.panel || "#FFFFFF",
-        border: `1px solid ${C?.line || "#DED6C4"}`,
-        borderRadius: 6,
-        padding: "4px 8px"
-      }
-    }, /*#__PURE__*/React.createElement(Field, {
-      type: "number",
-      mono: true,
-      value: placement.balance,
-      onChange: v => onCell(placement.id, "balance", v)
-    }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-      style: {
-        display: "block",
-        fontSize: 12,
-        fontWeight: 600,
-        color: C?.ink || "#232A2E",
-        marginBottom: 4
-      }
-    }, "Date du solde"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: C?.panel || "#FFFFFF",
-        border: `1px solid ${C?.line || "#DED6C4"}`,
-        borderRadius: 6,
-        padding: "4px 8px"
-      }
-    }, /*#__PURE__*/React.createElement(Field, {
-      type: "date",
-      value: placement.balanceDate,
-      onChange: v => onCell(placement.id, "balanceDate", v)
-    })))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
       style: {
         display: "block",
         fontSize: 12,
@@ -1098,7 +1070,7 @@
         onClick: openHelp,
         inline: true
       })),
-      subtitle: "Solde actuel, catégorie et versements mensuels — cliquez sur une carte pour voir et modifier les détails"
+      subtitle: "Dernière valeur connue, catégorie et versements mensuels — cliquez sur une carte pour voir et modifier les détails, ou sur 📈 pour l'historique"
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         display: "grid",

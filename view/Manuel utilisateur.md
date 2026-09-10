@@ -89,15 +89,23 @@ Dès que vous connaissez le montant réel d'une prime/participation pour une ann
 ## 3. Onglet « Placements »
 
 ### Placements & comptes (cartes + fiche détaillée)
-Chaque carte représente un compte ou un placement. Cliquer dessus ouvre la fiche détaillée en 4 sections :
+Chaque carte représente un compte ou un placement. Le montant affiché sur la carte est la **dernière valeur connue de l'historique** (voir ci-dessous), ou 0 tant qu'aucune valeur n'a été saisie. Cliquer sur la carte ouvre la fiche détaillée en 4 sections :
 1. **Informations générales** : libellé, catégorie d'actif (utilisée pour la Répartition d'actifs), notes libres.
-2. **Solde actuel & versements** : solde et sa date de référence, versement mensuel programmé et fenêtre d'activité (dès le / jusqu'au).
+2. **Versements** : versement mensuel programmé et fenêtre d'activité (dès le / jusqu'au). *Le solde ne se saisit plus ici — voir « Fenêtre Historique » ci-dessous.*
 3. **Hypothèses de rendement annuel (%)** : un taux distinct pour chacun des 3 scénarios (Pessimiste / Correct / Optimiste), composé mensuellement.
 4. **Automatisations (Sweep & Pause épargne)** :
    - **Priorité virement auto** : ordre d'utilisation du compte pour recevoir l'excédent ou combler le manque de trésorerie (1 = utilisé en premier).
    - **Plafond virement auto** : montant maximal pouvant être versé automatiquement sur ce compte.
    - **Seuil d'alerte tampon (€)** : si le solde de ce compte passe sous ce seuil, une alerte de tension est déclenchée.
    - **Priorité pause épargne** : détermine l'ordre de suspension des versements programmés en cas de coup dur.
+
+### Fenêtre « Historique » (bouton 📈 sur chaque carte)
+C'est ici, et uniquement ici, que se saisit la valeur d'un placement ou compte. Une fenêtre dédiée s'ouvre, séparée de la fiche d'édition pour ne pas la surcharger, avec :
+- un tableau où ajouter une ligne à chaque relevé (mensuel, annuel, ou toute autre fréquence) : date, valeur constatée, notes. La date du jour est pré-remplie à l'ajout d'une nouvelle ligne ;
+- un graphique combinant la **courbe réelle** (reliant les valeurs saisies, du premier relevé à aujourd'hui) et **3 projections** (Pessimiste / Correcte / Optimiste) qui repartent de la dernière valeur saisie, avec les mêmes réglages de zoom, de déplacement et de sélection de courbes que le graphique de Trésorerie ;
+- le réglage **Euros constants** affiché ici est hérité de la vue principale (Vue d'ensemble/Trésorerie) — il ne se règle pas indépendamment et ne déflate que les 3 projections, jamais les valeurs réellement saisies.
+
+La dernière valeur saisie devient automatiquement le **solde de référence** du placement (celui utilisé par les calculs de Trésorerie et de Vue d'ensemble) : pas besoin de la reporter manuellement ailleurs.
 
 ### Transferts depuis un placement vers le compte courant
 Simule un retrait ponctuel et volontaire pour financer une grosse dépense identifiée à l'avance.

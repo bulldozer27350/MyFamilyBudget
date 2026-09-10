@@ -116,9 +116,22 @@
         content: `
             En cliquant sur une carte de placement, vous ouvrez sa fiche en 4 volets :
             1. **Infos Générales** : Libellé, catégorie d'actif, notes.
-            2. **Solde & Versements** : Solde actuel et versement mensuel programmé (soumis aux règles de pause).
+            2. **Versements** : Versement mensuel programmé (soumis aux règles de pause) et fenêtre d'activité. *Le solde ne se saisit plus ici — voir « Historique d'un placement » ci-dessous.*
             3. **Rendements (3 Scénarios)** : Définissez un taux d'intérêt annuel composé pour les hypothèses *Pessimiste*, *Correct* et *Optimiste*.
             4. **Automatisations (Sweep & Pause)** : Réglage du virement automatique et des seuils d'alerte.
+          `
+      }, {
+        id: "history",
+        title: "Historique d'un placement",
+        badgeId: "placement_history",
+        content: `
+            Le bouton **📈** sur chaque carte de placement ouvre une fenêtre dédiée, séparée de la fiche d'édition pour ne pas la surcharger : c'est ici, et uniquement ici, que se saisit la valeur d'un compte ou placement.
+
+            - **Tableau de saisie** : ajoutez une ligne à chaque relevé (mensuel, annuel, ou toute autre fréquence) — date, valeur constatée, notes. La date du jour est pré-remplie automatiquement lors de l'ajout d'une nouvelle ligne.
+            - **Graphique d'évolution** : la courbe réelle (valeurs saisies, du premier relevé à aujourd'hui), un trait vertical marquant aujourd'hui, puis 3 projections (Pessimiste / Correcte / Optimiste) qui repartent de la dernière valeur saisie. Zoom à la molette, glissé horizontal et sélection des courbes fonctionnent comme sur le graphique de Trésorerie.
+            - **Euros constants** : le réglage affiché ici est hérité de la Vue d'ensemble/Trésorerie (il ne se règle pas indépendamment) et ne déflate que les 3 projections — les valeurs réellement saisies restent affichées telles quelles.
+
+            La dernière valeur saisie devient automatiquement le solde de référence utilisé par les calculs de Trésorerie et de Vue d'ensemble : rien à reporter manuellement ailleurs.
           `
       }, {
         id: "sweep_pause",
