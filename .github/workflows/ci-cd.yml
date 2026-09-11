@@ -1,5 +1,16 @@
 name: CI/CD
 
+# Phase 1 du pipeline de deploiement continu :
+#   1) build-and-test  : compile le backend, lance les tests unitaires Java,
+#                         le smoke test JS et la suite e2e Playwright.
+#   2) build-and-push   : uniquement si build-and-test est vert, construit
+#                         l'image Docker et la publie sur Docker Hub
+#                         (moetourneau/myfamilybudget:latest + :sha-xxxxxxx).
+#
+# La recuperation de la nouvelle image sur le mini-PC (Watchtower) est geree
+# separement, cote serveur : ce workflow n'a pas besoin d'atteindre le
+# mini-PC ni le tailnet.
+
 on:
   push:
     branches: [main]
@@ -13,11 +24,12 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Tests (Maven + E2E)
+  build-and-test:
+    name: Build & tests (backend + JS + e2e)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up JDK 21 (Temurin)
         uses: actions/setup-java@v4
@@ -35,27 +47,14 @@ jobs:
       - name: Install JS dependencies
         run: bun install
 
-      # Utilisation du wrapper Maven/Flag pour paralleliser le build inter-modules Maven
       - name: Backend unit tests (mvn test)
-        run: mvn -f back/server/pom.xml -B test -T 1C
+        run: mvn -f back/server/pom.xml -B test
 
-      - name: JS smoke test
+      - name: JS smoke test (test-all-apis.js)
         run: bun run test
 
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-
-      - name: Install Playwright
+      - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-
-      - name: Install Playwright OS deps (cache hit)
-        run: bunx playwright install-deps chromium
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
 
       - name: End-to-end tests (Playwright)
         run: bun run test:e2e
@@ -69,25 +68,13 @@ jobs:
           retention-days: 7
 
   build-and-push:
-    name: Build & Push Docker
-    needs: test
+    name: Build & push image Docker
+    needs: build-and-test
+    if: success()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Compute short SHA tag
-        id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Generate build-info.json
-        run: |
-          mkdir -p view/assets
-          cat > view/assets/build-info.json <<EOF
-          {
-            "version": "sha-${{ steps.vars.outputs.sha_short }}",
-            "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          }
-          EOF
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -97,6 +84,21 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute short SHA tag
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate build-info.json (version affichee dans l'app)
+        run: |
+          mkdir -p view/assets
+          cat > view/assets/build-info.json <<EOF
+          {
+            "version": "sha-${{ steps.vars.outputs.sha_short }}",
+            "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          cat view/assets/build-info.json
 
       - name: Build and push
         uses: docker/build-push-action@v6
