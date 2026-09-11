@@ -1039,7 +1039,8 @@
           [field]: value
         }));
       } else {
-        BudgetApi.updatePatrimoineLigne("placements", id, field, value);
+        const currentRow = placements.find(p => p.id === id) || null;
+        BudgetApi.updatePatrimoineLigne("placements", id, field, value, currentRow);
       }
     };
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionCard, {
@@ -1148,7 +1149,7 @@
         type: "text"
       }],
       rows: transfers,
-      onCell: (id, field, value) => BudgetApi.updatePatrimoineLigne("transfers", id, field, value),
+      onCell: (id, field, value) => BudgetApi.updatePatrimoineLigne("transfers", id, field, value, transfers.find(t => t.id === id) || null),
       onRemove: id => BudgetApi.removePatrimoineLigne("transfers", id),
       onAdd: () => BudgetApi.addPatrimoineLigne("transfers")
     })), /*#__PURE__*/React.createElement(SectionCard, {
@@ -1189,7 +1190,7 @@
         type: "date"
       }],
       rows: loans,
-      onCell: (id, field, value) => BudgetApi.updatePatrimoineLigne("loans", id, field, value),
+      onCell: (id, field, value) => BudgetApi.updatePatrimoineLigne("loans", id, field, value, loans.find(l => l.id === id) || null),
       onRemove: id => BudgetApi.removePatrimoineLigne("loans", id),
       onAdd: () => BudgetApi.addPatrimoineLigne("loans")
     }), /*#__PURE__*/React.createElement("div", {
@@ -1232,7 +1233,7 @@
         type: "text"
       }],
       rows: realEstate,
-      onCell: (id, field, value) => BudgetApi.updatePatrimoineLigne("realEstate", id, field, value),
+      onCell: (id, field, value) => BudgetApi.updatePatrimoineLigne("realEstate", id, field, value, realEstate.find(r => r.id === id) || null),
       onRemove: id => BudgetApi.removePatrimoineLigne("realEstate", id),
       onAdd: () => BudgetApi.addPatrimoineLigne("realEstate")
     })));
