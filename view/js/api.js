@@ -289,9 +289,16 @@
 
     /**
      * Met à jour une cellule d'une ligne de Patrimoine.
+     *
+     * @param {Object} [currentRow] La ligne telle que connue par la vue appelante (dernier
+     *   GET /patrimoine reçu), utilisée comme filet de sécurité pour reconstituer le corps de
+     *   la requête POST (remplacement complet de la ligne) si la ligne est absente du cache
+     *   local `BudgetStore`. Voir la note ci-dessous : sans ce filet, une ligne connue du
+     *   serveur mais jamais chargée dans ce cache local (import externe, autre appareil,
+     *   navigation privée...) provoquait un no-op totalement silencieux.
      * @returns {Promise<void>}
      */
-    async updatePatrimoineLigne(listKey, id, field, value) {
+    async updatePatrimoineLigne(listKey, id, field, value, currentRow) {
       // Snapshot de la ligne AVANT modification locale : sert de référence pour
       // détecter, au moment d'un rejeu ultérieur (voir sync-status.js), si un
       // autre appareil a modifié cette même ligne pendant la coupure réseau.
@@ -300,14 +307,30 @@
         const beforeList = app().BudgetStore.getData()[listKey] || [];
         const beforeRow = beforeList.find(r => r.id === id);
         if (beforeRow) beforeSnapshot = JSON.parse(JSON.stringify(beforeRow));
+        else if (currentRow) beforeSnapshot = JSON.parse(JSON.stringify(currentRow));
       } catch (e) {}
 
       await app().PatrimoineService.updatePatrimoineLigne(listKey, id, field, value);
       if (typeof fetch !== 'undefined') {
         const url = API_BASE_URL + '/patrimoine/' + encodeURIComponent(listKey);
-        try {
+        // IMPORTANT : `BudgetStore` (localStorage) est un cache JS local hérité de
+        // l'implémentation pré-back-end (voir l'en-tête du fichier) : il n'est jamais
+        // réhydraté depuis le serveur. Une ligne existante côté serveur mais jamais chargée
+        // dans ce cache (import externe, autre appareil, onglet de navigation privée...) y
+        // est absente. Sans filet de sécurité, `list.find(...)` renvoie alors `undefined`,
+        // le `if (row)` échoue silencieusement, et AUCUNE requête n'est envoyée : la
+        // modification est perdue sans erreur ni mise en file d'attente. On se rabat donc sur
+        // `currentRow` (la ligne telle que connue par la vue depuis le dernier GET) pour
+        // reconstituer une ligne complète et fiable à poster.
+        const buildRow = () => {
           const list = app().BudgetStore.getData()[listKey] || [];
-          const row = list.find(r => r.id === id);
+          const cached = list.find(r => r.id === id);
+          if (cached) return cached;
+          if (currentRow) return { ...currentRow, [field]: value };
+          return null;
+        };
+        try {
+          const row = buildRow();
           if (row) {
             const res = await fetch(url, {
               method: 'POST',
@@ -315,14 +338,15 @@
               body: JSON.stringify(row)
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
+          } else {
+            console.warn('updatePatrimoineLigne: ligne introuvable (cache local et currentRow absents), synchronisation ignorée pour', listKey, id);
           }
         } catch (e) {
           console.error("Failed to sync updated patrimoine line to backend", e);
           // Remplacement complet de la ligne (pas juste le champ modifié) : mise en
           // file "à valider", jamais rejouée automatiquement. Voir la note sur le
           // niveau de risque des écritures dans sync-status.js.
-          const list = app().BudgetStore.getData()[listKey] || [];
-          const row = list.find(r => r.id === id);
+          const row = buildRow();
           if (row && app().SyncStatus) {
             app().SyncStatus.enqueue({
               tier: 'validate',
