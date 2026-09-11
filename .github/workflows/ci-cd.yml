@@ -28,8 +28,7 @@ jobs:
     name: Build & tests (backend + JS + e2e)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 21 (Temurin)
         uses: actions/setup-java@v4
@@ -89,7 +88,7 @@ jobs:
         id: vars
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Generate build-info.json (version affichee dans l'app)
+      - name: Generate build-info.json
         run: |
           mkdir -p view/assets
           cat > view/assets/build-info.json <<EOF
