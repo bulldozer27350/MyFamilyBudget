@@ -1,31 +1,5 @@
 name: CI/CD
 
-# Phase 1 du pipeline de deploiement continu, version parallelisee :
-#
-#   1) maven-tests     : compile le backend et lance les tests unitaires
-#                         Java (mvn test).
-#   2) e2e-tests       : smoke test JS (VM sandbox, sans serveur) puis
-#                         suite e2e Playwright (demarre elle-meme un
-#                         backend Spring Boot via mvn spring-boot:run et
-#                         le serveur frontend Express).
-#   3) docker-build    : construit l'image Docker (mvn package -DskipTests
-#                         a l'interieur du Dockerfile) et la sauvegarde en
-#                         artefact, SANS la publier.
-#
-#   Ces trois jobs tournent en parallele : ils sont totalement independants
-#   (le Dockerfile ne depend d'aucun resultat de test, il recompile dans
-#   son propre conteneur).
-#
-#   4) docker-push     : ne demarre que si les 3 jobs precedents ont
-#                         reussi (needs + succes implicite). Recharge
-#                         l'image deja construite (aucune reconstruction)
-#                         et la publie sur Docker Hub
-#                         (moetourneau/myfamilybudget:latest + :sha-xxxxxxx).
-#
-# La recuperation de la nouvelle image sur le mini-PC (Watchtower) est geree
-# separement, cote serveur : ce workflow n'a pas besoin d'atteindre le
-# mini-PC ni le tailnet.
-
 on:
   push:
     branches: [main]
@@ -39,33 +13,12 @@ permissions:
   contents: read
 
 jobs:
-  maven-tests:
-    name: Tests unitaires Maven (backend)
+  test:
+    name: Tests (Maven + E2E)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 21 (Temurin)
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-          cache-dependency-path: back/server/pom.xml
-
-      - name: Backend unit tests (mvn test)
-        run: mvn -f back/server/pom.xml -B test
-
-  e2e-tests:
-    name: Smoke JS + tests e2e (Playwright)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # Necessaire ici : tests/e2e/setup.js demarre le backend via
-      # "mvn spring-boot:run" avant de lancer Playwright.
       - name: Set up JDK 21 (Temurin)
         uses: actions/setup-java@v4
         with:
@@ -82,11 +35,13 @@ jobs:
       - name: Install JS dependencies
         run: bun install
 
-      - name: JS smoke test (test-all-apis.js)
+      # Utilisation du wrapper Maven/Flag pour paralleliser le build inter-modules Maven
+      - name: Backend unit tests (mvn test)
+        run: mvn -f back/server/pom.xml -B test -T 1C
+
+      - name: JS smoke test
         run: bun run test
 
-      # Cache des binaires navigateurs Playwright : evite de re-telecharger
-      # ~150-200 Mo a chaque run tant que la version (bun.lock) ne change pas.
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v4
@@ -94,14 +49,11 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('bun.lock') }}
 
-      - name: Install Playwright browsers
+      - name: Install Playwright
         run: bunx playwright install --with-deps chromium
         if: steps.playwright-cache.outputs.cache-hit != 'true'
 
-      # Si le cache contient deja les binaires mais pas forcement les
-      # dependances systeme (libs apt), on s'assure quand meme que ces
-      # dernieres sont presentes sans re-telecharger les navigateurs.
-      - name: Install Playwright OS dependencies (cache hit)
+      - name: Install Playwright OS deps (cache hit)
         run: bunx playwright install-deps chromium
         if: steps.playwright-cache.outputs.cache-hit == 'true'
 
@@ -116,23 +68,18 @@ jobs:
           path: tests/e2e/report
           retention-days: 7
 
-  docker-build:
-    name: Construction image Docker (sans publication)
+  build-and-push:
+    name: Build & Push Docker
+    needs: test
     runs-on: ubuntu-latest
-    outputs:
-      sha_short: ${{ steps.vars.outputs.sha_short }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v4
 
       - name: Compute short SHA tag
         id: vars
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Generate build-info.json (version affichee dans l'app)
+      - name: Generate build-info.json
         run: |
           mkdir -p view/assets
           cat > view/assets/build-info.json <<EOF
@@ -141,49 +88,9 @@ jobs:
             "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
-          cat view/assets/build-info.json
 
-      - name: Build image (local, non publiee)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: false
-          load: true
-          tags: |
-            moetourneau/myfamilybudget:latest
-            moetourneau/myfamilybudget:sha-${{ steps.vars.outputs.sha_short }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Save image en artefact (pour le job de publication)
-        run: |
-          mkdir -p /tmp/docker-image
-          docker save \
-            moetourneau/myfamilybudget:latest \
-            moetourneau/myfamilybudget:sha-${{ steps.vars.outputs.sha_short }} \
-            -o /tmp/docker-image/image.tar
-
-      - name: Upload artefact image Docker
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image
-          path: /tmp/docker-image/image.tar
-          retention-days: 1
-
-  docker-push:
-    name: Publication image Docker
-    needs: [maven-tests, e2e-tests, docker-build]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artefact image Docker
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
-          path: /tmp/docker-image
-
-      - name: Charger l'image (aucune reconstruction)
-        run: docker load -i /tmp/docker-image/image.tar
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -191,7 +98,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push image Docker
-        run: |
-          docker push moetourneau/myfamilybudget:latest
-          docker push moetourneau/myfamilybudget:sha-${{ needs.docker-build.outputs.sha_short }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            moetourneau/myfamilybudget:latest
+            moetourneau/myfamilybudget:sha-${{ steps.vars.outputs.sha_short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
