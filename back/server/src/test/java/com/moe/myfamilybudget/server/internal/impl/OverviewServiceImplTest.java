@@ -242,4 +242,40 @@ class OverviewServiceImplTest {
         assertThat(scpiRows.get(0).getCorr()).isEqualByComparingTo("3700");
         assertThat(scpiRows.get(1).getCorr()).isEqualByComparingTo("3700");
     }
+    @Test
+    @DisplayName("Should return sweepEnabled, cashCeiling and cashFloor in Overview response data.settings")
+    void testBuildOverview_ReturnsSweepSettingsInData() {
+        SettingsModel settings = new SettingsModel(
+                1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", new BigDecimal("1000"), 21, BigDecimal.ZERO,
+                new BigDecimal("47100"), new BigDecimal("0.015"), true, new BigDecimal("7000"), new BigDecimal("5000")
+        );
+
+        PlacementModel livretA = new PlacementModel(
+                "plc_livret_a", "Livret A", "Épargne", new BigDecimal("10000"), "2026-01-01",
+                new BigDecimal("50"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, 1, new BigDecimal("22950"), new BigDecimal("5000"), 1, "cat_epargne"
+        );
+
+        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(), List.of(), List.of(livretA),
+                List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), null);
+
+        this.persistenceManager.setBudgetData(budgetData);
+
+        OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getData()).isNotNull();
+        assertThat(response.getData().getSettings()).isNotNull();
+        assertThat(response.getData().getSettings().getSweepEnabled()).isTrue();
+        assertThat(response.getData().getSettings().getCashCeiling()).isEqualByComparingTo("7000");
+        assertThat(response.getData().getSettings().getCashFloor()).isEqualByComparingTo("5000");
+
+        assertThat(response.getData().getPlacements()).hasSize(1);
+        var p = response.getData().getPlacements().get(0);
+        assertThat(p.getSweepPriority()).isEqualTo(1);
+        assertThat(p.getSweepCap()).isEqualByComparingTo("22950");
+        assertThat(p.getPauseTriggerBalance()).isEqualByComparingTo("5000");
+        assertThat(p.getPausePriority()).isEqualTo(1);
+    }
 }

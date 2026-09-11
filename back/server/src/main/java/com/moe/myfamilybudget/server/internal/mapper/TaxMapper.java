@@ -97,6 +97,9 @@ public class TaxMapper {
             settingsMap.put("taxAbattement", s.taxAbattement());
             settingsMap.put("pass2026", s.pass2026());
             settingsMap.put("passGrowthRate", s.passGrowthRate());
+            settingsMap.put("sweepEnabled", s.sweepEnabled());
+            settingsMap.put("cashCeiling", s.cashCeiling());
+            settingsMap.put("cashFloor", s.cashFloor());
         }
         response.put("settings", settingsMap);
 

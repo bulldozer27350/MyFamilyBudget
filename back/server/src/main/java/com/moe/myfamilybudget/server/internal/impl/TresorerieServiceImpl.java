@@ -72,9 +72,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
     }
 
     public TresorerieResultModel computeTresorerie(BudgetDataModel data, boolean useConstantEuros) {
-        SettingsModel settings = data.settings() != null ? data.settings() : new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, null, null, BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+        SettingsModel settings = data.getEffectiveSettings();
 
         int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
         FinancialProjections projections = computeFinancialProjections(data, useConstantEuros);
@@ -330,9 +328,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
     ) {}
 
     private FinancialProjections computeFinancialProjections(BudgetDataModel data, boolean useConstantEuros) {
-        SettingsModel settings = data.settings() != null ? data.settings() : new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, null, null, BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+        SettingsModel settings = data.getEffectiveSettings();
 
         int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
         int startYear = findEarliestYear(data);

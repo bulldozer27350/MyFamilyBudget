@@ -361,6 +361,9 @@ public class StatementBankImportMapper {
         map.put("taxAbattement", s.taxAbattement());
         map.put("pass2026", s.pass2026());
         map.put("passGrowthRate", s.passGrowthRate());
+        map.put("sweepEnabled", s.sweepEnabled());
+        map.put("cashCeiling", s.cashCeiling());
+        map.put("cashFloor", s.cashFloor());
         return map;
     }
 

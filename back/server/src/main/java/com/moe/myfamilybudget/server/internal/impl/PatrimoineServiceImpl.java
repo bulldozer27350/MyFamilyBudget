@@ -127,9 +127,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
     private PlacementEvolutionDto computePlacementEvolution(BudgetDataModel data, PlacementModel placement, boolean useConstantEuros) {
         List<TransferModel> transfers = data.getEffectiveTransfers();
         List<PlacementModel> allPlacements = data.getEffectivePlacements();
-        SettingsModel settings = data.settings() != null ? data.settings() : new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, null, null, BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+        SettingsModel settings = data.getEffectiveSettings();
         BigDecimal inflationRate = settings.getEffectiveInflationRate();
         int horizonYears = 15;
         LocalDate today = LocalDate.now();
@@ -354,9 +352,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
     }
 
     public PatrimoineProjectionsModel computePatrimoineProjections(BudgetDataModel data, boolean useConstantEuros) {
-        SettingsModel settings = data.settings() != null ? data.settings() : new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, null, null, BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+        SettingsModel settings = data.getEffectiveSettings();
 
         int startYear = findEarliestYear(data);
         int endYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();

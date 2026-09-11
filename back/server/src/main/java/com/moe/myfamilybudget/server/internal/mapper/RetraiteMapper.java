@@ -198,6 +198,9 @@ public class RetraiteMapper {
         dto.setTaxAbattement(model.taxAbattement());
         dto.setPass2026(model.pass2026());
         dto.setPassGrowthRate(model.passGrowthRate());
+        dto.setSweepEnabled(model.sweepEnabled());
+        dto.setCashCeiling(model.cashCeiling());
+        dto.setCashFloor(model.cashFloor());
         return dto;
     }
 

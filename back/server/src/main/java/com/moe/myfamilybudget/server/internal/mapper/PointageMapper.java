@@ -203,6 +203,9 @@ public class PointageMapper {
         map.put("retireAge", s.retireAge());
         map.put("childExitAge", s.childExitAge());
         map.put("taxAbattement", s.taxAbattement());
+        map.put("sweepEnabled", s.sweepEnabled());
+        map.put("cashCeiling", s.cashCeiling());
+        map.put("cashFloor", s.cashFloor());
         return map;
     }
 }

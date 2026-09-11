@@ -68,9 +68,7 @@ public class OverviewServiceImpl implements OverviewApi{
     }
 
     private OverviewResultModel computeOverview(BudgetDataModel data, boolean useConstantEuros) {
-        SettingsModel settings = data.settings() != null ? data.settings() : new SettingsModel(
-            1985, 64, 85, BigDecimal.ZERO, null, null, BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+        SettingsModel settings = data.getEffectiveSettings();
 
         int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
         FinancialProjections projections = computeFinancialProjections(data, useConstantEuros);
@@ -226,9 +224,7 @@ public class OverviewServiceImpl implements OverviewApi{
     ) {}
 
     private FinancialProjections computeFinancialProjections(BudgetDataModel data, boolean useConstantEuros) {
-        SettingsModel settings = data.settings() != null ? data.settings() : new SettingsModel(
-            1985, 64, 85, BigDecimal.ZERO, null, null, BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+        SettingsModel settings = data.getEffectiveSettings();
 
         int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
         int startYear = findEarliestYear(data);
@@ -367,9 +363,7 @@ public class OverviewServiceImpl implements OverviewApi{
         // view/js/calculations.js L.420-427, 509-511, 589-599). Boucles inversees (annee en
         // dehors, placement en dedans) pour pouvoir suspendre les versements d'une annee en
         // fonction de l'etat de fin d'annee precedente.
-        SettingsModel settings = data.settings() != null ? data.settings() : new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, null, null, BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+        SettingsModel settings = data.getEffectiveSettings();
         List<Integer> bufferWatchIdx = new ArrayList<>();
         boolean hasSweepAccounts = false;
         int maxPauseLevel = 0;

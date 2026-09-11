@@ -62,9 +62,7 @@ public class RetraiteServiceImpl implements RetraiteApi {
 
     public RetraiteResultModel buildRetraiteResult() {
         BudgetDataModel data = persistenceManager.getBudgetData();
-        SettingsModel settings = data.settings() != null ? data.settings() : new SettingsModel(
-            1985, 64, 85, new BigDecimal("0.02"), "", "manual", BigDecimal.ZERO, 21, new BigDecimal("0.10"), new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+        SettingsModel settings = data.getEffectiveSettings();
 
         int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
 
