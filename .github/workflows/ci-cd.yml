@@ -1,10 +1,25 @@
 name: CI/CD
 
-# Phase 1 du pipeline de deploiement continu :
-#   1) build-and-test  : compile le backend, lance les tests unitaires Java,
-#                         le smoke test JS et la suite e2e Playwright.
-#   2) build-and-push   : uniquement si build-and-test est vert, construit
-#                         l'image Docker et la publie sur Docker Hub
+# Phase 1 du pipeline de deploiement continu, version parallelisee :
+#
+#   1) maven-tests     : compile le backend et lance les tests unitaires
+#                         Java (mvn test).
+#   2) e2e-tests       : smoke test JS (VM sandbox, sans serveur) puis
+#                         suite e2e Playwright (demarre elle-meme un
+#                         backend Spring Boot via mvn spring-boot:run et
+#                         le serveur frontend Express).
+#   3) docker-build    : construit l'image Docker (mvn package -DskipTests
+#                         a l'interieur du Dockerfile) et la sauvegarde en
+#                         artefact, SANS la publier.
+#
+#   Ces trois jobs tournent en parallele : ils sont totalement independants
+#   (le Dockerfile ne depend d'aucun resultat de test, il recompile dans
+#   son propre conteneur).
+#
+#   4) docker-push     : ne demarre que si les 3 jobs precedents ont
+#                         reussi (needs + succes implicite). Recharge
+#                         l'image deja construite (aucune reconstruction)
+#                         et la publie sur Docker Hub
 #                         (moetourneau/myfamilybudget:latest + :sha-xxxxxxx).
 #
 # La recuperation de la nouvelle image sur le mini-PC (Watchtower) est geree
@@ -24,13 +39,33 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
-    name: Build & tests (backend + JS + e2e)
+  maven-tests:
+    name: Tests unitaires Maven (backend)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: back/server/pom.xml
+
+      - name: Backend unit tests (mvn test)
+        run: mvn -f back/server/pom.xml -B test
+
+  e2e-tests:
+    name: Smoke JS + tests e2e (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Necessaire ici : tests/e2e/setup.js demarre le backend via
+      # "mvn spring-boot:run" avant de lancer Playwright.
       - name: Set up JDK 21 (Temurin)
         uses: actions/setup-java@v4
         with:
@@ -47,14 +82,28 @@ jobs:
       - name: Install JS dependencies
         run: bun install
 
-      - name: Backend unit tests (mvn test)
-        run: mvn -f back/server/pom.xml -B test
-
       - name: JS smoke test (test-all-apis.js)
         run: bun run test
 
+      # Cache des binaires navigateurs Playwright : evite de re-telecharger
+      # ~150-200 Mo a chaque run tant que la version (bun.lock) ne change pas.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+
+      # Si le cache contient deja les binaires mais pas forcement les
+      # dependances systeme (libs apt), on s'assure quand meme que ces
+      # dernieres sont presentes sans re-telecharger les navigateurs.
+      - name: Install Playwright OS dependencies (cache hit)
+        run: bunx playwright install-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
 
       - name: End-to-end tests (Playwright)
         run: bun run test:e2e
@@ -67,23 +116,17 @@ jobs:
           path: tests/e2e/report
           retention-days: 7
 
-  build-and-push:
-    name: Build & push image Docker
-    needs: build-and-test
-    if: success()
+  docker-build:
+    name: Construction image Docker (sans publication)
     runs-on: ubuntu-latest
+    outputs:
+      sha_short: ${{ steps.vars.outputs.sha_short }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Compute short SHA tag
         id: vars
@@ -100,14 +143,55 @@ jobs:
           EOF
           cat view/assets/build-info.json
 
-      - name: Build and push
+      - name: Build image (local, non publiee)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          push: true
+          push: false
+          load: true
           tags: |
             moetourneau/myfamilybudget:latest
             moetourneau/myfamilybudget:sha-${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Save image en artefact (pour le job de publication)
+        run: |
+          mkdir -p /tmp/docker-image
+          docker save \
+            moetourneau/myfamilybudget:latest \
+            moetourneau/myfamilybudget:sha-${{ steps.vars.outputs.sha_short }} \
+            -o /tmp/docker-image/image.tar
+
+      - name: Upload artefact image Docker
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/docker-image/image.tar
+          retention-days: 1
+
+  docker-push:
+    name: Publication image Docker
+    needs: [maven-tests, e2e-tests, docker-build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artefact image Docker
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/docker-image
+
+      - name: Charger l'image (aucune reconstruction)
+        run: docker load -i /tmp/docker-image/image.tar
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push image Docker
+        run: |
+          docker push moetourneau/myfamilybudget:latest
+          docker push moetourneau/myfamilybudget:sha-${{ needs.docker-build.outputs.sha_short }}
