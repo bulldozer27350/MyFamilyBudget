@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -110,11 +111,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         if (placement == null) {
             return ResponseEntity.notFound().build();
         }
-        SettingsModel settings = data.settings();
-        BigDecimal inflationRate = settings != null ? settings.getEffectiveInflationRate() : BigDecimal.ZERO;
-        PlacementEvolutionDto dto = computePlacementEvolution(
-                placement, data.getEffectiveTransfers(), Boolean.TRUE.equals(useConstantEuros), inflationRate
-        );
+        PlacementEvolutionDto dto = computePlacementEvolution(data, placement, Boolean.TRUE.equals(useConstantEuros));
         return ResponseEntity.ok(dto);
     }
 
@@ -127,8 +124,13 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
      * "euros constants" (recupere du meme reglage que la vue principale) sur les 3 projections
      * uniquement — les valeurs reelles saisies restent affichees telles quelles.
      */
-    private PlacementEvolutionDto computePlacementEvolution(PlacementModel placement, List<TransferModel> transfers,
-                                                              boolean useConstantEuros, BigDecimal inflationRate) {
+    private PlacementEvolutionDto computePlacementEvolution(BudgetDataModel data, PlacementModel placement, boolean useConstantEuros) {
+        List<TransferModel> transfers = data.getEffectiveTransfers();
+        List<PlacementModel> allPlacements = data.getEffectivePlacements();
+        SettingsModel settings = data.settings() != null ? data.settings() : new SettingsModel(
+                1985, 64, 85, BigDecimal.ZERO, null, null, BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015")
+        );
+        BigDecimal inflationRate = settings.getEffectiveInflationRate();
         int horizonYears = 15;
         LocalDate today = LocalDate.now();
 
@@ -187,11 +189,56 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         YearMonth monthlyUntil = placement.monthlyUntil() != null && parseDate(placement.monthlyUntil()) != null
                 ? YearMonth.from(parseDate(placement.monthlyUntil())) : null;
 
+        // --- Mecanisme de pause automatique des versements (portage de
+        // view/js/calculations.js L.420-427, 509-511, 589-599) ---
+        // Le placement trace n'est qu'un des placements du budget : pour savoir s'IL doit
+        // etre mis en pause, il faut simuler en arriere-plan (scenario "correle" uniquement,
+        // cf. decision de conception) le solde de TOUS les placements, mois par mois, car
+        // n'importe lequel peut faire partie des "bufferWatch" qui declenchent la pause.
+        List<PlacementModel> pausablePlacements = new ArrayList<>();
+        List<PlacementModel> bufferWatch = new ArrayList<>();
+        boolean hasSweepAccounts = false;
+        for (PlacementModel p : allPlacements) {
+            if (p.pausePriority() != null) pausablePlacements.add(p);
+            if (p.pauseTriggerBalance() != null) bufferWatch.add(p);
+            if (p.sweepPriority() != null) hasSweepAccounts = true;
+        }
+        int maxPauseLevel = 0;
+        for (PlacementModel p : pausablePlacements) {
+            maxPauseLevel = Math.max(maxPauseLevel, p.pausePriority());
+        }
+        boolean sweepEnabled = Boolean.TRUE.equals(settings.sweepEnabled());
+        BigDecimal cashFloor = settings.cashFloor() != null ? settings.cashFloor() : BigDecimal.ZERO;
+        BigDecimal cashCeiling = settings.cashCeiling();
+
+        Map<String, BigDecimal> backgroundCorr = new HashMap<>();
+        Map<String, YearMonth> backgroundFrom = new HashMap<>();
+        Map<String, YearMonth> backgroundUntil = new HashMap<>();
+        for (PlacementModel p : allPlacements) {
+            if (p.label() == null) continue;
+            backgroundCorr.put(p.label(), initialCorrBalance(p));
+            backgroundFrom.put(p.label(), p.monthlyFrom() != null && parseDate(p.monthlyFrom()) != null
+                    ? YearMonth.from(parseDate(p.monthlyFrom())) : YearMonth.from(anchorDate));
+            backgroundUntil.put(p.label(), p.monthlyUntil() != null && parseDate(p.monthlyUntil()) != null
+                    ? YearMonth.from(parseDate(p.monthlyUntil())) : null);
+        }
+
+        int pauseLevelFromRefill = 0;
+        int pauseLevel = 0;
+        // Approximation de la tresorerie : ce niveau de detail (courbe d'un seul placement)
+        // ne dispose pas des revenus/charges du foyer, seulement des mouvements de
+        // placements ; le declencheur de refill se base donc uniquement sur les versements
+        // et retraits de placements, ce qui reste fidele a l'esprit du mecanisme JS sans
+        // reproduire l'integralite du moteur de tresorerie mensuel.
+        BigDecimal treasuryBalance = settings.getEffectiveStartBalance();
+
         YearMonth cursor = YearMonth.from(anchorDate);
         YearMonth end = cursor.plusYears(horizonYears);
         int elapsedMonths = 0;
         while (cursor.isBefore(end)) {
             boolean withinContribWindow = !cursor.isBefore(monthlyFrom) && (monthlyUntil == null || !cursor.isAfter(monthlyUntil));
+            boolean isPaused = placement.pausePriority() != null && placement.pausePriority() <= pauseLevel;
+            BigDecimal effectiveContrib = withinContribWindow && !isPaused ? monthlyContrib : BigDecimal.ZERO;
             YearMonth cursorFinal = cursor;
             BigDecimal withdrawn = transfers.stream()
                     .filter(t -> placement.label() != null && placement.label().equalsIgnoreCase(t.placement())
@@ -200,9 +247,50 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
                     .map(TransferModel::getEffectiveAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            runningPess = applyMonth(runningPess, placement.getEffectiveRatePess(), monthlyContrib, withinContribWindow, withdrawn);
-            runningCorr = applyMonth(runningCorr, placement.getEffectiveRateCorr(), monthlyContrib, withinContribWindow, withdrawn);
-            runningOpti = applyMonth(runningOpti, placement.getEffectiveRateOpti(), monthlyContrib, withinContribWindow, withdrawn);
+            runningPess = applyMonth(runningPess, placement.getEffectiveRatePess(), effectiveContrib, true, withdrawn);
+            runningCorr = applyMonth(runningCorr, placement.getEffectiveRateCorr(), effectiveContrib, true, withdrawn);
+            runningOpti = applyMonth(runningOpti, placement.getEffectiveRateOpti(), effectiveContrib, true, withdrawn);
+
+            // Avance tous les placements en arriere-plan (scenario correle) et reevalue le
+            // pauseLevel pour le mois suivant, exactement comme le fait le moteur JS en fin
+            // de mois : la decision prise ici s'applique au(x) prochain(s) mois, pas au mois
+            // courant (deja traite ci-dessus).
+            BigDecimal totalContribThisMonth = BigDecimal.ZERO;
+            BigDecimal totalWithdrawnThisMonth = BigDecimal.ZERO;
+            for (PlacementModel p : allPlacements) {
+                if (p.label() == null) continue;
+                BigDecimal cur = backgroundCorr.get(p.label());
+                YearMonth pFrom = backgroundFrom.get(p.label());
+                YearMonth pUntil = backgroundUntil.get(p.label());
+                boolean pWithin = !cursor.isBefore(pFrom) && (pUntil == null || !cursor.isAfter(pUntil));
+                boolean pPaused = p.pausePriority() != null && p.pausePriority() <= pauseLevel;
+                BigDecimal pContrib = pWithin && !pPaused ? p.getEffectiveMonthly() : BigDecimal.ZERO;
+                final String pLabel = p.label();
+                BigDecimal pWithdrawn = transfers.stream()
+                        .filter(t -> pLabel.equalsIgnoreCase(t.placement())
+                                && t.date() != null && parseDate(t.date()) != null
+                                && YearMonth.from(parseDate(t.date())).equals(cursorFinal))
+                        .map(TransferModel::getEffectiveAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                backgroundCorr.put(pLabel, applyMonth(cur, p.getEffectiveRateCorr(), pContrib, true, pWithdrawn));
+                totalContribThisMonth = totalContribThisMonth.add(pContrib);
+                totalWithdrawnThisMonth = totalWithdrawnThisMonth.add(pWithdrawn);
+            }
+
+            treasuryBalance = treasuryBalance.subtract(totalContribThisMonth).add(totalWithdrawnThisMonth);
+            boolean refillNeeded = sweepEnabled && hasSweepAccounts && treasuryBalance.compareTo(cashFloor) < 0;
+            if (refillNeeded) {
+                pauseLevelFromRefill = Math.min(maxPauseLevel, pauseLevelFromRefill + 1);
+            } else if (cashCeiling != null && treasuryBalance.compareTo(cashCeiling) >= 0) {
+                pauseLevelFromRefill = Math.max(0, pauseLevelFromRefill - 1);
+            }
+            int alertCount = 0;
+            for (PlacementModel bp : bufferWatch) {
+                BigDecimal bal = backgroundCorr.get(bp.label());
+                if (bal != null && bal.compareTo(bp.pauseTriggerBalance()) < 0) alertCount++;
+            }
+            int pauseLevelFromAlerts = Math.min(maxPauseLevel, alertCount);
+            pauseLevel = Math.max(pauseLevelFromRefill, pauseLevelFromAlerts);
 
             cursor = cursor.plusMonths(1);
             elapsedMonths++;
@@ -230,6 +318,21 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         dto.setTodayTimestamp(toEpochMillis(today));
         dto.setPoints(points);
         return dto;
+    }
+
+    /**
+     * Solde de depart utilise pour simuler en arriere-plan le scenario "correle" d'un
+     * placement (mecanisme de pause) : dernier point d'historique connu si saisi, sinon le
+     * solde/date de reference du placement.
+     */
+    private BigDecimal initialCorrBalance(PlacementModel p) {
+        List<PlacementHistoryEntryModel> history = new ArrayList<>(p.getEffectiveHistory());
+        history.removeIf(h -> h.date() == null || parseDate(h.date()) == null);
+        if (!history.isEmpty()) {
+            history.sort(Comparator.comparing(h -> parseDate(h.date())));
+            return history.get(history.size() - 1).getEffectiveValue();
+        }
+        return p.getEffectiveBalance();
     }
 
     private BigDecimal applyMonth(BigDecimal running, BigDecimal annualRate, BigDecimal monthlyContrib,
@@ -267,20 +370,59 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         }
 
         BigDecimal inflationRate = settings.getEffectiveInflationRate();
-        List<PatrimoinePerPlacementModel> perPlacement = new ArrayList<>();
+        List<PlacementModel> placements = data.getEffectivePlacements();
+        int n = placements.size();
 
-        for (PlacementModel p : data.getEffectivePlacements()) {
-            BigDecimal pess = p.getEffectiveBalance();
-            BigDecimal corr = p.getEffectiveBalance();
-            BigDecimal opti = p.getEffectiveBalance();
+        // --- Mecanisme de pause automatique des versements (portage de
+        // view/js/calculations.js L.420-427, 509-511, 589-599). Pour pouvoir suspendre les
+        // versements d'une annee en fonction de l'etat de fin d'annee precedente, les boucles
+        // sont inversees par rapport a l'implementation naive : annee en dehors, placement en
+        // dedans, au lieu de placement en dehors, annee en dedans.
+        List<Integer> bufferWatchIdx = new ArrayList<>();
+        boolean hasSweepAccounts = false;
+        int maxPauseLevel = 0;
+        for (int i = 0; i < n; i++) {
+            PlacementModel p = placements.get(i);
+            if (p.pausePriority() != null) maxPauseLevel = Math.max(maxPauseLevel, p.pausePriority());
+            if (p.pauseTriggerBalance() != null) bufferWatchIdx.add(i);
+            if (p.sweepPriority() != null) hasSweepAccounts = true;
+        }
+        boolean sweepEnabled = Boolean.TRUE.equals(settings.sweepEnabled());
+        BigDecimal cashFloor = settings.cashFloor() != null ? settings.cashFloor() : BigDecimal.ZERO;
+        BigDecimal cashCeiling = settings.cashCeiling();
+        int pauseLevelFromRefill = 0;
+        int pauseLevel = 0;
+        // Tresorerie annuelle approximee : cette classe n'a pas acces au moteur complet de
+        // tresorerie (revenus/charges/impots, cf. OverviewServiceImpl) ; on reconstitue donc
+        // un cashflow net simplifie (revenus - charges - depenses ponctuelles - versements
+        // places + retraits de placements, hors impots) uniquement pour decider quand
+        // suspendre les versements, conformement a la decision de conception d'adapter le
+        // mecanisme de refill au pas annuel.
+        BigDecimal treasuryBalance = settings.getEffectiveStartBalance();
 
+        BigDecimal[] pessArr = new BigDecimal[n];
+        BigDecimal[] corrArr = new BigDecimal[n];
+        BigDecimal[] optiArr = new BigDecimal[n];
+        Integer[] monthlyFromYearArr = new Integer[n];
+        Integer[] monthlyUntilYearArr = new Integer[n];
+        List<List<PatrimoineYearModel>> rowsPerPlacement = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            PlacementModel p = placements.get(i);
+            pessArr[i] = p.getEffectiveBalance();
+            corrArr[i] = p.getEffectiveBalance();
+            optiArr[i] = p.getEffectiveBalance();
             Integer monthlyFromYear = yearOf(p.monthlyFrom());
-            if (monthlyFromYear == null) monthlyFromYear = years.isEmpty() ? 2026 : years.get(0);
+            monthlyFromYearArr[i] = monthlyFromYear != null ? monthlyFromYear : (years.isEmpty() ? 2026 : years.get(0));
+            monthlyUntilYearArr[i] = yearOf(p.monthlyUntil());
+            rowsPerPlacement.add(new ArrayList<>());
+        }
 
-            Integer monthlyUntilYear = yearOf(p.monthlyUntil());
+        for (int year : years) {
+            BigDecimal totalContribThisYear = BigDecimal.ZERO;
+            BigDecimal totalWithdrawThisYear = BigDecimal.ZERO;
 
-            List<PatrimoineYearModel> rows = new ArrayList<>();
-            for (int year : years) {
+            for (int i = 0; i < n; i++) {
+                PlacementModel p = placements.get(i);
                 BigDecimal withdraw = BigDecimal.ZERO;
                 for (TransferModel t : data.getEffectiveTransfers()) {
                     if (p.label() != null && p.label().equalsIgnoreCase(t.placement()) && yearOf(t.date()) != null && yearOf(t.date()) == year) {
@@ -288,16 +430,62 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
                     }
                 }
 
-                boolean withinWindow = year >= monthlyFromYear && (monthlyUntilYear == null || year <= monthlyUntilYear);
-                BigDecimal monthlyContrib = withinWindow ? p.getEffectiveMonthly().multiply(BigDecimal.valueOf(12)) : BigDecimal.ZERO;
+                boolean withinWindow = year >= monthlyFromYearArr[i] && (monthlyUntilYearArr[i] == null || year <= monthlyUntilYearArr[i]);
+                boolean isPaused = p.pausePriority() != null && p.pausePriority() <= pauseLevel;
+                BigDecimal monthlyContrib = withinWindow && !isPaused
+                        ? p.getEffectiveMonthly().multiply(BigDecimal.valueOf(12))
+                        : BigDecimal.ZERO;
 
-                pess = pess.multiply(BigDecimal.ONE.add(p.getEffectiveRatePess())).add(monthlyContrib).subtract(withdraw);
-                corr = corr.multiply(BigDecimal.ONE.add(p.getEffectiveRateCorr())).add(monthlyContrib).subtract(withdraw);
-                opti = opti.multiply(BigDecimal.ONE.add(p.getEffectiveRateOpti())).add(monthlyContrib).subtract(withdraw);
+                pessArr[i] = pessArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRatePess())).add(monthlyContrib).subtract(withdraw);
+                corrArr[i] = corrArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRateCorr())).add(monthlyContrib).subtract(withdraw);
+                optiArr[i] = optiArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRateOpti())).add(monthlyContrib).subtract(withdraw);
 
-                rows.add(new PatrimoineYearModel(year, pess, corr, opti));
+                rowsPerPlacement.get(i).add(new PatrimoineYearModel(year, pessArr[i], corrArr[i], optiArr[i]));
+
+                totalContribThisYear = totalContribThisYear.add(monthlyContrib);
+                totalWithdrawThisYear = totalWithdrawThisYear.add(withdraw);
             }
-            perPlacement.add(new PatrimoinePerPlacementModel(p.label(), rows));
+
+            // Reevalue le pauseLevel a partir de l'etat de fin d'annee : la decision prise
+            // ici s'appliquera a l'annee SUIVANTE (meme decalage d'une periode que dans le
+            // moteur JS, qui applique en debut de mois le pauseLevel decide fin du mois
+            // precedent).
+            BigDecimal annualIncome = BigDecimal.ZERO;
+            for (IncomeModel inc : data.getEffectiveIncomes()) {
+                annualIncome = annualIncome.add(incomeAnnualForYear(inc, year));
+            }
+            BigDecimal annualCharges = BigDecimal.ZERO;
+            for (ChargeModel c : data.getEffectiveCharges()) {
+                annualCharges = annualCharges.add(chargeAnnualForYear(c, year, inflationRate));
+            }
+            BigDecimal annualOneoff = BigDecimal.ZERO;
+            for (OneOffExpenseModel o : data.getEffectiveOneoff()) {
+                if (yearOf(o.date()) != null && yearOf(o.date()) == year) {
+                    annualOneoff = annualOneoff.add(o.getEffectiveAmount());
+                }
+            }
+            BigDecimal annualNet = annualIncome.subtract(annualCharges).subtract(annualOneoff)
+                    .subtract(totalContribThisYear).add(totalWithdrawThisYear);
+            treasuryBalance = treasuryBalance.add(annualNet);
+
+            boolean refillNeeded = sweepEnabled && hasSweepAccounts && treasuryBalance.compareTo(cashFloor) < 0;
+            if (refillNeeded) {
+                pauseLevelFromRefill = Math.min(maxPauseLevel, pauseLevelFromRefill + 1);
+            } else if (cashCeiling != null && treasuryBalance.compareTo(cashCeiling) >= 0) {
+                pauseLevelFromRefill = Math.max(0, pauseLevelFromRefill - 1);
+            }
+
+            int alertCount = 0;
+            for (int idx : bufferWatchIdx) {
+                if (corrArr[idx].compareTo(placements.get(idx).pauseTriggerBalance()) < 0) alertCount++;
+            }
+            int pauseLevelFromAlerts = Math.min(maxPauseLevel, alertCount);
+            pauseLevel = Math.max(pauseLevelFromRefill, pauseLevelFromAlerts);
+        }
+
+        List<PatrimoinePerPlacementModel> perPlacement = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            perPlacement.add(new PatrimoinePerPlacementModel(placements.get(i).label(), rowsPerPlacement.get(i)));
         }
 
         List<PatrimoineYearModel> totals = new ArrayList<>();
@@ -321,6 +509,46 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         }
 
         return new PatrimoineProjectionsModel(perPlacement, totals);
+    }
+
+    private BigDecimal incomeAnnualForYear(IncomeModel row, int year) {
+        Integer startYear = yearOf(row.start());
+        if (startYear == null) startYear = year;
+
+        int yearsElapsed = Math.max(0, year - startYear);
+        double factor = Math.pow(1.0 + row.getEffectiveGrowthRate().doubleValue(), yearsElapsed);
+        BigDecimal effectiveMonthly = row.getEffectiveMonthly().multiply(BigDecimal.valueOf(factor));
+
+        int monthsActive = monthsActiveInYear(row.start(), row.end(), year);
+        return effectiveMonthly.multiply(BigDecimal.valueOf(monthsActive));
+    }
+
+    private BigDecimal chargeAnnualForYear(ChargeModel row, int year, BigDecimal defaultInflation) {
+        Integer startYear = yearOf(row.start());
+        if (startYear == null) startYear = year;
+
+        BigDecimal growth = row.getEffectiveGrowthRate(defaultInflation);
+        int yearsElapsed = Math.max(0, year - startYear);
+        double factor = Math.pow(1.0 + growth.doubleValue(), yearsElapsed);
+
+        BigDecimal effectiveMonthly = row.getEffectiveMonthly().multiply(BigDecimal.valueOf(factor));
+        int monthsActive = monthsActiveInYear(row.start(), row.end(), year);
+        return effectiveMonthly.multiply(BigDecimal.valueOf(monthsActive));
+    }
+
+    private int monthsActiveInYear(String startISO, String endISO, int year) {
+        LocalDate start = parseDate(startISO);
+        LocalDate end = parseDate(endISO);
+        if (start == null || end == null) return 0;
+
+        LocalDate yStart = LocalDate.of(year, 1, 1);
+        LocalDate yEnd = LocalDate.of(year, 12, 31);
+
+        LocalDate s = start.isAfter(yStart) ? start : yStart;
+        LocalDate e = end.isBefore(yEnd) ? end : yEnd;
+
+        if (e.isBefore(s)) return 0;
+        return (e.getYear() - s.getYear()) * 12 + (e.getMonthValue() - s.getMonthValue()) + 1;
     }
 
     private int findEarliestYear(BudgetDataModel data) {

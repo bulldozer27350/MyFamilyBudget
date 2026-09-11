@@ -302,7 +302,7 @@ public class OverviewServiceImpl implements OverviewApi{
             cashflow.add(new CashflowYearModel(year, income, variableIncome, savings, charges, oneoff, transfersY, impots, regularisation, net, balance));
         }
 
-        PatrimoineProjectionsModel patrimoine = computePatrimoineProjections(data, years, useConstantEuros, settings.getEffectiveInflationRate());
+        PatrimoineProjectionsModel patrimoine = computePatrimoineProjections(data, years, useConstantEuros, settings.getEffectiveInflationRate(), cashflow);
 
         return new FinancialProjections(years, cashflow, patrimoine);
     }
@@ -359,21 +359,62 @@ public class OverviewServiceImpl implements OverviewApi{
         return result;
     }
 
-    private PatrimoineProjectionsModel computePatrimoineProjections(BudgetDataModel data, List<Integer> years, boolean useConstantEuros, BigDecimal inflationRate) {
-        List<PatrimoinePerPlacementModel> perPlacement = new ArrayList<>();
+    private PatrimoineProjectionsModel computePatrimoineProjections(BudgetDataModel data, List<Integer> years, boolean useConstantEuros, BigDecimal inflationRate, List<CashflowYearModel> cashflow) {
+        List<PlacementModel> placements = data.getEffectivePlacements();
+        int n = placements.size();
 
-        for (PlacementModel p : data.getEffectivePlacements()) {
-            BigDecimal pess = p.getEffectiveBalance();
-            BigDecimal corr = p.getEffectiveBalance();
-            BigDecimal opti = p.getEffectiveBalance();
+        // --- Mecanisme de pause automatique des versements (portage de
+        // view/js/calculations.js L.420-427, 509-511, 589-599). Boucles inversees (annee en
+        // dehors, placement en dedans) pour pouvoir suspendre les versements d'une annee en
+        // fonction de l'etat de fin d'annee precedente.
+        SettingsModel settings = data.settings() != null ? data.settings() : new SettingsModel(
+                1985, 64, 85, BigDecimal.ZERO, null, null, BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015")
+        );
+        List<Integer> bufferWatchIdx = new ArrayList<>();
+        boolean hasSweepAccounts = false;
+        int maxPauseLevel = 0;
+        for (int i = 0; i < n; i++) {
+            PlacementModel p = placements.get(i);
+            if (p.pausePriority() != null) maxPauseLevel = Math.max(maxPauseLevel, p.pausePriority());
+            if (p.pauseTriggerBalance() != null) bufferWatchIdx.add(i);
+            if (p.sweepPriority() != null) hasSweepAccounts = true;
+        }
+        boolean sweepEnabled = Boolean.TRUE.equals(settings.sweepEnabled());
+        BigDecimal cashFloor = settings.cashFloor() != null ? settings.cashFloor() : BigDecimal.ZERO;
+        BigDecimal cashCeiling = settings.cashCeiling();
+        int pauseLevelFromRefill = 0;
+        int pauseLevel = 0;
+        BigDecimal pivotBalanceValue = computePivotBalance(data);
+        // Tresorerie annuelle utilisee pour le declencheur de refill : on reutilise le
+        // cashflow deja calcule (revenus, charges, impots, transferts) et on y substitue,
+        // pour la part "placements", les versements REELLEMENT appliques ci-dessous (donc
+        // deja impactes par la pause de l'annee precedente) a la place de "savings" qui
+        // ignore la pause.
+        BigDecimal treasuryBalance = pivotBalanceValue != null ? pivotBalanceValue : settings.getEffectiveStartBalance();
 
+        BigDecimal[] pessArr = new BigDecimal[n];
+        BigDecimal[] corrArr = new BigDecimal[n];
+        BigDecimal[] optiArr = new BigDecimal[n];
+        Integer[] monthlyFromYearArr = new Integer[n];
+        Integer[] monthlyUntilYearArr = new Integer[n];
+        List<List<PatrimoineYearModel>> rowsPerPlacement = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            PlacementModel p = placements.get(i);
+            pessArr[i] = p.getEffectiveBalance();
+            corrArr[i] = p.getEffectiveBalance();
+            optiArr[i] = p.getEffectiveBalance();
             Integer monthlyFromYear = yearOf(p.monthlyFrom());
-            if (monthlyFromYear == null) monthlyFromYear = years.isEmpty() ? 2026 : years.get(0);
+            monthlyFromYearArr[i] = monthlyFromYear != null ? monthlyFromYear : (years.isEmpty() ? 2026 : years.get(0));
+            monthlyUntilYearArr[i] = yearOf(p.monthlyUntil());
+            rowsPerPlacement.add(new ArrayList<>());
+        }
 
-            Integer monthlyUntilYear = yearOf(p.monthlyUntil());
+        for (int yIdx = 0; yIdx < years.size(); yIdx++) {
+            int year = years.get(yIdx);
+            BigDecimal totalContribThisYear = BigDecimal.ZERO;
 
-            List<PatrimoineYearModel> rows = new ArrayList<>();
-            for (int year : years) {
+            for (int i = 0; i < n; i++) {
+                PlacementModel p = placements.get(i);
                 BigDecimal withdraw = BigDecimal.ZERO;
                 for (TransferModel t : data.getEffectiveTransfers()) {
                     if (p.label() != null && p.label().equalsIgnoreCase(t.placement()) && yearOf(t.date()) != null && yearOf(t.date()) == year) {
@@ -381,16 +422,53 @@ public class OverviewServiceImpl implements OverviewApi{
                     }
                 }
 
-                boolean withinWindow = year >= monthlyFromYear && (monthlyUntilYear == null || year <= monthlyUntilYear);
-                BigDecimal monthlyContrib = withinWindow ? p.getEffectiveMonthly().multiply(BigDecimal.valueOf(12)) : BigDecimal.ZERO;
+                boolean withinWindow = year >= monthlyFromYearArr[i] && (monthlyUntilYearArr[i] == null || year <= monthlyUntilYearArr[i]);
+                boolean isPaused = p.pausePriority() != null && p.pausePriority() <= pauseLevel;
+                BigDecimal monthlyContrib = withinWindow && !isPaused
+                        ? p.getEffectiveMonthly().multiply(BigDecimal.valueOf(12))
+                        : BigDecimal.ZERO;
 
-                pess = pess.multiply(BigDecimal.ONE.add(p.getEffectiveRatePess())).add(monthlyContrib).subtract(withdraw);
-                corr = corr.multiply(BigDecimal.ONE.add(p.getEffectiveRateCorr())).add(monthlyContrib).subtract(withdraw);
-                opti = opti.multiply(BigDecimal.ONE.add(p.getEffectiveRateOpti())).add(monthlyContrib).subtract(withdraw);
+                pessArr[i] = pessArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRatePess())).add(monthlyContrib).subtract(withdraw);
+                corrArr[i] = corrArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRateCorr())).add(monthlyContrib).subtract(withdraw);
+                optiArr[i] = optiArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRateOpti())).add(monthlyContrib).subtract(withdraw);
 
-                rows.add(new PatrimoineYearModel(year, pess, corr, opti));
+                rowsPerPlacement.get(i).add(new PatrimoineYearModel(year, pessArr[i], corrArr[i], optiArr[i]));
+
+                totalContribThisYear = totalContribThisYear.add(monthlyContrib);
             }
-            perPlacement.add(new PatrimoinePerPlacementModel(p.label(), rows));
+
+            // Reevalue le pauseLevel a partir de l'etat de fin d'annee : la decision prise
+            // ici s'appliquera a l'annee SUIVANTE (meme decalage d'une periode que dans le
+            // moteur JS).
+            CashflowYearModel cy = yIdx < cashflow.size() ? cashflow.get(yIdx) : null;
+            if (cy != null) {
+                BigDecimal nonPlacementNet = cy.income().add(cy.variableIncome())
+                        .subtract(cy.charges())
+                        .subtract(cy.oneoff())
+                        .add(cy.transfersY())
+                        .subtract(cy.impots())
+                        .subtract(cy.regularisation());
+                treasuryBalance = treasuryBalance.add(nonPlacementNet).subtract(totalContribThisYear);
+            }
+
+            boolean refillNeeded = sweepEnabled && hasSweepAccounts && treasuryBalance.compareTo(cashFloor) < 0;
+            if (refillNeeded) {
+                pauseLevelFromRefill = Math.min(maxPauseLevel, pauseLevelFromRefill + 1);
+            } else if (cashCeiling != null && treasuryBalance.compareTo(cashCeiling) >= 0) {
+                pauseLevelFromRefill = Math.max(0, pauseLevelFromRefill - 1);
+            }
+
+            int alertCount = 0;
+            for (int idx : bufferWatchIdx) {
+                if (corrArr[idx].compareTo(placements.get(idx).pauseTriggerBalance()) < 0) alertCount++;
+            }
+            int pauseLevelFromAlerts = Math.min(maxPauseLevel, alertCount);
+            pauseLevel = Math.max(pauseLevelFromRefill, pauseLevelFromAlerts);
+        }
+
+        List<PatrimoinePerPlacementModel> perPlacement = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            perPlacement.add(new PatrimoinePerPlacementModel(placements.get(i).label(), rowsPerPlacement.get(i)));
         }
 
         List<PatrimoineYearModel> totals = new ArrayList<>();

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +26,12 @@ import com.moe.myfamilybudget.api.model.PlacementHistoryEntryDto;
 import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
 import com.moe.myfamilybudget.server.internal.mapper.PatrimoineMapper;
+import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
+import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
+import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 class PatrimoineServiceImplTest {
@@ -443,5 +449,141 @@ class PatrimoineServiceImplTest {
         assertFalse(projNominal.totals().isEmpty());
         assertFalse(projReal.totals().isEmpty());
         assertEquals(projNominal.totals().size(), projReal.totals().size());
+    }
+
+    // -------------------------------------------------------------------------
+    // MECANISME DE PAUSE AUTOMATIQUE DES VERSEMENTS (portage de view/js/calculations.js)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Construit un budget avec deux placements inspires du scenario de verification
+     * fonctionnelle : un placement "declencheur" (bufferWatch) deja sous son seuil
+     * d'alerte, et un placement "pausable" dont les versements doivent etre suspendus des
+     * que le niveau de pause atteint sa priorite. Les taux sont mis a zero pour isoler
+     * l'effet des versements dans les assertions.
+     */
+    private BudgetDataModel buildPauseScenarioBudget(boolean sweepEnabled, BigDecimal cashFloor, BigDecimal startBalance) {
+        PlacementModel scpiEden = new PlacementModel(
+                "plc_scpi_eden", "Test SCPI Eden", "SCPI", new BigDecimal("3700"), "2026-01-01",
+                BigDecimal.ZERO, "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, new BigDecimal("10000"), null, "cat_scpi"
+        );
+        PlacementModel selencia = new PlacementModel(
+                "plc_selencia", "Test Selencia", "Assurance Vie", new BigDecimal("14425"), "2026-01-01",
+                new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, null, 1, "cat_av"
+        );
+
+        SettingsModel settings = new SettingsModel(
+                1985, 64, 85, BigDecimal.ZERO, "", "manual", startBalance, 21, BigDecimal.ZERO,
+                new BigDecimal("47100"), new BigDecimal("0.015"), sweepEnabled, null, cashFloor
+        );
+
+        return new BudgetDataModel(settings, List.of(), List.of(), List.of(selencia, scpiEden), List.of(), null,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
+    }
+
+    @Test
+    void computePatrimoineProjections_suspendsContributionsWhenBufferWatchPlacementBelowThreshold() {
+        // "Test SCPI Eden" est deja sous son seuil d'alerte (3700 < 10000) des le depart :
+        // cela doit declencher la pause (mecanisme pauseLevelFromAlerts) et suspendre les
+        // versements de "Test Selencia" (pausePriority = 1), sans jamais activer le
+        // mecanisme de refill (sweepEnabled = false ici).
+        BudgetDataModel data = buildPauseScenarioBudget(false, null, BigDecimal.ZERO);
+        persistenceManager.setBudgetData(data);
+
+        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(persistenceManager.getBudgetData(), false);
+
+        PatrimoinePerPlacementModel selenciaRows = proj.perPlacement().stream()
+                .filter(p -> "Test Selencia".equals(p.label()))
+                .findFirst()
+                .orElseThrow();
+        List<PatrimoineYearModel> rows = selenciaRows.rows();
+        assertTrue(rows.size() >= 4, "Le scenario de test doit couvrir au moins 4 annees");
+
+        // Annee 1 : le pauseLevel initial est 0 (pas encore evalue), le versement de
+        // 200EUR/mois est donc applique normalement.
+        BigDecimal afterYear1 = rows.get(0).corr();
+        assertEquals(0, new BigDecimal("16825.00").compareTo(afterYear1));
+
+        // A partir de l'annee 2, le pauseLevel evalue en fin d'annee 1 (SCPI Eden sous son
+        // seuil) suspend les versements : le solde de Selencia ne doit plus bouger.
+        assertEquals(0, afterYear1.compareTo(rows.get(1).corr()));
+        assertEquals(0, afterYear1.compareTo(rows.get(2).corr()));
+        assertEquals(0, afterYear1.compareTo(rows.get(3).corr()));
+
+        // Placement sans pausePriority : jamais affecte par le mecanisme, cf. exigence de
+        // non-regression du plan de verification.
+        PatrimoinePerPlacementModel scpiRows = proj.perPlacement().stream()
+                .filter(p -> "Test SCPI Eden".equals(p.label()))
+                .findFirst()
+                .orElseThrow();
+        for (PatrimoineYearModel row : scpiRows.rows()) {
+            assertEquals(0, new BigDecimal("3700").compareTo(row.corr()));
+        }
+    }
+
+    @Test
+    void computePatrimoineProjections_resumesContributionsWhenBufferWatchPlacementRecovers() {
+        // Meme scenario, mais "Test SCPI Eden" repasse au-dessus de son seuil (12000) :
+        // aucune alerte ne doit se declencher et les versements de Selencia doivent suivre
+        // leur cours normal, annee apres annee.
+        PlacementModel scpiEden = new PlacementModel(
+                "plc_scpi_eden", "Test SCPI Eden", "SCPI", new BigDecimal("12000"), "2026-01-01",
+                BigDecimal.ZERO, "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, new BigDecimal("10000"), null, "cat_scpi"
+        );
+        PlacementModel selencia = new PlacementModel(
+                "plc_selencia", "Test Selencia", "Assurance Vie", new BigDecimal("14425"), "2026-01-01",
+                new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, null, 1, "cat_av"
+        );
+        SettingsModel settings = new SettingsModel(
+                1985, 64, 85, BigDecimal.ZERO, "", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
+                new BigDecimal("47100"), new BigDecimal("0.015"), false, null, null
+        );
+        BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(selencia, scpiEden), List.of(), null,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
+        persistenceManager.setBudgetData(data);
+
+        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(persistenceManager.getBudgetData(), false);
+        PatrimoinePerPlacementModel selenciaRows = proj.perPlacement().stream()
+                .filter(p -> "Test Selencia".equals(p.label()))
+                .findFirst()
+                .orElseThrow();
+        List<PatrimoineYearModel> rows = selenciaRows.rows();
+
+        BigDecimal afterYear1 = rows.get(0).corr();
+        BigDecimal afterYear2 = rows.get(1).corr();
+        assertEquals(0, new BigDecimal("16825.00").compareTo(afterYear1));
+        // Le versement continue normalement : +2400 chaque annee.
+        assertEquals(0, afterYear1.add(new BigDecimal("2400")).compareTo(afterYear2));
+    }
+
+    @Test
+    void getPlacementEvolution_suspendsTracedPlacementWhenBufferWatchPlacementBelowThreshold() {
+        // Meme scenario que computePatrimoineProjections_suspendsContributionsWhenBufferWatchPlacementBelowThreshold,
+        // mais verifie via la courbe mensuelle individuelle (drawer de detail), qui doit
+        // simuler tous les placements en arriere-plan pour evaluer la meme pause.
+        BudgetDataModel data = buildPauseScenarioBudget(false, null, BigDecimal.ZERO);
+        persistenceManager.setBudgetData(data);
+
+        ResponseEntity<PlacementEvolutionDto> resp = service.getPlacementEvolution("plc_selencia", false);
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        PlacementEvolutionDto evo = resp.getBody();
+        assertNotNull(evo);
+        assertFalse(evo.getPoints().isEmpty());
+
+        // Le solde doit progresser durant les tout premiers mois (versement pas encore
+        // suspendu), puis se figer une fois le pauseLevel active (SCPI Eden est sous son
+        // seuil des le premier mois de simulation en arriere-plan).
+        BigDecimal firstMonthCorr = evo.getPoints().get(0).getCorr();
+        BigDecimal lastMonthCorr = evo.getPoints().get(evo.getPoints().size() - 1).getCorr();
+        assertTrue(lastMonthCorr.compareTo(firstMonthCorr) >= 0);
+
+        // Deux points suffisamment tardifs doivent etre identiques : la pause s'est
+        // maintenue (SCPI Eden ne recupere jamais dans ce scenario).
+        BigDecimal midCorr = evo.getPoints().get(evo.getPoints().size() / 2).getCorr();
+        assertEquals(0, midCorr.compareTo(lastMonthCorr));
     }
 }

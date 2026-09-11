@@ -159,7 +159,6 @@ class OverviewServiceImplTest {
     @Test
     @DisplayName("Should include loans (passif) in the data returned by /overview")
     void testBuildOverview_LoansAreReturnedInDataDto() {
-        // Given
         SettingsModel settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
                 BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015"));
 
@@ -182,5 +181,65 @@ class OverviewServiceImplTest {
         assertThat(response.getData().getLoans()).isNotNull();
         assertThat(response.getData().getLoans()).hasSize(1);
         assertThat(response.getData().getLoans().get(0).getCrd()).isEqualByComparingTo("180000");
+    }
+
+    @Test
+    @DisplayName("Should suspend a paused placement's contributions once a bufferWatch placement drops below its threshold")
+    void testBuildOverview_SuspendsPausedPlacementContributions() {
+        // Given : "Test SCPI Eden" est deja sous son seuil d'alerte (3700 < 10000), ce qui
+        // doit declencher la pause (mecanisme pauseLevelFromAlerts, portage de
+        // view/js/calculations.js) et suspendre les versements de "Test Selencia"
+        // (pausePriority = 1) a partir de l'annee suivante.
+        SettingsModel settings = new SettingsModel(
+                1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
+                new BigDecimal("47100"), new BigDecimal("0.015"), false, null, null
+        );
+
+        PlacementModel scpiEden = new PlacementModel(
+                "plc_scpi_eden", "Test SCPI Eden", "SCPI", new BigDecimal("3700"), "2026-01-01",
+                BigDecimal.ZERO, "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, new BigDecimal("10000"), null, "cat_scpi"
+        );
+        PlacementModel selencia = new PlacementModel(
+                "plc_selencia", "Test Selencia", "Assurance Vie", new BigDecimal("14425"), "2026-01-01",
+                new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, null, 1, "cat_av"
+        );
+
+        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(), List.of(), List.of(selencia, scpiEden),
+                List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), null);
+
+        this.persistenceManager.setBudgetData(budgetData);
+
+        // When
+        OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.getPatrimoine()).isNotNull();
+        var selenciaRows = response.getPatrimoine().getPerPlacement().stream()
+                .filter(p -> "Test Selencia".equals(p.getLabel()))
+                .findFirst()
+                .orElseThrow()
+                .getRows();
+
+        BigDecimal afterYear1 = selenciaRows.get(0).getCorr();
+        assertThat(afterYear1).isEqualByComparingTo("16825"); // 14425 + 200*12, taux a 0
+
+        // Des l'annee 2, le pauseLevel evalue en fin d'annee 1 suspend les versements : le
+        // solde de Selencia ne doit plus bouger.
+        assertThat(selenciaRows.get(1).getCorr()).isEqualByComparingTo(afterYear1);
+        assertThat(selenciaRows.get(2).getCorr()).isEqualByComparingTo(afterYear1);
+
+        // Non-regression : le placement declencheur, sans pausePriority, n'est jamais lui
+        // meme mis en pause et son solde ne bouge pas (pas de versement, taux a 0).
+        var scpiRows = response.getPatrimoine().getPerPlacement().stream()
+                .filter(p -> "Test SCPI Eden".equals(p.getLabel()))
+                .findFirst()
+                .orElseThrow()
+                .getRows();
+        assertThat(scpiRows.get(0).getCorr()).isEqualByComparingTo("3700");
+        assertThat(scpiRows.get(1).getCorr()).isEqualByComparingTo("3700");
     }
 }
