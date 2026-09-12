@@ -281,6 +281,49 @@ public class PersistenceManager {
         saveBankImport(model.bankImport(), entity);
     }
 
+    // Verrou dédié à applyAndPersist(): protège la séquence lecture -> mutation -> écriture
+    // ci-dessous contre les pertes de mise à jour en cas de requêtes concurrentes (deux appels
+    // simultanés partant tous les deux du même état "current" et écrasant l'un le résultat de
+    // l'autre). AtomicReference garantit uniquement l'atomicité d'une affectation individuelle,
+    // pas celle de la séquence complète.
+    private final Object mutationLock = new Object();
+
+    /**
+     * Point d'entrée unique pour toute mutation du budget qui doit être persistée.
+     *
+     * Contrat volontairement différent de l'ancien pattern
+     * "currentBudget.updateAndGet(...)" suivi d'un saveToDatabase(updated) séparé :
+     * ici, la mémoire (currentBudget) n'est mise à jour QU'APRES que la sauvegarde en
+     * base a réussi. Si saveToDatabase(...) lève une exception (contrainte SQL, perte de
+     * connexion...), le rollback transactionnel de la base est cohérent avec l'état
+     * conservé en mémoire : aucun des deux n'a été modifié. Avec l'ancien pattern, la
+     * mémoire était modifiée avant même de savoir si la sauvegarde allait réussir, ce qui
+     * pouvait la laisser durablement désynchronisée de la base après une erreur.
+     *
+     * @param mutation fonction pure calculant le nouvel état à partir de l'état courant
+     *                 (ou d'un budget par défaut si aucun état n'existe encore). Ne doit
+     *                 provoquer aucun effet de bord (pas d'accès base, pas d'écriture sur
+     *                 currentBudget) : seule cette méthode a le droit d'écrire dans
+     *                 currentBudget.
+     * @return le nouvel état, déjà persisté et déjà visible depuis getBudgetData()
+     */
+    private BudgetDataModel applyAndPersist(java.util.function.UnaryOperator<BudgetDataModel> mutation) {
+        synchronized (mutationLock) {
+            BudgetDataModel base = currentBudget.get();
+            if (base == null) {
+                base = createDefaultBudgetData();
+            }
+            BudgetDataModel updated = mutation.apply(base);
+
+            // Persistée AVANT toute écriture sur currentBudget : si ça échoue, on sort par
+            // exception sans jamais avoir touché à la mémoire.
+            saveToDatabase(updated);
+
+            currentBudget.set(updated);
+            return updated;
+        }
+    }
+
     private void saveLoans(List<LoanModel> loans, BudgetDataEntity budgetData) {
         if (loanRepository == null) return;
         loanRepository.deleteByBudgetDataId(budgetData.getId());
@@ -496,7 +539,7 @@ public class PersistenceManager {
         Map<String, Object> resultRow = new HashMap<>();
         resultRow.put("id", uid);
 
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             int birthYear = (base.settings() != null && base.settings().birthYear() != null)
                     ? base.settings().birthYear() : 1985;
@@ -656,9 +699,6 @@ public class PersistenceManager {
             }
             return base;
         });
-        
-        // Save to database
-        saveToDatabase(updated);
 
         return resultRow;
     }
@@ -671,136 +711,16 @@ public class PersistenceManager {
             return;
         }
 
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        // Le if/else répété par type de ligne (incomes/charges/oneoff/...) et par champ a été
+        // déplacé dans server.internal.updater.TresorerieFieldUpdateDispatcher : cf. le point 3
+        // de l'audit. Comportement inchangé pour tout champ/listKey déjà valide ; un listKey ou
+        // un field inconnu lève désormais UnknownTresorerieFieldException au lieu de renvoyer
+        // silencieusement l'état inchangé.
+        applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
-
-            if ("incomes".equalsIgnoreCase(listKey)) {
-                List<IncomeModel> list = new ArrayList<>();
-                for (IncomeModel r : base.getEffectiveIncomes()) {
-                    if (Objects.equals(r.id(), id)) {
-                        list.add(new IncomeModel(
-                                r.id(),
-                                "label".equals(field) ? (value != null ? String.valueOf(value) : "") : r.label(),
-                                "monthly".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.monthly(),
-                                "start".equals(field) ? (value != null ? String.valueOf(value) : "") : r.start(),
-                                "end".equals(field) ? (value != null ? String.valueOf(value) : "") : r.end(),
-                                "growthRate".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.growthRate(),
-                                "categoryId".equals(field) ? (value != null ? String.valueOf(value) : "") : r.categoryId(),
-                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes()
-                        ));
-                    } else {
-                        list.add(r);
-                    }
-                }
-                return base.withIncomes(list);
-            } else if ("charges".equalsIgnoreCase(listKey)) {
-                List<ChargeModel> list = new ArrayList<>();
-                for (ChargeModel r : base.getEffectiveCharges()) {
-                    if (Objects.equals(r.id(), id)) {
-                        list.add(new ChargeModel(
-                                r.id(),
-                                "label".equals(field) ? (value != null ? String.valueOf(value) : "") : r.label(),
-                                "monthly".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.monthly(),
-                                "start".equals(field) ? (value != null ? String.valueOf(value) : "") : r.start(),
-                                "end".equals(field) ? (value != null ? String.valueOf(value) : "") : r.end(),
-                                "growthRate".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.growthRate(),
-                                "categoryId".equals(field) ? (value != null ? String.valueOf(value) : "") : r.categoryId(),
-                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes()
-                        ));
-                    } else {
-                        list.add(r);
-                    }
-                }
-                return base.withCharges(list);
-            } else if ("oneoff".equalsIgnoreCase(listKey)) {
-                List<OneOffExpenseModel> list = new ArrayList<>();
-                for (OneOffExpenseModel r : base.getEffectiveOneoff()) {
-                    if (Objects.equals(r.id(), id)) {
-                        list.add(new OneOffExpenseModel(
-                                r.id(),
-                                "label".equals(field) ? (value != null ? String.valueOf(value) : "") : r.label(),
-                                "date".equals(field) ? (value != null ? String.valueOf(value) : "") : r.date(),
-                                "amount".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.amount(),
-                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes()
-                        ));
-                    } else {
-                        list.add(r);
-                    }
-                }
-                return base.withOneoff(list);
-            } else if ("variableIncomes".equalsIgnoreCase(listKey)) {
-                List<VariableIncomeModel> list = new ArrayList<>();
-                for (VariableIncomeModel r : base.getEffectiveVariableIncomes()) {
-                    if (Objects.equals(r.id(), id)) {
-                        list.add(new VariableIncomeModel(
-                                r.id(),
-                                "label".equals(field) ? (value != null ? String.valueOf(value) : "") : r.label(),
-                                "refIncomeLabel".equals(field) ? (value != null ? String.valueOf(value) : "") : r.refIncomeLabel(),
-                                "rate".equals(field) ? toBigDecimal(value, new BigDecimal("0.05")) : r.rate(),
-                                "startYear".equals(field) ? toInteger(value, 2026) : r.startYear(),
-                                "endYear".equals(field) ? toInteger(value, 2049) : r.endYear(),
-                                "taxable".equals(field) ? (value != null ? String.valueOf(value) : "") : r.taxable(),
-                                "type".equals(field) ? (value != null ? String.valueOf(value) : "prime") : r.type(),
-                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes()
-                        ));
-                    } else {
-                        list.add(r);
-                    }
-                }
-                return base.withVariableIncomes(list);
-            } else if ("variableOverrides".equalsIgnoreCase(listKey)) {
-                List<VariableOverrideModel> list = new ArrayList<>();
-                for (VariableOverrideModel r : base.getEffectiveVariableOverrides()) {
-                    if (Objects.equals(r.id(), id)) {
-                        list.add(new VariableOverrideModel(
-                                r.id(),
-                                "label".equals(field) ? (value != null ? String.valueOf(value) : "") : r.label(),
-                                "year".equals(field) ? toInteger(value, LocalDate.now().getYear()) : r.year(),
-                                "amount".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.amount(),
-                                "taxable".equals(field) ? (value != null ? String.valueOf(value) : "") : r.taxable(),
-                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes()
-                        ));
-                    } else {
-                        list.add(r);
-                    }
-                }
-                return base.withVariableOverrides(list);
-            } else if ("placements".equalsIgnoreCase(listKey)) {
-                List<PlacementModel> list = new ArrayList<>();
-                for (PlacementModel r : base.getEffectivePlacements()) {
-                    if (Objects.equals(r.id(), id)) {
-                        list.add(new PlacementModel(
-                                r.id(),
-                                "label".equals(field) ? (value != null ? String.valueOf(value) : "") : r.label(),
-                                "category".equals(field) ? (value != null ? String.valueOf(value) : "") : r.category(),
-                                "balance".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.balance(),
-                                "balanceDate".equals(field) ? (value != null ? String.valueOf(value) : "") : r.balanceDate(),
-                                "monthly".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.monthly(),
-                                "monthlyFrom".equals(field) ? (value != null ? String.valueOf(value) : "") : r.monthlyFrom(),
-                                "monthlyUntil".equals(field) ? (value != null ? String.valueOf(value) : "") : r.monthlyUntil(),
-                                "ratePess".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.ratePess(),
-                                "rateCorr".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.rateCorr(),
-                                "rateOpti".equals(field) ? toBigDecimal(value, BigDecimal.ZERO) : r.rateOpti(),
-                                "excludedFromRetirement".equals(field) ? (value instanceof Boolean b ? b : Boolean.parseBoolean(String.valueOf(value))) : r.excludedFromRetirement(),
-                                "notes".equals(field) ? (value != null ? String.valueOf(value) : "") : r.notes(),
-                                "sweepPriority".equals(field) ? toInteger(value, null) : r.sweepPriority(),
-                                "sweepCap".equals(field) ? toBigDecimal(value, null) : r.sweepCap(),
-                                "pauseTriggerBalance".equals(field) ? toBigDecimal(value, null) : r.pauseTriggerBalance(),
-                                "pausePriority".equals(field) ? toInteger(value, null) : r.pausePriority(),
-                                "categoryId".equals(field) ? (value != null ? String.valueOf(value) : "") : r.categoryId()
-                        ));
-                    } else {
-                        list.add(r);
-                    }
-                }
-                return base.withPlacements(list);
-            }
-
-            return base;
+            return com.moe.myfamilybudget.server.internal.updater.TresorerieFieldUpdateDispatcher
+                    .update(base, listKey, id, field, value);
         });
-        
-        // Save to database
-        saveToDatabase(updated);
     }
 
     /**
@@ -811,7 +731,7 @@ public class PersistenceManager {
             return;
         }
 
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
 
             if ("incomes".equalsIgnoreCase(listKey)) {
@@ -848,9 +768,6 @@ public class PersistenceManager {
 
             return base;
         });
-        
-        // Save to database
-        saveToDatabase(updated);
     }
 
     /**
@@ -875,7 +792,7 @@ public class PersistenceManager {
         String uid = (givenId != null && !givenId.trim().isEmpty()) ? givenId : ("pat_" + UUID.randomUUID().toString().substring(0, 8));
         resultRow.put("id", uid);
 
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             int retireYear = (base.settings() != null ? base.settings().getEffectiveBirthYear() : 1985)
                     + (base.settings() != null ? base.settings().getEffectiveRetireAge() : 64);
@@ -1049,9 +966,6 @@ public class PersistenceManager {
 
             return base;
         });
-        
-        // Save to database
-        saveToDatabase(updated);
 
         return resultRow;
     }
@@ -1060,13 +974,10 @@ public class PersistenceManager {
      * Maintient et sauvegarde la configuration de retraite.
      */
     public void updateRetirement(RetirementModel retirement) {
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             return base.withRetirement(retirement);
         });
-        
-        // Save to database
-        saveToDatabase(updated);
     }
 
     /**
@@ -1074,16 +985,13 @@ public class PersistenceManager {
      */
     public void updateTaxConfig(List<TaxChildModel> children, List<TaxBracketModel> brackets,
                                 List<TaxRateOverrideModel> rateOverrides, List<TaxActualOverrideModel> actualOverrides) {
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             return base.withTaxChildren(children != null ? children : base.taxChildren())
                     .withTaxBrackets(brackets != null ? brackets : base.taxBrackets())
                     .withTaxRateOverrides(rateOverrides != null ? rateOverrides : base.taxRateOverrides())
                     .withTaxActualOverrides(actualOverrides != null ? actualOverrides : base.taxActualOverrides());
         });
-        
-        // Save to database
-        saveToDatabase(updated);
     }
 
     /**
@@ -1091,7 +999,7 @@ public class PersistenceManager {
      */
     public void updateTaxSettings(String field, Object value) {
         if (field == null) return;
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             SettingsModel s = base.settings();
             SettingsModel updatedSettings = new SettingsModel(
@@ -1112,9 +1020,6 @@ public class PersistenceManager {
             );
             return base.withSettings(updatedSettings);
         });
-        
-        // Save to database
-        saveToDatabase(updated);
     }
 
     /**
@@ -1122,7 +1027,7 @@ public class PersistenceManager {
      */
     public void updateAssetCategory(String id, String field, Object value) {
         if (id == null || field == null) return;
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             List<AssetCategoryModel> list = new ArrayList<>(base.getEffectiveAssetCategories());
             List<AssetCategoryModel> updatedList = new ArrayList<>();
@@ -1142,9 +1047,6 @@ public class PersistenceManager {
             }
             return base.withAssetCategories(updatedList);
         });
-        
-        // Save to database
-        saveToDatabase(updated);
     }
 
     /**
@@ -1152,15 +1054,12 @@ public class PersistenceManager {
      */
     public void addAssetCategory(AssetCategoryModel category) {
         if (category == null) return;
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             List<AssetCategoryModel> list = new ArrayList<>(base.getEffectiveAssetCategories());
             list.add(category);
             return base.withAssetCategories(list);
         });
-        
-        // Save to database
-        saveToDatabase(updated);
     }
 
     /**
@@ -1168,23 +1067,20 @@ public class PersistenceManager {
      */
     public void removeAssetCategory(String id) {
         if (id == null) return;
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             List<AssetCategoryModel> list = base.getEffectiveAssetCategories().stream()
                     .filter(c -> !Objects.equals(c.id(), id))
                     .toList();
             return base.withAssetCategories(list);
         });
-        
-        // Save to database
-        saveToDatabase(updated);
     }
 
     /**
      * Réinitialise les tranches d'impôt par défaut.
      */
     public void resetDefaultTaxBrackets() {
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             List<TaxBracketModel> defaultBrackets = List.of(
                     new TaxBracketModel("tb_1", new BigDecimal("11294"), BigDecimal.ZERO),
@@ -1195,9 +1091,6 @@ public class PersistenceManager {
             );
             return base.withTaxBrackets(defaultBrackets);
         });
-        
-        // Save to database
-        saveToDatabase(updated);
     }
 
     /**
@@ -1208,7 +1101,7 @@ public class PersistenceManager {
             return;
         }
 
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
 
             if ("placements".equalsIgnoreCase(listKey)) {
@@ -1235,9 +1128,6 @@ public class PersistenceManager {
 
             return base;
         });
-        
-        // Save to database
-        saveToDatabase(updated);
     }
 
     /**
@@ -1261,7 +1151,7 @@ public class PersistenceManager {
         result.put("value", value);
         result.put("notes", notes);
 
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             List<PlacementModel> list = base.getEffectivePlacements().stream()
                     .map(p -> {
@@ -1273,8 +1163,6 @@ public class PersistenceManager {
                     .toList();
             return base.withPlacements(list);
         });
-
-        saveToDatabase(updated);
         return result;
     }
 
@@ -1285,7 +1173,7 @@ public class PersistenceManager {
         Map<String, Object> result = new HashMap<>();
         if (placementId == null || entryId == null || body == null) return result;
 
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             List<PlacementModel> list = base.getEffectivePlacements().stream()
                     .map(p -> {
@@ -1304,8 +1192,6 @@ public class PersistenceManager {
                     .toList();
             return base.withPlacements(list);
         });
-
-        saveToDatabase(updated);
         return result;
     }
 
@@ -1315,7 +1201,7 @@ public class PersistenceManager {
     public void deletePlacementHistoryEntry(String placementId, String entryId) {
         if (placementId == null || entryId == null) return;
 
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             List<PlacementModel> list = base.getEffectivePlacements().stream()
                     .map(p -> {
@@ -1328,8 +1214,6 @@ public class PersistenceManager {
                     .toList();
             return base.withPlacements(list);
         });
-
-        saveToDatabase(updated);
     }
 
     /**
@@ -1387,13 +1271,10 @@ public class PersistenceManager {
      */
     public void updateBankImport(BankImportModel bankImport) {
         if (bankImport == null) return;
-        BudgetDataModel updated = currentBudget.updateAndGet(current -> {
+        BudgetDataModel updated = applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : createDefaultBudgetData();
             return base.withBankImport(bankImport);
         });
-        
-        // Save to database
-        saveToDatabase(updated);
     }
 
     // --- Utilitaires de conversion ---
