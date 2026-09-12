@@ -6,9 +6,9 @@ puis maintenabilité (lisibilité, évolutivité), puis sécurité/configuration
 
 Statut des patchs livrés : **0001** (point 1), **0003** (point 3), **0004** (point 2), **0005**
 (complément point 5 + incrément 1 du point 6), **0006** (incrément 2 du point 6), **0007**
-(incrément 3 du point 6, clôture) et **0008** (point 10) sont fournis et validés
-(`git apply --check` sur clone frais, chaque patch dépend des précédents). Les autres points sont
-documentés avec un plan mais pas encore patchés.
+(incrément 3 du point 6, clôture), **0008** (point 10) et **0009** (point 8, incrément 1/2 :
+`OverviewServiceImpl`) sont fournis et validés (`git apply --check` sur clone frais, chaque patch
+dépend des précédents). Les autres points sont documentés avec un plan mais pas encore patchés.
 
 ---
 
@@ -222,13 +222,46 @@ strictement inchangés sur les trois incréments — aucune modification de test
 - Implémentation alternative (`IncrementalBudgetPersistenceGateway`) activable via
   `myfamilybudget.persistence.strategy=incremental|full`, testable en dev avant bascule en prod.
 
-### 8. Fusion controller / logique métier (`*ServiceImpl` = `@RestController` + calculs)
+### 8. Fusion controller / logique métier (`*ServiceImpl` = `@RestController` + calculs) — 🔶 en cours (incrément 1/2 livré : 0009)
 
 **Plan.** Extraction progressive, un `*ServiceImpl` à la fois (en commençant par
 `OverviewServiceImpl`, `TresorerieServiceImpl`) : les méthodes de calcul pur migrent vers une
 classe `XxxCalculationService` sans dépendance Spring Web, testable indépendamment. La classe
 `@RestController` ne garde que l'orchestration HTTP. Déplacement de code, pas de réécriture
 fonctionnelle.
+
+**Incrément 1 livré (patch 0009) — `OverviewServiceImpl`.** Nouveau package
+`server.internal.calculation`, nouvelle classe `OverviewCalculationService` : reçoit à l'identique
+les 876 lignes de calcul pur (projections de trésorerie, de patrimoine, de retraite — dispatcher
+retraite/fiscalité inclus) qui vivaient dans `OverviewServiceImpl`, ainsi que ses constantes
+(`TRIMESTRES_REQUIS`, `TAUX_PLEIN`...), son logger et tous ses records privés
+(`FinancialProjections`, `TaxYearlyInfo`, `RetirementProjection`, `YearSalary`, `VariableDetail`).
+Classe simple sans dépendance Spring, sans état, instanciée directement par
+`OverviewServiceImpl` — pas un bean Spring, cohérent avec le choix déjà fait pour `gateway`/
+`cacheStore`/`mutationService` au point 6.
+
+`OverviewServiceImpl` devient une pure façade HTTP : 879 → 50 lignes (**-94 %**), ne conserve que
+la construction (`mapper`, `persistenceManager`, `calculationService`), l'unique endpoint
+`getOverview()` et une méthode `computeRetirementProjection(...)` conservée par délégation pour ne
+pas casser les tests existants qui l'appellent directement
+(`OverviewServiceImplTest`, `BusinessLogicIntegrationTest`) — ces deux fichiers de test ont dû être
+mis à jour pour référencer le type `RetirementProjection` à son nouvel emplacement
+(`OverviewCalculationService.RetirementProjection` au lieu de
+`OverviewServiceImpl.RetirementProjection`), seul changement fonctionnel de ce patch.
+
+*Observation notée mais hors périmètre de ce patch* : `computeRetirementProjection` existe en
+réalité en trois versions quasi identiques (`OverviewServiceImpl`/désormais
+`OverviewCalculationService`, `RetraiteServiceImpl`, `TresorerieServiceImpl`), chacune avec son
+propre type de retour (`RetirementProjection` local vs `RetirementProjectionModel`). Une
+consolidation en un seul calcul partagé serait pertinente mais constitue un chantier de
+déduplication distinct du point 8 (qui porte sur la séparation controller/calcul, pas sur le
+regroupement de calculs dupliqués entre services) — à documenter séparément si vous souhaitez le
+traiter.
+
+**Prochain incrément (2/2)** : `TresorerieServiceImpl` (869 lignes), même traitement →
+`TresorerieCalculationService`.
+
+**Fichier livré.** `0009-point8-overview-calculation-service.patch` (dépend de 0008).
 
 ### 9. Duplication backend/frontend sur l'Analyse
 

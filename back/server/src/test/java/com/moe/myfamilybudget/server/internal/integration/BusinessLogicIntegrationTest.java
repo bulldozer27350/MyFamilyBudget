@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.moe.myfamilybudget.server.internal.calculation.OverviewCalculationService;
 import com.moe.myfamilybudget.server.internal.impl.OverviewServiceImpl;
 import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
@@ -386,7 +387,7 @@ class BusinessLogicIntegrationTest {
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), persistenceManager);
-        OverviewServiceImpl.RetirementProjection proj = svc.computeRetirementProjection(data, alice, 2054);
+        OverviewCalculationService.RetirementProjection proj = svc.computeRetirementProjection(data, alice, 2054);
 
         // trimestresDateYear=2025, salaire actif 2026..2053 = 28 annees * 4 = 112
         // total = 140 + 112 = 252
@@ -408,7 +409,7 @@ class BusinessLogicIntegrationTest {
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), persistenceManager);
-        OverviewServiceImpl.RetirementProjection proj = svc.computeRetirementProjection(data, alice, 2054);
+        OverviewCalculationService.RetirementProjection proj = svc.computeRetirementProjection(data, alice, 2054);
 
         assertThat(proj.pensionBaseAnnuelle()).isGreaterThan(BigDecimal.ZERO);
         assertThat(proj.pensionComplementaireAnnuelle()).isGreaterThan(BigDecimal.ZERO);
@@ -425,7 +426,7 @@ class BusinessLogicIntegrationTest {
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), persistenceManager);
-        OverviewServiceImpl.RetirementProjection proj = svc.computeRetirementProjection(data, alice, 2054);
+        OverviewCalculationService.RetirementProjection proj = svc.computeRetirementProjection(data, alice, 2054);
 
         MvcResult result = mockMvc.perform(get("/api/v1/overview").contextPath("/api/v1")).andExpect(status().isOk()).andReturn();
         double totalPensions = objectMapper.readTree(result.getResponse().getContentAsString()).path("totalPensions").asDouble();

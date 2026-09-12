@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.api.model.CashflowYearDto;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
+import com.moe.myfamilybudget.server.internal.calculation.OverviewCalculationService;
 import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
@@ -144,7 +145,7 @@ class OverviewServiceImplTest {
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
 
         // When
-        OverviewServiceImpl.RetirementProjection projection = overviewService.computeRetirementProjection(budgetData,
+        OverviewCalculationService.RetirementProjection projection = overviewService.computeRetirementProjection(budgetData,
                 person, 2049);
 
         // Then
