@@ -41,10 +41,6 @@ import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
-import com.moe.myfamilybudget.server.internal.persistence.entity.BankImportEntity;
-import com.moe.myfamilybudget.server.internal.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.*;
 
 import jakarta.annotation.PostConstruct;
@@ -81,11 +77,22 @@ public class PersistenceManager {
     private final LoanRepository loanRepository;
 
     // Gestion programmatique de la transaction pour l'initialisation au démarrage.
-    // Voir le commentaire dans saveToDatabase() : le @Transactional de classe ne
+    // Voir le commentaire dans BudgetPersistenceGateway.save() : le @Transactional de classe ne
     // s'applique jamais à un appel émis depuis @PostConstruct (self-invocation avant
     // la création du proxy AOP). On utilise donc un TransactionTemplate explicite
     // pour englober l'unique sauvegarde effectuée pendant init().
     private final TransactionTemplate transactionTemplate;
+
+    // Passerelle JPA (point 6 de l'audit, 1er incrément du Strangler Fig) : concentre tout
+    // l'accès direct aux repositories Spring Data. PersistenceManager conserve le cache mémoire
+    // (currentBudget/mutationLock/applyAndPersist) et la logique métier des mutations, et délègue
+    // désormais à `gateway` tout ce qui touche à la base. Volontairement pas un bean Spring : une
+    // instance est simplement construite ici, dans chacun des deux constructeurs, avec les mêmes
+    // repositories que ceux reçus par PersistenceManager — settingsRepository et
+    // retirementRepository ne lui sont pas transmis car ils ne sont jamais lus (settings et
+    // retirement sont rattachés à BudgetDataEntity par cascade JPA, voir le commentaire dans
+    // BudgetPersistenceGateway.save()).
+    private final BudgetPersistenceGateway gateway;
 
     // Default constructor for testing compatibility
     public PersistenceManager() {
@@ -108,6 +115,9 @@ public class PersistenceManager {
         this.bankImportRepository = null;
         this.loanRepository = null;
         this.transactionTemplate = null;
+        this.gateway = new BudgetPersistenceGateway(
+                null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null);
     }
 
     @Autowired
@@ -149,16 +159,19 @@ public class PersistenceManager {
         this.bankImportRepository = bankImportRepository;
         this.loanRepository = loanRepository;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.gateway = new BudgetPersistenceGateway(
+                budgetDataRepository, incomeRepository, chargeRepository, placementRepository,
+                realEstateRepository, oneOffExpenseRepository, transferRepository,
+                variableIncomeRepository, variableOverrideRepository, taxChildRepository,
+                taxBracketRepository, taxRateOverrideRepository, taxActualOverrideRepository,
+                assetCategoryRepository, bankImportRepository, loanRepository);
     }
-
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @PostConstruct
     public void init() {
         // Try to load from database first
         if (budgetDataRepository != null) {
-            // NOTE: comme pour saveToDatabase() plus bas, ce bloc s'exécute en
+            // NOTE: comme pour gateway.save(...) plus bas, ce bloc s'exécute en
             // self-invocation depuis @PostConstruct, donc hors du proxy AOP
             // @Transactional de la classe. Sans transaction explicite, la connexion
             // JDBC reste en autocommit, ce qui fait échouer la lecture paresseuse de
@@ -180,8 +193,8 @@ public class PersistenceManager {
             // rattachant pas rétroactivement une entité déjà détachée d'une session
             // précédente.
             BudgetDataModel complete = (transactionTemplate != null)
-                    ? transactionTemplate.execute(status -> loadExistingBudgetDataIfPresent())
-                    : loadExistingBudgetDataIfPresent();
+                    ? transactionTemplate.execute(status -> gateway.loadExistingIfPresent())
+                    : gateway.loadExistingIfPresent();
             if (complete != null) {
                 currentBudget.set(complete);
                 return;
@@ -191,7 +204,7 @@ public class PersistenceManager {
         // Create new default data and save to database.
         // NOTE: init() est un callback @PostConstruct, invoqué par Spring AVANT que le
         // proxy AOP (@Transactional) n'enveloppe ce bean. L'appel ci-dessous à
-        // saveToDatabase(...) est donc un self-invocation qui NE PASSE PAS par le proxy
+        // gateway.save(...) est donc un self-invocation qui NE PASSE PAS par le proxy
         // transactionnel de la classe : sans la mesure explicite ci-dessous, les
         // opérations d'écriture déclenchées (notamment loanRepository.deleteByBudgetDataId,
         // qui exécute une requête JPQL de suppression) échouent avec
@@ -200,90 +213,11 @@ public class PersistenceManager {
         // est réinitialisé). On ouvre donc explicitement une transaction programmatique.
         BudgetDataModel defaultData = createDefaultBudgetData();
         if (transactionTemplate != null) {
-            transactionTemplate.executeWithoutResult(status -> saveToDatabase(defaultData));
+            transactionTemplate.executeWithoutResult(status -> gateway.save(defaultData));
         } else {
-            saveToDatabase(defaultData);
+            gateway.save(defaultData);
         }
         currentBudget.set(defaultData);
-    }
-
-    /**
-     * Cherche la ligne budget_data existante et la convertit intégralement (y compris
-     * ses collections LAZY) en une seule opération, afin de rester dans la même
-     * session/transaction du début à la fin. Voir la note dans init() : séparer la
-     * requête de la conversion détache l'entité avant que ses associations paresseuses
-     * ne soient lues, ce qui casse leur chargement.
-     * @return le modèle complet, ou null si aucune ligne budget_data n'existe encore
-     */
-    private BudgetDataModel loadExistingBudgetDataIfPresent() {
-        Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
-        return existingData.map(this::loadCompleteBudgetData).orElse(null);
-    }
-
-    private BudgetDataModel loadCompleteBudgetData(BudgetDataEntity entity) {
-        BudgetDataModel loaded = EntityModelConverter.toModel(entity);
-        BankImportModel bi = loadBankImport(entity.getId());
-        return new BudgetDataModel(
-                loaded.settings(), loaded.incomes(), loaded.charges(), loaded.placements(),
-                loaded.realEstate(), loaded.retirement(), loaded.taxChildren(), loaded.taxBrackets(),
-                loaded.taxRateOverrides(), loaded.taxActualOverrides(), loaded.oneoff(),
-                loaded.transfers(), loaded.variableIncomes(), loaded.variableOverrides(),
-                bi != null ? bi : new BankImportModel(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
-                loaded.assetCategories(),
-                loaded.loans()
-        );
-    }
-    
-    private void saveToDatabase(BudgetDataModel model) {
-        // Fallback for testing when repositories are null
-        if (budgetDataRepository == null) {
-            return;
-        }
-
-        // IMPORTANT : EntityModelConverter.toEntity(model) renvoie toujours une entité
-        // avec id=null (voir son commentaire "Lists will be set separately"). Sans ce
-        // deleteAll() préalable, Hibernate ferait donc un INSERT à chaque appel de
-        // saveToDatabase() (édition d'une ligne, import JSON...) au lieu d'un UPDATE,
-        // créant une nouvelle ligne budget_data à chaque sauvegarde. Après un
-        // redémarrage, @PostConstruct init() relit via findFirstByOrderByIdAsc(), qui
-        // renvoie l'id le plus petit — donc la toute première ligne (souvent vide) —
-        // au lieu de la dernière version sauvegardée. On supprime l'existant avant de
-        // réinsérer (même mécanisme que resetData(), déjà en place plus bas) pour
-        // garantir qu'une seule ligne budget_data existe à tout moment.
-        budgetDataRepository.deleteAll();
-
-        BudgetDataEntity entity = EntityModelConverter.toEntity(model);
-
-        // NOTE: settings/retirement ne doivent PAS être sauvegardés séparément ici.
-        // Ils sont rattachés à `entity` (relations @OneToOne en CascadeType.ALL) et seront
-        // persistés automatiquement par le save() ci-dessous, dans la MÊME transaction/
-        // persistence context. Les sauvegarder au préalable via leur propre repository
-        // les détache du contexte de persistance (chaque appel de repository Spring Data
-        // s'exécute dans sa propre transaction), ce qui provoque ensuite un
-        // "PersistentObjectException: detached entity passed to persist" lors du
-        // cascade effectué par budgetDataRepository.save(entity) - en particulier au
-        // démarrage de l'application (@PostConstruct init()), qui s'exécute hors de toute
-        // transaction Spring.
-
-        // Save the main entity (cascade ALL persiste settings/retirement automatiquement)
-        entity = budgetDataRepository.save(entity);
-        
-        // Save all child entities with proper parent references
-        saveIncomes(model.incomes(), entity);
-        saveCharges(model.charges(), entity);
-        savePlacements(model.placements(), entity);
-        saveRealEstate(model.realEstate(), entity);
-        saveOneOffExpenses(model.oneoff(), entity);
-        saveTransfers(model.transfers(), entity);
-        saveVariableIncomes(model.variableIncomes(), entity);
-        saveVariableOverrides(model.variableOverrides(), entity);
-        saveTaxChildren(model.taxChildren(), entity);
-        saveTaxBrackets(model.taxBrackets(), entity);
-        saveTaxRateOverrides(model.taxRateOverrides(), entity);
-        saveTaxActualOverrides(model.taxActualOverrides(), entity);
-        saveAssetCategories(model.assetCategories(), entity);
-        saveLoans(model.loans(), entity);
-        saveBankImport(model.bankImport(), entity);
     }
 
     // Verrou dédié à applyAndPersist(): protège la séquence lecture -> mutation -> écriture
@@ -299,7 +233,7 @@ public class PersistenceManager {
      * Contrat volontairement différent de l'ancien pattern
      * "currentBudget.updateAndGet(...)" suivi d'un saveToDatabase(updated) séparé :
      * ici, la mémoire (currentBudget) n'est mise à jour QU'APRES que la sauvegarde en
-     * base a réussi. Si saveToDatabase(...) lève une exception (contrainte SQL, perte de
+     * base a réussi. Si gateway.save(...) lève une exception (contrainte SQL, perte de
      * connexion...), le rollback transactionnel de la base est cohérent avec l'état
      * conservé en mémoire : aucun des deux n'a été modifié. Avec l'ancien pattern, la
      * mémoire était modifiée avant même de savoir si la sauvegarde allait réussir, ce qui
@@ -322,215 +256,90 @@ public class PersistenceManager {
 
             // Persistée AVANT toute écriture sur currentBudget : si ça échoue, on sort par
             // exception sans jamais avoir touché à la mémoire.
-            saveToDatabase(updated);
+            gateway.save(updated);
 
             currentBudget.set(updated);
             return updated;
         }
     }
 
-    private void saveLoans(List<LoanModel> loans, BudgetDataEntity budgetData) {
-        if (loanRepository == null) return;
-        loanRepository.deleteByBudgetDataId(budgetData.getId());
-        if (loans != null) {
-            for (LoanModel loan : loans) {
-                loanRepository.save(EntityModelConverter.toEntity(loan, budgetData));
-            }
-        }
-    }
-
-    private BankImportModel loadBankImport(Long budgetDataId) {
-        if (bankImportRepository == null || budgetDataId == null) return null;
-        Optional<BankImportEntity> biEntity = bankImportRepository.findFirstByBudgetDataId(budgetDataId);
-        if (biEntity.isPresent() && biEntity.get().getJsonData() != null && !biEntity.get().getJsonData().isBlank()) {
-            try {
-                return objectMapper.readValue(biEntity.get().getJsonData(), BankImportModel.class);
-            } catch (Exception e) {
-                LOG.error("Erreur lors de la lecture de BankImport depuis la base: ", e);
-            }
-        }
-        return null;
-    }
-
-    private void saveBankImport(BankImportModel bankImport, BudgetDataEntity budgetData) {
-        if (bankImportRepository == null || budgetData == null) return;
-        bankImportRepository.deleteByBudgetDataId(budgetData.getId());
-        if (bankImport != null) {
-            try {
-                String json = objectMapper.writeValueAsString(bankImport);
-                BankImportEntity biEntity = new BankImportEntity(json);
-                biEntity.setBudgetData(budgetData);
-                bankImportRepository.save(biEntity);
-            } catch (Exception e) {
-                LOG.error("Erreur lors de la sauvegarde de BankImport dans la base: ", e);
-            }
-        }
-    }
-    
-    private void saveIncomes(List<IncomeModel> incomes, BudgetDataEntity budgetData) {
-        if (incomeRepository == null) return;
-        incomeRepository.deleteByBudgetDataId(budgetData.getId());
-        for (IncomeModel income : incomes) {
-            incomeRepository.save(EntityModelConverter.toEntity(income, budgetData));
-        }
-    }
-    
-    private void saveCharges(List<ChargeModel> charges, BudgetDataEntity budgetData) {
-        if (chargeRepository == null) return;
-        chargeRepository.deleteByBudgetDataId(budgetData.getId());
-        for (ChargeModel charge : charges) {
-            chargeRepository.save(EntityModelConverter.toEntity(charge, budgetData));
-        }
-    }
-    
-    private void savePlacements(List<PlacementModel> placements, BudgetDataEntity budgetData) {
-        if (placementRepository == null) return;
-        placementRepository.deleteByBudgetDataId(budgetData.getId());
-        for (PlacementModel placement : placements) {
-            placementRepository.save(EntityModelConverter.toEntity(placement, budgetData));
-        }
-    }
-    
-    private void saveRealEstate(List<RealEstateModel> realEstate, BudgetDataEntity budgetData) {
-        if (realEstateRepository == null) return;
-        realEstateRepository.deleteByBudgetDataId(budgetData.getId());
-        for (RealEstateModel re : realEstate) {
-            realEstateRepository.save(EntityModelConverter.toEntity(re, budgetData));
-        }
-    }
-    
-    private void saveOneOffExpenses(List<OneOffExpenseModel> oneoff, BudgetDataEntity budgetData) {
-        if (oneOffExpenseRepository == null) return;
-        oneOffExpenseRepository.deleteByBudgetDataId(budgetData.getId());
-        for (OneOffExpenseModel expense : oneoff) {
-            oneOffExpenseRepository.save(EntityModelConverter.toEntity(expense, budgetData));
-        }
-    }
-    
-    private void saveTransfers(List<TransferModel> transfers, BudgetDataEntity budgetData) {
-        if (transferRepository == null) return;
-        transferRepository.deleteByBudgetDataId(budgetData.getId());
-        for (TransferModel transfer : transfers) {
-            transferRepository.save(EntityModelConverter.toEntity(transfer, budgetData));
-        }
-    }
-    
-    private void saveVariableIncomes(List<VariableIncomeModel> variableIncomes, BudgetDataEntity budgetData) {
-        if (variableIncomeRepository == null) return;
-        variableIncomeRepository.deleteByBudgetDataId(budgetData.getId());
-        for (VariableIncomeModel vi : variableIncomes) {
-            variableIncomeRepository.save(EntityModelConverter.toEntity(vi, budgetData));
-        }
-    }
-    
-    private void saveVariableOverrides(List<VariableOverrideModel> variableOverrides, BudgetDataEntity budgetData) {
-        if (variableOverrideRepository == null) return;
-        variableOverrideRepository.deleteByBudgetDataId(budgetData.getId());
-        for (VariableOverrideModel vo : variableOverrides) {
-            variableOverrideRepository.save(EntityModelConverter.toEntity(vo, budgetData));
-        }
-    }
-    
-    private void saveTaxChildren(List<TaxChildModel> taxChildren, BudgetDataEntity budgetData) {
-        if (taxChildRepository == null) return;
-        taxChildRepository.deleteByBudgetDataId(budgetData.getId());
-        for (TaxChildModel tc : taxChildren) {
-            taxChildRepository.save(EntityModelConverter.toEntity(tc, budgetData));
-        }
-    }
-    
-    private void saveTaxBrackets(List<TaxBracketModel> taxBrackets, BudgetDataEntity budgetData) {
-        if (taxBracketRepository == null) return;
-        taxBracketRepository.deleteByBudgetDataId(budgetData.getId());
-        for (TaxBracketModel tb : taxBrackets) {
-            taxBracketRepository.save(EntityModelConverter.toEntity(tb, budgetData));
-        }
-    }
-    
-    private void saveTaxRateOverrides(List<TaxRateOverrideModel> taxRateOverrides, BudgetDataEntity budgetData) {
-        if (taxRateOverrideRepository == null) return;
-        taxRateOverrideRepository.deleteByBudgetDataId(budgetData.getId());
-        for (TaxRateOverrideModel tro : taxRateOverrides) {
-            taxRateOverrideRepository.save(EntityModelConverter.toEntity(tro, budgetData));
-        }
-    }
-    
-    private void saveTaxActualOverrides(List<TaxActualOverrideModel> taxActualOverrides, BudgetDataEntity budgetData) {
-        if (taxActualOverrideRepository == null) return;
-        taxActualOverrideRepository.deleteByBudgetDataId(budgetData.getId());
-        for (TaxActualOverrideModel tao : taxActualOverrides) {
-            taxActualOverrideRepository.save(EntityModelConverter.toEntity(tao, budgetData));
-        }
-    }
-    
-    private void saveAssetCategories(List<AssetCategoryModel> assetCategories, BudgetDataEntity budgetData) {
-        if (assetCategoryRepository == null) return;
-        assetCategoryRepository.deleteByBudgetDataId(budgetData.getId());
-        for (AssetCategoryModel ac : assetCategories) {
-            assetCategoryRepository.save(EntityModelConverter.toEntity(ac, budgetData));
-        }
-    }
-
     /**
      * Récupère le modèle de budget complet depuis la base de données.
+     *
+     * Double-checked locking sur {@link #mutationLock} (même verrou qu'{@link #applyAndPersist}) :
+     * le chemin rapide (budget déjà chargé, cas de très loin le plus fréquent puisque
+     * {@code currentBudget} n'est plus jamais {@code null} après le démarrage) reste hors verrou
+     * pour ne pas payer de synchronisation sur un getter appelé en permanence. Seul le chemin lent
+     * (premier chargement, ou juste après un {@link #resetData()}) prend le verrou, pour éviter
+     * qu'un chargement/création concurrent ne double-crée un budget par défaut en base — voir le
+     * point 5 de l'audit : {@code AtomicReference} ne rend pas atomique la séquence complète
+     * "lire, décider, écrire", seulement chacune de ses affectations individuelles.
      */
     public BudgetDataModel getBudgetData() {
         BudgetDataModel model = currentBudget.get();
-        if (model == null) {
-            // Reload from database
-            if (budgetDataRepository != null) {
-                Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
-                if (existingData.isPresent()) {
-                    BudgetDataModel loaded = EntityModelConverter.toModel(existingData.get());
-                    BankImportModel bi = loadBankImport(existingData.get().getId());
-                    model = new BudgetDataModel(
-                            loaded.settings(), loaded.incomes(), loaded.charges(), loaded.placements(),
-                            loaded.realEstate(), loaded.retirement(), loaded.taxChildren(), loaded.taxBrackets(),
-                            loaded.taxRateOverrides(), loaded.taxActualOverrides(), loaded.oneoff(),
-                            loaded.transfers(), loaded.variableIncomes(), loaded.variableOverrides(),
-                            bi != null ? bi : new BankImportModel(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
-                            loaded.assetCategories(),
-                            loaded.loans()
-                    );
-                }
+        if (model != null) {
+            return model;
+        }
+        synchronized (mutationLock) {
+            // Un autre thread a pu déjà effectuer le chargement/création pendant qu'on attendait
+            // le verrou : on revérifie avant de refaire le travail.
+            model = currentBudget.get();
+            if (model != null) {
+                return model;
             }
-            
+            // Reload from database
+            model = gateway.loadExistingIfPresent();
+
             if (model == null) {
                 model = createDefaultBudgetData();
-                saveToDatabase(model);
+                gateway.save(model);
             }
             currentBudget.set(model);
+            return model;
         }
-        return model;
     }
 
     /**
      * Remplace l'intégralité du modèle de données (utilisé lors de l'import JSON).
+     *
+     * Synchronisé sur {@link #mutationLock} (point 5 de l'audit) : sans ce verrou, un import
+     * concurrent d'une mutation passant par {@link #applyAndPersist} pourrait avoir lu l'ancien
+     * état juste avant cet appel et écraser ensuite en base, avec son propre {@code gateway.save},
+     * le résultat de cet import — perte silencieuse de l'import.
      */
     public void setBudgetData(BudgetDataModel data) {
-        if (data != null) {
-            saveToDatabase(data);
-            currentBudget.set(data);
-        } else {
-            BudgetDataModel defaultData = createDefaultBudgetData();
-            saveToDatabase(defaultData);
-            currentBudget.set(defaultData);
+        synchronized (mutationLock) {
+            if (data != null) {
+                gateway.save(data);
+                currentBudget.set(data);
+            } else {
+                BudgetDataModel defaultData = createDefaultBudgetData();
+                gateway.save(defaultData);
+                currentBudget.set(defaultData);
+            }
         }
     }
 
     /**
      * Réinitialise les données aux valeurs par défaut.
+     *
+     * Synchronisé sur {@link #mutationLock} (point 5 de l'audit), pour la même raison que
+     * {@link #setBudgetData}: sans le verrou, une mutation concurrente en cours via
+     * {@link #applyAndPersist} pourrait persister son propre résultat juste après ce
+     * {@code deleteAll()}, ressuscitant les données que resetData() venait d'effacer.
      */
     public BudgetDataModel resetData() {
-        // Clear existing data
-        if (budgetDataRepository != null) {
-            budgetDataRepository.deleteAll();
+        synchronized (mutationLock) {
+            // Clear existing data
+            if (budgetDataRepository != null) {
+                budgetDataRepository.deleteAll();
+            }
+
+            BudgetDataModel defaultData = createDefaultBudgetData();
+            gateway.save(defaultData);
+            currentBudget.set(defaultData);
+            return defaultData;
         }
-        
-        BudgetDataModel defaultData = createDefaultBudgetData();
-        saveToDatabase(defaultData);
-        currentBudget.set(defaultData);
-        return defaultData;
     }
 
     /**
