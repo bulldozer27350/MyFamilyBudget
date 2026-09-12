@@ -125,6 +125,25 @@ class BudgetPersistenceGateway {
     }
 
     /**
+     * Indique si une base de données est réellement configurée (faux en mode test, où
+     * {@code PersistenceManager} est construit via son constructeur sans argument et tous les
+     * repositories valent {@code null} : le cache fonctionne alors en mémoire pure).
+     */
+    boolean hasDatabase() {
+        return budgetDataRepository != null;
+    }
+
+    /**
+     * Supprime la ligne {@code budget_data} existante (et, par cascade, ses entités associées).
+     * Ne fait rien en mode test sans base.
+     */
+    void deleteAll() {
+        if (budgetDataRepository != null) {
+            budgetDataRepository.deleteAll();
+        }
+    }
+
+    /**
      * Recharge le modèle complet (y compris l'import bancaire) depuis la base, ou {@code null} si
      * aucune ligne {@code budget_data} n'existe encore.
      *

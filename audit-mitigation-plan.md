@@ -4,10 +4,10 @@ Audit réalisé sur le dépôt `bulldozer27350/MyFamilyBudget` (branche `main`),
 module `back/server`. Classement par criticité : risques de bug (du plus au moins impactant),
 puis maintenabilité (lisibilité, évolutivité), puis sécurité/configuration.
 
-Statut des patchs livrés : **0001** (point 1), **0003** (point 3), **0004** (point 2) et **0005**
-(complément point 5 + incrément 1 du point 6) sont fournis et validés (`git apply --check` sur
-clone frais, chaque patch dépend des précédents). Les autres points sont documentés avec un plan
-mais pas encore patchés.
+Statut des patchs livrés : **0001** (point 1), **0003** (point 3), **0004** (point 2), **0005**
+(complément point 5 + incrément 1 du point 6) et **0006** (incrément 2 du point 6) sont fournis et
+validés (`git apply --check` sur clone frais, chaque patch dépend des précédents). Les autres
+points sont documentés avec un plan mais pas encore patchés.
 
 ---
 
@@ -165,11 +165,11 @@ Aucune action supplémentaire nécessaire tant que l'application reste mono-inst
 
 ## 🟠 Maintenabilité
 
-### 6. `PersistenceManager` God Class (1512 lignes) — 🚧 en cours (incrément 1/3 patché : 0005)
+### 6. `PersistenceManager` God Class (1512 lignes) — 🚧 en cours (incréments 1 et 2/3 patchés : 0005, 0006)
 
 **Plan.** Strangler Fig appliqué au backend, trois composants cibles :
 - `BudgetPersistenceGateway` (delete/save des entités JPA) — **fait**
-- `BudgetCacheStore` (gestion de l'`AtomicReference` / `applyAndPersist`) — à faire
+- `BudgetCacheStore` (gestion de l'`AtomicReference` / `applyAndPersist`) — **fait**
 - `BudgetMutationService` (logique des `updateXxx`/`removeXxx`, dont le dispatcher du point 3) — à faire
 
 `PersistenceManager` devient une façade fine déléguant aux trois, API publique inchangée pour les
@@ -180,24 +180,34 @@ appelants. Migration composant par composant, validée par les tests existants.
 
 **Incrément 1 livré (patch 0005).** `BudgetPersistenceGateway` extrait : concentre tout l'accès
 direct aux 16 repositories Spring Data utilisés (`save`, `loadExistingIfPresent`, et les 15
-méthodes `saveXxx`/`loadBankImport`/`saveBankImport` par collection). `PersistenceManager` ne
-garde que les 2 repositories jamais utilisés en pratique (`settingsRepository`,
-`retirementRepository`, conservés tels quels pour ne pas changer la signature du constructeur
-`@Autowired`), le cache mémoire (`currentBudget`/`mutationLock`/`applyAndPersist`) et toute la
-logique métier des mutations. `PersistenceManager` passe de 1449 à 1209 lignes (-17 %).
-Volontairement une classe simple (pas un bean Spring), instanciée directement dans les deux
-constructeurs de `PersistenceManager` — aucun changement pour les appelants ni pour les tests
-existants (`new PersistenceManager()` fonctionne à l'identique).
+méthodes `saveXxx`/`loadBankImport`/`saveBankImport` par collection). Volontairement une classe
+simple (pas un bean Spring), instanciée directement dans les deux constructeurs de
+`PersistenceManager` — aucun changement pour les appelants ni pour les tests existants
+(`new PersistenceManager()` fonctionne à l'identique).
 
 En passant, déduplication d'un bloc de reconstruction du modèle complet depuis les entités JPA qui
 était dupliqué entre `init()` et le chemin lent de `getBudgetData()` (patch du point 5) : les deux
 appellent désormais `gateway.loadExistingIfPresent()`.
 
-**Prochains incréments.** `BudgetCacheStore` (extraction du cache + `applyAndPersist` +
-`getBudgetData`/`setBudgetData`/`resetData`, qui dépendra de `BudgetPersistenceGateway`), puis
-`BudgetMutationService` (toute la logique `updateXxx`/`addXxx`/`removeXxx`, qui dépendra de
-`BudgetCacheStore`). Chaque incrément reste isolé et validable indépendamment, dans l'esprit
-Strangler Fig plutôt qu'une réécriture en un seul patch risqué.
+**Incrément 2 livré (patch 0006).** `BudgetCacheStore` extrait : concentre le cache mémoire
+(`currentBudget`, `mutationLock`), le point d'entrée unique de mutation (`applyAndPersist`),
+`init`, `getBudgetData`, `setBudgetData`, `resetData` et `createDefaultBudgetData`. Dépend de
+`BudgetPersistenceGateway` (incrément 1) pour tout accès base — deux méthodes ajoutées à la
+gateway à cette occasion (`hasDatabase()`, `deleteAll()`) pour que `BudgetCacheStore` n'ait plus
+jamais besoin de référencer un repository JPA directement. `PersistenceManager` garde des méthodes
+publiques identiques (`init`, `getBudgetData`, `setBudgetData`, `resetData`) qui ne font plus que
+déléguer à `cacheStore`, plus la méthode privée `applyAndPersist` (conservée comme simple
+relais pour ne pas devoir changer sa cinquantaine d'appelants internes dans la même classe).
+`PersistenceManager` passe de 1209 à 1018 lignes (soit -30 % cumulés depuis les 1449 lignes
+initiales). Comme `gateway`, volontairement pas un bean Spring.
+
+**Prochain et dernier incrément.** `BudgetMutationService` : toute la logique métier des mutations
+encore présente dans `PersistenceManager` (dispatcher du point 3, sections trésorerie/patrimoine,
+retraite, fiscalité, catégories d'actifs, historique de placement, import bancaire — une
+cinquantaine de méthodes), qui dépendra de `BudgetCacheStore` pour `applyAndPersist`/
+`getBudgetData`/`createDefaultBudgetData`. C'est le plus gros morceau des trois (l'essentiel des
+lignes restantes de `PersistenceManager`) ; chaque incrément reste isolé et validable
+indépendamment, dans l'esprit Strangler Fig plutôt qu'une réécriture en un seul patch risqué.
 
 ### 7. `deleteAll()` + réinsertion complète à chaque sauvegarde
 
@@ -259,6 +269,6 @@ actuel. Modifiable sans recompilation si l'infra change.
 2. ~~Point 3 (dispatch par chaînes)~~ — patché, bug historique sur l'historique des placements corrigé au passage
 3. ~~Point 2 (gestion d'erreurs centralisée)~~ — patché, bénéficie directement du dispatcher du point 3 (`UnknownTresorerieFieldException` remonte désormais en 400 Bad Request explicite via le `GlobalExceptionHandler`)
 4. ~~Point 5 (course lecture-modification-écriture)~~ — patché ; le patch 0001 ne couvrait que 16 des 19 méthodes écrivant dans `currentBudget`, les 3 restantes (`getBudgetData`, `setBudgetData`, `resetData`) ont été synchronisées sur le même verrou
-5. Point 6 (`PersistenceManager` God Class) — 🚧 incrément 1/3 patché (`BudgetPersistenceGateway`) ; `BudgetCacheStore` et `BudgetMutationService` restent à extraire
+5. Point 6 (`PersistenceManager` God Class) — 🚧 incréments 1 et 2/3 patchés (`BudgetPersistenceGateway`, `BudgetCacheStore`) ; `BudgetMutationService` reste à extraire (le plus gros des trois)
 6. Points 7 à 10 (maintenabilité) — à planifier selon disponibilité
 7. Points 4, 11, 12, 13 (sécurité/config) — rapides à traiter indépendamment, à caser entre deux chantiers plus lourds

@@ -3,15 +3,12 @@ package com.moe.myfamilybudget.server.internal.persistence;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -55,8 +52,6 @@ public class PersistenceManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceManager.class);
 
-    private final AtomicReference<BudgetDataModel> currentBudget = new AtomicReference<>();
-    
     private final BudgetDataRepository budgetDataRepository;
     private final SettingsRepository settingsRepository;
     private final IncomeRepository incomeRepository;
@@ -84,15 +79,21 @@ public class PersistenceManager {
     private final TransactionTemplate transactionTemplate;
 
     // Passerelle JPA (point 6 de l'audit, 1er incrément du Strangler Fig) : concentre tout
-    // l'accès direct aux repositories Spring Data. PersistenceManager conserve le cache mémoire
-    // (currentBudget/mutationLock/applyAndPersist) et la logique métier des mutations, et délègue
-    // désormais à `gateway` tout ce qui touche à la base. Volontairement pas un bean Spring : une
+    // l'accès direct aux repositories Spring Data. Volontairement pas un bean Spring : une
     // instance est simplement construite ici, dans chacun des deux constructeurs, avec les mêmes
     // repositories que ceux reçus par PersistenceManager — settingsRepository et
     // retirementRepository ne lui sont pas transmis car ils ne sont jamais lus (settings et
     // retirement sont rattachés à BudgetDataEntity par cascade JPA, voir le commentaire dans
     // BudgetPersistenceGateway.save()).
     private final BudgetPersistenceGateway gateway;
+
+    // Cache mémoire + point d'entrée unique de mutation (point 6 de l'audit, 2e incrément du
+    // Strangler Fig) : concentre currentBudget/mutationLock/applyAndPersist/init/getBudgetData/
+    // setBudgetData/resetData/createDefaultBudgetData. PersistenceManager ne garde désormais que
+    // la logique métier des mutations (dispatcher du point 3, sections trésorerie/patrimoine/
+    // retraite/fiscalité), qui délègue à `cacheStore` pour toute lecture/écriture de l'état.
+    // Comme `gateway`, volontairement pas un bean Spring.
+    private final BudgetCacheStore cacheStore;
 
     // Default constructor for testing compatibility
     public PersistenceManager() {
@@ -118,6 +119,7 @@ public class PersistenceManager {
         this.gateway = new BudgetPersistenceGateway(
                 null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null);
+        this.cacheStore = new BudgetCacheStore(this.gateway, this.transactionTemplate);
     }
 
     @Autowired
@@ -165,181 +167,45 @@ public class PersistenceManager {
                 variableIncomeRepository, variableOverrideRepository, taxChildRepository,
                 taxBracketRepository, taxRateOverrideRepository, taxActualOverrideRepository,
                 assetCategoryRepository, bankImportRepository, loanRepository);
+        this.cacheStore = new BudgetCacheStore(this.gateway, this.transactionTemplate);
     }
 
     @PostConstruct
     public void init() {
-        // Try to load from database first
-        if (budgetDataRepository != null) {
-            // NOTE: comme pour gateway.save(...) plus bas, ce bloc s'exécute en
-            // self-invocation depuis @PostConstruct, donc hors du proxy AOP
-            // @Transactional de la classe. Sans transaction explicite, la connexion
-            // JDBC reste en autocommit, ce qui fait échouer la lecture paresseuse de
-            // BankImportEntity.jsonData (mappé en Large Object côté PostgreSQL) avec
-            // "Large Objects may not be used in auto-commit mode" — mais uniquement
-            // dès qu'une ligne bank_import existe déjà en base. Le tout premier
-            // démarrage sur une base vide ne déclenche jamais ce chemin (existingData
-            // est alors absent), d'où un bug invisible en test initial et bloquant dès
-            // le redémarrage suivant. On ouvre donc explicitement une transaction
-            // programmatique autour de la lecture, au même titre que l'écriture.
-            //
-            // IMPORTANT : la requête findFirstByOrderByIdAsc() DOIT elle-même s'exécuter
-            // à l'intérieur de cette transaction, pas avant. Un appel de méthode de
-            // repository Spring Data s'exécute par défaut dans sa propre transaction,
-            // qui se termine dès qu'il retourne : l'entité obtenue serait alors détachée
-            // avant même d'atteindre transactionTemplate.execute(), et toute collection
-            // LAZY qu'elle porte (ex. RetirementEntity.people) échouerait au premier accès
-            // avec "could not initialize proxy - no Session", une nouvelle transaction ne
-            // rattachant pas rétroactivement une entité déjà détachée d'une session
-            // précédente.
-            BudgetDataModel complete = (transactionTemplate != null)
-                    ? transactionTemplate.execute(status -> gateway.loadExistingIfPresent())
-                    : gateway.loadExistingIfPresent();
-            if (complete != null) {
-                currentBudget.set(complete);
-                return;
-            }
-        }
-        
-        // Create new default data and save to database.
-        // NOTE: init() est un callback @PostConstruct, invoqué par Spring AVANT que le
-        // proxy AOP (@Transactional) n'enveloppe ce bean. L'appel ci-dessous à
-        // gateway.save(...) est donc un self-invocation qui NE PASSE PAS par le proxy
-        // transactionnel de la classe : sans la mesure explicite ci-dessous, les
-        // opérations d'écriture déclenchées (notamment loanRepository.deleteByBudgetDataId,
-        // qui exécute une requête JPQL de suppression) échouent avec
-        // "TransactionRequiredException: Executing an update/delete query" dès que la
-        // base est vide au démarrage (typiquement en environnement de test, où le schéma
-        // est réinitialisé). On ouvre donc explicitement une transaction programmatique.
-        BudgetDataModel defaultData = createDefaultBudgetData();
-        if (transactionTemplate != null) {
-            transactionTemplate.executeWithoutResult(status -> gateway.save(defaultData));
-        } else {
-            gateway.save(defaultData);
-        }
-        currentBudget.set(defaultData);
+        cacheStore.init();
     }
 
-    // Verrou dédié à applyAndPersist(): protège la séquence lecture -> mutation -> écriture
-    // ci-dessous contre les pertes de mise à jour en cas de requêtes concurrentes (deux appels
-    // simultanés partant tous les deux du même état "current" et écrasant l'un le résultat de
-    // l'autre). AtomicReference garantit uniquement l'atomicité d'une affectation individuelle,
-    // pas celle de la séquence complète.
-    private final Object mutationLock = new Object();
-
     /**
-     * Point d'entrée unique pour toute mutation du budget qui doit être persistée.
-     *
-     * Contrat volontairement différent de l'ancien pattern
-     * "currentBudget.updateAndGet(...)" suivi d'un saveToDatabase(updated) séparé :
-     * ici, la mémoire (currentBudget) n'est mise à jour QU'APRES que la sauvegarde en
-     * base a réussi. Si gateway.save(...) lève une exception (contrainte SQL, perte de
-     * connexion...), le rollback transactionnel de la base est cohérent avec l'état
-     * conservé en mémoire : aucun des deux n'a été modifié. Avec l'ancien pattern, la
-     * mémoire était modifiée avant même de savoir si la sauvegarde allait réussir, ce qui
-     * pouvait la laisser durablement désynchronisée de la base après une erreur.
-     *
-     * @param mutation fonction pure calculant le nouvel état à partir de l'état courant
-     *                 (ou d'un budget par défaut si aucun état n'existe encore). Ne doit
-     *                 provoquer aucun effet de bord (pas d'accès base, pas d'écriture sur
-     *                 currentBudget) : seule cette méthode a le droit d'écrire dans
-     *                 currentBudget.
-     * @return le nouvel état, déjà persisté et déjà visible depuis getBudgetData()
+     * Point d'entrée unique, pour toutes les méthodes ci-dessous, de toute mutation du budget qui
+     * doit être persistée. Délègue à {@link BudgetCacheStore#applyAndPersist} (point 6 de
+     * l'audit, 2e incrément du Strangler Fig) : voir sa javadoc pour le contrat complet
+     * (persistance avant écriture mémoire, verrouillage contre les pertes de mise à jour).
      */
     private BudgetDataModel applyAndPersist(java.util.function.UnaryOperator<BudgetDataModel> mutation) {
-        synchronized (mutationLock) {
-            BudgetDataModel base = currentBudget.get();
-            if (base == null) {
-                base = createDefaultBudgetData();
-            }
-            BudgetDataModel updated = mutation.apply(base);
-
-            // Persistée AVANT toute écriture sur currentBudget : si ça échoue, on sort par
-            // exception sans jamais avoir touché à la mémoire.
-            gateway.save(updated);
-
-            currentBudget.set(updated);
-            return updated;
-        }
+        return cacheStore.applyAndPersist(mutation);
     }
 
     /**
-     * Récupère le modèle de budget complet depuis la base de données.
-     *
-     * Double-checked locking sur {@link #mutationLock} (même verrou qu'{@link #applyAndPersist}) :
-     * le chemin rapide (budget déjà chargé, cas de très loin le plus fréquent puisque
-     * {@code currentBudget} n'est plus jamais {@code null} après le démarrage) reste hors verrou
-     * pour ne pas payer de synchronisation sur un getter appelé en permanence. Seul le chemin lent
-     * (premier chargement, ou juste après un {@link #resetData()}) prend le verrou, pour éviter
-     * qu'un chargement/création concurrent ne double-crée un budget par défaut en base — voir le
-     * point 5 de l'audit : {@code AtomicReference} ne rend pas atomique la séquence complète
-     * "lire, décider, écrire", seulement chacune de ses affectations individuelles.
+     * Récupère le modèle de budget complet. Délègue à {@link BudgetCacheStore#getBudgetData}.
      */
     public BudgetDataModel getBudgetData() {
-        BudgetDataModel model = currentBudget.get();
-        if (model != null) {
-            return model;
-        }
-        synchronized (mutationLock) {
-            // Un autre thread a pu déjà effectuer le chargement/création pendant qu'on attendait
-            // le verrou : on revérifie avant de refaire le travail.
-            model = currentBudget.get();
-            if (model != null) {
-                return model;
-            }
-            // Reload from database
-            model = gateway.loadExistingIfPresent();
-
-            if (model == null) {
-                model = createDefaultBudgetData();
-                gateway.save(model);
-            }
-            currentBudget.set(model);
-            return model;
-        }
+        return cacheStore.getBudgetData();
     }
 
     /**
-     * Remplace l'intégralité du modèle de données (utilisé lors de l'import JSON).
-     *
-     * Synchronisé sur {@link #mutationLock} (point 5 de l'audit) : sans ce verrou, un import
-     * concurrent d'une mutation passant par {@link #applyAndPersist} pourrait avoir lu l'ancien
-     * état juste avant cet appel et écraser ensuite en base, avec son propre {@code gateway.save},
-     * le résultat de cet import — perte silencieuse de l'import.
+     * Remplace l'intégralité du modèle de données (utilisé lors de l'import JSON). Délègue à
+     * {@link BudgetCacheStore#setBudgetData}.
      */
     public void setBudgetData(BudgetDataModel data) {
-        synchronized (mutationLock) {
-            if (data != null) {
-                gateway.save(data);
-                currentBudget.set(data);
-            } else {
-                BudgetDataModel defaultData = createDefaultBudgetData();
-                gateway.save(defaultData);
-                currentBudget.set(defaultData);
-            }
-        }
+        cacheStore.setBudgetData(data);
     }
 
     /**
-     * Réinitialise les données aux valeurs par défaut.
-     *
-     * Synchronisé sur {@link #mutationLock} (point 5 de l'audit), pour la même raison que
-     * {@link #setBudgetData}: sans le verrou, une mutation concurrente en cours via
-     * {@link #applyAndPersist} pourrait persister son propre résultat juste après ce
-     * {@code deleteAll()}, ressuscitant les données que resetData() venait d'effacer.
+     * Réinitialise les données aux valeurs par défaut. Délègue à
+     * {@link BudgetCacheStore#resetData}.
      */
     public BudgetDataModel resetData() {
-        synchronized (mutationLock) {
-            // Clear existing data
-            if (budgetDataRepository != null) {
-                budgetDataRepository.deleteAll();
-            }
-
-            BudgetDataModel defaultData = createDefaultBudgetData();
-            gateway.save(defaultData);
-            currentBudget.set(defaultData);
-            return defaultData;
-        }
+        return cacheStore.resetData();
     }
 
     /**
@@ -354,7 +220,7 @@ public class PersistenceManager {
         resultRow.put("id", uid);
 
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             int birthYear = (base.settings() != null && base.settings().birthYear() != null)
                     ? base.settings().birthYear() : 1985;
             int retireAge = (base.settings() != null && base.settings().retireAge() != null)
@@ -531,7 +397,7 @@ public class PersistenceManager {
         // un field inconnu lève désormais UnknownTresorerieFieldException au lieu de renvoyer
         // silencieusement l'état inchangé.
         applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             return com.moe.myfamilybudget.server.internal.updater.TresorerieFieldUpdateDispatcher
                     .update(base, listKey, id, field, value);
         });
@@ -546,7 +412,7 @@ public class PersistenceManager {
         }
 
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
 
             if ("incomes".equalsIgnoreCase(listKey)) {
                 List<IncomeModel> list = base.getEffectiveIncomes().stream()
@@ -607,7 +473,7 @@ public class PersistenceManager {
         resultRow.put("id", uid);
 
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             int retireYear = (base.settings() != null ? base.settings().getEffectiveBirthYear() : 1985)
                     + (base.settings() != null ? base.settings().getEffectiveRetireAge() : 64);
 
@@ -789,7 +655,7 @@ public class PersistenceManager {
      */
     public void updateRetirement(RetirementModel retirement) {
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             return base.withRetirement(retirement);
         });
     }
@@ -800,7 +666,7 @@ public class PersistenceManager {
     public void updateTaxConfig(List<TaxChildModel> children, List<TaxBracketModel> brackets,
                                 List<TaxRateOverrideModel> rateOverrides, List<TaxActualOverrideModel> actualOverrides) {
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             return base.withTaxChildren(children != null ? children : base.taxChildren())
                     .withTaxBrackets(brackets != null ? brackets : base.taxBrackets())
                     .withTaxRateOverrides(rateOverrides != null ? rateOverrides : base.taxRateOverrides())
@@ -814,7 +680,7 @@ public class PersistenceManager {
     public void updateTaxSettings(String field, Object value) {
         if (field == null) return;
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             SettingsModel s = base.settings();
             SettingsModel updatedSettings = new SettingsModel(
                     "birthYear".equals(field) ? toInteger(value, 1985) : s.birthYear(),
@@ -842,7 +708,7 @@ public class PersistenceManager {
     public void updateAssetCategory(String id, String field, Object value) {
         if (id == null || field == null) return;
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             List<AssetCategoryModel> list = new ArrayList<>(base.getEffectiveAssetCategories());
             List<AssetCategoryModel> updatedList = new ArrayList<>();
             for (AssetCategoryModel c : list) {
@@ -869,7 +735,7 @@ public class PersistenceManager {
     public void addAssetCategory(AssetCategoryModel category) {
         if (category == null) return;
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             List<AssetCategoryModel> list = new ArrayList<>(base.getEffectiveAssetCategories());
             list.add(category);
             return base.withAssetCategories(list);
@@ -882,7 +748,7 @@ public class PersistenceManager {
     public void removeAssetCategory(String id) {
         if (id == null) return;
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             List<AssetCategoryModel> list = base.getEffectiveAssetCategories().stream()
                     .filter(c -> !Objects.equals(c.id(), id))
                     .toList();
@@ -895,7 +761,7 @@ public class PersistenceManager {
      */
     public void resetDefaultTaxBrackets() {
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             List<TaxBracketModel> defaultBrackets = List.of(
                     new TaxBracketModel("tb_1", new BigDecimal("11294"), BigDecimal.ZERO),
                     new TaxBracketModel("tb_2", new BigDecimal("28797"), new BigDecimal("0.11")),
@@ -916,7 +782,7 @@ public class PersistenceManager {
         }
 
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
 
             if ("placements".equalsIgnoreCase(listKey)) {
                 List<PlacementModel> list = base.getEffectivePlacements().stream()
@@ -966,7 +832,7 @@ public class PersistenceManager {
         result.put("notes", notes);
 
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             List<PlacementModel> list = base.getEffectivePlacements().stream()
                     .map(p -> {
                         if (!Objects.equals(p.id(), placementId)) return p;
@@ -988,7 +854,7 @@ public class PersistenceManager {
         if (placementId == null || entryId == null || body == null) return result;
 
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             List<PlacementModel> list = base.getEffectivePlacements().stream()
                     .map(p -> {
                         if (!Objects.equals(p.id(), placementId)) return p;
@@ -1016,7 +882,7 @@ public class PersistenceManager {
         if (placementId == null || entryId == null) return;
 
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             List<PlacementModel> list = base.getEffectivePlacements().stream()
                     .map(p -> {
                         if (!Objects.equals(p.id(), placementId)) return p;
@@ -1086,7 +952,7 @@ public class PersistenceManager {
     public void updateBankImport(BankImportModel bankImport) {
         if (bankImport == null) return;
         BudgetDataModel updated = applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : createDefaultBudgetData();
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             return base.withBankImport(bankImport);
         });
     }
@@ -1142,68 +1008,4 @@ public class PersistenceManager {
         }
     }
 
-    /**
-     * Initialise un jeu de données par défaut complet conforme à DEFAULT_DATA
-     */
-    public BudgetDataModel createDefaultBudgetData() {
-        SettingsModel settings = new SettingsModel(
-                1985,
-                64,
-                85,
-                new BigDecimal("0.02"),
-                "",
-                "manual",
-                BigDecimal.ZERO,
-                21,
-                new BigDecimal("0.10"),
-                new BigDecimal("47100"),
-                new BigDecimal("0.015"),
-                false,
-                null,
-                null
-        );
-
-        RetirementModel retirement = new RetirementModel(
-                Collections.emptyList(),
-                new BigDecimal("47100"),
-                new BigDecimal("0.015"),
-                new BigDecimal("1.4386"),
-                "2025-11-01",
-                new BigDecimal("0.01")
-        );
-
-        List<TaxBracketModel> taxBrackets = List.of(
-                new TaxBracketModel("tb_1", new BigDecimal("11294"), BigDecimal.ZERO),
-                new TaxBracketModel("tb_2", new BigDecimal("28797"), new BigDecimal("0.11")),
-                new TaxBracketModel("tb_3", new BigDecimal("82341"), new BigDecimal("0.30")),
-                new TaxBracketModel("tb_4", new BigDecimal("177106"), new BigDecimal("0.41")),
-                new TaxBracketModel("tb_5", null, new BigDecimal("0.45"))
-        );
-
-        BankImportModel bankImport = new BankImportModel(
-                Collections.emptyList(),
-                Collections.emptyList(),
-                Collections.emptyList()
-        );
-
-        return new BudgetDataModel(
-                settings,
-                new ArrayList<>(),
-                new ArrayList<>(),
-                new ArrayList<>(),
-                new ArrayList<>(),
-                retirement,
-                new ArrayList<>(),
-                taxBrackets,
-                new ArrayList<>(),
-                new ArrayList<>(),
-                new ArrayList<>(),
-                new ArrayList<>(),
-                new ArrayList<>(),
-                new ArrayList<>(),
-                bankImport,
-                new ArrayList<>(),
-                new ArrayList<>()
-        );
-    }
 }
