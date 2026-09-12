@@ -33,6 +33,7 @@ import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class PatrimoineServiceImplTest {
 
@@ -43,7 +44,7 @@ class PatrimoineServiceImplTest {
     @BeforeEach
     void setUp() {
         mapper = new PatrimoineMapper();
-        persistenceManager = new PersistenceManager();
+        persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new PatrimoineServiceImpl(mapper, persistenceManager);
     }

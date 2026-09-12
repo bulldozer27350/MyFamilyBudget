@@ -17,6 +17,7 @@ import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 @DisplayName("StatementBankImportServiceImpl OpenAPI Integration Test")
 class StatementBankImportServiceImplIntegrationTest {
@@ -27,7 +28,7 @@ class StatementBankImportServiceImplIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        persistenceManager = new PersistenceManager();
+        persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         StatementBankImportMapper mapper = new StatementBankImportMapper();
         service = new StatementBankImportServiceImpl(persistenceManager, mapper, new ExcelToCsvService());

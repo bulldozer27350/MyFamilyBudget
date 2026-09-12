@@ -27,7 +27,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
  * déplacement de code. Délègue tout accès base à {@link BudgetPersistenceGateway} (1er incrément).
  *
  * Volontairement une classe simple (pas un bean Spring), instanciée directement par
- * {@code PersistenceManager} dans ses deux constructeurs — voir la note à ce sujet dans
+ * {@code PersistenceManager} dans son constructeur — voir la note à ce sujet dans
  * {@link BudgetPersistenceGateway}.
  *
  * Ce qui reste dans {@code PersistenceManager} pour l'instant (prochain et dernier incrément du
@@ -60,36 +60,33 @@ class BudgetCacheStore {
      * de {@code PersistenceManager}, dans le même thread donc avant toute requête HTTP).
      */
     void init() {
-        // Try to load from database first
-        if (gateway.hasDatabase()) {
-            // NOTE: comme pour gateway.save(...) plus bas, ce bloc s'exécute en
-            // self-invocation depuis @PostConstruct, donc hors du proxy AOP
-            // @Transactional de la classe PersistenceManager. Sans transaction explicite, la
-            // connexion JDBC reste en autocommit, ce qui fait échouer la lecture paresseuse de
-            // BankImportEntity.jsonData (mappé en Large Object côté PostgreSQL) avec
-            // "Large Objects may not be used in auto-commit mode" — mais uniquement
-            // dès qu'une ligne bank_import existe déjà en base. Le tout premier
-            // démarrage sur une base vide ne déclenche jamais ce chemin (existingData
-            // est alors absent), d'où un bug invisible en test initial et bloquant dès
-            // le redémarrage suivant. On ouvre donc explicitement une transaction
-            // programmatique autour de la lecture, au même titre que l'écriture.
-            //
-            // IMPORTANT : la requête findFirstByOrderByIdAsc() DOIT elle-même s'exécuter
-            // à l'intérieur de cette transaction, pas avant. Un appel de méthode de
-            // repository Spring Data s'exécute par défaut dans sa propre transaction,
-            // qui se termine dès qu'il retourne : l'entité obtenue serait alors détachée
-            // avant même d'atteindre transactionTemplate.execute(), et toute collection
-            // LAZY qu'elle porte (ex. RetirementEntity.people) échouerait au premier accès
-            // avec "could not initialize proxy - no Session", une nouvelle transaction ne
-            // rattachant pas rétroactivement une entité déjà détachée d'une session
-            // précédente.
-            BudgetDataModel complete = (transactionTemplate != null)
-                    ? transactionTemplate.execute(status -> gateway.loadExistingIfPresent())
-                    : gateway.loadExistingIfPresent();
-            if (complete != null) {
-                currentBudget.set(complete);
-                return;
-            }
+        // Try to load from database first.
+        //
+        // NOTE: comme pour gateway.save(...) plus bas, ce bloc s'exécute en self-invocation
+        // depuis @PostConstruct, donc hors du proxy AOP @Transactional de la classe
+        // PersistenceManager. Sans transaction explicite, la connexion JDBC reste en autocommit,
+        // ce qui fait échouer la lecture paresseuse de BankImportEntity.jsonData (mappé en Large
+        // Object côté PostgreSQL) avec "Large Objects may not be used in auto-commit mode" — mais
+        // uniquement dès qu'une ligne bank_import existe déjà en base. Le tout premier démarrage
+        // sur une base vide ne déclenche jamais ce chemin (existingData est alors absent), d'où
+        // un bug invisible en test initial et bloquant dès le redémarrage suivant. On ouvre donc
+        // explicitement une transaction programmatique autour de la lecture, au même titre que
+        // l'écriture.
+        //
+        // IMPORTANT : la requête findFirstByOrderByIdAsc() DOIT elle-même s'exécuter à
+        // l'intérieur de cette transaction, pas avant. Un appel de méthode de repository Spring
+        // Data s'exécute par défaut dans sa propre transaction, qui se termine dès qu'il
+        // retourne : l'entité obtenue serait alors détachée avant même d'atteindre
+        // transactionTemplate.execute(), et toute collection LAZY qu'elle porte (ex.
+        // RetirementEntity.people) échouerait au premier accès avec "could not initialize proxy -
+        // no Session", une nouvelle transaction ne rattachant pas rétroactivement une entité déjà
+        // détachée d'une session précédente.
+        BudgetDataModel complete = (transactionTemplate != null)
+                ? transactionTemplate.execute(status -> gateway.loadExistingIfPresent())
+                : gateway.loadExistingIfPresent();
+        if (complete != null) {
+            currentBudget.set(complete);
+            return;
         }
 
         // Create new default data and save to database.

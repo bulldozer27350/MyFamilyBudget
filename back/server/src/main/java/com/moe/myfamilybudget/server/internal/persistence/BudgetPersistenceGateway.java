@@ -56,11 +56,14 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOve
  * changement de comportement fonctionnel, uniquement un déplacement de code.
  *
  * Volontairement une classe simple (pas un bean Spring) : elle est instanciée directement par
- * {@code PersistenceManager} dans ses deux constructeurs (constructeur de test à repositories
- * {@code null}, et constructeur {@code @Autowired}), exactement comme
+ * {@code PersistenceManager} dans son constructeur {@code @Autowired}, exactement comme
  * {@code PersistenceManager} l'était déjà pour les appelants. Cela évite d'introduire une
- * nouvelle dépendance Spring à câbler, et préserve strictement les points d'entrée de test
- * existants ({@code new PersistenceManager()}).
+ * nouvelle dépendance Spring à câbler.
+ *
+ * Les repositories reçus sont toujours pleinement fonctionnels (injectés par Spring en
+ * production, ou mockés par {@code PersistenceManagerTestFactory} dans les tests unitaires —
+ * point 10 de l'audit) : aucune méthode de cette classe n'a donc plus besoin de tolérer un
+ * repository {@code null}.
  *
  * Ce qui reste dans {@code PersistenceManager} pour l'instant (prochains incréments du point 6) :
  * le cache mémoire ({@code AtomicReference}, {@code mutationLock}, {@code applyAndPersist}) et la
@@ -125,22 +128,10 @@ class BudgetPersistenceGateway {
     }
 
     /**
-     * Indique si une base de données est réellement configurée (faux en mode test, où
-     * {@code PersistenceManager} est construit via son constructeur sans argument et tous les
-     * repositories valent {@code null} : le cache fonctionne alors en mémoire pure).
-     */
-    boolean hasDatabase() {
-        return budgetDataRepository != null;
-    }
-
-    /**
      * Supprime la ligne {@code budget_data} existante (et, par cascade, ses entités associées).
-     * Ne fait rien en mode test sans base.
      */
     void deleteAll() {
-        if (budgetDataRepository != null) {
-            budgetDataRepository.deleteAll();
-        }
+        budgetDataRepository.deleteAll();
     }
 
     /**
@@ -155,9 +146,6 @@ class BudgetPersistenceGateway {
      * l'exige.
      */
     BudgetDataModel loadExistingIfPresent() {
-        if (budgetDataRepository == null) {
-            return null;
-        }
         Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
         return existingData.map(this::loadCompleteBudgetData).orElse(null);
     }
@@ -178,15 +166,9 @@ class BudgetPersistenceGateway {
 
     /**
      * Persiste l'intégralité du modèle en base (stratégie delete-all + réinsertion complète —
-     * voir le point 7 de l'audit pour l'alternative incrémentale envisagée). Ne fait rien si
-     * {@code budgetDataRepository} est {@code null} (mode test en mémoire, sans base).
+     * voir le point 7 de l'audit pour l'alternative incrémentale envisagée).
      */
     void save(BudgetDataModel model) {
-        // Fallback for testing when repositories are null
-        if (budgetDataRepository == null) {
-            return;
-        }
-
         // IMPORTANT : EntityModelConverter.toEntity(model) renvoie toujours une entité
         // avec id=null (voir son commentaire "Lists will be set separately"). Sans ce
         // deleteAll() préalable, Hibernate ferait donc un INSERT à chaque appel de
@@ -234,7 +216,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveLoans(List<LoanModel> loans, BudgetDataEntity budgetData) {
-        if (loanRepository == null) return;
         loanRepository.deleteByBudgetDataId(budgetData.getId());
         if (loans != null) {
             for (LoanModel loan : loans) {
@@ -244,7 +225,7 @@ class BudgetPersistenceGateway {
     }
 
     private BankImportModel loadBankImport(Long budgetDataId) {
-        if (bankImportRepository == null || budgetDataId == null) return null;
+        if (budgetDataId == null) return null;
         Optional<BankImportEntity> biEntity = bankImportRepository.findFirstByBudgetDataId(budgetDataId);
         if (biEntity.isPresent() && biEntity.get().getJsonData() != null && !biEntity.get().getJsonData().isBlank()) {
             try {
@@ -257,7 +238,7 @@ class BudgetPersistenceGateway {
     }
 
     private void saveBankImport(BankImportModel bankImport, BudgetDataEntity budgetData) {
-        if (bankImportRepository == null || budgetData == null) return;
+        if (budgetData == null) return;
         bankImportRepository.deleteByBudgetDataId(budgetData.getId());
         if (bankImport != null) {
             try {
@@ -272,7 +253,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveIncomes(List<IncomeModel> incomes, BudgetDataEntity budgetData) {
-        if (incomeRepository == null) return;
         incomeRepository.deleteByBudgetDataId(budgetData.getId());
         for (IncomeModel income : incomes) {
             incomeRepository.save(EntityModelConverter.toEntity(income, budgetData));
@@ -280,7 +260,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveCharges(List<ChargeModel> charges, BudgetDataEntity budgetData) {
-        if (chargeRepository == null) return;
         chargeRepository.deleteByBudgetDataId(budgetData.getId());
         for (ChargeModel charge : charges) {
             chargeRepository.save(EntityModelConverter.toEntity(charge, budgetData));
@@ -288,7 +267,6 @@ class BudgetPersistenceGateway {
     }
 
     private void savePlacements(List<PlacementModel> placements, BudgetDataEntity budgetData) {
-        if (placementRepository == null) return;
         placementRepository.deleteByBudgetDataId(budgetData.getId());
         for (PlacementModel placement : placements) {
             placementRepository.save(EntityModelConverter.toEntity(placement, budgetData));
@@ -296,7 +274,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveRealEstate(List<RealEstateModel> realEstate, BudgetDataEntity budgetData) {
-        if (realEstateRepository == null) return;
         realEstateRepository.deleteByBudgetDataId(budgetData.getId());
         for (RealEstateModel re : realEstate) {
             realEstateRepository.save(EntityModelConverter.toEntity(re, budgetData));
@@ -304,7 +281,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveOneOffExpenses(List<OneOffExpenseModel> oneoff, BudgetDataEntity budgetData) {
-        if (oneOffExpenseRepository == null) return;
         oneOffExpenseRepository.deleteByBudgetDataId(budgetData.getId());
         for (OneOffExpenseModel expense : oneoff) {
             oneOffExpenseRepository.save(EntityModelConverter.toEntity(expense, budgetData));
@@ -312,7 +288,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveTransfers(List<TransferModel> transfers, BudgetDataEntity budgetData) {
-        if (transferRepository == null) return;
         transferRepository.deleteByBudgetDataId(budgetData.getId());
         for (TransferModel transfer : transfers) {
             transferRepository.save(EntityModelConverter.toEntity(transfer, budgetData));
@@ -320,7 +295,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveVariableIncomes(List<VariableIncomeModel> variableIncomes, BudgetDataEntity budgetData) {
-        if (variableIncomeRepository == null) return;
         variableIncomeRepository.deleteByBudgetDataId(budgetData.getId());
         for (VariableIncomeModel vi : variableIncomes) {
             variableIncomeRepository.save(EntityModelConverter.toEntity(vi, budgetData));
@@ -328,7 +302,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveVariableOverrides(List<VariableOverrideModel> variableOverrides, BudgetDataEntity budgetData) {
-        if (variableOverrideRepository == null) return;
         variableOverrideRepository.deleteByBudgetDataId(budgetData.getId());
         for (VariableOverrideModel vo : variableOverrides) {
             variableOverrideRepository.save(EntityModelConverter.toEntity(vo, budgetData));
@@ -336,7 +309,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveTaxChildren(List<TaxChildModel> taxChildren, BudgetDataEntity budgetData) {
-        if (taxChildRepository == null) return;
         taxChildRepository.deleteByBudgetDataId(budgetData.getId());
         for (TaxChildModel tc : taxChildren) {
             taxChildRepository.save(EntityModelConverter.toEntity(tc, budgetData));
@@ -344,7 +316,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveTaxBrackets(List<TaxBracketModel> taxBrackets, BudgetDataEntity budgetData) {
-        if (taxBracketRepository == null) return;
         taxBracketRepository.deleteByBudgetDataId(budgetData.getId());
         for (TaxBracketModel tb : taxBrackets) {
             taxBracketRepository.save(EntityModelConverter.toEntity(tb, budgetData));
@@ -352,7 +323,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveTaxRateOverrides(List<TaxRateOverrideModel> taxRateOverrides, BudgetDataEntity budgetData) {
-        if (taxRateOverrideRepository == null) return;
         taxRateOverrideRepository.deleteByBudgetDataId(budgetData.getId());
         for (TaxRateOverrideModel tro : taxRateOverrides) {
             taxRateOverrideRepository.save(EntityModelConverter.toEntity(tro, budgetData));
@@ -360,7 +330,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveTaxActualOverrides(List<TaxActualOverrideModel> taxActualOverrides, BudgetDataEntity budgetData) {
-        if (taxActualOverrideRepository == null) return;
         taxActualOverrideRepository.deleteByBudgetDataId(budgetData.getId());
         for (TaxActualOverrideModel tao : taxActualOverrides) {
             taxActualOverrideRepository.save(EntityModelConverter.toEntity(tao, budgetData));
@@ -368,7 +337,6 @@ class BudgetPersistenceGateway {
     }
 
     private void saveAssetCategories(List<AssetCategoryModel> assetCategories, BudgetDataEntity budgetData) {
-        if (assetCategoryRepository == null) return;
         assetCategoryRepository.deleteByBudgetDataId(budgetData.getId());
         for (AssetCategoryModel ac : assetCategories) {
             assetCategoryRepository.save(EntityModelConverter.toEntity(ac, budgetData));

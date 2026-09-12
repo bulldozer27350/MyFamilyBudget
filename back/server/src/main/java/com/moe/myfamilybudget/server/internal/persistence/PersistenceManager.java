@@ -58,7 +58,7 @@ public class PersistenceManager {
 
     // Passerelle JPA (point 6 de l'audit, 1er incrément du Strangler Fig) : concentre tout
     // l'accès direct aux repositories Spring Data. Volontairement pas un bean Spring : une
-    // instance est simplement construite ici, dans chacun des deux constructeurs, avec les mêmes
+    // instance est simplement construite ci-dessous, dans le constructeur, avec les mêmes
     // repositories que ceux reçus par PersistenceManager — settingsRepository et
     // retirementRepository ne lui sont pas transmis car ils ne sont jamais lus (settings et
     // retirement sont rattachés à BudgetDataEntity par cascade JPA, voir le commentaire dans
@@ -78,34 +78,6 @@ public class PersistenceManager {
     // la méthode de même nom ici. Comme `gateway` et `cacheStore`, volontairement pas un bean
     // Spring.
     private final BudgetMutationService mutationService;
-
-    // Default constructor for testing compatibility
-    public PersistenceManager() {
-        this.budgetDataRepository = null;
-        this.settingsRepository = null;
-        this.incomeRepository = null;
-        this.chargeRepository = null;
-        this.placementRepository = null;
-        this.realEstateRepository = null;
-        this.oneOffExpenseRepository = null;
-        this.transferRepository = null;
-        this.variableIncomeRepository = null;
-        this.variableOverrideRepository = null;
-        this.taxChildRepository = null;
-        this.taxBracketRepository = null;
-        this.taxRateOverrideRepository = null;
-        this.taxActualOverrideRepository = null;
-        this.assetCategoryRepository = null;
-        this.retirementRepository = null;
-        this.bankImportRepository = null;
-        this.loanRepository = null;
-        this.transactionTemplate = null;
-        this.gateway = new BudgetPersistenceGateway(
-                null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
-        this.cacheStore = new BudgetCacheStore(this.gateway, this.transactionTemplate);
-        this.mutationService = new BudgetMutationService(this.cacheStore);
-    }
 
     @Autowired
     public PersistenceManager(BudgetDataRepository budgetDataRepository,

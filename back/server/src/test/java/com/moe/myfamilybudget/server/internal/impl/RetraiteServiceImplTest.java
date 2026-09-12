@@ -24,6 +24,7 @@ import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class RetraiteServiceImplTest {
 
@@ -34,7 +35,7 @@ class RetraiteServiceImplTest {
     @BeforeEach
     void setUp() {
         mapper = new RetraiteMapper();
-        persistenceManager = new PersistenceManager();
+        persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new RetraiteServiceImpl(persistenceManager, mapper);
     }

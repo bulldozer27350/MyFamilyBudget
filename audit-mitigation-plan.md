@@ -5,10 +5,10 @@ module `back/server`. Classement par criticité : risques de bug (du plus au moi
 puis maintenabilité (lisibilité, évolutivité), puis sécurité/configuration.
 
 Statut des patchs livrés : **0001** (point 1), **0003** (point 3), **0004** (point 2), **0005**
-(complément point 5 + incrément 1 du point 6), **0006** (incrément 2 du point 6) et **0007**
-(incrément 3 du point 6, clôture) sont fournis et validés (`git apply --check` sur clone frais,
-chaque patch dépend des précédents). Les autres points sont documentés avec un plan mais pas
-encore patchés.
+(complément point 5 + incrément 1 du point 6), **0006** (incrément 2 du point 6), **0007**
+(incrément 3 du point 6, clôture) et **0008** (point 10) sont fournis et validés
+(`git apply --check` sur clone frais, chaque patch dépend des précédents). Les autres points sont
+documentés avec un plan mais pas encore patchés.
 
 ---
 
@@ -237,12 +237,41 @@ monthlyCompareData`, calcul JS existant conservé comme *fallback* explicite (co
 `fetchJsonOrFallback()`). Ajouter un test de non-régression comparant sortie JS vs sortie serveur
 sur un même jeu de données avant de couper le calcul JS en production.
 
-### 10. Constructeur "de test" à champs `null` dans `PersistenceManager`
+### 10. Constructeur "de test" à champs `null` dans `PersistenceManager` — ✅ patché (0008)
 
-**Plan.** Rendre le constructeur sans argument `private`/le supprimer ; migrer les tests
-concernés vers des mocks Mockito (`@Mock BudgetDataRepository`, etc.) injectés dans le
-constructeur `@Autowired` existant. Élimine les `if (repository == null) return;` disséminés
-dans le code de prod.
+**Problème.** `PersistenceManager` exposait un second constructeur sans argument (« Default
+constructor for testing compatibility ») qui affectait `null` à ses 18 champs (repositories +
+`transactionTemplate`), puis construisait `gateway`/`cacheStore`/`mutationService` avec ces
+`null`. Cela obligeait `BudgetPersistenceGateway` à truffer son code de production de seize gardes
+`if (xxxRepository == null) return;` (une par repository, plus `hasDatabase()`), uniquement pour
+survivre à ce mode de test — un couplage test → prod qui obscurcit la lecture du chemin nominal et
+aurait laissé passer silencieusement un vrai repository `null` en cas d'erreur de câblage Spring.
+
+**Mitigation retenue.**
+- Suppression pure et simple du constructeur sans argument : `PersistenceManager` n'a plus qu'un
+  seul point de construction, le constructeur `@Autowired` existant.
+- `BudgetPersistenceGateway` : suppression de `hasDatabase()` et des seize gardes
+  `if (repository == null) return;` (`deleteAll`, `loadExistingIfPresent`, `save`, et les treize
+  méthodes `saveXxx` par collection). Les deux gardes restantes (`budgetDataId == null` dans
+  `loadBankImport`, `budgetData == null` dans `saveBankImport`) sont conservées : elles protègent
+  un cas métier réel (entité pas encore persistée), pas une carence de test.
+- `BudgetCacheStore.init()` : suppression du branchement sur `gateway.hasDatabase()`, devenu
+  systématiquement vrai — l'appel à `gateway.loadExistingIfPresent()` (dans sa transaction
+  programmatique) redevient la seule voie, identique au comportement précédent pour tout
+  déploiement réel.
+- **Nouveau** `server.internal.testsupport.PersistenceManagerTestFactory` (test uniquement) :
+  fabrique un `PersistenceManager` avec les seize repositories mockés par Mockito plutôt que
+  `null`, injectés dans le même constructeur `@Autowired` que la production. Seul
+  `budgetDataRepository.save(...)` est stubé pour renvoyer l'entité reçue (évite une
+  `NullPointerException` en cascade dans les `saveXxx`) ; les autres repositories utilisent le
+  comportement par défaut de Mockito (no-op / `Optional.empty()`), suffisant puisque
+  `BudgetCacheStore` ne relit jamais la base après une écriture. Les 13 fichiers de test qui
+  appelaient `new PersistenceManager()` appellent désormais
+  `PersistenceManagerTestFactory.inMemory()` — comportement observable inchangé, y compris pour
+  ceux qui enchaînent avec `persistenceManager.init()`.
+
+**Fichier livré.** `0008-remove-persistencemanager-test-constructor.patch` (dépend de 0001, 0003,
+0005, 0006 et 0007 — modifie les mêmes fichiers que ces incréments du point 6).
 
 ---
 

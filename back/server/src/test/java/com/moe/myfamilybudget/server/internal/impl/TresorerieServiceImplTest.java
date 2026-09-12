@@ -39,6 +39,7 @@ import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.VariablePreviewCellModel;
 import com.moe.myfamilybudget.server.internal.model.VariablePreviewModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class TresorerieServiceImplTest {
 
@@ -49,7 +50,7 @@ class TresorerieServiceImplTest {
     @BeforeEach
     void setUp() {
         mapper = new TresorerieMapper();
-        persistenceManager = new PersistenceManager();
+        persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new TresorerieServiceImpl(mapper, persistenceManager);
     }

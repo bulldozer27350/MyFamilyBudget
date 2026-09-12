@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 @DisplayName("PendingOperationsServiceImpl OpenAPI Controller Unit Tests")
 class PendingOperationsServiceImplTest {
@@ -22,7 +23,7 @@ class PendingOperationsServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        persistenceManager = new PersistenceManager();
+        persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new PendingOperationsServiceImpl(persistenceManager, new StatementBankImportMapper());
     }

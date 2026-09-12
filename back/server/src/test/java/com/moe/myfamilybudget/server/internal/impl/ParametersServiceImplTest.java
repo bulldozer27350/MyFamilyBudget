@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 
 import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class ParametersServiceImplTest {
 
@@ -27,7 +28,7 @@ class ParametersServiceImplTest {
     @BeforeEach
     void setUp() {
         mapper = new SettingsMapper();
-        persistenceManager = new PersistenceManager();
+        persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new ParametersServiceImpl(persistenceManager, mapper);
     }

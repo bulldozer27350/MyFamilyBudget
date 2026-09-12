@@ -23,6 +23,7 @@ import com.moe.myfamilybudget.server.internal.model.RetirementModel.RetirementPe
 import com.moe.myfamilybudget.server.internal.model.RetirementModel.SalaryHistoryModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class OverviewServiceImplTest {
 
@@ -33,7 +34,7 @@ class OverviewServiceImplTest {
     @BeforeEach
     void setUp() {
         mapper = new OverviewMapper();
-        persistenceManager = new PersistenceManager();
+        persistenceManager = PersistenceManagerTestFactory.inMemory();
         overviewService = new OverviewServiceImpl(mapper, persistenceManager);
     }
 

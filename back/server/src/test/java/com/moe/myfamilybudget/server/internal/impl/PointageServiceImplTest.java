@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import com.moe.myfamilybudget.server.internal.mapper.PointageMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 @DisplayName("PointageServiceImpl OpenAPI Controller Unit Tests")
 class PointageServiceImplTest {
@@ -23,7 +24,7 @@ class PointageServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        persistenceManager = new PersistenceManager();
+        persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new PointageServiceImpl(persistenceManager, new PointageMapper());
     }

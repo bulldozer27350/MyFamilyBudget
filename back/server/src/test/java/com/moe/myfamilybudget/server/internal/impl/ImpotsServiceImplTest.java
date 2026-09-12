@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 
 import com.moe.myfamilybudget.server.internal.mapper.TaxMapper;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class ImpotsServiceImplTest {
 
@@ -27,7 +28,7 @@ class ImpotsServiceImplTest {
     @BeforeEach
     void setUp() {
         mapper = new TaxMapper();
-        persistenceManager = new PersistenceManager();
+        persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new ImpotsServiceImpl(persistenceManager, mapper);
     }
