@@ -2,6 +2,9 @@ package com.moe.myfamilybudget.server.internal.updater;
 
 import java.math.BigDecimal;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Conversions de valeurs brutes reçues de l'API (typiquement désérialisées en Object depuis du
  * JSON) vers les types utilisés dans les modèles internes. Logique identique à celle qui existait
@@ -10,6 +13,8 @@ import java.math.BigDecimal;
  * PersistenceManager.
  */
 public final class FieldValueConverter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FieldValueConverter.class);
 
     private FieldValueConverter() {
     }
@@ -23,6 +28,7 @@ public final class FieldValueConverter {
             if (s.isEmpty()) return fallback;
             return new BigDecimal(s);
         } catch (Exception e) {
+            LOG.warn("Valeur numérique décimale illisible, valeur par défaut '{}' utilisée : '{}'", fallback, val, e);
             return fallback;
         }
     }
@@ -36,6 +42,7 @@ public final class FieldValueConverter {
             if (s.isEmpty()) return fallback;
             return Integer.parseInt(s);
         } catch (Exception e) {
+            LOG.warn("Valeur entière illisible, valeur par défaut '{}' utilisée : '{}'", fallback, val, e);
             return fallback;
         }
     }

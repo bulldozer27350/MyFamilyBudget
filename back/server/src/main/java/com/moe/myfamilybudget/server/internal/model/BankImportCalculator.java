@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,11 +18,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Pure domain calculator for Bank Import and Pending Operations logic.
  * Independent of Spring, OpenAPI DTOs, and external frameworks.
  */
 public final class BankImportCalculator {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BankImportCalculator.class);
 
     private BankImportCalculator() {
         // Utility class
@@ -115,6 +121,8 @@ public final class BankImportCalculator {
                 else if (tokenChar == 'M') m = v;
                 else if (tokenChar == 'Y') y = v < 100 ? 2000 + v : v;
             } catch (Exception e) {
+                LOG.warn("Date de transaction illisible (format attendu '{}') : parties={}",
+                        fmt, Arrays.toString(parts), e);
                 return null;
             }
         }
@@ -546,6 +554,7 @@ public final class BankImportCalculator {
                     return String.format("%04d-%02d-%02d", y, mo, d);
                 }
             } catch (Exception e) {
+                LOG.warn("Date d'achat illisible dans le libellé de transaction différée : '{}'", label, e);
                 return null;
             }
         }
@@ -796,6 +805,7 @@ public final class BankImportCalculator {
         try {
             return LocalDate.parse(str.trim());
         } catch (Exception e) {
+            LOG.warn("Date ISO illisible : '{}'", str, e);
             return null;
         }
     }

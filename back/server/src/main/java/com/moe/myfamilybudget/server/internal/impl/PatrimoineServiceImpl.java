@@ -12,6 +12,9 @@ import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.moe.myfamilybudget.api.controller.PatrimoineApi;
 import com.moe.myfamilybudget.api.model.AddPlacementHistoriquePointRequest;
 import com.moe.myfamilybudget.api.model.UpdatePlacementHistoriquePointRequest;
@@ -35,6 +38,8 @@ import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 @RestController
 public class PatrimoineServiceImpl implements PatrimoineApi {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PatrimoineServiceImpl.class);
 
     private final PatrimoineMapper mapper;
     private final PersistenceManager persistenceManager;
@@ -590,6 +595,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
             }
             return LocalDate.parse(dateISO.substring(0, 10));
         } catch (Exception e) {
+            LOG.warn("Date ISO illisible dans le calcul du patrimoine, ignorée : '{}'", dateISO, e);
             return null;
         }
     }

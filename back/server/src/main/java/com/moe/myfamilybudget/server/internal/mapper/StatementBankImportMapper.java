@@ -9,6 +9,9 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
 import com.moe.myfamilybudget.server.internal.model.AutoMatchResultModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
@@ -26,6 +29,8 @@ import com.moe.myfamilybudget.server.internal.model.SettingsModel;
  */
 @Component
 public class StatementBankImportMapper {
+
+    private static final Logger LOG = LoggerFactory.getLogger(StatementBankImportMapper.class);
 
     public Map<String, Object> toBankImportResponseMap(BankImportModel model) {
         if (model == null) return Collections.emptyMap();
@@ -373,6 +378,7 @@ public class StatementBankImportMapper {
         try {
             return Integer.parseInt(obj.toString());
         } catch (Exception e) {
+            LOG.warn("Champ entier illisible dans le relevé bancaire importé, ignoré : '{}'", obj, e);
             return null;
         }
     }
@@ -384,6 +390,7 @@ public class StatementBankImportMapper {
         try {
             return new BigDecimal(obj.toString());
         } catch (Exception e) {
+            LOG.warn("Montant illisible dans le relevé bancaire importé, 0 utilisé : '{}'", obj, e);
             return BigDecimal.ZERO;
         }
     }

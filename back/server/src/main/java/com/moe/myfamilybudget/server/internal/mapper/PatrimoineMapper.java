@@ -6,6 +6,9 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.moe.myfamilybudget.api.model.AssetCategoryDto;
 import com.moe.myfamilybudget.api.model.BankImportCategoryDto;
 import com.moe.myfamilybudget.api.model.LoanDto;
@@ -31,6 +34,8 @@ import com.moe.myfamilybudget.server.internal.model.TransferModel;
 
 @Component
 public class PatrimoineMapper {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PatrimoineMapper.class);
 
     public PlacementDto toPlacementDto(PlacementModel m) {
         if (m == null) return null;
@@ -277,14 +282,16 @@ public class PatrimoineMapper {
             try {
                 dto.setKind(BankImportCategoryDto.KindEnum.fromValue(m.kind()));
             } catch (Exception e) {
-                // ignore
+                LOG.warn("Valeur de 'kind' inconnue pour la catégorie d'import bancaire '{}', champ laissé vide : '{}'",
+                        m.id(), m.kind(), e);
             }
         }
         if (m.compressible() != null) {
             try {
                 dto.setCompressible(BankImportCategoryDto.CompressibleEnum.fromValue(m.compressible()));
             } catch (Exception e) {
-                // ignore
+                LOG.warn("Valeur de 'compressible' inconnue pour la catégorie d'import bancaire '{}', champ laissé vide : '{}'",
+                        m.id(), m.compressible(), e);
             }
         }
         return dto;

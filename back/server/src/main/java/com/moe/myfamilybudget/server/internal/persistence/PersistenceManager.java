@@ -19,6 +19,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
@@ -53,6 +56,8 @@ import jakarta.annotation.PostConstruct;
 @Component
 @Transactional
 public class PersistenceManager {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PersistenceManager.class);
 
     private final AtomicReference<BudgetDataModel> currentBudget = new AtomicReference<>();
     
@@ -341,7 +346,7 @@ public class PersistenceManager {
             try {
                 return objectMapper.readValue(biEntity.get().getJsonData(), BankImportModel.class);
             } catch (Exception e) {
-                org.slf4j.LoggerFactory.getLogger(PersistenceManager.class).error("Erreur lors de la lecture de BankImport depuis la base: ", e);
+                LOG.error("Erreur lors de la lecture de BankImport depuis la base: ", e);
             }
         }
         return null;
@@ -357,7 +362,7 @@ public class PersistenceManager {
                 biEntity.setBudgetData(budgetData);
                 bankImportRepository.save(biEntity);
             } catch (Exception e) {
-                org.slf4j.LoggerFactory.getLogger(PersistenceManager.class).error("Erreur lors de la sauvegarde de BankImport dans la base: ", e);
+                LOG.error("Erreur lors de la sauvegarde de BankImport dans la base: ", e);
             }
         }
     }
@@ -1309,6 +1314,7 @@ public class PersistenceManager {
             if (s.isEmpty()) return fallback;
             return new BigDecimal(s);
         } catch (Exception e) {
+            LOG.warn("Valeur numérique décimale illisible, valeur par défaut '{}' utilisée : '{}'", fallback, val, e);
             return fallback;
         }
     }
@@ -1322,6 +1328,7 @@ public class PersistenceManager {
             if (s.isEmpty()) return fallback;
             return Integer.parseInt(s);
         } catch (Exception e) {
+            LOG.warn("Valeur entière illisible, valeur par défaut '{}' utilisée : '{}'", fallback, val, e);
             return fallback;
         }
     }

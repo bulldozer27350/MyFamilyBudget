@@ -8,6 +8,9 @@ import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
@@ -21,6 +24,8 @@ import com.moe.myfamilybudget.server.internal.model.TaxYearlyModel;
  */
 @Component
 public class TaxMapper {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TaxMapper.class);
 
     /**
      * Convertit un TaxResultModel (modèle interne) en une Map d'objets sérialisables JSON pour l'API.
@@ -172,6 +177,8 @@ public class TaxMapper {
             if (s.isEmpty()) return defaultValue;
             return new BigDecimal(s);
         } catch (Exception e) {
+            LOG.warn("Champ décimal fiscal '{}' illisible, valeur par défaut '{}' utilisée : '{}'",
+                    key, defaultValue, val, e);
             return defaultValue;
         }
     }
@@ -188,6 +195,8 @@ public class TaxMapper {
             if (s.isEmpty()) return defaultValue;
             return Integer.parseInt(s);
         } catch (Exception e) {
+            LOG.warn("Champ entier fiscal '{}' illisible, valeur par défaut '{}' utilisée : '{}'",
+                    key, defaultValue, val, e);
             return defaultValue;
         }
     }

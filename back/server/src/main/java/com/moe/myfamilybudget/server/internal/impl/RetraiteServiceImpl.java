@@ -12,6 +12,9 @@ import java.util.Optional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.moe.myfamilybudget.api.controller.RetraiteApi;
 import com.moe.myfamilybudget.server.internal.mapper.RetraiteMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
@@ -25,6 +28,8 @@ import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 @RestController
 public class RetraiteServiceImpl implements RetraiteApi {
+
+    private static final Logger LOG = LoggerFactory.getLogger(RetraiteServiceImpl.class);
 
     private static final int TRIMESTRES_REQUIS = 172;
     private static final int AGE_TAUX_PLEIN_AUTO = 67;
@@ -265,6 +270,8 @@ public class RetraiteServiceImpl implements RetraiteApi {
             if (e.isBefore(s)) return 0;
             return (e.getYear() - s.getYear()) * 12 + (e.getMonthValue() - s.getMonthValue()) + 1;
         } catch (Exception ex) {
+            LOG.warn("Période de retraite illisible (start='{}', end='{}'), 0 mois retenu pour l'année {}",
+                    startISO, endISO, year, ex);
             return 0;
         }
     }
@@ -277,6 +284,7 @@ public class RetraiteServiceImpl implements RetraiteApi {
             try {
                 return Integer.parseInt(dateStr.substring(0, 4));
             } catch (Exception ex) {
+                LOG.warn("Date de retraite illisible, année indéterminée : '{}'", dateStr, ex);
                 return null;
             }
         }

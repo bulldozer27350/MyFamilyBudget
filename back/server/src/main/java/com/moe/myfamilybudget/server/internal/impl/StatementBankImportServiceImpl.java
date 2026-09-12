@@ -13,11 +13,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.moe.myfamilybudget.api.controller.ImportBancaireApi;
 import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
 import com.moe.myfamilybudget.api.model.ImportBankTransactionsRequestDto;
 import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
+import com.moe.myfamilybudget.server.internal.error.DataParsingException;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
@@ -32,6 +36,8 @@ import jakarta.validation.Valid;
 @Service
 @RestController
 public class StatementBankImportServiceImpl implements ImportBancaireApi {
+
+    private static final Logger LOG = LoggerFactory.getLogger(StatementBankImportServiceImpl.class);
 
     private final PersistenceManager persistenceManager;
     private final StatementBankImportMapper mapper;
@@ -82,7 +88,15 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
             try (InputStream is = file.getInputStream()) {
                 csvText = new String(is.readAllBytes(), StandardCharsets.UTF_8);
             } catch (Exception e) {
-                csvText = "";
+                // Auparavant : csvText restait "" et l'import se poursuivait silencieusement,
+                // aboutissant à une réponse 200 OK sans qu'aucune transaction ne soit importée
+                // (faux succès). Le fichier envoyé par l'utilisateur ne peut, par construction,
+                // pas être relu une seconde fois : on ne peut pas se contenter d'ignorer l'erreur
+                // et de continuer avec un texte vide, il faut la remonter explicitement.
+                LOG.warn("Fichier CSV illisible lors de l'import bancaire ('{}') : {}",
+                        file.getOriginalFilename(), e.getMessage(), e);
+                throw new DataParsingException(
+                        "Impossible de lire le fichier CSV envoyé : " + e.getMessage(), e);
             }
         }
 

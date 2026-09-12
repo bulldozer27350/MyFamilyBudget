@@ -4,9 +4,9 @@ Audit réalisé sur le dépôt `bulldozer27350/MyFamilyBudget` (branche `main`),
 module `back/server`. Classement par criticité : risques de bug (du plus au moins impactant),
 puis maintenabilité (lisibilité, évolutivité), puis sécurité/configuration.
 
-Statut des patchs livrés : **0001** (point 1) et **0003** (point 3) sont fournis et validés
-(`git apply --check` sur clone frais). Les autres points sont documentés avec un plan mais pas
-encore patchés.
+Statut des patchs livrés : **0001** (point 1), **0003** (point 3) et **0004** (point 2) sont fournis
+et validés (`git apply --check` sur clone frais, 0004 dépend de 0001 et 0003). Les autres points
+sont documentés avec un plan mais pas encore patchés.
 
 ---
 
@@ -42,7 +42,7 @@ point d'entrée unique, sans changement de leur API publique ni de leur comporte
 
 ---
 
-### 2. Absence de gestion d'erreurs centralisée + `catch (Exception e) { return null; }`
+### 2. Absence de gestion d'erreurs centralisée + `catch (Exception e) { return null; }` — ✅ patché (0004)
 
 **Problème.** 25 blocs `catch (Exception)` dans le code, sans `@ControllerAdvice` global. Une
 partie avale silencieusement l'erreur (`BankImportCalculator`, `TaxCalculator`,
@@ -50,17 +50,37 @@ partie avale silencieusement l'erreur (`BankImportCalculator`, `TaxCalculator`,
 `TresorerieServiceImpl`...) : un champ mal formé devient un `null` propagé sans log dans les
 calculs financiers, sans qu'aucune erreur ne remonte.
 
-**Plan de mitigation.**
-- **Étape 1 (additive, sans risque)** : ajouter un `@RestControllerAdvice` global qui capture
-  les exceptions non gérées et renvoie un format d'erreur JSON cohérent (code, message,
-  timestamp) au lieu de la page d'erreur Spring par défaut.
-- **Étape 2 (fichier par fichier)** : remplacer les `catch (Exception e) { return null; }` par
-  une exception métier dédiée (`DataParsingException`), *loggée* avant conversion en valeur par
-  défaut documentée, ou remontée si elle impacte un calcul financier critique. Prioriser les
-  calculateurs qui alimentent des totaux (`TaxCalculator`, `BankImportCalculator`) avant le
-  formatage d'affichage.
+**Mitigation retenue.**
+- **Étape 1 — nouveau package `server.internal.error`** :
+  - `GlobalExceptionHandler` (`@RestControllerAdvice`), point d'entrée unique de gestion des
+    erreurs pour tous les `@RestController` de l'application. Remplace la Whitelabel Error Page
+    Spring par un corps JSON homogène (`ApiErrorResponse` : status, error, message, path,
+    timestamp), journalise systématiquement (WARN pour les erreurs de requête, ERROR avec stack
+    trace pour l'inattendu), et distingue désormais 400 (requête invalide) de 500 (erreur
+    inattendue).
+  - Mappe notamment `UnknownTresorerieFieldException` (introduite au patch 0003) vers un vrai 400
+    Bad Request explicite — elle ne remontait auparavant qu'en 500 générique faute de handler.
+  - `DataParsingException`, exception métier dédiée pour les cas où une donnée mal formée ne peut
+    pas être silencieusement convertie en valeur par défaut sans risque pour un calcul financier
+    ou un import de données.
+- **Étape 2 — fichier par fichier**, remplacement des `catch (Exception e) { return null; }` (ou
+  équivalent : valeur par défaut, `// ignore`) par une journalisation explicite (`log.warn`) juste
+  avant le retour de la valeur par défaut documentée, sur les 24 sites concernés répartis dans
+  `BankImportCalculator`, `PointageCalculator`, `TaxCalculator`, `FieldValueConverter`,
+  `PersistenceManager`, `OverviewServiceImpl`, `RetraiteServiceImpl`, `PatrimoineServiceImpl`,
+  `TresorerieServiceImpl`, `RetraiteMapper`, `TaxMapper`, `StatementBankImportMapper` et
+  `PatrimoineMapper`. Le comportement fonctionnel (valeurs retournées) est inchangé partout où la
+  valeur par défaut restait acceptable — seule la visibilité change : un champ mal formé laisse
+  désormais une trace exploitable dans les logs au lieu de disparaître silencieusement.
+- **Cas remonté en erreur explicite plutôt que loggé** : `StatementBankImportServiceImpl
+  .importBankCSV` avalait une erreur de lecture du fichier CSV importé et poursuivait avec un texte
+  vide, aboutissant à un faux succès (`200 OK`, 0 transaction importée, sans qu'aucun signal
+  n'indique à l'utilisateur que son fichier n'a pas été traité). Le fichier envoyé ne pouvant pas
+  être relu une seconde fois, la valeur par défaut ("continuer avec un texte vide") n'a plus de
+  sens : l'erreur est désormais journalisée puis remontée via `DataParsingException`, traduite par
+  le `GlobalExceptionHandler` en `400 Bad Request` explicite.
 
-*Non patché à ce stade — prochain candidat naturel après 0001/0003.*
+**Fichier livré.** `0004-error-handling-centralisee.patch` (dépend de 0001 et 0003).
 
 ---
 
@@ -196,7 +216,7 @@ actuel. Modifiable sans recompilation si l'infra change.
 
 1. ~~Point 1 (désync cache/DB)~~ — patché
 2. ~~Point 3 (dispatch par chaînes)~~ — patché, bug historique sur l'historique des placements corrigé au passage
-3. Point 2 (gestion d'erreurs centralisée) — bénéficie directement du dispatcher du point 3 (`UnknownTresorerieFieldException` a besoin d'un `@ControllerAdvice` pour devenir un vrai 400 côté client)
+3. ~~Point 2 (gestion d'erreurs centralisée)~~ — patché, bénéficie directement du dispatcher du point 3 (`UnknownTresorerieFieldException` remonte désormais en 400 Bad Request explicite via le `GlobalExceptionHandler`)
 4. Point 5 — déjà couvert par le patch 0001
 5. Points 6 à 10 (maintenabilité) — à planifier selon disponibilité
 6. Points 4, 11, 12, 13 (sécurité/config) — rapides à traiter indépendamment, à caser entre deux chantiers plus lourds

@@ -16,6 +16,9 @@ import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.moe.myfamilybudget.api.controller.TresorerieApi;
 import com.moe.myfamilybudget.api.model.TresorerieAjustementRequestDto;
 import com.moe.myfamilybudget.api.model.TresorerieResponseDto;
@@ -47,6 +50,8 @@ import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 @RestController
 public class TresorerieServiceImpl implements TresorerieApi {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TresorerieServiceImpl.class);
 
     private static final int TRIMESTRES_REQUIS = 172;
     private static final int AGE_TAUX_PLEIN_AUTO = 67;
@@ -857,6 +862,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
             }
             return LocalDate.parse(dateISO.substring(0, 10));
         } catch (Exception e) {
+            LOG.warn("Date ISO illisible dans le calcul de trésorerie, ignorée : '{}'", dateISO, e);
             return null;
         }
     }

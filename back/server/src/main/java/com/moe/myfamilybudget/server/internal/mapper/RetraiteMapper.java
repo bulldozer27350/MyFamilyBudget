@@ -9,6 +9,9 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.moe.myfamilybudget.api.model.IncomeDto;
 import com.moe.myfamilybudget.api.model.RetirementDto;
 import com.moe.myfamilybudget.api.model.RetirementPersonDto;
@@ -23,6 +26,8 @@ import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 
 @Component
 public class RetraiteMapper {
+
+    private static final Logger LOG = LoggerFactory.getLogger(RetraiteMapper.class);
 
     /**
      * Convertit un RetraiteResultModel en Map<String, Object> prêt à être sérialisé en JSON.
@@ -216,6 +221,7 @@ public class RetraiteMapper {
         try {
             return Integer.parseInt(String.valueOf(val).trim());
         } catch (Exception e) {
+            LOG.warn("Champ entier '{}' illisible, valeur par défaut '{}' utilisée : '{}'", key, fallback, val, e);
             return fallback;
         }
     }
@@ -236,6 +242,7 @@ public class RetraiteMapper {
             if (s.isEmpty()) return fallback;
             return new BigDecimal(s);
         } catch (Exception e) {
+            LOG.warn("Valeur décimale illisible, valeur par défaut '{}' utilisée : '{}'", fallback, val, e);
             return fallback;
         }
     }

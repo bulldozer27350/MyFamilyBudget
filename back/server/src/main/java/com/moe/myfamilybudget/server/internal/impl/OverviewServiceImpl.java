@@ -15,6 +15,9 @@ import java.util.Set;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.moe.myfamilybudget.api.controller.OverviewApi;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
@@ -43,6 +46,8 @@ import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 
 @RestController
 public class OverviewServiceImpl implements OverviewApi{
+
+    private static final Logger LOG = LoggerFactory.getLogger(OverviewServiceImpl.class);
 
     private static final int TRIMESTRES_REQUIS = 172;
     private static final int AGE_TAUX_PLEIN_AUTO = 67;
@@ -867,6 +872,7 @@ public class OverviewServiceImpl implements OverviewApi{
             }
             return LocalDate.parse(dateISO.substring(0, 10));
         } catch (Exception e) {
+            LOG.warn("Date ISO illisible dans le calcul de l'aperçu (Overview), ignorée : '{}'", dateISO, e);
             return null;
         }
     }

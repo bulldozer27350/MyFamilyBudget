@@ -11,11 +11,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Calculateur métier pour le domaine du pointage mensuel.
  * Isolé de toute API / DTO REST. Opère exclusivement sur les modèles du domaine interne.
  */
 public final class PointageCalculator {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PointageCalculator.class);
 
     private PointageCalculator() {
         // Utility class
@@ -324,6 +329,7 @@ public final class PointageCalculator {
         try {
             return Integer.parseInt(monthISO.substring(0, 4));
         } catch (Exception e) {
+            LOG.warn("Mois ISO illisible, année 2026 utilisée par défaut : '{}'", monthISO, e);
             return 2026;
         }
     }

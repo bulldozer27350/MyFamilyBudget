@@ -10,11 +10,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Moteur de calcul domaine métier pour la fiscalité (Impôts).
  * Manipule exclusivement les records du domaine interne et utilise BigDecimal avec RoundingMode.HALF_UP.
  */
 public class TaxCalculator {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TaxCalculator.class);
 
     private static final int TRIMESTRES_REQUIS = 172;
     private static final int AGE_TAUX_PLEIN_AUTO = 67;
@@ -474,6 +479,7 @@ public class TaxCalculator {
             }
             return LocalDate.parse(dateISO.substring(0, 10));
         } catch (Exception e) {
+            LOG.warn("Date ISO illisible dans un calcul fiscal, ignorée : '{}'", dateISO, e);
             return null;
         }
     }
