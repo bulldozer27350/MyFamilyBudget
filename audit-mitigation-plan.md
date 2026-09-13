@@ -6,9 +6,10 @@ puis maintenabilité (lisibilité, évolutivité), puis sécurité/configuration
 
 Statut des patchs livrés : **0001** (point 1), **0003** (point 3), **0004** (point 2), **0005**
 (complément point 5 + incrément 1 du point 6), **0006** (incrément 2 du point 6), **0007**
-(incrément 3 du point 6, clôture), **0008** (point 10) et **0009** (point 8, incrément 1/2 :
-`OverviewServiceImpl`) sont fournis et validés (`git apply --check` sur clone frais, chaque patch
-dépend des précédents). Les autres points sont documentés avec un plan mais pas encore patchés.
+(incrément 3 du point 6, clôture), **0008** (point 10), **0009** (point 8, incrément 1/2 :
+`OverviewServiceImpl`) et **0010** (point 8, incrément 2/2 : `TresorerieServiceImpl`, clôture)
+sont fournis et validés (`git apply --check` sur clone frais, chaque patch dépend des précédents).
+Les autres points sont documentés avec un plan mais pas encore patchés.
 
 ---
 
@@ -222,7 +223,7 @@ strictement inchangés sur les trois incréments — aucune modification de test
 - Implémentation alternative (`IncrementalBudgetPersistenceGateway`) activable via
   `myfamilybudget.persistence.strategy=incremental|full`, testable en dev avant bascule en prod.
 
-### 8. Fusion controller / logique métier (`*ServiceImpl` = `@RestController` + calculs) — 🔶 en cours (incrément 1/2 livré : 0009)
+### 8. Fusion controller / logique métier (`*ServiceImpl` = `@RestController` + calculs) — ✅ terminé (0009 + 0010)
 
 **Plan.** Extraction progressive, un `*ServiceImpl` à la fois (en commençant par
 `OverviewServiceImpl`, `TresorerieServiceImpl`) : les méthodes de calcul pur migrent vers une
@@ -258,10 +259,35 @@ déduplication distinct du point 8 (qui porte sur la séparation controller/calc
 regroupement de calculs dupliqués entre services) — à documenter séparément si vous souhaitez le
 traiter.
 
-**Prochain incrément (2/2)** : `TresorerieServiceImpl` (869 lignes), même traitement →
-`TresorerieCalculationService`.
+**Fichier livré (incrément 1).** `0009-point8-overview-calculation-service.patch` (dépend de
+0008).
 
-**Fichier livré.** `0009-point8-overview-calculation-service.patch` (dépend de 0008).
+**Incrément 2/2 livré (patch 0010) — `TresorerieServiceImpl`.** Même traitement, avec une nuance :
+`TresorerieServiceImpl` expose cinq endpoints (contre un seul pour `OverviewServiceImpl`), dont
+quatre (`addTresorerieLigne`, `updateTresorerieLigne`, `removeTresorerieLigne`,
+`applyTresorerieAjustement`) sont déjà de la pure orchestration (délégation directe à
+`PersistenceManager`, aucun calcul) et restent tels quels dans le contrôleur. Seule la logique
+derrière `getTresorerie` — `computeTresorerie` et tout ce qu'elle appelle (options de catégories,
+suggestions budgétaires, moyennes réelles constatées sur le pointage bancaire, projections
+fiscales/retraite) — migre vers la nouvelle classe `TresorerieCalculationService`.
+
+`TresorerieServiceImpl` : 869 → 89 lignes (**-90 %**). Deux méthodes publiques
+(`computeTresorerie`, `buildCategoryOptions`) sont conservées par délégation pour
+`TresorerieServiceImplTest`, qui les appelle directement — dans ce cas précis, aucun type imbriqué
+ne change d'emplacement (contrairement à `RetirementProjection` au point précédent), donc **aucune
+modification du fichier de test n'a été nécessaire**. Les autres méthodes publiques de l'ancienne
+classe (`computeRealAverages`, `buildTresorerieSuggestions`, `chargeMonthlyForYear`,
+`chargeAnnualForYear`, `chargeEffectiveGrowth`, `incomeMonthlyForYear`, `incomeAnnualForYear`)
+n'avaient aucun appelant en dehors de la classe elle-même ; elles redeviennent des méthodes
+publiques ordinaires de `TresorerieCalculationService`, sans délégation superflue depuis le
+contrôleur.
+
+Le point 8 est maintenant clos pour les deux services identifiés dans le plan initial. Les autres
+`*ServiceImpl` du projet (Patrimoine, Retraite, Impôts, Analyse, Pointage...) n'ont pas été audités
+dans le cadre de ce point précis ; à évaluer séparément si vous souhaitez étendre ce refactoring.
+
+**Fichier livré (incrément 2).** `0010-point8-tresorerie-calculation-service.patch` (dépend de
+0008, 0009).
 
 ### 9. Duplication backend/frontend sur l'Analyse
 
