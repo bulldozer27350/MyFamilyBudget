@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.CashflowYearModel;
 import com.moe.myfamilybudget.server.internal.model.CategoryOptionModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;

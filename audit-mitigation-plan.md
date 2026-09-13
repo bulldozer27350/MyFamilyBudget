@@ -7,9 +7,12 @@ puis maintenabilité (lisibilité, évolutivité), puis sécurité/configuration
 Statut des patchs livrés : **0001** (point 1), **0003** (point 3), **0004** (point 2), **0005**
 (complément point 5 + incrément 1 du point 6), **0006** (incrément 2 du point 6), **0007**
 (incrément 3 du point 6, clôture), **0008** (point 10), **0009** (point 8, incrément 1/2 :
-`OverviewServiceImpl`) et **0010** (point 8, incrément 2/2 : `TresorerieServiceImpl`, clôture)
-sont fournis et validés (`git apply --check` sur clone frais, chaque patch dépend des précédents).
-Les autres points sont documentés avec un plan mais pas encore patchés.
+`OverviewServiceImpl`), **0010** (point 8, incrément 2/2 : `TresorerieServiceImpl`, clôture) et
+**0011** (correctif : import `CashflowYearModel` manquant dans `TresorerieCalculationService`,
+introduit par erreur de recopie manuelle de la liste d'imports lors du patch 0010 — détecté par le
+build CI, non par la relecture) sont fournis et validés (`git apply --check` sur clone frais,
+chaque patch dépend des précédents). Les autres points sont documentés avec un plan mais pas
+encore patchés.
 
 ---
 
@@ -288,6 +291,17 @@ dans le cadre de ce point précis ; à évaluer séparément si vous souhaitez �
 
 **Fichier livré (incrément 2).** `0010-point8-tresorerie-calculation-service.patch` (dépend de
 0008, 0009).
+
+**Correctif (patch 0011).** Le build CI a signalé une erreur de compilation sur
+`TresorerieCalculationService.java` : import `CashflowYearModel` manquant. Cause : la liste
+d'imports du nouvel en-tête de fichier a été recopiée à la main plutôt que dérivée mécaniquement
+du fichier d'origine (contrairement à l'incrément 1, où le corps entier — imports inclus — avait
+été déplacé par extraction de plage de lignes, sans retranscription). `git apply --check` valide
+la syntaxe du patch mais ne compile pas le code Java : ce type d'erreur n'est donc détectable ni
+par la relecture du diff ni par la validation habituelle, seule la CI (ou une compilation locale)
+l'aurait révélée avant vous. Un second contrôle a été fait après coup : comparaison exhaustive de
+tous les imports de `OverviewCalculationService.java` (incrément 1) contre l'original — aucun
+autre import manquant détecté sur les deux fichiers de calcul livrés à ce stade.
 
 ### 9. Duplication backend/frontend sur l'Analyse
 
