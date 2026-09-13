@@ -254,6 +254,29 @@
     return transactions.reduce((best, t) => !best || t.date && t.date > best ? t.date : best, null);
   }
 
+  /* ---- Logging configurable (window.BUDGET_LOG_LEVEL = "off" | "info" | "debug" | "trace") ----
+   * "off"   (défaut) : silencieux.
+   * "info"  : un message par changement d'état (pause/reprise, ponction, excédent versé), sans montant.
+   * "debug" : idem "info", complété par les soldes avant/après des comptes concernés.
+   * "trace" : idem "debug", mais un message à CHAQUE mois (même sans changement d'état).
+   * Se règle dans la console du navigateur : window.BUDGET_LOG_LEVEL = "trace";
+   */
+  const LOG_LEVEL_RANK = {
+    off: 0,
+    info: 1,
+    debug: 2,
+    trace: 3
+  };
+  function currentLogLevel() {
+    const raw = typeof window !== "undefined" && window.BUDGET_LOG_LEVEL || "off";
+    return LOG_LEVEL_RANK[raw] !== undefined ? LOG_LEVEL_RANK[raw] : 0;
+  }
+  function logAt(level, message) {
+    if (currentLogLevel() >= LOG_LEVEL_RANK[level]) {
+      console.log(`[budget:${level}] ${message}`);
+    }
+  }
+
   /* ============================== Timeline Détaillée ============================== */
   function calculateDetailedFinancialTimeline(data, years, scenario = "corr", useConstantEuros = false) {
     if (!data || !years || years.length === 0) return {
@@ -375,6 +398,8 @@
           placementBalances[acc.label] = cur + deposit;
           cashBalance -= deposit;
           excess -= deposit;
+          logAt("info", `${dateISO} | Excédent de trésorerie versé sur "${acc.label}"`);
+          logAt("debug", `${dateISO} | Excédent versé sur "${acc.label}" | compte courant ${eur(before)} -> ${eur(cashBalance)} | "${acc.label}" ${eur(cur)} -> ${eur(placementBalances[acc.label])}`);
           recordMovement({
             dateISO,
             source: "Compte courant",
@@ -399,10 +424,13 @@
         const withdraw = Math.min(deficit, Math.max(0, cur));
         if (withdraw > 0) {
           const before = cur;
+          const cashBeforeWithdraw = cashBalance;
           placementBalances[acc.label] = cur - withdraw;
           cashBalance += withdraw;
           deficit -= withdraw;
           withdrewAny = true;
+          logAt("info", `${dateISO} | Ponction sur "${acc.label}" pour renflouer la trésorerie`);
+          logAt("debug", `${dateISO} | Ponction sur "${acc.label}" | "${acc.label}" ${eur(before)} -> ${eur(placementBalances[acc.label])} | compte courant ${eur(cashBeforeWithdraw)} -> ${eur(cashBalance)}`);
           recordMovement({
             dateISO,
             source: acc.label,
@@ -425,6 +453,7 @@
     }));
     let pauseLevelFromRefill = 0;
     let pauseLevel = 0;
+    const pauseStateByLabel = new Map();
     for (let y = startYear; y <= endYear; y++) {
       const totalTaxY = taxMap[y] || 0;
       const monthlyTax = totalTaxY / 12;
@@ -507,13 +536,35 @@
             beforeEnd = y < untilYear || y === untilYear && m <= untilMonth;
           }
           const contributionActive = afterStart && beforeEnd;
-          const isPaused = p.pausePriority !== undefined && p.pausePriority !== null && p.pausePriority !== "" && Number(p.pausePriority) <= pauseLevel;
+          const hasPausePriority = p.pausePriority !== undefined && p.pausePriority !== null && p.pausePriority !== "";
+          const isPaused = hasPausePriority && Number(p.pausePriority) <= pauseLevel;
           const add = contributionActive && !isPaused ? Number(p.monthly) || 0 : 0;
-          placementBalances[p.label] = cur + interest;
+          const balanceAfterInterest = cur + interest;
+          placementBalances[p.label] = balanceAfterInterest;
+
+          if (hasPausePriority) {
+            const prevPaused = pauseStateByLabel.get(p.label) || false;
+            if (isPaused !== prevPaused) {
+              pauseStateByLabel.set(p.label, isPaused);
+              if (isPaused) {
+                const watchedBelow = bufferWatch.filter(b => (placementBalances[b.label] || 0) < b.trigger).map(b => b.label);
+                const cause = watchedBelow.length ? `compte(s) surveillé(s) sous seuil : ${watchedBelow.join(", ")}` : "trésorerie (cashFloor/cashCeiling) non revenue au niveau de reprise";
+                logAt("info", `${monthKey} | Pause activée sur "${p.label}" (priorité ${p.pausePriority}, niveau de tension ${pauseLevel}/${maxPauseLevel}) — cause : ${cause}`);
+                logAt("debug", `${monthKey} | Pause activée sur "${p.label}" | solde "${p.label}"=${eur(balanceAfterInterest)} | compte courant=${eur(cashBalance)}`);
+              } else {
+                logAt("info", `${monthKey} | Reprise des versements sur "${p.label}" (niveau de tension redescendu à ${pauseLevel}/${maxPauseLevel})`);
+                logAt("debug", `${monthKey} | Reprise sur "${p.label}" | solde "${p.label}"=${eur(balanceAfterInterest)} | compte courant=${eur(cashBalance)}`);
+              }
+            }
+            logAt("trace", `${monthKey} | "${p.label}" | actif=${contributionActive} | en pause=${isPaused} | niveau de tension=${pauseLevel}/${maxPauseLevel} | solde avant versement=${eur(balanceAfterInterest)} | compte courant=${eur(cashBalance)}`);
+          }
+
           if (add > 0) {
             const before = cashBalance;
+            const placementBefore = placementBalances[p.label];
             cashBalance -= add;
             placementBalances[p.label] += add;
+            logAt("debug", `${monthKey} | Versement sur "${p.label}" | compte courant ${eur(before)} -> ${eur(cashBalance)} | "${p.label}" ${eur(placementBefore)} -> ${eur(placementBalances[p.label])}`);
             recordMovement({
               dateISO: `${monthKey}-01`,
               source: "Compte courant",
@@ -597,6 +648,7 @@
             const alertCount = bufferWatch.length ? bufferWatch.filter(b => (placementBalances[b.label] || 0) < b.trigger).length : 0;
             const pauseLevelFromAlerts = Math.min(maxPauseLevel, alertCount);
             pauseLevel = Math.max(pauseLevelFromRefill, pauseLevelFromAlerts);
+            logAt("trace", `${monthKey} | Trésorerie=${eur(cashBalance)} | seuil bas=${eur(cashFloor)} | plafond=${cashCeiling === Infinity ? "illimité" : eur(cashCeiling)} | ponction ce mois=${refillNeededThisMonth} | niveau de tension=${pauseLevel}/${maxPauseLevel} (refill=${pauseLevelFromRefill}, alertes=${pauseLevelFromAlerts})`);
           }
           let sumPlacements = 0;
           const pSnap = {};

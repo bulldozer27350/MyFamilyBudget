@@ -386,6 +386,9 @@ public class OverviewCalculationService {
         Integer[] monthlyFromYearArr = new Integer[n];
         Integer[] monthlyUntilYearArr = new Integer[n];
         List<List<PatrimoineYearModel>> rowsPerPlacement = new ArrayList<>();
+        // Suivi de l'etat de pause d'une annee sur l'autre, pour ne loguer qu'aux
+        // changements d'etat (niveau INFO/DEBUG) plutot qu'a chaque annee.
+        boolean[] pausedPrev = new boolean[n];
         for (int i = 0; i < n; i++) {
             PlacementModel p = placements.get(i);
             pessArr[i] = p.getEffectiveBalance();
@@ -400,6 +403,17 @@ public class OverviewCalculationService {
         for (int yIdx = 0; yIdx < years.size(); yIdx++) {
             int year = years.get(yIdx);
             BigDecimal totalContribThisYear = BigDecimal.ZERO;
+
+            // Comptes surveilles actuellement sous leur seuil, calcule UNE FOIS avant la mise
+            // a jour des soldes de l'annee : c'est cet etat (fin d'annee precedente) qui a
+            // determine le pauseLevel utilise ci-dessous, donc c'est lui qu'il faut citer
+            // comme cause dans les logs.
+            List<String> currentlyWatchedBelow = new ArrayList<>();
+            for (int idx : bufferWatchIdx) {
+                if (corrArr[idx].compareTo(placements.get(idx).pauseTriggerBalance()) < 0) {
+                    currentlyWatchedBelow.add(placements.get(idx).label());
+                }
+            }
 
             for (int i = 0; i < n; i++) {
                 PlacementModel p = placements.get(i);
@@ -416,9 +430,29 @@ public class OverviewCalculationService {
                         ? p.getEffectiveMonthly().multiply(BigDecimal.valueOf(12))
                         : BigDecimal.ZERO;
 
+                BigDecimal balanceBefore = corrArr[i];
+
                 pessArr[i] = pessArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRatePess())).add(monthlyContrib).subtract(withdraw);
                 corrArr[i] = corrArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRateCorr())).add(monthlyContrib).subtract(withdraw);
                 optiArr[i] = optiArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRateOpti())).add(monthlyContrib).subtract(withdraw);
+
+                if (p.pausePriority() != null) {
+                    boolean wasPaused = pausedPrev[i];
+                    if (isPaused != wasPaused) {
+                        pausedPrev[i] = isPaused;
+                        if (isPaused) {
+                            String cause = currentlyWatchedBelow.isEmpty()
+                                    ? "tresorerie (cashFloor/cashCeiling) non revenue au niveau de reprise"
+                                    : "compte(s) surveille(s) sous seuil : " + String.join(", ", currentlyWatchedBelow);
+                            LOG.info("{} | Pause activee sur \"{}\" (priorite {}, niveau de tension {}/{}) - cause : {}", year, p.label(), p.pausePriority(), pauseLevel, maxPauseLevel, cause);
+                            LOG.debug("{} | Pause activee sur \"{}\" | solde avant cette annee={} | solde apres cette annee={} | tresorerie annuelle={}", year, p.label(), balanceBefore, corrArr[i], treasuryBalance);
+                        } else {
+                            LOG.info("{} | Reprise des versements sur \"{}\" (niveau de tension redescendu a {}/{})", year, p.label(), pauseLevel, maxPauseLevel);
+                            LOG.debug("{} | Reprise sur \"{}\" | solde avant cette annee={} | solde apres cette annee={} | tresorerie annuelle={}", year, p.label(), balanceBefore, corrArr[i], treasuryBalance);
+                        }
+                    }
+                    LOG.trace("{} | \"{}\" | dans la fenetre={} | en pause={} | niveau de tension={}/{} | solde avant cette annee={} | solde apres cette annee={}", year, p.label(), withinWindow, isPaused, pauseLevel, maxPauseLevel, balanceBefore, corrArr[i]);
+                }
 
                 rowsPerPlacement.get(i).add(new PatrimoineYearModel(year, pessArr[i], corrArr[i], optiArr[i]));
 
@@ -441,9 +475,19 @@ public class OverviewCalculationService {
 
             boolean refillNeeded = sweepEnabled && hasSweepAccounts && treasuryBalance.compareTo(cashFloor) < 0;
             if (refillNeeded) {
-                pauseLevelFromRefill = Math.min(maxPauseLevel, pauseLevelFromRefill + 1);
+                int updated = Math.min(maxPauseLevel, pauseLevelFromRefill + 1);
+                if (updated != pauseLevelFromRefill) {
+                    LOG.info("{} | Tresorerie sous le seuil bas -> niveau de tension (tresorerie) = {}/{}", year, updated, maxPauseLevel);
+                    LOG.debug("{} | Tresorerie sous le seuil bas | tresorerie annuelle={} | seuil bas={}", year, treasuryBalance, cashFloor);
+                }
+                pauseLevelFromRefill = updated;
             } else if (cashCeiling != null && treasuryBalance.compareTo(cashCeiling) >= 0) {
-                pauseLevelFromRefill = Math.max(0, pauseLevelFromRefill - 1);
+                int updated = Math.max(0, pauseLevelFromRefill - 1);
+                if (updated != pauseLevelFromRefill) {
+                    LOG.info("{} | Tresorerie revenue au plafond -> niveau de tension (tresorerie) redescend a {}/{}", year, updated, maxPauseLevel);
+                    LOG.debug("{} | Tresorerie revenue au plafond | tresorerie annuelle={} | plafond={}", year, treasuryBalance, cashCeiling);
+                }
+                pauseLevelFromRefill = updated;
             }
 
             int alertCount = 0;
@@ -452,6 +496,7 @@ public class OverviewCalculationService {
             }
             int pauseLevelFromAlerts = Math.min(maxPauseLevel, alertCount);
             pauseLevel = Math.max(pauseLevelFromRefill, pauseLevelFromAlerts);
+            LOG.trace("{} | Tresorerie annuelle={} | seuil bas={} | plafond={} | niveau de tension={}/{} (tresorerie={}, alertes={})", year, treasuryBalance, cashFloor, cashCeiling, pauseLevel, maxPauseLevel, pauseLevelFromRefill, pauseLevelFromAlerts);
         }
 
         List<PatrimoinePerPlacementModel> perPlacement = new ArrayList<>();
