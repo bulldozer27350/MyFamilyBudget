@@ -384,6 +384,13 @@
       priority: Number(p.sweepPriority) || 0,
       cap: p.sweepCap !== undefined && p.sweepCap !== null && p.sweepCap !== "" ? Number(p.sweepCap) : Infinity
     })).sort((a, b) => a.priority - b.priority);
+    // Ordre de ponction (renflouement de la trésorerie) volontairement inverse de l'ordre de
+    // versement de l'excédent : on alimente d'abord les priorités basses (réserves "profondes",
+    // ex. livret A "Marco" en priorité 1) puis les priorités hautes (réserves de "surface", ex.
+    // livret A "Nathy" en priorité 2), et on ponctionne dans l'ordre inverse — surface d'abord,
+    // profondeur en dernier recours. Nathy n'est alimenté que si Marco est plein, et Marco n'est
+    // ponctionné que si Nathy est vide.
+    const sweepAccountsForRefill = [...sweepAccounts].reverse();
     function sweepExcessToPlacements(dateISO) {
       if (!sweepEnabled || !sweepAccounts.length) return;
       let excess = cashBalance - cashCeiling;
@@ -418,7 +425,7 @@
       let deficit = cashFloor - cashBalance;
       if (deficit <= 0) return false;
       let withdrewAny = false;
-      for (const acc of sweepAccounts) {
+      for (const acc of sweepAccountsForRefill) {
         if (deficit <= 0) break;
         const cur = placementBalances[acc.label] || 0;
         const withdraw = Math.min(deficit, Math.max(0, cur));
