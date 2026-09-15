@@ -364,6 +364,7 @@
         content: `
             - **Seuil haut (€)** : Montant maximum conservé sur le compte courant (ex. 15 000 €). Tout excédent en fin de mois est automatiquement versé sur les placements éligibles.
             - **Seuil bas (€)** : Montant minimum de sécurité (ex. 3 000 €). Si la trésorerie descend en dessous, l'outil rapatrie immédiatement la somme manquante depuis vos placements d'épargne.
+            - **Seuil d'alerte — compte courant (€)** : Décorrélé du seuil bas. Si la trésorerie passe sous ce seuil, le niveau d'alerte (qui suspend les versements sur les placements marqués d'une priorité de pause) augmente de 1, sans déclencher de virement automatique. Laissé vide, il n'a aucun effet.
           `
       }, {
         id: "simulate_until_age",

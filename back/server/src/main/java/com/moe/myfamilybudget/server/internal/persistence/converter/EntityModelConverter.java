@@ -27,6 +27,7 @@ public class EntityModelConverter {
         entity.setSweepEnabled(model.sweepEnabled());
         entity.setCashCeiling(model.cashCeiling());
         entity.setCashFloor(model.cashFloor());
+        entity.setCashAlertThreshold(model.cashAlertThreshold());
         return entity;
     }
 
@@ -46,7 +47,8 @@ public class EntityModelConverter {
             entity.getPassGrowthRate(),
             entity.getSweepEnabled(),
             entity.getCashCeiling(),
-            entity.getCashFloor()
+            entity.getCashFloor(),
+            entity.getCashAlertThreshold()
         );
     }
 

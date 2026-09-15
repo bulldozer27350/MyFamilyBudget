@@ -37,6 +37,7 @@ public class SettingsMapper {
             sMap.put("sweepEnabled", s.sweepEnabled());
             sMap.put("cashCeiling", s.cashCeiling());
             sMap.put("cashFloor", s.cashFloor());
+            sMap.put("cashAlertThreshold", s.cashAlertThreshold());
             response.put("settings", sMap);
         } else {
             response.put("settings", new HashMap<>());

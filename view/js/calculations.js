@@ -379,6 +379,11 @@
     const sweepEnabled = !!data.settings.sweepEnabled;
     const cashCeiling = data.settings.cashCeiling !== undefined && data.settings.cashCeiling !== null && data.settings.cashCeiling !== "" ? Number(data.settings.cashCeiling) : Infinity;
     const cashFloor = Number(data.settings.cashFloor) || 0;
+    // Seuil d'alerte du compte courant : décorrélé du seuil bas (cashFloor). Le seuil bas ne
+    // sert plus qu'à déclencher le réapprovisionnement réel (refillCashFromPlacements) ; seul
+    // ce seuil d'alerte, s'il est configuré, augmente le niveau de tension/alerte. Non
+    // configuré (vide), il n'a aucun effet.
+    const cashAlertThreshold = data.settings.cashAlertThreshold !== undefined && data.settings.cashAlertThreshold !== null && data.settings.cashAlertThreshold !== "" ? Number(data.settings.cashAlertThreshold) : null;
     const sweepAccounts = placements.filter(p => p.sweepPriority !== undefined && p.sweepPriority !== null && p.sweepPriority !== "").map(p => ({
       label: p.label,
       priority: Number(p.sweepPriority) || 0,
@@ -458,7 +463,7 @@
       label: p.label,
       trigger: Number(p.pauseTriggerBalance) || 0
     }));
-    let pauseLevelFromRefill = 0;
+    let pauseLevelFromCashAlert = 0;
     let pauseLevel = 0;
     const pauseStateByLabel = new Map();
     for (let y = startYear; y <= endYear; y++) {
@@ -470,6 +475,7 @@
         const monthKey = `${y}-${monthStr}`;
         const daysInMonth = new Date(y, m + 1, 0).getDate();
         let refillNeededThisMonth = false;
+        let cashAlertTriggeredThisMonth = false;
         let monthlyIncome = 0;
         effectiveIncomes.forEach(i => {
           if (!i.start || !i.end) return;
@@ -645,17 +651,22 @@
             });
           }
           if (refillCashFromPlacements(dateISO)) refillNeededThisMonth = true;
+          if (cashAlertThreshold !== null && cashBalance < cashAlertThreshold) cashAlertTriggeredThisMonth = true;
           if (d === daysInMonth) {
             sweepExcessToPlacements(dateISO);
-            if (refillNeededThisMonth) {
-              pauseLevelFromRefill = Math.min(maxPauseLevel, pauseLevelFromRefill + 1);
+            // Le seuil bas (cashFloor, via refillNeededThisMonth) ne pilote plus le niveau de
+            // tension : il continue uniquement de déclencher le réapprovisionnement réel
+            // ci-dessus. Seul le seuil d'alerte (cashAlertThreshold), s'il est configuré,
+            // augmente désormais pauseLevelFromCashAlert.
+            if (cashAlertTriggeredThisMonth) {
+              pauseLevelFromCashAlert = Math.min(maxPauseLevel, pauseLevelFromCashAlert + 1);
             } else if (cashBalance >= cashCeiling) {
-              pauseLevelFromRefill = Math.max(0, pauseLevelFromRefill - 1);
+              pauseLevelFromCashAlert = Math.max(0, pauseLevelFromCashAlert - 1);
             }
             const alertCount = bufferWatch.length ? bufferWatch.filter(b => (placementBalances[b.label] || 0) < b.trigger).length : 0;
             const pauseLevelFromAlerts = Math.min(maxPauseLevel, alertCount);
-            pauseLevel = Math.max(pauseLevelFromRefill, pauseLevelFromAlerts);
-            logAt("trace", `${monthKey} | Trésorerie=${eur(cashBalance)} | seuil bas=${eur(cashFloor)} | plafond=${cashCeiling === Infinity ? "illimité" : eur(cashCeiling)} | ponction ce mois=${refillNeededThisMonth} | niveau de tension=${pauseLevel}/${maxPauseLevel} (refill=${pauseLevelFromRefill}, alertes=${pauseLevelFromAlerts})`);
+            pauseLevel = Math.max(pauseLevelFromCashAlert, pauseLevelFromAlerts);
+            logAt("trace", `${monthKey} | Trésorerie=${eur(cashBalance)} | seuil bas=${eur(cashFloor)} | seuil alerte=${cashAlertThreshold === null ? "n/a" : eur(cashAlertThreshold)} | plafond=${cashCeiling === Infinity ? "illimité" : eur(cashCeiling)} | ponction ce mois=${refillNeededThisMonth} | alerte compte courant ce mois=${cashAlertTriggeredThisMonth} | niveau de tension=${pauseLevel}/${maxPauseLevel} (alerte compte courant=${pauseLevelFromCashAlert}, alertes placements=${pauseLevelFromAlerts})`);
           }
           let sumPlacements = 0;
           const pSnap = {};

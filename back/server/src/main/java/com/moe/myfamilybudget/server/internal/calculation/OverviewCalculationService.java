@@ -370,7 +370,13 @@ public class OverviewCalculationService {
         boolean sweepEnabled = Boolean.TRUE.equals(settings.sweepEnabled());
         BigDecimal cashFloor = settings.cashFloor() != null ? settings.cashFloor() : BigDecimal.ZERO;
         BigDecimal cashCeiling = settings.cashCeiling();
-        int pauseLevelFromRefill = 0;
+        // Seuil d'alerte du compte courant : decorrele du seuil bas (cashFloor). Le seuil bas
+        // ne sert plus qu'a declencher le reapprovisionnement reel (mecanisme de sweep, cote
+        // JS) ; c'est ce seuil d'alerte, s'il est configure, qui pilote desormais a lui seul
+        // l'augmentation du niveau de tension (pauseLevelFromCashAlert). Non configure (null),
+        // il n'a aucun effet.
+        BigDecimal cashAlertThreshold = settings.cashAlertThreshold();
+        int pauseLevelFromCashAlert = 0;
         int pauseLevel = 0;
         BigDecimal pivotBalanceValue = computePivotBalance(data);
         // Tresorerie annuelle utilisee pour le declencheur de refill : on reutilise le
@@ -473,21 +479,24 @@ public class OverviewCalculationService {
                 treasuryBalance = treasuryBalance.add(nonPlacementNet).subtract(totalContribThisYear);
             }
 
-            boolean refillNeeded = sweepEnabled && hasSweepAccounts && treasuryBalance.compareTo(cashFloor) < 0;
-            if (refillNeeded) {
-                int updated = Math.min(maxPauseLevel, pauseLevelFromRefill + 1);
-                if (updated != pauseLevelFromRefill) {
-                    LOG.info("{} | Tresorerie sous le seuil bas -> niveau de tension (tresorerie) = {}/{}", year, updated, maxPauseLevel);
-                    LOG.debug("{} | Tresorerie sous le seuil bas | tresorerie annuelle={} | seuil bas={}", year, treasuryBalance, cashFloor);
+            // Le seuil bas (cashFloor) ne pilote plus le niveau de tension : il ne sert qu'au
+            // reapprovisionnement reel du compte courant (cote JS). Seul le seuil d'alerte
+            // (cashAlertThreshold), s'il est configure, augmente pauseLevelFromCashAlert.
+            boolean cashAlertTriggered = cashAlertThreshold != null && treasuryBalance.compareTo(cashAlertThreshold) < 0;
+            if (cashAlertTriggered) {
+                int updated = Math.min(maxPauseLevel, pauseLevelFromCashAlert + 1);
+                if (updated != pauseLevelFromCashAlert) {
+                    LOG.info("{} | Tresorerie sous le seuil d'alerte -> niveau de tension (compte courant) = {}/{}", year, updated, maxPauseLevel);
+                    LOG.debug("{} | Tresorerie sous le seuil d'alerte | tresorerie annuelle={} | seuil d'alerte={}", year, treasuryBalance, cashAlertThreshold);
                 }
-                pauseLevelFromRefill = updated;
+                pauseLevelFromCashAlert = updated;
             } else if (cashCeiling != null && treasuryBalance.compareTo(cashCeiling) >= 0) {
-                int updated = Math.max(0, pauseLevelFromRefill - 1);
-                if (updated != pauseLevelFromRefill) {
-                    LOG.info("{} | Tresorerie revenue au plafond -> niveau de tension (tresorerie) redescend a {}/{}", year, updated, maxPauseLevel);
+                int updated = Math.max(0, pauseLevelFromCashAlert - 1);
+                if (updated != pauseLevelFromCashAlert) {
+                    LOG.info("{} | Tresorerie revenue au plafond -> niveau de tension (compte courant) redescend a {}/{}", year, updated, maxPauseLevel);
                     LOG.debug("{} | Tresorerie revenue au plafond | tresorerie annuelle={} | plafond={}", year, treasuryBalance, cashCeiling);
                 }
-                pauseLevelFromRefill = updated;
+                pauseLevelFromCashAlert = updated;
             }
 
             int alertCount = 0;
@@ -495,8 +504,8 @@ public class OverviewCalculationService {
                 if (corrArr[idx].compareTo(placements.get(idx).pauseTriggerBalance()) < 0) alertCount++;
             }
             int pauseLevelFromAlerts = Math.min(maxPauseLevel, alertCount);
-            pauseLevel = Math.max(pauseLevelFromRefill, pauseLevelFromAlerts);
-            LOG.trace("{} | Tresorerie annuelle={} | seuil bas={} | plafond={} | niveau de tension={}/{} (tresorerie={}, alertes={})", year, treasuryBalance, cashFloor, cashCeiling, pauseLevel, maxPauseLevel, pauseLevelFromRefill, pauseLevelFromAlerts);
+            pauseLevel = Math.max(pauseLevelFromCashAlert, pauseLevelFromAlerts);
+            LOG.trace("{} | Tresorerie annuelle={} | seuil bas={} | seuil d'alerte={} | plafond={} | niveau de tension={}/{} (alerte compte courant={}, alertes placements={})", year, treasuryBalance, cashFloor, cashAlertThreshold, cashCeiling, pauseLevel, maxPauseLevel, pauseLevelFromCashAlert, pauseLevelFromAlerts);
         }
 
         List<PatrimoinePerPlacementModel> perPlacement = new ArrayList<>();

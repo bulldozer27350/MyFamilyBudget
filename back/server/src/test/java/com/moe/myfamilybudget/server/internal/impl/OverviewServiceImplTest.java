@@ -244,6 +244,103 @@ class OverviewServiceImplTest {
         assertThat(scpiRows.get(0).getCorr()).isEqualByComparingTo("3700");
         assertThat(scpiRows.get(1).getCorr()).isEqualByComparingTo("3700");
     }
+
+    @Test
+    @DisplayName("Should NOT raise the tension level when treasury drops below cashFloor if cashAlertThreshold is not configured (decoupling)")
+    void testBuildOverview_CashFloorAloneNoLongerRaisesTensionLevel() {
+        // Given : sweepEnabled=true, un compte de sweep existe, et la tresorerie de fin
+        // d'annee 1 (-2400, cf. calcul ci-dessous) est BIEN sous le seuil bas (cashFloor=0) —
+        // avec l'ancien comportement (pauseLevelFromRefill pilote par cashFloor), cela aurait
+        // suspendu "Test Pausable" des l'annee 2. cashAlertThreshold n'etant pas configure
+        // (null), ce mecanisme ne doit plus se declencher : seul un seuil d'alerte explicite
+        // doit desormais augmenter le niveau de tension.
+        SettingsModel settings = new SettingsModel(
+                1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
+                new BigDecimal("47100"), new BigDecimal("0.015"), true, null, BigDecimal.ZERO, null
+        );
+
+        PlacementModel sweepAccount = new PlacementModel(
+                "plc_sweep", "Test Sweep Account", "Epargne", new BigDecimal("1000"), "2026-01-01",
+                BigDecimal.ZERO, "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, 1, null, null, null, "cat_epargne"
+        );
+        PlacementModel pausable = new PlacementModel(
+                "plc_pausable", "Test Pausable", "Assurance Vie", new BigDecimal("1000"), "2026-01-01",
+                new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, null, 1, "cat_av"
+        );
+
+        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable),
+                List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), null);
+
+        this.persistenceManager.setBudgetData(budgetData);
+
+        // When
+        OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
+
+        // Then
+        var pausableRows = response.getPatrimoine().getPerPlacement().stream()
+                .filter(p -> "Test Pausable".equals(p.getLabel()))
+                .findFirst()
+                .orElseThrow()
+                .getRows();
+
+        BigDecimal afterYear1 = pausableRows.get(0).getCorr();
+        assertThat(afterYear1).isEqualByComparingTo("3400"); // 1000 + 200*12, taux a 0
+
+        // Non-regression de la decorrelation : sans seuil d'alerte configure, le seuil bas
+        // seul ne doit plus suspendre les versements, meme tres depasse.
+        BigDecimal afterYear2 = pausableRows.get(1).getCorr();
+        assertThat(afterYear2).isEqualByComparingTo(afterYear1.add(new BigDecimal("2400")));
+    }
+
+    @Test
+    @DisplayName("Should raise the tension level once treasury drops below the dedicated cashAlertThreshold")
+    void testBuildOverview_CashAlertThresholdRaisesTensionLevel() {
+        // Given : memes donnees que le test precedent, mais avec un cashAlertThreshold
+        // explicite (-1000) : la tresorerie de fin d'annee 1 (-2400) passe sous ce seuil, ce
+        // qui doit suspendre "Test Pausable" a partir de l'annee 2.
+        SettingsModel settings = new SettingsModel(
+                1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
+                new BigDecimal("47100"), new BigDecimal("0.015"), true, null, BigDecimal.ZERO, new BigDecimal("-1000")
+        );
+
+        PlacementModel sweepAccount = new PlacementModel(
+                "plc_sweep", "Test Sweep Account", "Epargne", new BigDecimal("1000"), "2026-01-01",
+                BigDecimal.ZERO, "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, 1, null, null, null, "cat_epargne"
+        );
+        PlacementModel pausable = new PlacementModel(
+                "plc_pausable", "Test Pausable", "Assurance Vie", new BigDecimal("1000"), "2026-01-01",
+                new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, null, 1, "cat_av"
+        );
+
+        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable),
+                List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), null);
+
+        this.persistenceManager.setBudgetData(budgetData);
+
+        // When
+        OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
+
+        // Then
+        var pausableRows = response.getPatrimoine().getPerPlacement().stream()
+                .filter(p -> "Test Pausable".equals(p.getLabel()))
+                .findFirst()
+                .orElseThrow()
+                .getRows();
+
+        BigDecimal afterYear1 = pausableRows.get(0).getCorr();
+        assertThat(afterYear1).isEqualByComparingTo("3400"); // 1000 + 200*12, taux a 0
+
+        // Des l'annee 2, le seuil d'alerte declenche la pause : le solde ne doit plus bouger.
+        assertThat(pausableRows.get(1).getCorr()).isEqualByComparingTo(afterYear1);
+        assertThat(pausableRows.get(2).getCorr()).isEqualByComparingTo(afterYear1);
+    }
+
     @Test
     @DisplayName("Should return sweepEnabled, cashCeiling and cashFloor in Overview response data.settings")
     void testBuildOverview_ReturnsSweepSettingsInData() {

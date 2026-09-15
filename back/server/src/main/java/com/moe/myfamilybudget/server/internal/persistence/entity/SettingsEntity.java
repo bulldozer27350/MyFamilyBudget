@@ -25,6 +25,7 @@ public class SettingsEntity {
     private Boolean sweepEnabled;
     private BigDecimal cashCeiling;
     private BigDecimal cashFloor;
+    private BigDecimal cashAlertThreshold;
     
     // Constructors
     public SettingsEntity() {}
@@ -165,5 +166,13 @@ public class SettingsEntity {
 
     public void setCashFloor(BigDecimal cashFloor) {
         this.cashFloor = cashFloor;
+    }
+
+    public BigDecimal getCashAlertThreshold() {
+        return cashAlertThreshold;
+    }
+
+    public void setCashAlertThreshold(BigDecimal cashAlertThreshold) {
+        this.cashAlertThreshold = cashAlertThreshold;
     }
 }

@@ -562,6 +562,81 @@ class PatrimoineServiceImplTest {
     }
 
     @Test
+    void computePatrimoineProjections_cashFloorAloneNoLongerRaisesTensionLevel() {
+        // sweepEnabled=true et un compte de sweep existent, et la tresorerie de fin d'annee 1
+        // (-2400) est BIEN sous le seuil bas (cashFloor=0) : avec l'ancien comportement
+        // (pauseLevelFromRefill pilote par cashFloor), cela aurait suspendu "Test Pausable"
+        // des l'annee 2. cashAlertThreshold n'etant pas configure (null), la decorrelation
+        // impose qu'aucune pause ne se declenche desormais par ce chemin.
+        PlacementModel sweepAccount = new PlacementModel(
+                "plc_sweep", "Test Sweep Account", "Epargne", new BigDecimal("1000"), "2026-01-01",
+                BigDecimal.ZERO, "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, 1, null, null, null, "cat_epargne"
+        );
+        PlacementModel pausable = new PlacementModel(
+                "plc_pausable", "Test Pausable", "Assurance Vie", new BigDecimal("1000"), "2026-01-01",
+                new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, null, 1, "cat_av"
+        );
+        SettingsModel settings = new SettingsModel(
+                1985, 64, 85, BigDecimal.ZERO, "", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
+                new BigDecimal("47100"), new BigDecimal("0.015"), true, null, BigDecimal.ZERO, null
+        );
+        BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), null,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
+        persistenceManager.setBudgetData(data);
+
+        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(persistenceManager.getBudgetData(), false);
+        List<PatrimoineYearModel> rows = proj.perPlacement().stream()
+                .filter(p -> "Test Pausable".equals(p.label()))
+                .findFirst()
+                .orElseThrow()
+                .rows();
+
+        BigDecimal afterYear1 = rows.get(0).corr();
+        assertEquals(0, new BigDecimal("3400.00").compareTo(afterYear1));
+        // Non-regression de la decorrelation : le versement continue normalement (+2400).
+        assertEquals(0, afterYear1.add(new BigDecimal("2400")).compareTo(rows.get(1).corr()));
+    }
+
+    @Test
+    void computePatrimoineProjections_cashAlertThresholdRaisesTensionLevel() {
+        // Meme scenario, mais avec un cashAlertThreshold explicite (-1000) : la tresorerie de
+        // fin d'annee 1 (-2400) passe sous ce seuil, ce qui doit suspendre "Test Pausable" a
+        // partir de l'annee 2.
+        PlacementModel sweepAccount = new PlacementModel(
+                "plc_sweep", "Test Sweep Account", "Epargne", new BigDecimal("1000"), "2026-01-01",
+                BigDecimal.ZERO, "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, 1, null, null, null, "cat_epargne"
+        );
+        PlacementModel pausable = new PlacementModel(
+                "plc_pausable", "Test Pausable", "Assurance Vie", new BigDecimal("1000"), "2026-01-01",
+                new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, null, 1, "cat_av"
+        );
+        SettingsModel settings = new SettingsModel(
+                1985, 64, 85, BigDecimal.ZERO, "", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
+                new BigDecimal("47100"), new BigDecimal("0.015"), true, null, BigDecimal.ZERO, new BigDecimal("-1000")
+        );
+        BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), null,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
+        persistenceManager.setBudgetData(data);
+
+        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(persistenceManager.getBudgetData(), false);
+        List<PatrimoineYearModel> rows = proj.perPlacement().stream()
+                .filter(p -> "Test Pausable".equals(p.label()))
+                .findFirst()
+                .orElseThrow()
+                .rows();
+
+        BigDecimal afterYear1 = rows.get(0).corr();
+        assertEquals(0, new BigDecimal("3400.00").compareTo(afterYear1));
+        // Des l'annee 2, le seuil d'alerte declenche la pause : le solde ne doit plus bouger.
+        assertEquals(0, afterYear1.compareTo(rows.get(1).corr()));
+        assertEquals(0, afterYear1.compareTo(rows.get(2).corr()));
+    }
+
+    @Test
     void getPlacementEvolution_suspendsTracedPlacementWhenBufferWatchPlacementBelowThreshold() {
         // Meme scenario que computePatrimoineProjections_suspendsContributionsWhenBufferWatchPlacementBelowThreshold,
         // mais verifie via la courbe mensuelle individuelle (drawer de detail), qui doit

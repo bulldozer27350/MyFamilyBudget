@@ -206,6 +206,7 @@ public class PointageMapper {
         map.put("sweepEnabled", s.sweepEnabled());
         map.put("cashCeiling", s.cashCeiling());
         map.put("cashFloor", s.cashFloor());
+        map.put("cashAlertThreshold", s.cashAlertThreshold());
         return map;
     }
 }

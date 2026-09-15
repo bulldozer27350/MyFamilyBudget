@@ -16,7 +16,8 @@ public record SettingsModel(
     BigDecimal passGrowthRate,
     Boolean sweepEnabled,
     BigDecimal cashCeiling,
-    BigDecimal cashFloor
+    BigDecimal cashFloor,
+    BigDecimal cashAlertThreshold
 ) {
     public SettingsModel(
         Integer birthYear,
@@ -31,7 +32,30 @@ public record SettingsModel(
         BigDecimal pass2026,
         BigDecimal passGrowthRate
     ) {
-        this(birthYear, retireAge, simulateUntilAge, inflationRate, pivotDate, pivotMode, startBalance, childExitAge, taxAbattement, pass2026, passGrowthRate, false, null, null);
+        this(birthYear, retireAge, simulateUntilAge, inflationRate, pivotDate, pivotMode, startBalance, childExitAge, taxAbattement, pass2026, passGrowthRate, false, null, null, null);
+    }
+
+    // Constructeur de compatibilite ascendante : conserve la signature historique a 14
+    // parametres (avant l'ajout de cashAlertThreshold) pour ne pas avoir a modifier tous les
+    // appels existants (tests, valeurs par defaut) qui construisent encore ces 14 champs.
+    // cashAlertThreshold vaut alors null (aucun seuil d'alerte configure).
+    public SettingsModel(
+        Integer birthYear,
+        Integer retireAge,
+        Integer simulateUntilAge,
+        BigDecimal inflationRate,
+        String pivotDate,
+        String pivotMode,
+        BigDecimal startBalance,
+        Integer childExitAge,
+        BigDecimal taxAbattement,
+        BigDecimal pass2026,
+        BigDecimal passGrowthRate,
+        Boolean sweepEnabled,
+        BigDecimal cashCeiling,
+        BigDecimal cashFloor
+    ) {
+        this(birthYear, retireAge, simulateUntilAge, inflationRate, pivotDate, pivotMode, startBalance, childExitAge, taxAbattement, pass2026, passGrowthRate, sweepEnabled, cashCeiling, cashFloor, null);
     }
 
     public int getEffectiveBirthYear() {

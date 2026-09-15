@@ -286,7 +286,7 @@ public class OverviewMapper {
         return new SettingsModel(dto.getBirthYear(), dto.getRetireAge(), dto.getSimulateUntilAge(),
                 dto.getInflationRate(), dto.getPivotDate(), dto.getPivotMode(), dto.getStartBalance(),
                 dto.getChildExitAge(), dto.getTaxAbattement(), dto.getPass2026(), dto.getPassGrowthRate(),
-                dto.getSweepEnabled(), dto.getCashCeiling(), dto.getCashFloor());
+                dto.getSweepEnabled(), dto.getCashCeiling(), dto.getCashFloor(), dto.getCashAlertThreshold());
     }
 
     private SettingsDto toSettingsDto(SettingsModel model) {
@@ -307,6 +307,7 @@ public class OverviewMapper {
         dto.setSweepEnabled(model.sweepEnabled());
         dto.setCashCeiling(model.cashCeiling());
         dto.setCashFloor(model.cashFloor());
+        dto.setCashAlertThreshold(model.cashAlertThreshold());
         return dto;
     }
 

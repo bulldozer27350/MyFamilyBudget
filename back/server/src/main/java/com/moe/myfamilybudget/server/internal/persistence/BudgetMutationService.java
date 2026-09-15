@@ -551,7 +551,8 @@ class BudgetMutationService {
                     "passGrowthRate".equals(field) ? toBigDecimal(value, new BigDecimal("0.015")) : s.passGrowthRate(),
                     "sweepEnabled".equals(field) ? (value != null && Boolean.parseBoolean(String.valueOf(value))) : s.sweepEnabled(),
                     "cashCeiling".equals(field) ? toBigDecimal(value, null) : s.cashCeiling(),
-                    "cashFloor".equals(field) ? toBigDecimal(value, null) : s.cashFloor()
+                    "cashFloor".equals(field) ? toBigDecimal(value, null) : s.cashFloor(),
+                    "cashAlertThreshold".equals(field) ? toBigDecimal(value, null) : s.cashAlertThreshold()
             );
             return base.withSettings(updatedSettings);
         });

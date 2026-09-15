@@ -544,7 +544,25 @@
       placeholder: "ex. 3000",
       onChange: v => updateSettingsField("cashFloor", v),
       style: inputStyle
-    })))), /*#__PURE__*/React.createElement("div", {
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 6
+      }
+    }, "Seuil d'alerte — compte courant (€)"), /*#__PURE__*/React.createElement(DebouncedInput, {
+      type: "number",
+      value: data?.settings?.cashAlertThreshold ?? "",
+      placeholder: "ex. 1000",
+      onChange: v => updateSettingsField("cashAlertThreshold", v),
+      style: inputStyle
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        color: C?.inkSoft || "#6B7278",
+        maxWidth: 220
+      }
+    }, "Décorrélé du seuil bas : si la trésorerie passe sous ce seuil, le niveau d'alerte augmente de 1 (les versements sur les placements en pause y sont sensibles), sans déclencher de virement."))), /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 20,
         paddingTop: 18,

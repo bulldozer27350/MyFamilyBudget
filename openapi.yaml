@@ -1052,6 +1052,8 @@ components:
           type: number
         cashFloor:
           type: number
+        cashAlertThreshold:
+          type: number
 
     IncomeDto:
       type: object

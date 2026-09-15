@@ -105,6 +105,7 @@ public class TaxMapper {
             settingsMap.put("sweepEnabled", s.sweepEnabled());
             settingsMap.put("cashCeiling", s.cashCeiling());
             settingsMap.put("cashFloor", s.cashFloor());
+            settingsMap.put("cashAlertThreshold", s.cashAlertThreshold());
         }
         response.put("settings", settingsMap);
 

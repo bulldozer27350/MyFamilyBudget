@@ -213,6 +213,9 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         boolean sweepEnabled = Boolean.TRUE.equals(settings.sweepEnabled());
         BigDecimal cashFloor = settings.cashFloor() != null ? settings.cashFloor() : BigDecimal.ZERO;
         BigDecimal cashCeiling = settings.cashCeiling();
+        // Seuil d'alerte du compte courant : decorrele du seuil bas (cashFloor), qui ne sert
+        // plus qu'au reapprovisionnement reel (cote JS). Non configure (null), sans effet.
+        BigDecimal cashAlertThreshold = settings.cashAlertThreshold();
 
         Map<String, BigDecimal> backgroundCorr = new HashMap<>();
         Map<String, YearMonth> backgroundFrom = new HashMap<>();
@@ -226,7 +229,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
                     ? YearMonth.from(parseDate(p.monthlyUntil())) : null);
         }
 
-        int pauseLevelFromRefill = 0;
+        int pauseLevelFromCashAlert = 0;
         int pauseLevel = 0;
         // Approximation de la tresorerie : ce niveau de detail (courbe d'un seul placement)
         // ne dispose pas des revenus/charges du foyer, seulement des mouvements de
@@ -281,11 +284,13 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
             }
 
             treasuryBalance = treasuryBalance.subtract(totalContribThisMonth).add(totalWithdrawnThisMonth);
-            boolean refillNeeded = sweepEnabled && hasSweepAccounts && treasuryBalance.compareTo(cashFloor) < 0;
-            if (refillNeeded) {
-                pauseLevelFromRefill = Math.min(maxPauseLevel, pauseLevelFromRefill + 1);
+            // Le seuil bas (cashFloor) ne pilote plus le niveau de tension (voir seuil d'alerte
+            // ci-dessus) ; il continue neanmoins d'etre calcule pour un usage futur eventuel.
+            boolean cashAlertTriggered = cashAlertThreshold != null && treasuryBalance.compareTo(cashAlertThreshold) < 0;
+            if (cashAlertTriggered) {
+                pauseLevelFromCashAlert = Math.min(maxPauseLevel, pauseLevelFromCashAlert + 1);
             } else if (cashCeiling != null && treasuryBalance.compareTo(cashCeiling) >= 0) {
-                pauseLevelFromRefill = Math.max(0, pauseLevelFromRefill - 1);
+                pauseLevelFromCashAlert = Math.max(0, pauseLevelFromCashAlert - 1);
             }
             int alertCount = 0;
             for (PlacementModel bp : bufferWatch) {
@@ -293,7 +298,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
                 if (bal != null && bal.compareTo(bp.pauseTriggerBalance()) < 0) alertCount++;
             }
             int pauseLevelFromAlerts = Math.min(maxPauseLevel, alertCount);
-            pauseLevel = Math.max(pauseLevelFromRefill, pauseLevelFromAlerts);
+            pauseLevel = Math.max(pauseLevelFromCashAlert, pauseLevelFromAlerts);
 
             cursor = cursor.plusMonths(1);
             elapsedMonths++;
@@ -391,7 +396,10 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         boolean sweepEnabled = Boolean.TRUE.equals(settings.sweepEnabled());
         BigDecimal cashFloor = settings.cashFloor() != null ? settings.cashFloor() : BigDecimal.ZERO;
         BigDecimal cashCeiling = settings.cashCeiling();
-        int pauseLevelFromRefill = 0;
+        // Seuil d'alerte du compte courant : decorrele du seuil bas (cashFloor), qui ne sert
+        // plus qu'au reapprovisionnement reel (cote JS). Non configure (null), sans effet.
+        BigDecimal cashAlertThreshold = settings.cashAlertThreshold();
+        int pauseLevelFromCashAlert = 0;
         int pauseLevel = 0;
         // Tresorerie annuelle approximee : cette classe n'a pas acces au moteur complet de
         // tresorerie (revenus/charges/impots, cf. OverviewServiceImpl) ; on reconstitue donc
@@ -469,11 +477,13 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
                     .subtract(totalContribThisYear).add(totalWithdrawThisYear);
             treasuryBalance = treasuryBalance.add(annualNet);
 
-            boolean refillNeeded = sweepEnabled && hasSweepAccounts && treasuryBalance.compareTo(cashFloor) < 0;
-            if (refillNeeded) {
-                pauseLevelFromRefill = Math.min(maxPauseLevel, pauseLevelFromRefill + 1);
+            // Le seuil bas (cashFloor) ne pilote plus le niveau de tension : seul le seuil
+            // d'alerte (cashAlertThreshold), s'il est configure, augmente pauseLevelFromCashAlert.
+            boolean cashAlertTriggered = cashAlertThreshold != null && treasuryBalance.compareTo(cashAlertThreshold) < 0;
+            if (cashAlertTriggered) {
+                pauseLevelFromCashAlert = Math.min(maxPauseLevel, pauseLevelFromCashAlert + 1);
             } else if (cashCeiling != null && treasuryBalance.compareTo(cashCeiling) >= 0) {
-                pauseLevelFromRefill = Math.max(0, pauseLevelFromRefill - 1);
+                pauseLevelFromCashAlert = Math.max(0, pauseLevelFromCashAlert - 1);
             }
 
             int alertCount = 0;
@@ -481,7 +491,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
                 if (corrArr[idx].compareTo(placements.get(idx).pauseTriggerBalance()) < 0) alertCount++;
             }
             int pauseLevelFromAlerts = Math.min(maxPauseLevel, alertCount);
-            pauseLevel = Math.max(pauseLevelFromRefill, pauseLevelFromAlerts);
+            pauseLevel = Math.max(pauseLevelFromCashAlert, pauseLevelFromAlerts);
         }
 
         List<PatrimoinePerPlacementModel> perPlacement = new ArrayList<>();

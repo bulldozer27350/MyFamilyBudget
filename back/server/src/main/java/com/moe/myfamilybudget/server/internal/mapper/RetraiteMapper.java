@@ -206,6 +206,7 @@ public class RetraiteMapper {
         dto.setSweepEnabled(model.sweepEnabled());
         dto.setCashCeiling(model.cashCeiling());
         dto.setCashFloor(model.cashFloor());
+        dto.setCashAlertThreshold(model.cashAlertThreshold());
         return dto;
     }
 
