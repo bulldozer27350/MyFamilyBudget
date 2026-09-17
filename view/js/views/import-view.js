@@ -65,12 +65,13 @@
     columns,
     emptyLabel,
     renderRow,
-    maxHeight = 480
-  }) {
-    const [sortConfig, setSortConfig] = useState({
+    maxHeight = 480,
+    defaultSort = {
       key: null,
       dir: "desc"
-    });
+    }
+  }) {
+    const [sortConfig, setSortConfig] = useState(defaultSort);
     const [filters, setFilters] = useState({});
     const activeFilterCount = Object.values(filters).filter(v => v && String(v).trim() !== "").length;
     const filteredSorted = useMemo(() => {
@@ -1298,7 +1299,9 @@
       }
     }, "✓ Fermer"))))), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Catégories",
-      subtitle: "Liste libre — créez les catégories de dépenses ou revenus nécessaires."
+      subtitle: "Liste libre — créez les catégories de dépenses ou revenus nécessaires.",
+      collapsible: true,
+      defaultCollapsed: true
     }, /*#__PURE__*/React.createElement(EditableTable, {
       columns: [{
         key: "label",
@@ -1338,7 +1341,9 @@
       }
     })), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Règles de catégorisation",
-      subtitle: "Un mot-clé s'applique dès qu'il apparaît n'importe où dans le libellé bancaire."
+      subtitle: "Un mot-clé s'applique dès qu'il apparaît n'importe où dans le libellé bancaire.",
+      collapsible: true,
+      defaultCollapsed: true
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 10
@@ -1383,6 +1388,10 @@
       subtitle: `${transactions.length} transaction(s) importée(s)${uncategorizedCount ? ` — ${uncategorizedCount} non catégorisée(s)` : ""}.`
     }, /*#__PURE__*/React.createElement(SortFilterTable, {
       rows: transactions,
+      defaultSort: {
+        key: "date",
+        dir: "desc"
+      },
       emptyLabel: "Aucune transaction importée pour l'instant — utilisez le formulaire ci-dessus.",
       columns: [{
         key: "date",

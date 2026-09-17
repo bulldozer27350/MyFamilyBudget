@@ -211,8 +211,13 @@
     title,
     subtitle,
     right,
-    children
+    children,
+    collapsible,
+    defaultCollapsed
   }) {
+    const [collapsed, setCollapsed] = useState(!!collapsible && !!defaultCollapsed);
+    const isCollapsed = !!collapsible && collapsed;
+    const toggle = () => collapsible && setCollapsed(c => !c);
     return /*#__PURE__*/React.createElement("div", {
       style: {
         background: C.panel || "#FFFFFF",
@@ -221,14 +226,34 @@
         marginBottom: 20
       }
     }, /*#__PURE__*/React.createElement("div", {
+      onClick: collapsible ? toggle : undefined,
+      role: collapsible ? "button" : undefined,
+      "aria-expanded": collapsible ? !isCollapsed : undefined,
       style: {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "flex-start",
         padding: "16px 20px",
-        borderBottom: `1px solid ${C.line || "#DED6C4"}`
+        borderBottom: isCollapsed ? "none" : `1px solid ${C.line || "#DED6C4"}`,
+        cursor: collapsible ? "pointer" : "default",
+        userSelect: collapsible ? "none" : "auto"
       }
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8
+      }
+    }, collapsible && /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: "inline-block",
+        marginTop: 3,
+        fontSize: 12,
+        color: C.inkSoft || "#6B7278",
+        transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)",
+        transition: "transform 0.15s ease"
+      }
+    }, "▾"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontFamily: "'Newsreader', serif",
         fontSize: 18,
@@ -241,7 +266,9 @@
         color: C.inkSoft || "#6B7278",
         marginTop: 3
       }
-    }, subtitle)), right), /*#__PURE__*/React.createElement("div", {
+    }, subtitle))), right && /*#__PURE__*/React.createElement("div", {
+      onClick: e => e.stopPropagation()
+    }, right)), !isCollapsed && /*#__PURE__*/React.createElement("div", {
       style: {
         padding: 20
       }
