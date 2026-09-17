@@ -1247,6 +1247,125 @@
     return result;
   }
 
+  /* ============================== Diagnostic budgétaire (Analyse) ============================== */
+  /**
+   * Diagnostic statique de premier niveau : taux d'épargne réel, postes en dérive
+   * les plus marqués, épargne de précaution (solde pivot / charges mensuelles) et
+   * comparateur de rendement entre placements d'une même classe d'actif.
+   * Calcul pur à partir de `data`, sans appel réseau — réutilisable tel quel côté
+   * serveur (Java) si ce diagnostic devait être porté plus tard.
+   */
+  function computeBudgetDiagnostic(data, options) {
+    const opts = options || {};
+    const driftTolerancePct = opts.driftTolerancePct ?? 0.02; // même tolérance que driftRows (2% du budgété)
+    const underperformGapPts = opts.underperformGapPts ?? 0.5; // écart de rendement annuel (points) à partir duquel on signale
+    const minPlacementBalance = opts.minPlacementBalance ?? 100; // ignore les comptes quasi vides
+
+    const inflationRate = Number(data?.settings?.inflationRate) || 0.02;
+    const currentYear = new Date().getFullYear();
+    const realAvgs = computeRealAverages(data);
+
+    // --- 1. Taux d'épargne réel (3 et 12 mois) ---
+    const sumAvg = (rows, field) => rows.reduce((s, row) => {
+      const avg = realAvgs[row.id];
+      const value = avg && avg[field] !== null && avg[field] !== undefined ? avg[field] : null;
+      return value === null ? s : s + value;
+    }, 0);
+    const income3m = sumAvg(data?.incomes || [], "avg3m");
+    const income12m = sumAvg(data?.incomes || [], "avg12m");
+    const expense3m = sumAvg(data?.charges || [], "avg3m");
+    const expense12m = sumAvg(data?.charges || [], "avg12m");
+    const savingsRate3m = income3m > 0 ? (income3m - expense3m) / income3m : null;
+    const savingsRate12m = income12m > 0 ? (income12m - expense12m) / income12m : null;
+
+    // --- 2. Postes en dérive les plus marqués (réel 3 mois vs prévisionnel) ---
+    const deviations = [];
+    const addDeviation = (row, kind) => {
+      const budgeted = kind === "charge" ? chargeMonthlyForYear(row, currentYear, inflationRate) : kind === "revenu" ? incomeMonthlyForYear(row, currentYear) : Number(row.monthly) || 0;
+      if (budgeted <= 0) return;
+      const avg3m = realAvgs[row.id]?.avg3m ?? null;
+      if (avg3m === null) return; // pas assez de pointage pour juger de la ligne
+      const ecart = avg3m - budgeted;
+      const tolerance = Math.max(1, budgeted * driftTolerancePct);
+      if (Math.abs(ecart) <= tolerance) return;
+      deviations.push({
+        id: row.id,
+        label: kind === "placement" ? `Épargne : ${row.label}` : row.label,
+        kind,
+        budgeted,
+        avg3m,
+        ecart,
+        ecartPct: budgeted > 0 ? ecart / budgeted * 100 : null
+      });
+    };
+    (data?.charges || []).forEach(c => addDeviation(c, "charge"));
+    (data?.incomes || []).forEach(i => addDeviation(i, "revenu"));
+    (data?.placements || []).forEach(p => addDeviation(p, "placement"));
+    const topDeviations = deviations.sort((a, b) => Math.abs(b.ecart) - Math.abs(a.ecart)).slice(0, 3);
+
+    // --- 3. Épargne de précaution (solde pivot / charges mensuelles réelles) ---
+    const pivotBalance = computePivotBalance(data);
+    const monthlyChargesRef = expense3m > 0 ? expense3m : (data?.charges || []).reduce((s, c) => s + chargeMonthlyForYear(c, currentYear, inflationRate), 0);
+    const precautionMonths = pivotBalance !== null && monthlyChargesRef > 0 ? pivotBalance / monthlyChargesRef : null;
+    let precautionStatus = "inconnu";
+    if (precautionMonths !== null) {
+      if (precautionMonths < 1) precautionStatus = "critique";else if (precautionMonths < 3) precautionStatus = "faible";else if (precautionMonths < 6) precautionStatus = "correct";else precautionStatus = "confortable";
+    }
+
+    // --- 4. Comptes sous-performants au sein d'une même classe d'actif ---
+    const bucketByCategory = {};
+    (data?.assetCategories || []).forEach(c => {
+      bucketByCategory[c.name] = c.bucket;
+    });
+    const eligible = (data?.placements || []).filter(p => (Number(p.balance) || 0) >= minPlacementBalance);
+    const byBucket = {};
+    eligible.forEach(p => {
+      const bucket = bucketByCategory[p.category] || "autre";
+      if (!byBucket[bucket]) byBucket[bucket] = [];
+      byBucket[bucket].push(p);
+    });
+    const underperformThreshold = underperformGapPts / 100;
+    const underperformingPlacements = [];
+    Object.entries(byBucket).forEach(([bucket, group]) => {
+      if (group.length < 2) return;
+      const best = group.reduce((a, b) => (Number(b.rateCorr) || 0) > (Number(a.rateCorr) || 0) ? b : a);
+      const bestRate = Number(best.rateCorr) || 0;
+      group.forEach(p => {
+        if (p.id === best.id) return;
+        const rate = Number(p.rateCorr) || 0;
+        const gap = bestRate - rate;
+        if (gap < underperformThreshold) return;
+        underperformingPlacements.push({
+          id: p.id,
+          label: p.label,
+          category: p.category || null,
+          bucket,
+          rate,
+          balance: Number(p.balance) || 0,
+          betterLabel: best.label,
+          betterRate: bestRate,
+          gapPts: gap * 100
+        });
+      });
+    });
+    underperformingPlacements.sort((a, b) => b.gapPts - a.gapPts);
+
+    return {
+      savingsRate3m,
+      savingsRate12m,
+      income3m,
+      income12m,
+      expense3m,
+      expense12m,
+      topDeviations,
+      pivotBalance,
+      monthlyChargesRef,
+      precautionMonths,
+      precautionStatus,
+      underperformingPlacements
+    };
+  }
+
   // Helper to find earliest date in the dataset
   function getEarliestDate(data) {
     if (!data) return "2026-01-01";
@@ -1299,6 +1418,7 @@
   exports.computeFinancialProjections = computeFinancialProjections;
   exports.useFinancialProjections = useFinancialProjections;
   exports.computeRealAverages = computeRealAverages;
+  exports.computeBudgetDiagnostic = computeBudgetDiagnostic;
   exports.getEarliestDate = getEarliestDate;
   exports.findEarliestYear = findEarliestYear;
 })(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);

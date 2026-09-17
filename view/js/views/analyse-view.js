@@ -18,7 +18,8 @@
   const {
     chargeMonthlyForYear,
     incomeMonthlyForYear,
-    computeRealAverages
+    computeRealAverages,
+    computeBudgetDiagnostic
   } = exports.chargeMonthlyForYear ? exports : window.BudgetApp || {};
   const {
     SectionCard,
@@ -637,6 +638,12 @@
     // apiData.driftRows (AnalyseDriftRowDto) : id/label/kind/budgeted/avg3m/avg12m/ecart/ecartPct/status/months,
     // structure identique aux lignes calculées en JS.
     const driftRows = serverDataValid ? apiData.driftRows : localDriftRows;
+    // Diagnostic budgétaire (onglet "Diagnostic") : calcul 100% local, indépendant du sélecteur
+    // de période et de l'API /api/v1/analyse — repose uniquement sur les données brutes déjà chargées.
+    const diagnostic = useMemo(() => {
+      const calc = exports.computeBudgetDiagnostic || window.BudgetApp && window.BudgetApp.computeBudgetDiagnostic || computeBudgetDiagnostic;
+      return calc ? calc(rawData) : null;
+    }, [rawData]);
     const displayDriftRows = useMemo(() => {
       let r = driftRows;
       if (driftSearch.trim()) {
@@ -963,6 +970,9 @@
     }, {
       key: "drift",
       label: "📉 Dérives par Ligne"
+    }, {
+      key: "diagnostic",
+      label: "🩺 Diagnostic"
     }, {
       key: "custom",
       label: "🔎 Filtre Personnalisé"
@@ -1605,7 +1615,142 @@
         marginTop: 10,
         fontStyle: "italic"
       }
-    }, "💡 Les lignes «\xA0Non pointées\xA0» n'ont aucun pointage dans l'onglet ", /*#__PURE__*/React.createElement("strong", null, "Pointage"), ".")), activeTab === "custom" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    }, "💡 Les lignes «\xA0Non pointées\xA0» n'ont aucun pointage dans l'onglet ", /*#__PURE__*/React.createElement("strong", null, "Pointage"), ".")), activeTab === "diagnostic" && /*#__PURE__*/React.createElement(React.Fragment, null, (() => {
+      const precautionMeta = {
+        critique: {
+          label: "Critique",
+          color: C?.brick || "#A8503C"
+        },
+        faible: {
+          label: "Faible",
+          color: C?.gold || "#93802E"
+        },
+        correct: {
+          label: "Correct",
+          color: C?.navy || "#28394A"
+        },
+        confortable: {
+          label: "Confortable",
+          color: C?.pine || "#2F5D50"
+        },
+        inconnu: {
+          label: "Non calculable",
+          color: C?.inkSoft || "#6B7278"
+        }
+      };
+      const pm = precautionMeta[diagnostic?.precautionStatus || "inconnu"];
+      const rateStr = r => `${(r * 100).toFixed(2)} %`;
+      const emptyBox = label => /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C?.inkSoft || "#6B7278",
+          fontSize: 12.5,
+          padding: "6px 0"
+        }
+      }, label);
+      const itemBox = children => /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 14,
+          padding: "10px 12px",
+          border: `1px solid ${C?.line || "#DED6C4"}`,
+          borderRadius: 8,
+          marginBottom: 8,
+          flexWrap: "wrap"
+        }
+      }, children);
+      return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 14,
+          flexWrap: "wrap",
+          marginBottom: 18
+        }
+      }, /*#__PURE__*/React.createElement(KPI, {
+        label: "Taux d'épargne réel (3 mois)",
+        value: diagnostic?.savingsRate3m !== null && diagnostic?.savingsRate3m !== undefined ? rateStr(diagnostic.savingsRate3m) : "—",
+        accent: diagnostic?.savingsRate3m !== null && diagnostic?.savingsRate3m !== undefined && diagnostic.savingsRate3m < 0 ? C?.brick || "#A8503C" : C?.pine || "#2F5D50",
+        sub: "(Revenus − Charges) / Revenus, sur les lignes pointées"
+      }), /*#__PURE__*/React.createElement(KPI, {
+        label: "Taux d'épargne réel (12 mois)",
+        value: diagnostic?.savingsRate12m !== null && diagnostic?.savingsRate12m !== undefined ? rateStr(diagnostic.savingsRate12m) : "—",
+        accent: diagnostic?.savingsRate12m !== null && diagnostic?.savingsRate12m !== undefined && diagnostic.savingsRate12m < 0 ? C?.brick || "#A8503C" : C?.pine || "#2F5D50",
+        sub: "Même calcul, lissé sur 12 mois"
+      }), /*#__PURE__*/React.createElement(KPI, {
+        label: "Épargne de précaution",
+        value: diagnostic?.precautionMonths !== null && diagnostic?.precautionMonths !== undefined ? `${diagnostic.precautionMonths.toFixed(1)} mois` : "—",
+        accent: pm.color,
+        sub: `${pm.label} — solde pivot ÷ charges mensuelles réelles`
+      })), /*#__PURE__*/React.createElement(SectionCard, {
+        title: "Postes en dérive les plus marqués",
+        subtitle: "Écart le plus important entre la moyenne réelle sur 3 mois et le budget, parmi les lignes pointées."
+      }, !diagnostic || diagnostic.topDeviations.length === 0 ? emptyBox("Aucune dérive significative détectée sur les lignes pointées.") : diagnostic.topDeviations.map(d => {
+        const over = d.kind === "revenu" || d.kind === "placement" ? d.ecart < 0 : d.ecart > 0;
+        const color = over ? C?.brick || "#A8503C" : C?.pine || "#2F5D50";
+        return itemBox([/*#__PURE__*/React.createElement("div", {
+          key: "label"
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontWeight: 600,
+            color: C?.ink || "#232A2E",
+            fontSize: 13.5
+          }
+        }, d.label), /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 11.5,
+            color: C?.inkSoft || "#6B7278",
+            marginTop: 2
+          }
+        }, "Budget ", eur(d.budgeted), " · Réel (3M) ", eur(d.avg3m))), /*#__PURE__*/React.createElement("div", {
+          key: "ecart",
+          style: {
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontWeight: 700,
+            color,
+            textAlign: "right",
+            whiteSpace: "nowrap"
+          }
+        }, d.ecart >= 0 ? "+" : "", eur(d.ecart), /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 11,
+            fontWeight: 400
+          }
+        }, d.ecartPct >= 0 ? "+" : "", d.ecartPct?.toFixed(1), "%"))]);
+      })), /*#__PURE__*/React.createElement(SectionCard, {
+        title: "Comptes potentiellement sous-performants",
+        subtitle: "Placements dont le rendement « correct » est nettement inférieur à un autre compte de même classe d'actif (page Placements → catégorie). Un constat, pas un ordre d'arbitrage : vérifiez fiscalité, liquidité et disponibilité avant tout mouvement."
+      }, !diagnostic || diagnostic.underperformingPlacements.length === 0 ? emptyBox("Aucun écart de rendement notable détecté entre vos comptes de même classe d'actif.") : diagnostic.underperformingPlacements.map(p => itemBox([/*#__PURE__*/React.createElement("div", {
+        key: "label"
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontWeight: 600,
+          color: C?.ink || "#232A2E",
+          fontSize: 13.5
+        }
+      }, p.label, " ", /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 400,
+          color: C?.inkSoft || "#6B7278",
+          fontSize: 11.5
+        }
+      }, "(", rateStr(p.rate), ")")), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11.5,
+          color: C?.inkSoft || "#6B7278",
+          marginTop: 2
+        }
+      }, "Solde ", eur(p.balance), " · Mieux rémunéré dans la même catégorie : ", p.betterLabel, " (", rateStr(p.betterRate), ")")), /*#__PURE__*/React.createElement("div", {
+        key: "gap",
+        style: {
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontWeight: 700,
+          color: C?.brick || "#A8503C",
+          textAlign: "right",
+          whiteSpace: "nowrap"
+        }
+      }, "−", p.gapPts.toFixed(2), " pt")]))));
+    })()), activeTab === "custom" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         justifyContent: "space-between",
