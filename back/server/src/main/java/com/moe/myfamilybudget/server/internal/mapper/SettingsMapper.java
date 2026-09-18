@@ -38,6 +38,8 @@ public class SettingsMapper {
             sMap.put("cashCeiling", s.cashCeiling());
             sMap.put("cashFloor", s.cashFloor());
             sMap.put("cashAlertThreshold", s.cashAlertThreshold());
+            sMap.put("goalSecureHorizonMonths", s.goalSecureHorizonMonths());
+            sMap.put("goalLiquidHorizonMonths", s.goalLiquidHorizonMonths());
             response.put("settings", sMap);
         } else {
             response.put("settings", new HashMap<>());

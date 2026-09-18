@@ -38,6 +38,7 @@ import com.moe.myfamilybudget.api.model.TaxBracketDto;
 import com.moe.myfamilybudget.api.model.TaxChildDto;
 import com.moe.myfamilybudget.api.model.TaxRateOverrideDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
+import com.moe.myfamilybudget.api.model.ObjectifDto;
 import com.moe.myfamilybudget.api.model.TripleAmountDto;
 import com.moe.myfamilybudget.api.model.VariableIncomeDto;
 import com.moe.myfamilybudget.api.model.VariableOverrideDto;
@@ -63,6 +64,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
+import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.server.internal.model.TripleAmountModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
@@ -91,6 +93,9 @@ public class OverviewMapper {
                 : List.of();
         List<LoanModel> loans = dto.getLoans() != null
                 ? dto.getLoans().stream().map(this::toLoanModel).collect(Collectors.toList())
+                : List.of();
+        List<ObjectifModel> objectifs = dto.getObjectifs() != null
+                ? dto.getObjectifs().stream().map(this::toObjectifModel).collect(Collectors.toList())
                 : List.of();
         RetirementModel retirement = toRetirementModel(dto.getRetirement());
         List<TaxChildModel> taxChildren = dto.getTaxChildren() != null
@@ -124,7 +129,7 @@ public class OverviewMapper {
 
         return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren,
                 taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes,
-                variableOverrides, bankImport, assetCategories, loans);
+                variableOverrides, bankImport, assetCategories, loans, objectifs);
     }
 
     public BudgetDataDto toBudgetDataDto(BudgetDataModel model) {
@@ -176,6 +181,9 @@ public class OverviewMapper {
                 : List.of());
         dto.setAssetCategories(model.assetCategories() != null
                 ? model.assetCategories().stream().map(this::toAssetCategoryDto).collect(Collectors.toList())
+                : List.of());
+        dto.setObjectifs(model.objectifs() != null
+                ? model.objectifs().stream().map(this::toObjectifDto).collect(Collectors.toList())
                 : List.of());
         return dto;
     }
@@ -286,7 +294,8 @@ public class OverviewMapper {
         return new SettingsModel(dto.getBirthYear(), dto.getRetireAge(), dto.getSimulateUntilAge(),
                 dto.getInflationRate(), dto.getPivotDate(), dto.getPivotMode(), dto.getStartBalance(),
                 dto.getChildExitAge(), dto.getTaxAbattement(), dto.getPass2026(), dto.getPassGrowthRate(),
-                dto.getSweepEnabled(), dto.getCashCeiling(), dto.getCashFloor(), dto.getCashAlertThreshold());
+                dto.getSweepEnabled(), dto.getCashCeiling(), dto.getCashFloor(), dto.getCashAlertThreshold(),
+                dto.getGoalSecureHorizonMonths(), dto.getGoalLiquidHorizonMonths());
     }
 
     private SettingsDto toSettingsDto(SettingsModel model) {
@@ -308,6 +317,8 @@ public class OverviewMapper {
         dto.setCashCeiling(model.cashCeiling());
         dto.setCashFloor(model.cashFloor());
         dto.setCashAlertThreshold(model.cashAlertThreshold());
+        dto.setGoalSecureHorizonMonths(model.goalSecureHorizonMonths());
+        dto.setGoalLiquidHorizonMonths(model.goalLiquidHorizonMonths());
         return dto;
     }
 
@@ -591,6 +602,26 @@ public class OverviewMapper {
         dto.setPlacement(m.placement());
         dto.setDate(m.date());
         dto.setAmount(m.amount());
+        dto.setNotes(m.notes());
+        return dto;
+    }
+
+    private ObjectifModel toObjectifModel(ObjectifDto dto) {
+        if (dto == null)
+            return null;
+        return new ObjectifModel(dto.getId(), dto.getLabel(), dto.getTargetAmount(), dto.getTargetDate(),
+                dto.getSourcePlacementId(), dto.getNotes());
+    }
+
+    private ObjectifDto toObjectifDto(ObjectifModel m) {
+        if (m == null)
+            return null;
+        ObjectifDto dto = new ObjectifDto();
+        dto.setId(m.id());
+        dto.setLabel(m.label());
+        dto.setTargetAmount(m.targetAmount());
+        dto.setTargetDate(m.targetDate());
+        dto.setSourcePlacementId(m.sourcePlacementId());
         dto.setNotes(m.notes());
         return dto;
     }

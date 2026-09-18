@@ -1366,6 +1366,58 @@
     };
   }
 
+  /* ============================== Objectifs & réallocation (Analyse) ============================== */
+  /**
+   * Pour chaque objectif d'épargne (montant cible, échéance, compte support), calcule le temps
+   * restant et le statut de bascule (lointain / à sécuriser / à rapatrier vers le liquide) en
+   * fonction des deux seuils réglables dans Paramètres. Calcul pur, aucun appel réseau — ne
+   * décide de rien, se contente de qualifier la situation pour que l'utilisateur arbitre.
+   */
+  function computeGoalReallocation(data) {
+    const settings = data?.settings || {};
+    const secureHorizonMonths = Number(settings.goalSecureHorizonMonths) > 0 ? Number(settings.goalSecureHorizonMonths) : 12;
+    const liquidHorizonMonths = Number(settings.goalLiquidHorizonMonths) > 0 ? Number(settings.goalLiquidHorizonMonths) : 3;
+    const today = new Date();
+    const placementsById = {};
+    (data?.placements || []).forEach(p => {
+      placementsById[p.id] = p;
+    });
+
+    return (data?.objectifs || []).map(o => {
+      const targetAmount = Number(o.targetAmount) || 0;
+      const targetDate = o.targetDate ? new Date(o.targetDate) : null;
+      let monthsRemaining = null;
+      if (targetDate && !isNaN(targetDate.getTime())) {
+        monthsRemaining = (targetDate.getFullYear() - today.getFullYear()) * 12 + (targetDate.getMonth() - today.getMonth());
+        if (targetDate.getDate() < today.getDate()) monthsRemaining -= 1;
+      }
+      const source = o.sourcePlacementId ? placementsById[o.sourcePlacementId] : null;
+      const currentBalance = source ? Number(source.balance) || 0 : null;
+      const gap = currentBalance !== null ? targetAmount - currentBalance : null;
+
+      let status = "inconnu";
+      if (monthsRemaining !== null) {
+        if (monthsRemaining <= 0) status = "echu";else if (monthsRemaining <= liquidHorizonMonths) status = "a_rapatrier";else if (monthsRemaining <= secureHorizonMonths) status = "a_securiser";else status = "lointain";
+      }
+
+      return {
+        id: o.id,
+        label: o.label,
+        targetAmount,
+        targetDate: o.targetDate || null,
+        monthsRemaining,
+        sourcePlacementId: o.sourcePlacementId || null,
+        sourceLabel: source ? source.label : null,
+        currentBalance,
+        gap,
+        status,
+        secureHorizonMonths,
+        liquidHorizonMonths,
+        notes: o.notes || ""
+      };
+    });
+  }
+
   // Helper to find earliest date in the dataset
   function getEarliestDate(data) {
     if (!data) return "2026-01-01";
@@ -1419,6 +1471,7 @@
   exports.useFinancialProjections = useFinancialProjections;
   exports.computeRealAverages = computeRealAverages;
   exports.computeBudgetDiagnostic = computeBudgetDiagnostic;
+  exports.computeGoalReallocation = computeGoalReallocation;
   exports.getEarliestDate = getEarliestDate;
   exports.findEarliestYear = findEarliestYear;
 })(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);

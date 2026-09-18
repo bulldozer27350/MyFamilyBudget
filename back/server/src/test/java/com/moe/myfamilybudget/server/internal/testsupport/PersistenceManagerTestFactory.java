@@ -13,6 +13,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataR
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.ObjectifRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.OneOffExpenseRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.RealEstateRepository;
@@ -81,6 +82,7 @@ public final class PersistenceManagerTestFactory {
                 mock(RetirementRepository.class),
                 mock(BankImportRepository.class),
                 mock(LoanRepository.class),
+                mock(ObjectifRepository.class),
                 mock(PlatformTransactionManager.class));
     }
 }

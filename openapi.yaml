@@ -183,7 +183,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [placements, transfers, credits, loans, realEstate]
+            enum: [placements, transfers, credits, loans, realEstate, objectifs]
       requestBody:
         required: true
         content:
@@ -1020,6 +1020,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LoanDto'
+        objectifs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObjectifDto'
 
     SettingsDto:
       type: object
@@ -1054,6 +1058,10 @@ components:
           type: number
         cashAlertThreshold:
           type: number
+        goalSecureHorizonMonths:
+          type: integer
+        goalLiquidHorizonMonths:
+          type: integer
 
     IncomeDto:
       type: object
@@ -1337,6 +1345,22 @@ components:
           type: string
         amount:
           type: number
+        notes:
+          type: string
+
+    ObjectifDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        targetAmount:
+          type: number
+        targetDate:
+          type: string
+        sourcePlacementId:
+          type: string
         notes:
           type: string
 

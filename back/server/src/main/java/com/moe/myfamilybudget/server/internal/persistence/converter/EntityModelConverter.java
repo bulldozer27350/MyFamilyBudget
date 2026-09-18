@@ -28,6 +28,8 @@ public class EntityModelConverter {
         entity.setCashCeiling(model.cashCeiling());
         entity.setCashFloor(model.cashFloor());
         entity.setCashAlertThreshold(model.cashAlertThreshold());
+        entity.setGoalSecureHorizonMonths(model.goalSecureHorizonMonths());
+        entity.setGoalLiquidHorizonMonths(model.goalLiquidHorizonMonths());
         return entity;
     }
 
@@ -48,7 +50,9 @@ public class EntityModelConverter {
             entity.getSweepEnabled(),
             entity.getCashCeiling(),
             entity.getCashFloor(),
-            entity.getCashAlertThreshold()
+            entity.getCashAlertThreshold(),
+            entity.getGoalSecureHorizonMonths(),
+            entity.getGoalLiquidHorizonMonths()
         );
     }
 
@@ -305,6 +309,33 @@ public class EntityModelConverter {
             entity.getPlacement(),
             entity.getDate(),
             entity.getAmount(),
+            entity.getNotes()
+        );
+    }
+
+    // Objectif conversions
+    public static ObjectifEntity toEntity(ObjectifModel model, BudgetDataEntity budgetData) {
+        if (model == null) return null;
+        ObjectifEntity entity = new ObjectifEntity(
+            model.id(),
+            model.label(),
+            model.targetAmount(),
+            model.targetDate(),
+            model.sourcePlacementId(),
+            model.notes()
+        );
+        entity.setBudgetData(budgetData);
+        return entity;
+    }
+
+    public static ObjectifModel toModel(ObjectifEntity entity) {
+        if (entity == null) return null;
+        return new ObjectifModel(
+            entity.getUid(),
+            entity.getLabel(),
+            entity.getTargetAmount(),
+            entity.getTargetDate(),
+            entity.getSourcePlacementId(),
             entity.getNotes()
         );
     }
@@ -618,7 +649,8 @@ public class EntityModelConverter {
             entity.getVariableOverrides().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             null, // BankImport - handled separately due to JSON serialization
             entity.getAssetCategories().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            entity.getLoans().stream().map(EntityModelConverter::toModel).collect(Collectors.toList())
+            entity.getLoans().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
+            entity.getObjectifs().stream().map(EntityModelConverter::toModel).collect(Collectors.toList())
         );
     }
 }

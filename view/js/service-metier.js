@@ -351,7 +351,7 @@ function deps() {
     subscribeTresorerie
   };
 
-  const PATRIMOINE_LISTS = ["placements", "transfers", "loans", "realEstate"];
+  const PATRIMOINE_LISTS = ["placements", "transfers", "loans", "realEstate", "objectifs"];
 
   function newPatrimoineRow(listKey, data) {
     const uid = deps().uid;
@@ -405,6 +405,16 @@ function deps() {
         currentValue: 0,
         valuationYear: new Date().getFullYear(),
         annualGrowthRate: 0.01,
+        notes: ""
+      };
+    }
+    if (listKey === "objectifs") {
+      return {
+        id: uid(),
+        label: "Nouvel objectif",
+        targetAmount: 0,
+        targetDate: new Date(new Date().getFullYear() + 1, 0, 1).toISOString().slice(0, 10),
+        sourcePlacementId: data?.placements?.[0]?.id || "",
         notes: ""
       };
     }

@@ -26,6 +26,8 @@ public class SettingsEntity {
     private BigDecimal cashCeiling;
     private BigDecimal cashFloor;
     private BigDecimal cashAlertThreshold;
+    private Integer goalSecureHorizonMonths;
+    private Integer goalLiquidHorizonMonths;
     
     // Constructors
     public SettingsEntity() {}
@@ -174,5 +176,21 @@ public class SettingsEntity {
 
     public void setCashAlertThreshold(BigDecimal cashAlertThreshold) {
         this.cashAlertThreshold = cashAlertThreshold;
+    }
+
+    public Integer getGoalSecureHorizonMonths() {
+        return goalSecureHorizonMonths;
+    }
+
+    public void setGoalSecureHorizonMonths(Integer goalSecureHorizonMonths) {
+        this.goalSecureHorizonMonths = goalSecureHorizonMonths;
+    }
+
+    public Integer getGoalLiquidHorizonMonths() {
+        return goalLiquidHorizonMonths;
+    }
+
+    public void setGoalLiquidHorizonMonths(Integer goalLiquidHorizonMonths) {
+        this.goalLiquidHorizonMonths = goalLiquidHorizonMonths;
     }
 }

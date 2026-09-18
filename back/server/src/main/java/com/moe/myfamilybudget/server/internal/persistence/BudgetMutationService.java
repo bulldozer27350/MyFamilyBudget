@@ -19,6 +19,7 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
+import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
@@ -497,6 +498,37 @@ class BudgetMutationService {
                 resultRow.put("endDate", endDate);
 
                 return base.withLoans(list);
+            } else if ("objectifs".equalsIgnoreCase(listKey)) {
+                List<ObjectifModel> list = new ArrayList<>();
+                boolean found = false;
+
+                String label = getString(body, "label", "Nouvel objectif");
+                BigDecimal targetAmount = getBigDecimal(body, "targetAmount", BigDecimal.ZERO);
+                String targetDate = getString(body, "targetDate", "2027-01-01");
+                String sourcePlacementId = getString(body, "sourcePlacementId", "");
+                String notes = getString(body, "notes", "");
+
+                ObjectifModel model = new ObjectifModel(uid, label, targetAmount, targetDate, sourcePlacementId, notes);
+
+                for (ObjectifModel o : base.getEffectiveObjectifs()) {
+                    if (Objects.equals(o.id(), uid)) {
+                        list.add(model);
+                        found = true;
+                    } else {
+                        list.add(o);
+                    }
+                }
+                if (!found) {
+                    list.add(model);
+                }
+
+                resultRow.put("label", label);
+                resultRow.put("targetAmount", targetAmount);
+                resultRow.put("targetDate", targetDate);
+                resultRow.put("sourcePlacementId", sourcePlacementId);
+                resultRow.put("notes", notes);
+
+                return base.withObjectifs(list);
             }
 
             return base;
@@ -552,7 +584,9 @@ class BudgetMutationService {
                     "sweepEnabled".equals(field) ? (value != null && Boolean.parseBoolean(String.valueOf(value))) : s.sweepEnabled(),
                     "cashCeiling".equals(field) ? toBigDecimal(value, null) : s.cashCeiling(),
                     "cashFloor".equals(field) ? toBigDecimal(value, null) : s.cashFloor(),
-                    "cashAlertThreshold".equals(field) ? toBigDecimal(value, null) : s.cashAlertThreshold()
+                    "cashAlertThreshold".equals(field) ? toBigDecimal(value, null) : s.cashAlertThreshold(),
+                    "goalSecureHorizonMonths".equals(field) ? toInteger(value, null) : s.goalSecureHorizonMonths(),
+                    "goalLiquidHorizonMonths".equals(field) ? toInteger(value, null) : s.goalLiquidHorizonMonths()
             );
             return base.withSettings(updatedSettings);
         });
@@ -660,6 +694,11 @@ class BudgetMutationService {
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
                 return base.withLoans(list);
+            } else if ("objectifs".equalsIgnoreCase(listKey)) {
+                List<ObjectifModel> list = base.getEffectiveObjectifs().stream()
+                        .filter(r -> !Objects.equals(r.id(), id))
+                        .toList();
+                return base.withObjectifs(list);
             }
 
             return base;

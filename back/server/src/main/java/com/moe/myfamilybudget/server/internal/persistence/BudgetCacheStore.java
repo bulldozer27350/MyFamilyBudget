@@ -283,6 +283,7 @@ class BudgetCacheStore {
                 new ArrayList<>(),
                 bankImport,
                 new ArrayList<>(),
+                new ArrayList<>(),
                 new ArrayList<>()
         );
     }

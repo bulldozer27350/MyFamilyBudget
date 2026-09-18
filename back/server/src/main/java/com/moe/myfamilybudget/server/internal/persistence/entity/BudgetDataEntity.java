@@ -63,6 +63,9 @@ public class BudgetDataEntity {
 
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<LoanEntity> loans = new ArrayList<>();
+
+    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private List<ObjectifEntity> objectifs = new ArrayList<>();
     
     // Constructors
     public BudgetDataEntity() {}
@@ -214,5 +217,13 @@ public class BudgetDataEntity {
 
     public void setLoans(List<LoanEntity> loans) {
         this.loans = loans;
+    }
+
+    public List<ObjectifEntity> getObjectifs() {
+        return objectifs;
+    }
+
+    public void setObjectifs(List<ObjectifEntity> objectifs) {
+        this.objectifs = objectifs;
     }
 }

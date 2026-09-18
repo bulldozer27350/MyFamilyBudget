@@ -15,6 +15,7 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
+import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
@@ -34,6 +35,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataR
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.ObjectifRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.OneOffExpenseRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.RealEstateRepository;
@@ -89,6 +91,7 @@ class BudgetPersistenceGateway {
     private final AssetCategoryRepository assetCategoryRepository;
     private final BankImportRepository bankImportRepository;
     private final LoanRepository loanRepository;
+    private final ObjectifRepository objectifRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -108,7 +111,8 @@ class BudgetPersistenceGateway {
                               TaxActualOverrideRepository taxActualOverrideRepository,
                               AssetCategoryRepository assetCategoryRepository,
                               BankImportRepository bankImportRepository,
-                              LoanRepository loanRepository) {
+                              LoanRepository loanRepository,
+                              ObjectifRepository objectifRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.incomeRepository = incomeRepository;
         this.chargeRepository = chargeRepository;
@@ -125,6 +129,7 @@ class BudgetPersistenceGateway {
         this.assetCategoryRepository = assetCategoryRepository;
         this.bankImportRepository = bankImportRepository;
         this.loanRepository = loanRepository;
+        this.objectifRepository = objectifRepository;
     }
 
     /**
@@ -160,7 +165,8 @@ class BudgetPersistenceGateway {
                 loaded.transfers(), loaded.variableIncomes(), loaded.variableOverrides(),
                 bi != null ? bi : new BankImportModel(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
                 loaded.assetCategories(),
-                loaded.loans()
+                loaded.loans(),
+                loaded.objectifs()
         );
     }
 
@@ -212,6 +218,7 @@ class BudgetPersistenceGateway {
         saveTaxActualOverrides(model.taxActualOverrides(), entity);
         saveAssetCategories(model.assetCategories(), entity);
         saveLoans(model.loans(), entity);
+        saveObjectifs(model.objectifs(), entity);
         saveBankImport(model.bankImport(), entity);
     }
 
@@ -220,6 +227,15 @@ class BudgetPersistenceGateway {
         if (loans != null) {
             for (LoanModel loan : loans) {
                 loanRepository.save(EntityModelConverter.toEntity(loan, budgetData));
+            }
+        }
+    }
+
+    private void saveObjectifs(List<ObjectifModel> objectifs, BudgetDataEntity budgetData) {
+        objectifRepository.deleteByBudgetDataId(budgetData.getId());
+        if (objectifs != null) {
+            for (ObjectifModel objectif : objectifs) {
+                objectifRepository.save(EntityModelConverter.toEntity(objectif, budgetData));
             }
         }
     }

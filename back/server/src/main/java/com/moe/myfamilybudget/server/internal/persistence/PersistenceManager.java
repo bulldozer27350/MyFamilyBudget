@@ -48,6 +48,7 @@ public class PersistenceManager {
     private final RetirementRepository retirementRepository;
     private final BankImportRepository bankImportRepository;
     private final LoanRepository loanRepository;
+    private final ObjectifRepository objectifRepository;
 
     // Gestion programmatique de la transaction pour l'initialisation au démarrage.
     // Voir le commentaire dans BudgetPersistenceGateway.save() : le @Transactional de classe ne
@@ -98,6 +99,7 @@ public class PersistenceManager {
                             RetirementRepository retirementRepository,
                             BankImportRepository bankImportRepository,
                             LoanRepository loanRepository,
+                            ObjectifRepository objectifRepository,
                             PlatformTransactionManager transactionManager) {
         this.budgetDataRepository = budgetDataRepository;
         this.settingsRepository = settingsRepository;
@@ -117,13 +119,14 @@ public class PersistenceManager {
         this.retirementRepository = retirementRepository;
         this.bankImportRepository = bankImportRepository;
         this.loanRepository = loanRepository;
+        this.objectifRepository = objectifRepository;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.gateway = new BudgetPersistenceGateway(
                 budgetDataRepository, incomeRepository, chargeRepository, placementRepository,
                 realEstateRepository, oneOffExpenseRepository, transferRepository,
                 variableIncomeRepository, variableOverrideRepository, taxChildRepository,
                 taxBracketRepository, taxRateOverrideRepository, taxActualOverrideRepository,
-                assetCategoryRepository, bankImportRepository, loanRepository);
+                assetCategoryRepository, bankImportRepository, loanRepository, objectifRepository);
         this.cacheStore = new BudgetCacheStore(this.gateway, this.transactionTemplate);
         this.mutationService = new BudgetMutationService(this.cacheStore);
     }

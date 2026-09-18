@@ -45,6 +45,7 @@
     taxActualOverrides: [],
     placements: [],
     loans: [],
+    objectifs: [],
     realEstate: [],
     assetCategories: [],
     bankImport: {
@@ -122,6 +123,7 @@
         history: Array.isArray(p.history) ? p.history : []
       })),
       loans: Array.isArray(base.loans) ? base.loans : DEFAULT_DATA.loans,
+      objectifs: Array.isArray(base.objectifs) ? base.objectifs : DEFAULT_DATA.objectifs,
       variableIncomes: Array.isArray(base.variableIncomes) ? base.variableIncomes : DEFAULT_DATA.variableIncomes,
       variableOverrides: Array.isArray(base.variableOverrides) ? base.variableOverrides : [],
       taxChildren: Array.isArray(base.taxChildren) ? base.taxChildren : DEFAULT_DATA.taxChildren,

@@ -19,11 +19,13 @@
     chargeMonthlyForYear,
     incomeMonthlyForYear,
     computeRealAverages,
-    computeBudgetDiagnostic
+    computeBudgetDiagnostic,
+    computeGoalReallocation
   } = exports.chargeMonthlyForYear ? exports : window.BudgetApp || {};
   const {
     SectionCard,
-    KPI
+    KPI,
+    EditableTable
   } = exports.SectionCard ? exports : window.BudgetApp || {};
   const {
     AllocationChartJS
@@ -644,6 +646,12 @@
       const calc = exports.computeBudgetDiagnostic || window.BudgetApp && window.BudgetApp.computeBudgetDiagnostic || computeBudgetDiagnostic;
       return calc ? calc(rawData) : null;
     }, [rawData]);
+    // Objectifs & réallocation (onglet "Objectifs") : même principe que le diagnostic — calcul
+    // local, indépendant de l'API /api/v1/analyse.
+    const goalReallocation = useMemo(() => {
+      const calc = exports.computeGoalReallocation || window.BudgetApp && window.BudgetApp.computeGoalReallocation || computeGoalReallocation;
+      return calc ? calc(rawData) : [];
+    }, [rawData]);
     const displayDriftRows = useMemo(() => {
       let r = driftRows;
       if (driftSearch.trim()) {
@@ -973,6 +981,9 @@
     }, {
       key: "diagnostic",
       label: "🩺 Diagnostic"
+    }, {
+      key: "objectifs",
+      label: "🎯 Objectifs"
     }, {
       key: "custom",
       label: "🔎 Filtre Personnalisé"
@@ -1750,7 +1761,122 @@
           whiteSpace: "nowrap"
         }
       }, "−", p.gapPts.toFixed(2), " pt")]))));
-    })()), activeTab === "custom" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    })()), activeTab === "objectifs" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionCard, {
+      title: "Objectifs d'épargne",
+      subtitle: "Montant visé, échéance et compte support. Les seuils de bascule se règlent dans Paramètres."
+    }, /*#__PURE__*/React.createElement(EditableTable, {
+      columns: [{
+        key: "label",
+        label: "Objectif",
+        type: "text"
+      }, {
+        key: "targetAmount",
+        label: "Montant visé (€)",
+        type: "number",
+        align: "right"
+      }, {
+        key: "targetDate",
+        label: "Échéance",
+        type: "date"
+      }, {
+        key: "sourcePlacementId",
+        label: "Compte support",
+        type: "select",
+        options: (rawData?.placements || []).map(p => ({
+          value: p.id,
+          label: p.label
+        }))
+      }, {
+        key: "notes",
+        label: "Notes",
+        type: "text"
+      }],
+      rows: rawData?.objectifs || [],
+      onCell: (id, field, value) => api && api.updatePatrimoineLigne("objectifs", id, field, value, (rawData?.objectifs || []).find(o => o.id === id) || null),
+      onRemove: id => api && api.removePatrimoineLigne("objectifs", id),
+      onAdd: () => api && api.addPatrimoineLigne("objectifs")
+    })), /*#__PURE__*/React.createElement(SectionCard, {
+      title: "Suivi & bascule",
+      subtitle: "À l'approche de l'échéance, envisagez de réduire l'exposition au risque puis de rapatrier vers un support liquide. Un repère, pas un ordre d'arbitrage."
+    }, (() => {
+      const statusMeta = {
+        lointain: {
+          label: "Lointain — laissez faire",
+          color: C?.pine || "#2F5D50"
+        },
+        a_securiser: {
+          label: "À sécuriser — réduisez progressivement l'exposition au risque",
+          color: C?.gold || "#93802E"
+        },
+        a_rapatrier: {
+          label: "À rapatrier vers un support liquide",
+          color: C?.brick || "#A8503C"
+        },
+        echu: {
+          label: "Échéance imminente ou dépassée",
+          color: C?.brick || "#A8503C"
+        },
+        inconnu: {
+          label: "Échéance non renseignée",
+          color: C?.inkSoft || "#6B7278"
+        }
+      };
+      const list = goalReallocation || [];
+      if (list.length === 0) {
+        return /*#__PURE__*/React.createElement("div", {
+          style: {
+            color: C?.inkSoft || "#6B7278",
+            fontSize: 12.5,
+            padding: "6px 0"
+          }
+        }, "Aucun objectif enregistré pour l'instant.");
+      }
+      return list.map(g => {
+        const meta = statusMeta[g.status] || statusMeta.inconnu;
+        const monthsLabel = g.monthsRemaining === null ? "—" : g.monthsRemaining > 0 ? `dans ${g.monthsRemaining} mois` : g.monthsRemaining === 0 ? "ce mois-ci" : `il y a ${Math.abs(g.monthsRemaining)} mois`;
+        const gapLabel = g.gap === null ? "compte support non renseigné" : g.gap > 0 ? `manque ${eur(g.gap)}` : `excédent de ${eur(Math.abs(g.gap))}`;
+        return /*#__PURE__*/React.createElement("div", {
+          key: g.id,
+          style: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 14,
+            padding: "10px 12px",
+            border: `1px solid ${C?.line || "#DED6C4"}`,
+            borderRadius: 8,
+            marginBottom: 8,
+            flexWrap: "wrap"
+          }
+        }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontWeight: 600,
+            color: C?.ink || "#232A2E",
+            fontSize: 13.5
+          }
+        }, g.label, " ", /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontWeight: 400,
+            color: C?.inkSoft || "#6B7278",
+            fontSize: 11.5
+          }
+        }, "(", monthsLabel, ")")), /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 11.5,
+            color: C?.inkSoft || "#6B7278",
+            marginTop: 2
+          }
+        }, "Visé ", eur(g.targetAmount), g.sourceLabel ? ` · ${g.sourceLabel} : ${eur(g.currentBalance)} (${gapLabel})` : ` · ${gapLabel}`)), /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 12,
+            fontWeight: 600,
+            color: meta.color,
+            textAlign: "right",
+            whiteSpace: "nowrap"
+          }
+        }, meta.label));
+      });
+    })())), activeTab === "custom" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         justifyContent: "space-between",

@@ -566,6 +566,46 @@
       style: {
         marginTop: 20,
         paddingTop: 18,
+        borderTop: `1px solid ${C?.line || "#DED6C4"}`,
+        display: "flex",
+        gap: 20,
+        flexWrap: "wrap"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13.5,
+        fontWeight: 600,
+        color: C?.ink || "#232A2E",
+        width: "100%"
+      }
+    }, "Objectifs — seuils de bascule (onglet Analyse)"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 6
+      }
+    }, "Début de sécurisation (mois avant l'échéance)"), /*#__PURE__*/React.createElement(DebouncedInput, {
+      type: "number",
+      value: data?.settings?.goalSecureHorizonMonths ?? "",
+      placeholder: "ex. 12",
+      onChange: v => updateSettingsField("goalSecureHorizonMonths", v),
+      style: inputStyle
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C?.inkSoft || "#6B7278",
+        marginBottom: 6
+      }
+    }, "Bascule totale vers le liquide (mois avant l'échéance)"), /*#__PURE__*/React.createElement(DebouncedInput, {
+      type: "number",
+      value: data?.settings?.goalLiquidHorizonMonths ?? "",
+      placeholder: "ex. 3",
+      onChange: v => updateSettingsField("goalLiquidHorizonMonths", v),
+      style: inputStyle
+    }))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 20,
+        paddingTop: 18,
         borderTop: `1px solid ${C?.line || "#DED6C4"}`
       }
     }, /*#__PURE__*/React.createElement("div", {
