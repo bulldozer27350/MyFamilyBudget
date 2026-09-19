@@ -1,0 +1,24 @@
+# Normalisation des fins de ligne : le dépôt est en LF (index et copie de travail).
+# Évite les conflits CRLF/LF sur les postes Windows (core.autocrlf) et garde les patchs
+# générés en LF applicables avec `git apply`.
+* text=auto eol=lf
+
+# Scripts Windows : CRLF en copie de travail (le dépôt reste en LF).
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Scripts shell et Dockerfile : toujours LF (sinon cassés dans les conteneurs Linux).
+*.sh text eol=lf
+Dockerfile text eol=lf
+
+# Fichiers binaires : jamais convertis.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.xlsx binary
+*.xls binary
+*.jar binary
