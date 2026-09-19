@@ -1418,6 +1418,73 @@
     });
   }
 
+  /* ============================== Fiscal & prêts (Analyse) ============================== */
+  /**
+   * Heuristiques de premier niveau, pas un conseil personnalisé :
+   * - Estimation grossière du TMI (taux marginal d'imposition) pour repérer si un dispositif de
+   *   défiscalisation (type PER) mérite d'être creusé.
+   * - Comparaison taux de crédit vs meilleur taux de placement pour situer chaque prêt en cours
+   *   entre "probablement à conserver" et "un remboursement anticipé mériterait d'être chiffré".
+   * Ne tient compte ni des indemnités de remboursement anticipé (IRA), ni des plafonds de
+   * versement, ni de la situation fiscale réelle (revenus non salariaux, quotient conjugal
+   * réellement déclaré, etc.) — c'est un repère, pas un calcul de déclaration.
+   */
+  function computeFiscalPatrimonialAdvice(data, options) {
+    const opts = options || {};
+    const rateMarginPts = opts.rateMarginPts ?? 0.5; // écart (points) en dessous duquel un prêt est jugé "neutre"
+    const currentYear = new Date().getFullYear();
+    const taxAbattement = Number(data?.settings?.taxAbattement) || 0.10;
+
+    // --- Taux marginal d'imposition (estimation simplifiée) ---
+    const grossIncome = (data?.incomes || []).reduce((s, i) => s + incomeAnnualForYear(i, currentYear), 0);
+    const taxableIncome = Math.max(0, grossIncome * (1 - taxAbattement));
+    const parts = partsForYear(data?.taxChildren || [], data?.settings?.childExitAge, currentYear);
+    const quotient = parts > 0 ? taxableIncome / parts : taxableIncome;
+    const sortedBrackets = (data?.taxBrackets || []).map(b => ({
+      upTo: b.upTo === "" || b.upTo == null ? Infinity : Number(b.upTo),
+      rate: Number(b.rate) || 0
+    })).sort((a, b) => a.upTo - b.upTo);
+    let marginalRate = 0;
+    for (const b of sortedBrackets) {
+      marginalRate = b.rate;
+      if (quotient <= b.upTo) break;
+    }
+
+    const fiscal = {
+      grossIncome,
+      taxableIncome,
+      parts,
+      quotient,
+      marginalRate,
+      perSuggested: marginalRate >= 0.30
+    };
+
+    // --- Analyse des prêts en cours ---
+    const bestPlacementRate = (data?.placements || []).reduce((max, p) => Math.max(max, Number(p.rateCorr) || 0), 0);
+    const marginDecimal = rateMarginPts / 100;
+    const loans = (data?.loans || []).map(l => {
+      const crd = Number(l.crd) || 0;
+      const rate = Number(l.rate) || 0;
+      let verdict = "neutre";
+      if (crd > 0) {
+        if (rate > bestPlacementRate + marginDecimal) verdict = "rembourser";else if (rate < bestPlacementRate - marginDecimal) verdict = "conserver";
+      }
+      return {
+        id: l.id,
+        label: l.label,
+        crd,
+        rate,
+        verdict
+      };
+    }).filter(l => l.crd > 0);
+
+    return {
+      fiscal,
+      bestPlacementRate,
+      loans
+    };
+  }
+
   // Helper to find earliest date in the dataset
   function getEarliestDate(data) {
     if (!data) return "2026-01-01";
@@ -1472,6 +1539,7 @@
   exports.computeRealAverages = computeRealAverages;
   exports.computeBudgetDiagnostic = computeBudgetDiagnostic;
   exports.computeGoalReallocation = computeGoalReallocation;
+  exports.computeFiscalPatrimonialAdvice = computeFiscalPatrimonialAdvice;
   exports.getEarliestDate = getEarliestDate;
   exports.findEarliestYear = findEarliestYear;
 })(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);

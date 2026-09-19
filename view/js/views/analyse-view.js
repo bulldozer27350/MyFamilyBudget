@@ -20,7 +20,8 @@
     incomeMonthlyForYear,
     computeRealAverages,
     computeBudgetDiagnostic,
-    computeGoalReallocation
+    computeGoalReallocation,
+    computeFiscalPatrimonialAdvice
   } = exports.chargeMonthlyForYear ? exports : window.BudgetApp || {};
   const {
     SectionCard,
@@ -652,6 +653,11 @@
       const calc = exports.computeGoalReallocation || window.BudgetApp && window.BudgetApp.computeGoalReallocation || computeGoalReallocation;
       return calc ? calc(rawData) : [];
     }, [rawData]);
+    // Fiscal & prêts (onglet "Fiscal & Prêts") : idem, calcul local pur.
+    const fiscalAdvice = useMemo(() => {
+      const calc = exports.computeFiscalPatrimonialAdvice || window.BudgetApp && window.BudgetApp.computeFiscalPatrimonialAdvice || computeFiscalPatrimonialAdvice;
+      return calc ? calc(rawData) : null;
+    }, [rawData]);
     const displayDriftRows = useMemo(() => {
       let r = driftRows;
       if (driftSearch.trim()) {
@@ -984,6 +990,9 @@
     }, {
       key: "objectifs",
       label: "🎯 Objectifs"
+    }, {
+      key: "fiscal",
+      label: "💼 Fiscal & Prêts"
     }, {
       key: "custom",
       label: "🔎 Filtre Personnalisé"
@@ -1876,7 +1885,119 @@
           }
         }, meta.label));
       });
-    })())), activeTab === "custom" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    })())), activeTab === "fiscal" && /*#__PURE__*/React.createElement(React.Fragment, null, (() => {
+      const f = fiscalAdvice?.fiscal;
+      const rateStr = r => r === null || r === undefined ? "—" : `${(r * 100).toFixed(1)} %`;
+      const emptyBox = label => /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C?.inkSoft || "#6B7278",
+          fontSize: 12.5,
+          padding: "6px 0"
+        }
+      }, label);
+      const itemBox = children => /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 14,
+          padding: "10px 12px",
+          border: `1px solid ${C?.line || "#DED6C4"}`,
+          borderRadius: 8,
+          marginBottom: 8,
+          flexWrap: "wrap"
+        }
+      }, children);
+      const loanVerdictMeta = {
+        rembourser: {
+          label: "Taux > vos placements : à chiffrer (IRA non incluses)",
+          color: C?.brick || "#A8503C"
+        },
+        conserver: {
+          label: "Taux < vos placements : probablement à conserver",
+          color: C?.pine || "#2F5D50"
+        },
+        neutre: {
+          label: "Écart trop faible pour trancher",
+          color: C?.inkSoft || "#6B7278"
+        }
+      };
+      return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 14,
+          flexWrap: "wrap",
+          marginBottom: 18
+        }
+      }, /*#__PURE__*/React.createElement(KPI, {
+        label: "TMI estimé",
+        value: rateStr(f?.marginalRate),
+        accent: C?.navy || "#28394A",
+        sub: "Estimation simplifiée — abattement forfaitaire, pas de déclaration réelle"
+      }), /*#__PURE__*/React.createElement(KPI, {
+        label: "Revenu imposable estimé (foyer)",
+        value: f ? eur(f.taxableIncome) : "—",
+        accent: C?.ink || "#232A2E",
+        sub: `${f?.parts ?? "—"} part(s) — quotient ${f ? eur(f.quotient) : "—"}`
+      }), /*#__PURE__*/React.createElement(KPI, {
+        label: "Meilleur taux de placement connu",
+        value: rateStr(fiscalAdvice?.bestPlacementRate),
+        accent: C?.pine || "#2F5D50",
+        sub: "Sert de référence pour l'analyse des prêts ci-dessous"
+      })), /*#__PURE__*/React.createElement(SectionCard, {
+        title: "Optimisation fiscale",
+        subtitle: "Un repère, pas un conseil personnalisé — vérifiez plafonds, disponibilité des fonds et situation réelle avant toute décision."
+      }, f?.perSuggested ? itemBox([/*#__PURE__*/React.createElement("div", {
+        key: "msg"
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontWeight: 600,
+          color: C?.ink || "#232A2E",
+          fontSize: 13.5
+        }
+      }, "TMI estimé à ", rateStr(f.marginalRate), " : un versement déductible (type PER) mérite d'être chiffré."), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11.5,
+          color: C?.inkSoft || "#6B7278",
+          marginTop: 2
+        }
+      }, "Les sommes versées sont indisponibles jusqu'à la retraite (sauf cas de déblocage anticipé) et plafonnées ; l'avantage dépend de votre TMI au retrait."))]) : emptyBox("Rien d'évident à signaler à ce TMI estimé — pas d'indice de sur-optimisation fiscale.")), /*#__PURE__*/React.createElement(SectionCard, {
+        title: "Prêts en cours",
+        subtitle: "Comparaison entre le taux du prêt et le meilleur taux de placement connu — sans les indemnités de remboursement anticipé (IRA), à vérifier auprès de votre banque."
+      }, !fiscalAdvice || fiscalAdvice.loans.length === 0 ? emptyBox("Aucun prêt en cours enregistré.") : fiscalAdvice.loans.map(l => {
+        const meta = loanVerdictMeta[l.verdict] || loanVerdictMeta.neutre;
+        return itemBox([/*#__PURE__*/React.createElement("div", {
+          key: "label"
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontWeight: 600,
+            color: C?.ink || "#232A2E",
+            fontSize: 13.5
+          }
+        }, l.label, " ", /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontWeight: 400,
+            color: C?.inkSoft || "#6B7278",
+            fontSize: 11.5
+          }
+        }, "(", rateStr(l.rate), ")")), /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 11.5,
+            color: C?.inkSoft || "#6B7278",
+            marginTop: 2
+          }
+        }, "CRD restant : ", eur(l.crd))), /*#__PURE__*/React.createElement("div", {
+          key: "verdict",
+          style: {
+            fontSize: 12,
+            fontWeight: 600,
+            color: meta.color,
+            textAlign: "right",
+            whiteSpace: "nowrap"
+          }
+        }, meta.label)]);
+      })));
+    })()), activeTab === "custom" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         justifyContent: "space-between",
