@@ -154,6 +154,8 @@ back/server/src/main/java/com/moe/myfamilybudget/
     │                             office de calculateur (beaucoup de logique de projection vit ici, ex.
     │                             PatrimoineServiceImpl.computePatrimoineProjections())
     ├── mapper/                 → Dto <-> Model
+    ├── marketdata/             → aide à la saisie des taux : client des sources publiques (Caisse des Dépôts), instantané
+                                persisté et fraîcheur des données (voir §4.6)
     ├── model/                  → records Java, + certains "Calculator" (logique de calcul pure, ex. TaxCalculator)
     └── persistence/
         ├── PersistenceManager.java   → façade unique
@@ -167,6 +169,16 @@ back/server/src/main/java/com/moe/myfamilybudget/
 Les tests dans `back/server/src/test/java/.../integration/` (ex. `BusinessLogicIntegrationTest`, nommé explicitement *"Oracle JS vs Backend Java"*) chargent un jeu de données de référence (`mock-budget.json`) et vérifient que les réponses de l'API Java correspondent aux valeurs produites par `service-metier.js` / `calculations.js` côté frontend. Le JS fait foi comme définition du comportement attendu — **y compris ses éventuels comportements par défaut non idéaux** : un test qui échoue doit d'abord faire suspecter une valeur de référence incorrecte dans le test avant de suspecter un bug côté Java (c'est déjà arrivé, voir §8).
 
 ---
+
+### 4.6 Données de marché (taux publics, aide à la saisie)
+
+Le package `marketdata` interroge des sources publiques pour **suggérer** des taux (jamais appliqués automatiquement) :
+
+- `CdcRegulatedRatesClient` lit le jeu `flux-et-taux-la-ldds-lep` de la Caisse des Dépôts (Livret A, LDDS, LEP). La source publie des pourcentages, convertis en fractions comme partout dans l'application.
+- `MarketDataService` garde le dernier instantané réussi (table `market_snapshot`, une seule ligne). Une source en échec n'écrase jamais l'instantané : l'erreur est exposée dans `lastRefreshError`.
+- `RegulatedRateFreshness` marque une donnée `STALE` si elle est antérieure à la dernière révision légale (1er février / 1er août) : le jeu de données est publié avec retard, la valeur affichée peut donc ne plus être en vigueur.
+- API : `GET /taux-marche` (sans appel réseau) et `POST /taux-marche/refresh`. Rafraîchissement automatique au démarrage puis toutes les 12 h.
+- Configuration : `myfamilybudget.market-data.*` dans `application.yml` (`enabled`, `timeout-seconds`, `refresh.*`, `cdc.*`). Désactivé dans les tests.
 
 ## 5. Comment lancer le projet
 

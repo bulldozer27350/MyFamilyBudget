@@ -40,3 +40,16 @@ logging:
     org.springframework.web.servlet: DEBUG
     org.springframework.web.servlet.mvc.method.annotation: DEBUG
     org.springframework.web.filter.CommonsRequestLoggingFilter: DEBUG
+
+myfamilybudget:
+  # Aide à la saisie des taux : données publiques utilisées comme suggestions (jamais appliquées
+  # automatiquement). Le dernier instantané réussi est persisté en base.
+  market-data:
+    enabled: true            # false : aucune interrogation automatique des sources
+    timeout-seconds: 5       # délai de connexion et de lecture par appel
+    refresh:
+      initial-delay: PT30S   # premier rafraîchissement après le démarrage (durée ISO-8601)
+      interval: PT12H        # délai entre deux rafraîchissements
+    cdc:
+      base-url: https://opendata.caissedesdepots.fr/api/explore/v2.1
+      dataset: flux-et-taux-la-ldds-lep

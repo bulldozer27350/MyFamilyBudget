@@ -28,3 +28,5 @@ spring:
 myfamilybudget:
   browser:
     auto-open: false
+  market-data:
+    enabled: false

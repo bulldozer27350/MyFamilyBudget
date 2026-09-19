@@ -917,6 +917,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/AnalyseResponseDto'
 
+  # ---------------------------------------------------------------------------
+  # TAUX DE MARCHE (aide a la saisie des taux)
+  # ---------------------------------------------------------------------------
+  /taux-marche:
+    get:
+      summary: Recupere le dernier instantane des taux publics (epargne reglementee) sans appel reseau
+      operationId: getTauxMarche
+      tags:
+        - TauxMarche
+      responses:
+        '200':
+          description: Dernier instantane connu, avec son statut de fraicheur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TauxMarcheDto'
+
+  /taux-marche/refresh:
+    post:
+      summary: Interroge les sources publiques, met a jour l'instantane puis le renvoie
+      description: |
+        En cas d'echec d'une source, le dernier instantane connu est conserve et l'erreur est
+        indiquee dans lastRefreshError (la reponse reste un 200).
+      operationId: refreshTauxMarche
+      tags:
+        - TauxMarche
+      responses:
+        '200':
+          description: Instantane apres tentative de rafraichissement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TauxMarcheDto'
+
 components:
   schemas:
     OverviewResponseDto:
@@ -2004,3 +2038,42 @@ components:
         color:
           type: string
           description: Code couleur pour l'affichage
+
+    TauxMarcheDto:
+      type: object
+      description: Instantane des taux publics utilises comme suggestions de saisie
+      properties:
+        fetchedAt:
+          type: string
+          description: Instant (ISO-8601) du dernier rafraichissement reussi, absent s'il n'y en a jamais eu
+        lastRefreshError:
+          type: string
+          description: Message de la derniere tentative de rafraichissement echouee, absent sinon
+        reglementes:
+          $ref: '#/components/schemas/TauxReglementesDto'
+
+    TauxReglementesDto:
+      type: object
+      description: Taux de l'epargne reglementee (fractions, ex. 0.015 pour 1,5 %)
+      properties:
+        source:
+          type: string
+          description: Source des donnees
+        asOf:
+          type: string
+          description: Mois de la donnee publiee par la source (YYYY-MM)
+        livretA:
+          type: number
+        ldds:
+          type: number
+        lep:
+          type: number
+        status:
+          type: string
+          description: Fraicheur de la donnee (FRESH, STALE ou UNAVAILABLE)
+        lastRevisionDate:
+          type: string
+          description: Date (YYYY-MM-DD) de la derniere revision legale des taux (1er fevrier ou 1er aout)
+        message:
+          type: string
+          description: Message pret a afficher expliquant la fiabilite de la valeur
