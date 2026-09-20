@@ -99,7 +99,7 @@ public class LoanAdviceCalculationService {
                 params.renegotiationMinRemainingMonths(),
                 money(params.renegotiationFixedCosts().doubleValue()),
                 rate(params.flatTaxRate().doubleValue()));
-        return new LoanAdviceResultModel(market == null ? null : rate(market.doubleValue()), assumptions, items, notes);
+        return new LoanAdviceResultModel(market == null ? null : rate(market.doubleValue()), null, assumptions, items, notes);
     }
 
     // ------------------------------------------------------------------ prêt par prêt

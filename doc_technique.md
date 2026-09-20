@@ -178,14 +178,17 @@ Le package `marketdata` interroge des sources publiques pour **suggérer** des t
 - `MarketDataService` garde le dernier instantané réussi (table `market_snapshot`, une seule ligne). Une source en échec n'écrase jamais l'instantané : l'erreur est exposée dans `lastRefreshError`.
 - `RegulatedRateFreshness` marque une donnée `STALE` si elle est antérieure à la dernière révision légale (1er février / 1er août) : le jeu de données est publié avec retard, la valeur affichée peut donc ne plus être en vigueur.
 - API : `GET /taux-marche` (sans appel réseau) et `POST /taux-marche/refresh`. Rafraîchissement automatique au démarrage puis toutes les 12 h.
-- Configuration : `myfamilybudget.market-data.*` dans `application.yml` (`enabled`, `timeout-seconds`, `refresh.*`, `cdc.*`). Désactivé dans les tests.
+- `EcbYieldCurveClient` lit la courbe des taux des emprunts d'État de la zone euro AAA (API SDMX de la BCE, sans clé) : spot 2 et 10 ans, forwards instantanés 1, 2, 5 et 10 ans. Taux en composition continue : `exp(taux) - 1` donne le taux annuel effectif comparable à un livret.
+- `BdfMortgageRateClient` lit le taux moyen des nouveaux crédits à l'habitat hors renégociations (Webstat, série `MIR1.M.FR.B.A22HR.A.5.A.2254U6.EUR.N`). **Clé d'API requise**, fournie par la variable d'environnement `MYFAMILYBUDGET_BDF_API_KEY` (docker-compose : `environment:`) ; sans clé, la source est ignorée sans erreur. La clé n'est jamais journalisée ni exposée par l'API.
+- Chaque source est rafraîchie indépendamment : une source en échec conserve sa donnée précédente, ses erreurs sont concaténées dans `lastRefreshError`.
+- Configuration : `myfamilybudget.market-data.*` dans `application.yml` (`enabled`, `timeout-seconds`, `refresh.*`, `cdc.*`, `ecb.*`, `bdf.*`). Désactivé dans les tests.
 
 ### 4.7 Analyse des prêts (rembourser ? renégocier ?)
 
 `LoanAdviceCalculationService` (package `calculation`, sans état) alimente `GET /analyse/prets?marketRate=0.032` :
 
 - **Remboursement anticipé** : le coût du prêt (taux + assurance rapportée au capital) est comparé au meilleur rendement *net* d'un placement sans risque et liquide (catégories de bucket `cash` et `fondsEuros`, taux « correct », PFU appliqué hors livrets). Les actions, l'immobilier et l'épargne retraite ne sont pas des alternatives : solder un prêt rapporte son taux de façon certaine. Une indemnité (IRA) non amortie avant la fin du prêt ramène le verdict à « neutre ».
-- **Renégociation** : uniquement si un taux de marché est connu (paramètre `marketRate` ou taux enregistré dans les hypothèses). Écart minimal, capital et durée restants minimaux, puis économie nette estimée à durée identique, après IRA et frais fixes. Les seuils sont des heuristiques, renvoyées dans `assumptions`.
+- **Renégociation** : uniquement si un taux de marché est connu, retenu dans cet ordre : paramètre `marketRate` (simulation), taux saisi dans les hypothèses, puis taux Banque de France (`marketRateSource` indique l'origine). Écart minimal, capital et durée restants minimaux, puis économie nette estimée à durée identique, après IRA et frais fixes. Les seuils sont des heuristiques, renvoyées dans `assumptions`.
 - **Hypothèses modifiables** : `GET`/`PUT /analyse/prets/parametres` (table `loan_advice_settings`, une ligne JSON). `GET` renvoie les valeurs en vigueur et les valeurs par défaut ; `PUT` valide les plages (400 avec message explicite si hors plage). Par défaut : écart de remboursement 0,5 pt, écart de renégociation 0,7 pt, capital minimal 70 000 €, durée minimale 84 mois, frais fixes 1 500 €, PFU 30 %.
 - IRA : plafond légal immobilier, le moindre de 6 mois d'intérêts et 3 % du capital restant dû (prêts supposés immobiliers).
 - Le capital restant dû est projeté à aujourd'hui exactement comme `projectLoanCrdToDate()` du front.

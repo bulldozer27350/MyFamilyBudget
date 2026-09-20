@@ -53,3 +53,11 @@ myfamilybudget:
     cdc:
       base-url: https://opendata.caissedesdepots.fr/api/explore/v2.1
       dataset: flux-et-taux-la-ldds-lep
+    ecb:
+      base-url: https://data-api.ecb.europa.eu          # courbe des taux zone euro (sans clé)
+    bdf:
+      base-url: https://webstat.banque-france.fr/api/explore/v2.1
+      # Clé d'API Webstat (gratuite) : sans elle, la source est ignorée sans erreur et le taux de
+      # marché des crédits est à saisir à la main. À fournir par variable d'environnement.
+      api-key: ${MYFAMILYBUDGET_BDF_API_KEY:}
+      mortgage-series-key: MIR1.M.FR.B.A22HR.A.5.A.2254U6.EUR.N   # nouveaux crédits à l'habitat, hors renégociations

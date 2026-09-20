@@ -27,6 +27,7 @@ public class AnalysePretsMapper {
     public AnalysePretsDto toDto(LoanAdviceResultModel model) {
         AnalysePretsDto dto = new AnalysePretsDto();
         dto.setMarketRateUsed(model.marketRateUsed());
+        dto.setMarketRateSource(model.marketRateSource());
         dto.setAssumptions(toDto(model.assumptions()));
         dto.setLoans(model.loans().stream().map(this::toDto).toList());
         dto.setNotes(List.copyOf(model.notes()));

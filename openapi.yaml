@@ -2111,6 +2111,10 @@ components:
           description: Message de la derniere tentative de rafraichissement echouee, absent sinon
         reglementes:
           $ref: '#/components/schemas/TauxReglementesDto'
+        creditImmobilier:
+          $ref: '#/components/schemas/TauxCreditImmobilierDto'
+        courbeTaux:
+          $ref: '#/components/schemas/CourbeTauxDto'
 
     TauxReglementesDto:
       type: object
@@ -2145,6 +2149,9 @@ components:
         marketRateUsed:
           type: number
           description: Taux de marche retenu pour la renegociation, absent si non renseigne ou ignore
+        marketRateSource:
+          type: string
+          description: Origine du taux de marche retenu (parametre de requete, saisie manuelle ou Banque de France)
         assumptions:
           $ref: '#/components/schemas/AnalysePretsHypothesesDto'
         loans:
@@ -2285,3 +2292,49 @@ components:
           $ref: '#/components/schemas/AnalysePretsParametresValuesDto'
         defaults:
           $ref: '#/components/schemas/AnalysePretsParametresValuesDto'
+
+    TauxCreditImmobilierDto:
+      type: object
+      description: Taux moyen des nouveaux credits a l'habitat hors renegociations (fraction)
+      properties:
+        source:
+          type: string
+        asOf:
+          type: string
+          description: Mois de la donnee (YYYY-MM)
+        rate:
+          type: number
+        status:
+          type: string
+          description: FRESH, STALE, UNAVAILABLE ou NOT_CONFIGURED (cle d'API Banque de France absente)
+        message:
+          type: string
+          description: Message pret a afficher expliquant la fiabilite de la valeur
+
+    CourbeTauxDto:
+      type: object
+      description: Courbe des taux des emprunts d'Etat de la zone euro AAA, en fractions et en composition continue
+      properties:
+        source:
+          type: string
+        asOf:
+          type: string
+          description: Jour de cotation (YYYY-MM-DD)
+        spot2y:
+          type: number
+        spot10y:
+          type: number
+        forward1y:
+          type: number
+          description: Taux forward instantane dans 1 an (anticipation implicite du marche)
+        forward2y:
+          type: number
+        forward5y:
+          type: number
+        forward10y:
+          type: number
+        status:
+          type: string
+          description: FRESH, STALE ou UNAVAILABLE
+        message:
+          type: string

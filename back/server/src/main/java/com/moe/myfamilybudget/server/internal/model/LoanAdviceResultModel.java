@@ -8,15 +8,22 @@ import java.util.List;
  * (0,035 pour 3,5 %), tous les montants sont en euros.
  *
  * @param marketRateUsed  taux de marché retenu pour l'analyse de renégociation, null si non renseigné
+ * @param marketRateSource origine de ce taux (requête, saisie manuelle, Banque de France), null si non renseigné
  * @param assumptions     hypothèses appliquées, à afficher à côté des résultats
  * @param loans           un élément par prêt en cours (capital restant dû positif)
  * @param notes           limites générales de l'estimation
  */
 public record LoanAdviceResultModel(
         BigDecimal marketRateUsed,
+        String marketRateSource,
         Assumptions assumptions,
         List<LoanItem> loans,
         List<String> notes) {
+
+    /** Même résultat avec l'origine du taux de marché renseignée (connue de l'appelant, pas du calcul). */
+    public LoanAdviceResultModel withMarketRateSource(String source) {
+        return new LoanAdviceResultModel(marketRateUsed, source, assumptions, loans, notes);
+    }
 
     /** Verdict sur le remboursement anticipé. */
     public enum RepayVerdict {

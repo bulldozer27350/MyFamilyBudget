@@ -2,6 +2,7 @@ package com.moe.myfamilybudget.server.internal.marketdata;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 
@@ -31,6 +32,24 @@ final class MarketSnapshotCodec {
             putDecimal(regulated, "ldds", quote.ldds());
             putDecimal(regulated, "lep", quote.lep());
         }
+        MortgageRateQuote mortgage = snapshot.mortgageRate();
+        if (mortgage != null) {
+            ObjectNode node = root.putObject("mortgageRate");
+            node.put("asOf", mortgage.asOf().toString());
+            putDecimal(node, "rate", mortgage.rate());
+            node.put("seriesKey", mortgage.seriesKey());
+        }
+        YieldCurveQuote curve = snapshot.yieldCurve();
+        if (curve != null) {
+            ObjectNode node = root.putObject("yieldCurve");
+            node.put("asOf", curve.asOf().toString());
+            putDecimal(node, "spot2y", curve.spot2y());
+            putDecimal(node, "spot10y", curve.spot10y());
+            putDecimal(node, "forward1y", curve.forward1y());
+            putDecimal(node, "forward2y", curve.forward2y());
+            putDecimal(node, "forward5y", curve.forward5y());
+            putDecimal(node, "forward10y", curve.forward10y());
+        }
         try {
             return mapper.writeValueAsString(root);
         } catch (JsonProcessingException e) {
@@ -51,7 +70,27 @@ final class MarketSnapshotCodec {
                         readDecimal(regulated, "ldds"),
                         readDecimal(regulated, "lep"));
             }
-            return new MarketSnapshot(fetchedAt, quote);
+            MortgageRateQuote mortgage = null;
+            JsonNode mortgageNode = root.get("mortgageRate");
+            if (mortgageNode != null && mortgageNode.isObject()) {
+                mortgage = new MortgageRateQuote(
+                        YearMonth.parse(mortgageNode.path("asOf").asText("")),
+                        requiredDecimal(mortgageNode, "rate"),
+                        mortgageNode.path("seriesKey").asText(""));
+            }
+            YieldCurveQuote curve = null;
+            JsonNode curveNode = root.get("yieldCurve");
+            if (curveNode != null && curveNode.isObject()) {
+                curve = new YieldCurveQuote(
+                        LocalDate.parse(curveNode.path("asOf").asText("")),
+                        requiredDecimal(curveNode, "spot2y"),
+                        requiredDecimal(curveNode, "spot10y"),
+                        requiredDecimal(curveNode, "forward1y"),
+                        requiredDecimal(curveNode, "forward2y"),
+                        requiredDecimal(curveNode, "forward5y"),
+                        requiredDecimal(curveNode, "forward10y"));
+            }
+            return new MarketSnapshot(fetchedAt, quote, mortgage, curve);
         } catch (JsonProcessingException | DateTimeParseException | NumberFormatException e) {
             throw new MarketDataException("Instantané de marché persisté illisible", e);
         }
@@ -66,5 +105,13 @@ final class MarketSnapshotCodec {
     private static BigDecimal readDecimal(JsonNode node, String field) {
         JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : new BigDecimal(value.asText());
+    }
+
+    private static BigDecimal requiredDecimal(JsonNode node, String field) {
+        BigDecimal value = readDecimal(node, field);
+        if (value == null) {
+            throw new NumberFormatException("Champ manquant : " + field);
+        }
+        return value;
     }
 }
