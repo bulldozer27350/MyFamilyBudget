@@ -31,6 +31,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-myfamilybudget}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-myfamilybudget}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-myfamilybudget}
+      # Cle d'API Webstat (Banque de France) pour le taux de marche des credits. Le .env sert
+      # uniquement a la substitution de variables dans ce fichier : sans cette ligne, la variable
+      # n'atteint jamais le conteneur. Vide (defaut) => source ignoree, taux a saisir a la main.
+      MYFAMILYBUDGET_BDF_API_KEY: ${MYFAMILYBUDGET_BDF_API_KEY:-}
     ports:
       - "${APP_PORT:-8080}:8080"
 
