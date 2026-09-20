@@ -193,6 +193,7 @@ Le package `marketdata` interroge des sources publiques pour **suggérer** des t
 - IRA : plafond légal immobilier, le moindre de 6 mois d'intérêts et 3 % du capital restant dû (prêts supposés immobiliers).
 - Le capital restant dû est projeté à aujourd'hui exactement comme `projectLoanCrdToDate()` du front.
 - Limites (renvoyées dans `notes`) : plafonds de versement, épargne de précaution et offre réelle des banques ne sont pas modélisés.
+- **Front** : `view/js/components/loan-advice-panel.js` (chargé par `analyse.html`) affiche ces trois sources dans Analyse › Fiscal & Prêts (bloc Marché, carte Hypothèses, verdicts par prêt). Fonctionnalités serveur uniquement : `api.js` renvoie `null` si le back-end est injoignable et la vue retombe alors sur l'ancienne carte « Prêts en cours » calculée localement (`computeFiscalPatrimonialAdvice`).
 
 ## 5. Comment lancer le projet
 

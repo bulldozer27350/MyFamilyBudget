@@ -31,6 +31,8 @@
   const {
     AllocationChartJS
   } = exports.AllocationChartJS ? exports : window.BudgetApp || {};
+  // Panneau serveur d'analyse des prêts (components/loan-advice-panel.js) ; absent => ancienne carte locale.
+  const LoanAdvicePanelRef = () => exports.LoanAdvicePanel || window.BudgetApp && window.BudgetApp.LoanAdvicePanel;
   const inputStyle = {
     border: `1px solid ${C?.line || "#DED6C4"}`,
     borderRadius: 7,
@@ -1961,7 +1963,8 @@
           color: C?.inkSoft || "#6B7278",
           marginTop: 2
         }
-      }, "Les sommes versées sont indisponibles jusqu'à la retraite (sauf cas de déblocage anticipé) et plafonnées ; l'avantage dépend de votre TMI au retrait."))]) : emptyBox("Rien d'évident à signaler à ce TMI estimé — pas d'indice de sur-optimisation fiscale.")), /*#__PURE__*/React.createElement(SectionCard, {
+      }, "Les sommes versées sont indisponibles jusqu'à la retraite (sauf cas de déblocage anticipé) et plafonnées ; l'avantage dépend de votre TMI au retrait."))]) : emptyBox("Rien d'évident à signaler à ce TMI estimé — pas d'indice de sur-optimisation fiscale.")), (() => {
+      const legacyLoansCard = /*#__PURE__*/React.createElement(SectionCard, {
         title: "Prêts en cours",
         subtitle: "Comparaison entre le taux du prêt et le meilleur taux de placement connu — sans les indemnités de remboursement anticipé (IRA), à vérifier auprès de votre banque."
       }, !fiscalAdvice || fiscalAdvice.loans.length === 0 ? emptyBox("Aucun prêt en cours enregistré.") : fiscalAdvice.loans.map(l => {
@@ -1996,7 +1999,12 @@
             whiteSpace: "nowrap"
           }
         }, meta.label)]);
-      })));
+      }));
+      const Panel = LoanAdvicePanelRef();
+      return Panel ? React.createElement(Panel, {
+        fallback: legacyLoansCard
+      }) : legacyLoansCard;
+    })());
     })()), activeTab === "custom" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",

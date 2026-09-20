@@ -264,7 +264,7 @@ L'onglet Pointage compare mois par mois les dépenses et recettes réelles de vo
 
 ## 10. Onglet « Analyse » (Tableau de bord du Réel)
 
-L'onglet Analyse synthétise vos données réelles importées à travers 4 sous-onglets spécialisés :
+L'onglet Analyse synthétise vos données réelles importées à travers ses sous-onglets spécialisés :
 
 ### 10.1 Vue Générale & Postes Compressibles
 - **Période d'analyse** : Vue sur 3 mois, 6 mois, 12 mois ou l'ensemble de l'historique.
@@ -282,6 +282,16 @@ Graphiques en barres et tableaux chronologiques détaillant mois par mois vos en
 
 ### 10.4 Dérives par Ligne Budgétaire
 Compare le montant budgété de chaque charge ou revenu avec sa moyenne réelle constatée sur 3 mois et 12 mois. Permet d'identifier immédiatement les lignes de budget sous-évaluées (ex. abonnements ou énergie ayant augmenté).
+
+### 10.5 Fiscal & Prêts : analyse des prêts et taux du marché
+Ce sous-onglet regroupe trois blocs qui s'appuient sur des **données publiques** (indicatives : rien n'est jamais appliqué automatiquement à vos taux) :
+- **Marché** : taux du Livret A / LDDS / LEP, taux moyen des nouveaux crédits immobiliers (Banque de France) et courbe des taux de la zone euro (BCE), chacun avec sa **fraîcheur**. Un taux réglementé de plus de six mois est signalé « possiblement obsolète » : les taux changent au 1er février et au 1er août, mais les jeux de données publics sont publiés avec du retard. Le bouton **Actualiser** interroge les sources ; si l'une échoue, sa dernière valeur connue est conservée. Les taux BCE sont convertis en taux annuel effectif pour être comparables à un livret.
+- **Hypothèses de l'analyse** (carte repliée) : taux de marché saisi à la main, marge pour trancher sur un remboursement, écart minimal, capital et durée minimaux pour renégocier, frais fixes, fiscalité des placements hors livrets. Les valeurs par défaut sont des repères courants ; **Valeurs par défaut** les recharge, **Enregistrer** les applique (sur le serveur, donc identiques d'un appareil à l'autre).
+- **Prêts en cours — analyse** : pour chaque prêt (supposé immobilier), un verdict « Rembourser plus vite ? » (comparé au meilleur rendement net d'un placement sans risque : livrets, fonds en euros) et « Renégocier ? » (comparé au taux de marché, après indemnité de remboursement anticipé et frais). Le taux de marché retenu est, dans l'ordre : votre saisie manuelle, puis celui de la Banque de France.
+
+Ce sont des **estimations** : plafonds de versement, épargne de précaution et offre réelle de votre banque ne sont pas contrôlés. Si le serveur est indisponible, l'ancienne carte « Prêts en cours » (comparaison simple des taux) s'affiche à la place.
+
+*Pour activer le taux de la Banque de France, une clé d'API gratuite Webstat doit être fournie au serveur (variable d'environnement `MYFAMILYBUDGET_BDF_API_KEY`) ; sans elle, saisissez le taux de marché à la main dans les hypothèses.*
 
 ---
 

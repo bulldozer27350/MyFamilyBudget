@@ -80,6 +80,25 @@
   }
 
   /**
+   * Appel d'une fonctionnalité qui n'existe que côté serveur (pas de service JS local de repli) :
+   * renvoie le JSON de la réponse, ou null si le back-end est injoignable ou répond une erreur.
+   * L'appelant décide alors quoi afficher à la place.
+   * @param {string} path Chemin relatif à API_BASE_URL
+   * @param {RequestInit} [options]
+   * @param {number} [timeoutMs]
+   * @returns {Promise<Object|null>}
+   */
+  async function fetchJsonOrNull(path, options = {}, timeoutMs = 5000) {
+    const res = await safeFetch(API_BASE_URL + path, options, timeoutMs);
+    if (!res || !res.ok) return null;
+    try {
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
    * Pousse une mutation d'Impôts vers le back-end (PUT /impots), avec mise en
    * file d'attente SyncStatus en cas d'échec (perte réseau, back-end indisponible…).
    * Le back-end (ImpotsServiceImpl#saveImpotsConfig) ne remplace que les clés
@@ -1545,6 +1564,63 @@
      */
     onAnalyseChanged(listener) {
       return app().AnalyseService.subscribeAnalyse(listener);
+    },
+
+    /**
+     * Taux publics (épargne réglementée, crédit immobilier, courbe BCE) : dernier instantané
+     * connu du serveur, sans appel réseau externe. Fonctionnalité serveur uniquement.
+     * @returns {Promise<Object|null>} null si le back-end est indisponible
+     */
+    async getTauxMarche() {
+      return fetchJsonOrNull('/taux-marche');
+    },
+
+    /**
+     * Demande au serveur d'interroger les sources publiques puis renvoie l'instantané mis à jour.
+     * Délai large : trois sources sont appelées successivement.
+     * @returns {Promise<Object|null>}
+     */
+    async refreshTauxMarche() {
+      return fetchJsonOrNull('/taux-marche/refresh', { method: 'POST' }, 40000);
+    },
+
+    /**
+     * Analyse des prêts en cours (rembourser ? renégocier ?). Fonctionnalité serveur uniquement.
+     * @returns {Promise<Object|null>} null si le back-end est indisponible
+     */
+    async getAnalysePrets() {
+      return fetchJsonOrNull('/analyse/prets');
+    },
+
+    /**
+     * Hypothèses de l'analyse des prêts : valeurs en vigueur et valeurs par défaut.
+     * @returns {Promise<{values: Object, defaults: Object}|null>}
+     */
+    async getAnalysePretsParametres() {
+      return fetchJsonOrNull('/analyse/prets/parametres');
+    },
+
+    /**
+     * Enregistre les hypothèses de l'analyse des prêts. Rejette avec le message du serveur
+     * (400 : valeur hors plage) pour que l'interface puisse l'afficher tel quel.
+     * @param {Object} values Hypothèses (taux en fractions)
+     * @returns {Promise<{values: Object, defaults: Object}>}
+     */
+    async saveAnalysePretsParametres(values) {
+      const res = await safeFetch(API_BASE_URL + '/analyse/prets/parametres', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values)
+      });
+      if (!res) throw new Error('Serveur injoignable : hypothèses non enregistrées.');
+      let body = null;
+      try {
+        body = await res.json();
+      } catch (e) {
+        // Corps absent ou non JSON : on se contente du code HTTP.
+      }
+      if (!res.ok) throw new Error((body && body.message) || 'Enregistrement refusé (HTTP ' + res.status + ').');
+      return body;
     },
 
     /**
