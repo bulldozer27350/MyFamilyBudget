@@ -132,6 +132,34 @@
       onBlur: flushDebouncedChange
     });
   }
+  // Les taux sont stockés en fractions (0.035) mais saisis et affichés en pourcentage (3.5).
+  // Jusqu'à 3 décimales affichées (ex. taux de crédit à 0,751 %) : on arrondit pour éviter les
+  // artefacts de virgule flottante, puis on retire les zéros superflus (0.8 reste "0.8").
+  function fractionToPercentInput(fraction) {
+    const isUnset = fraction === undefined || fraction === null || fraction === "";
+    return isUnset ? "" : parseFloat(((Number(fraction) || 0) * 100).toFixed(3)).toString();
+  }
+  // Saisie en pourcentage -> fraction (vide => null). Arrondi à 8 décimales, la précision des
+  // colonnes de taux en base, pour ne pas envoyer 0.07200000000000001 au serveur.
+  function percentInputToFraction(input) {
+    if (input === "" || input === null || input === undefined) return null;
+    return parseFloat(((parseFloat(input) || 0) / 100).toFixed(8));
+  }
+
+  // Champ de saisie d'un taux : reçoit et renvoie une FRACTION, mais l'utilisateur tape un
+  // pourcentage (3.5 pour 3,5 %). Même conversion que les colonnes type "percent" d'EditableTable.
+  function PercentField({
+    value,
+    onChange,
+    ...rest
+  }) {
+    return /*#__PURE__*/React.createElement(Field, {
+      ...rest,
+      type: "number",
+      value: fractionToPercentInput(value),
+      onChange: v => onChange(percentInputToFraction(v))
+    });
+  }
   function FieldHint({
     label,
     text,
@@ -318,12 +346,8 @@
       let val = row[c.key];
       let onChange = v => onCell(row.id, c.key, v);
       if (c.type === "percent") {
-        const isUnset = val === undefined || val === null || val === "";
-        // Jusqu'à 3 décimales (ex. taux de crédit à 0,751 %) : on arrondit à une précision fine
-        // pour éviter les artefacts de virgule flottante, puis on retire les zéros superflus
-        // (0.8 reste "0.8", pas "0.800") sans jamais tronquer à 1 seule décimale.
-        val = isUnset ? "" : parseFloat(((Number(val) || 0) * 100).toFixed(3)).toString();
-        onChange = v => onCell(row.id, c.key, v === "" || v === null ? null : (parseFloat(v) || 0) / 100);
+        val = fractionToPercentInput(val);
+        onChange = v => onCell(row.id, c.key, percentInputToFraction(v));
       }
       return /*#__PURE__*/React.createElement("td", {
         key: c.key,
@@ -411,6 +435,7 @@
     }, sub));
   }
   exports.Field = Field;
+  exports.PercentField = PercentField;
   exports.FieldHint = FieldHint;
   exports.IconBtn = IconBtn;
   exports.SectionCard = SectionCard;

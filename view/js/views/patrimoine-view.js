@@ -17,6 +17,7 @@
     SectionCard,
     EditableTable,
     Field,
+    PercentField,
     FieldHint
   } = exports.SectionCard ? exports : window.BudgetApp || {};
   const {
@@ -574,8 +575,7 @@
         borderRadius: 6,
         padding: "4px 8px"
       }
-    }, /*#__PURE__*/React.createElement(Field, {
-      type: "percent",
+    }, /*#__PURE__*/React.createElement(PercentField, {
       mono: true,
       value: placement.ratePess,
       onChange: v => onCell(placement.id, "ratePess", v)
@@ -594,8 +594,7 @@
         borderRadius: 6,
         padding: "4px 8px"
       }
-    }, /*#__PURE__*/React.createElement(Field, {
-      type: "percent",
+    }, /*#__PURE__*/React.createElement(PercentField, {
       mono: true,
       value: placement.rateCorr,
       onChange: v => onCell(placement.id, "rateCorr", v)
@@ -614,8 +613,7 @@
         borderRadius: 6,
         padding: "4px 8px"
       }
-    }, /*#__PURE__*/React.createElement(Field, {
-      type: "percent",
+    }, /*#__PURE__*/React.createElement(PercentField, {
       mono: true,
       value: placement.rateOpti,
       onChange: v => onCell(placement.id, "rateOpti", v)
