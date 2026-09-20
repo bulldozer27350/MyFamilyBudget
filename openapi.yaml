@@ -977,6 +977,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/AnalysePretsParametresDto'
 
+  /patrimoine/suggestions-taux:
+    get:
+      summary: Suggestions de taux de rendement (pessimiste / correct / optimiste) pour les placements
+      description: |
+        Propose, pour les livrets reglementes (Livret A, LDDS, LEP), le taux en vigueur comme taux
+        correct et un ecart de convention (amplitude) pour les scenarios pessimiste et optimiste ;
+        un simple taux de repere pour les fonds en euros et les obligations ; rien pour les autres.
+        Aucune valeur n'est appliquee automatiquement.
+      operationId: getSuggestionsTaux
+      tags:
+        - SuggestionsTaux
+      parameters:
+        - name: amplitude
+          in: query
+          required: false
+          description: Ecart entre le taux correct et les taux pessimiste/optimiste, en fraction (defaut 0.01, de 0 a 0.05)
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Une entree par placement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuggestionsTauxDto'
+
   # ---------------------------------------------------------------------------
   # TAUX DE MARCHE (aide a la saisie des taux)
   # ---------------------------------------------------------------------------
@@ -2338,3 +2364,58 @@ components:
           description: FRESH, STALE ou UNAVAILABLE
         message:
           type: string
+
+    SuggestionsTauxDto:
+      type: object
+      description: Suggestions de taux de rendement par placement (fractions)
+      properties:
+        amplitude:
+          type: number
+          description: Ecart pessimiste/optimiste utilise
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuggestionTauxPlacementDto'
+        notes:
+          type: array
+          description: Limites de la methode, a afficher avec les suggestions
+          items:
+            type: string
+
+    SuggestionTauxPlacementDto:
+      type: object
+      properties:
+        placementId:
+          type: string
+        label:
+          type: string
+        bucket:
+          type: string
+          description: Classe d'actif du placement (cash, fondsEuros, actions, obligations, immobilier, epargneSalariale), absente si categorie inconnue
+        kind:
+          type: string
+          description: SUGGESTION (trois taux applicables), REFERENCE (taux de repere seul) ou NONE (aucune source publique)
+        benchmark:
+          type: string
+          description: Reference utilisee (ex. Livret A)
+        suggestedPess:
+          type: number
+        suggestedCorr:
+          type: number
+        suggestedOpti:
+          type: number
+        referenceRate:
+          type: number
+          description: Taux de repere en taux annuel effectif (kind REFERENCE)
+        currentPess:
+          type: number
+        currentCorr:
+          type: number
+        currentOpti:
+          type: number
+        basis:
+          type: string
+          description: Explication de la source de la valeur, prete a afficher
+        caveat:
+          type: string
+          description: Reserve a afficher avec la valeur (donnee ancienne...), absente sinon

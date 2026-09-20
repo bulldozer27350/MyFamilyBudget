@@ -39,6 +39,14 @@ public final class RegulatedRateFreshness {
         return LocalDate.of(today.getYear() - 1, 8, 1);
     }
 
+    /** Prochaine révision (1er février ou 1er août) strictement postérieure à la date donnée. */
+    public static LocalDate nextRevisionDate(LocalDate today) {
+        LocalDate last = lastRevisionDate(today);
+        return last.getMonthValue() == 8
+                ? LocalDate.of(last.getYear() + 1, 2, 1)
+                : LocalDate.of(last.getYear(), 8, 1);
+    }
+
     public static Status evaluate(YearMonth asOf, LocalDate today) {
         if (asOf == null) {
             return Status.UNAVAILABLE;

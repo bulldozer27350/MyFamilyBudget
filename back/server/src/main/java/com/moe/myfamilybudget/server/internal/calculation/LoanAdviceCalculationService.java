@@ -6,10 +6,8 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
@@ -236,19 +234,11 @@ public class LoanAdviceCalculationService {
 
     private static Alternative bestLiquidAlternative(List<PlacementModel> placements,
             List<AssetCategoryModel> categories, LoanAdviceParameters params) {
-        Map<String, String> bucketById = new HashMap<>();
-        Map<String, String> bucketByName = new HashMap<>();
-        for (AssetCategoryModel c : categories == null ? List.<AssetCategoryModel>of() : categories) {
-            bucketById.put(c.id(), c.bucket());
-            bucketByName.put(c.name(), c.bucket());
-        }
+        AssetBucketResolver buckets = new AssetBucketResolver(categories);
         double flatTax = params.flatTaxRate().doubleValue();
         Alternative best = null;
         for (PlacementModel p : placements == null ? List.<PlacementModel>of() : placements) {
-            String bucket = p.categoryId() != null ? bucketById.get(p.categoryId()) : null;
-            if (bucket == null && p.category() != null) {
-                bucket = bucketByName.get(p.category());
-            }
+            String bucket = buckets.bucketOf(p);
             boolean cash = "cash".equals(bucket);
             if (!cash && !"fondsEuros".equals(bucket)) {
                 continue;

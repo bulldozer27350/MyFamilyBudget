@@ -93,6 +93,8 @@ Chaque carte représente un compte ou un placement. Le montant affiché sur la c
 1. **Informations générales** : libellé, catégorie d'actif (utilisée pour la Répartition d'actifs), notes libres.
 2. **Versements** : versement mensuel programmé et fenêtre d'activité (dès le / jusqu'au). *Le solde ne se saisit plus ici — voir « Fenêtre Historique » ci-dessous.*
 3. **Hypothèses de rendement annuel (%)** : un taux distinct pour chacun des 3 scénarios (Pessimiste / Correct / Optimiste), composé mensuellement.
+   - **💡 Suggestion de marché** (au-dessus des trois taux) : pour un **Livret A, un LDDS ou un LEP** (reconnus à leur libellé), la fiche propose le taux en vigueur comme taux « Correct » et ce taux ∓ un écart pour les scénarios Pessimiste et Optimiste (1 pt par défaut, réglable ; le pessimiste ne descend pas sous 0,5 %). Ce taux est supposé stable jusqu'à la prochaine révision (1er février ou 1er août) ; l'écart pessimiste/optimiste est une **convention, pas une prévision**. Le bouton **Appliquer les 3 taux** remplit les champs comme si vous les aviez saisis : rien n'est jamais appliqué sans votre clic.
+   - Pour un **fonds en euros** ou des **obligations**, seul un taux de repère est affiché (taux à 10 ans des emprunts d'État de la zone euro) ; pour les **actions, l'immobilier et l'épargne salariale**, il n'y a aucune suggestion : aucune source publique fiable de prévision n'existe pour ces placements.
 4. **Automatisations (Sweep & Pause épargne)** :
    - **Priorité virement auto** : ordre d'utilisation du compte pour recevoir l'excédent ou combler le manque de trésorerie (1 = utilisé en premier).
    - **Plafond virement auto** : montant maximal pouvant être versé automatiquement sur ce compte.

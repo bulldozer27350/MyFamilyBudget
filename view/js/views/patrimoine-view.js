@@ -36,6 +36,8 @@
     epargneSalariale: "💼"
   };
   const NEUTRAL_CATEGORY_COLOR = "#8A8778";
+  // Composant de suggestion de taux (components/rate-suggestion.js) ; absent => aucune suggestion affichée.
+  const RateSuggestionRef = () => exports.RateSuggestion || window.BudgetApp && window.BudgetApp.RateSuggestion;
   function getCategoryTheme(categoryName, categories) {
     const catObj = (categories || []).find(c => c.name === categoryName);
     const bucket = catObj ? catObj.bucket : "cash";
@@ -182,6 +184,12 @@
     isNew
   }) {
     if (!isOpen || !placement) return null;
+    // Applique les trois taux d'une suggestion, séquentiellement (chaque écriture réenvoie la ligne complète).
+    const applyRates = async values => {
+      for (const key of ["ratePess", "rateCorr", "rateOpti"]) {
+        await onCell(placement.id, key, values[key]);
+      }
+    };
     const handleDelete = () => {
       if (window.confirm(`Êtes-vous sûr de vouloir supprimer le placement "${placement.label}" ?`)) {
         onRemove(placement.id);
@@ -542,7 +550,10 @@
         color: C?.pine || "#2F5D50",
         marginBottom: 12
       }
-    }, "3. Hypothèses de rendement annuel (%)"), /*#__PURE__*/React.createElement("div", {
+    }, "3. Hypothèses de rendement annuel (%)"), RateSuggestionRef() && !isNew ? React.createElement(RateSuggestionRef(), {
+      placement: placement,
+      onApply: applyRates
+    }) : null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: "grid",
         gridTemplateColumns: "1fr 1fr 1fr",
@@ -1032,16 +1043,18 @@
       setIsAddingNew(false);
       setIsDrawerOpen(false);
     };
+    // Renvoie la promesse de la mise à jour : permet d'enchaîner plusieurs champs sans les mélanger
+    // (ex. « Appliquer » une suggestion de taux écrit les trois taux l'un après l'autre).
     const handleCellChange = (id, field, value) => {
       if (isAddingNew && draftPlacement) {
         setDraftPlacement(prev => ({
           ...prev,
           [field]: value
         }));
-      } else {
-        const currentRow = placements.find(p => p.id === id) || null;
-        BudgetApi.updatePatrimoineLigne("placements", id, field, value, currentRow);
+        return undefined;
       }
+      const currentRow = placements.find(p => p.id === id) || null;
+      return BudgetApi.updatePatrimoineLigne("placements", id, field, value, currentRow);
     };
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionCard, {
       title: "Évolution du patrimoine — 3 scénarios",

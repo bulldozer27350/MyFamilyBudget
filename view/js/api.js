@@ -1624,6 +1624,17 @@
     },
 
     /**
+     * Suggestions de taux de rendement (pessimiste / correct / optimiste) par placement, à partir
+     * des taux publics. Lecture seule, fonctionnalité serveur uniquement.
+     * @param {number} [amplitude] Écart pessimiste/optimiste en fraction (0.01 = 1 pt)
+     * @returns {Promise<Object|null>} null si le back-end est indisponible
+     */
+    async getSuggestionsTaux(amplitude) {
+      const query = amplitude !== undefined && amplitude !== null ? '?amplitude=' + encodeURIComponent(amplitude) : '';
+      return fetchJsonOrNull('/patrimoine/suggestions-taux' + query);
+    },
+
+    /**
      * Exporte l'intégralité du modèle de données (Sauvegarde).
      * @returns {Promise<Object>}
      */

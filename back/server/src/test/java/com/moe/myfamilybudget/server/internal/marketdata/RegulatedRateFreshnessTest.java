@@ -21,6 +21,16 @@ class RegulatedRateFreshnessTest {
     }
 
     @Test
+    @DisplayName("nextRevisionDate() renvoie le prochain 1er février ou 1er août, strictement après la date")
+    void nextRevisionDate() {
+        assertEquals(LocalDate.of(2027, 2, 1), RegulatedRateFreshness.nextRevisionDate(LocalDate.of(2026, 9, 19)));
+        assertEquals(LocalDate.of(2027, 2, 1), RegulatedRateFreshness.nextRevisionDate(LocalDate.of(2026, 8, 1)));
+        assertEquals(LocalDate.of(2026, 8, 1), RegulatedRateFreshness.nextRevisionDate(LocalDate.of(2026, 7, 31)));
+        assertEquals(LocalDate.of(2026, 8, 1), RegulatedRateFreshness.nextRevisionDate(LocalDate.of(2026, 2, 1)));
+        assertEquals(LocalDate.of(2026, 2, 1), RegulatedRateFreshness.nextRevisionDate(LocalDate.of(2026, 1, 31)));
+    }
+
+    @Test
     @DisplayName("Une donnée de mars 2026 est périmée en septembre 2026 (révision du 1er août passée)")
     void staleWhenBeforeLastRevision() {
         assertEquals(RegulatedRateFreshness.Status.STALE,

@@ -195,6 +195,17 @@ Le package `marketdata` interroge des sources publiques pour **suggérer** des t
 - Limites (renvoyées dans `notes`) : plafonds de versement, épargne de précaution et offre réelle des banques ne sont pas modélisés.
 - **Front** : `view/js/components/loan-advice-panel.js` (chargé par `analyse.html`) affiche ces trois sources dans Analyse › Fiscal & Prêts (bloc Marché, carte Hypothèses, verdicts par prêt). Fonctionnalités serveur uniquement : `api.js` renvoie `null` si le back-end est injoignable et la vue retombe alors sur l'ancienne carte « Prêts en cours » calculée localement (`computeFiscalPatrimonialAdvice`).
 
+### 4.8 Suggestions de taux pour les placements
+
+`PlacementRateSuggestionService` (package `calculation`, sans état) alimente `GET /patrimoine/suggestions-taux?amplitude=0.01` (lecture seule, aucun placement modifié) :
+
+- **Livret A / LDDS / LEP** (repérés par libellé ou nom de catégorie, accents et casse ignorés) : taux « correct » = taux réglementé en vigueur (Caisse des Dépôts) ; pessimiste/optimiste = ± `amplitude` (défaut 1 pt, de 0 à 5 pt), le pessimiste étant plafonné par le bas à 0,5 % (minimum légal). L'amplitude est une **convention**, pas une prévision : les notes de la réponse le rappellent. Une donnée antérieure à la dernière révision est suggérée avec une réserve (`caveat`).
+- **Fonds en euros, obligations** : `kind = REFERENCE`, taux à 10 ans zone euro AAA (courbe BCE) converti en taux annuel effectif, sans scénario.
+- **Autres** (actions, immobilier, épargne salariale, comptes non réglementés, catégorie inconnue) : `kind = NONE`, avec l'explication.
+- `AssetBucketResolver` retrouve la classe d'actif d'un placement (par id de catégorie puis par nom) ; il est partagé avec l'analyse des prêts.
+- **Front** : `view/js/components/rate-suggestion.js` (chargé par `patrimoine.html`) affiche la suggestion dans la fiche d'un placement, sous « 3. Hypothèses de rendement annuel ». « Appliquer » écrit les trois taux séquentiellement via `handleCellChange` (qui renvoie désormais la promesse de mise à jour). L'amplitude choisie est mémorisée dans le navigateur (`localStorage`, clé `mfb.rateSuggestion.amplitudePt`). Back-end injoignable : aucun bloc n'est affiché.
+- Ce qui n'est **pas** fait : scénarios par année future et projection des taux réglementés (il manque l'inflation prévue).
+
 ## 5. Comment lancer le projet
 
 **Backend seul (dev)** :
