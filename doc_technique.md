@@ -180,6 +180,16 @@ Le package `marketdata` interroge des sources publiques pour **suggérer** des t
 - API : `GET /taux-marche` (sans appel réseau) et `POST /taux-marche/refresh`. Rafraîchissement automatique au démarrage puis toutes les 12 h.
 - Configuration : `myfamilybudget.market-data.*` dans `application.yml` (`enabled`, `timeout-seconds`, `refresh.*`, `cdc.*`). Désactivé dans les tests.
 
+### 4.7 Analyse des prêts (rembourser ? renégocier ?)
+
+`LoanAdviceCalculationService` (package `calculation`, sans état) alimente `GET /analyse/prets?marketRate=0.032` :
+
+- **Remboursement anticipé** : le coût du prêt (taux + assurance rapportée au capital) est comparé au meilleur rendement *net* d'un placement sans risque et liquide (catégories de bucket `cash` et `fondsEuros`, taux « correct », PFU appliqué hors livrets). Les actions, l'immobilier et l'épargne retraite ne sont pas des alternatives : solder un prêt rapporte son taux de façon certaine. Une indemnité (IRA) non amortie avant la fin du prêt ramène le verdict à « neutre ».
+- **Renégociation** : uniquement si `marketRate` est fourni. Écart minimal, capital et durée restants minimaux, puis économie nette estimée à durée identique, après IRA et frais fixes. Les seuils sont des heuristiques, renvoyées dans `assumptions`.
+- IRA : plafond légal immobilier, le moindre de 6 mois d'intérêts et 3 % du capital restant dû (prêts supposés immobiliers).
+- Le capital restant dû est projeté à aujourd'hui exactement comme `projectLoanCrdToDate()` du front.
+- Limites (renvoyées dans `notes`) : plafonds de versement, épargne de précaution et offre réelle des banques ne sont pas modélisés.
+
 ## 5. Comment lancer le projet
 
 **Backend seul (dev)** :

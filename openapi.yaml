@@ -917,6 +917,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/AnalyseResponseDto'
 
+  /analyse/prets:
+    get:
+      summary: Analyse des prets en cours - rembourser plus vite ou renegocier
+      description: |
+        Compare chaque pret a un placement sans risque (remboursement anticipe) et, si un taux de
+        marche est fourni, estime l'economie nette d'une renegociation. Estimation pour des prets
+        immobiliers ; les hypotheses appliquees sont renvoyees dans la reponse.
+      operationId: getAnalysePrets
+      tags:
+        - AnalysePrets
+      parameters:
+        - name: marketRate
+          in: query
+          required: false
+          description: Taux d'un credit immobilier neuf sur le marche, en fraction (ex. 0.032 pour 3,2 %). Sans lui, la renegociation n'est pas evaluee.
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Analyse pret par pret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysePretsDto'
+
   # ---------------------------------------------------------------------------
   # TAUX DE MARCHE (aide a la saisie des taux)
   # ---------------------------------------------------------------------------
@@ -2077,3 +2102,117 @@ components:
         message:
           type: string
           description: Message pret a afficher expliquant la fiabilite de la valeur
+
+    AnalysePretsDto:
+      type: object
+      description: Analyse des prets en cours (taux en fractions, montants en euros)
+      properties:
+        marketRateUsed:
+          type: number
+          description: Taux de marche retenu pour la renegociation, absent si non renseigne ou ignore
+        assumptions:
+          $ref: '#/components/schemas/AnalysePretsHypothesesDto'
+        loans:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalysePretDto'
+        notes:
+          type: array
+          description: Limites generales de l'estimation, a afficher avec les resultats
+          items:
+            type: string
+
+    AnalysePretsHypothesesDto:
+      type: object
+      description: Hypotheses appliquees a l'analyse
+      properties:
+        loanType:
+          type: string
+        repayMarginRate:
+          type: number
+          description: Ecart sous lequel cout du pret et rendement de l'epargne sont juges equivalents
+        renegotiationMinGapRate:
+          type: number
+          description: Ecart minimal taux du pret / taux de marche pour envisager une renegociation
+        renegotiationMinCrd:
+          type: number
+        renegotiationMinRemainingMonths:
+          type: integer
+        renegotiationFixedCosts:
+          type: number
+          description: Frais de dossier, garantie et mainlevee estimes, hors indemnite de remboursement anticipe
+        flatTaxRate:
+          type: number
+          description: Fiscalite appliquee aux rendements des placements liquides hors livrets
+
+    AnalysePretDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        crd:
+          type: number
+          description: Capital restant du projete a aujourd'hui
+        rate:
+          type: number
+        monthly:
+          type: number
+        insurance:
+          type: number
+        remainingMonths:
+          type: integer
+          description: Duree restante, absente si indeterminee
+        remainingInterest:
+          type: number
+          description: Interets restants au taux actuel, absents si la duree est indeterminee
+        earlyRepaymentIndemnity:
+          type: number
+          description: Estimation de l'indemnite de remboursement anticipe (plafond legal immobilier)
+        repayment:
+          $ref: '#/components/schemas/PretRemboursementDto'
+        renegotiation:
+          $ref: '#/components/schemas/PretRenegociationDto'
+
+    PretRemboursementDto:
+      type: object
+      properties:
+        verdict:
+          type: string
+          description: REMBOURSER, NEUTRE, CONSERVER ou INCONNU
+        loanEffectiveCost:
+          type: number
+        alternativeNetYield:
+          type: number
+        alternativeLabel:
+          type: string
+        annualSaving:
+          type: number
+        indemnityPaybackMonths:
+          type: integer
+        reason:
+          type: string
+
+    PretRenegociationDto:
+      type: object
+      properties:
+        verdict:
+          type: string
+          description: RENEGOCIER, NON_RENTABLE, TAUX_PROCHE_MARCHE, NON_ELIGIBLE ou INCONNU
+        gapRate:
+          type: number
+        newMonthly:
+          type: number
+        monthlyGain:
+          type: number
+        grossSaving:
+          type: number
+        costs:
+          type: number
+        netSaving:
+          type: number
+        paybackMonths:
+          type: integer
+        reason:
+          type: string
