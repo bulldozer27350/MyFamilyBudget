@@ -7,8 +7,11 @@ import org.springframework.stereotype.Component;
 import com.moe.myfamilybudget.api.model.AnalysePretDto;
 import com.moe.myfamilybudget.api.model.AnalysePretsDto;
 import com.moe.myfamilybudget.api.model.AnalysePretsHypothesesDto;
+import com.moe.myfamilybudget.api.model.AnalysePretsParametresDto;
+import com.moe.myfamilybudget.api.model.AnalysePretsParametresValuesDto;
 import com.moe.myfamilybudget.api.model.PretRemboursementDto;
 import com.moe.myfamilybudget.api.model.PretRenegociationDto;
+import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceParameters;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.Assumptions;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.LoanItem;
@@ -82,5 +85,53 @@ public class AnalysePretsMapper {
         dto.setPaybackMonths(a.paybackMonths());
         dto.setReason(a.reason());
         return dto;
+    }
+
+    // ------------------------------------------------------------------ hypothèses modifiables
+
+    public AnalysePretsParametresDto toParametresDto(LoanAdviceParameters current, LoanAdviceParameters defaults) {
+        AnalysePretsParametresDto dto = new AnalysePretsParametresDto();
+        dto.setValues(toValuesDto(current));
+        dto.setDefaults(toValuesDto(defaults));
+        return dto;
+    }
+
+    public AnalysePretsParametresValuesDto toValuesDto(LoanAdviceParameters p) {
+        AnalysePretsParametresValuesDto dto = new AnalysePretsParametresValuesDto();
+        dto.setMarketRate(p.marketRate());
+        dto.setRepayMarginRate(p.repayMarginRate());
+        dto.setRenegotiationMinGapRate(p.renegotiationMinGapRate());
+        dto.setRenegotiationMinCrd(p.renegotiationMinCrd());
+        dto.setRenegotiationMinRemainingMonths(p.renegotiationMinRemainingMonths());
+        dto.setRenegotiationFixedCosts(p.renegotiationFixedCosts());
+        dto.setFlatTaxRate(p.flatTaxRate());
+        return dto;
+    }
+
+    /**
+     * @throws IllegalArgumentException si un champ obligatoire est absent (traduit en 400)
+     */
+    public LoanAdviceParameters toParameters(AnalysePretsParametresValuesDto dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("Corps de requête manquant.");
+        }
+        if (dto.getRenegotiationMinRemainingMonths() == null) {
+            throw new IllegalArgumentException("Champ obligatoire manquant : renegotiationMinRemainingMonths");
+        }
+        return new LoanAdviceParameters(
+                dto.getMarketRate(),
+                required(dto.getRepayMarginRate(), "repayMarginRate"),
+                required(dto.getRenegotiationMinGapRate(), "renegotiationMinGapRate"),
+                required(dto.getRenegotiationMinCrd(), "renegotiationMinCrd"),
+                dto.getRenegotiationMinRemainingMonths(),
+                required(dto.getRenegotiationFixedCosts(), "renegotiationFixedCosts"),
+                required(dto.getFlatTaxRate(), "flatTaxRate"));
+    }
+
+    private static java.math.BigDecimal required(java.math.BigDecimal value, String field) {
+        if (value == null) {
+            throw new IllegalArgumentException("Champ obligatoire manquant : " + field);
+        }
+        return value;
     }
 }

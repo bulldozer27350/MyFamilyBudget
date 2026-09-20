@@ -942,6 +942,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/AnalysePretsDto'
 
+  /analyse/prets/parametres:
+    get:
+      summary: Hypotheses de l'analyse des prets (valeurs en vigueur et valeurs par defaut)
+      operationId: getAnalysePretsParametres
+      tags:
+        - AnalysePrets
+      responses:
+        '200':
+          description: Hypotheses en vigueur et valeurs par defaut
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysePretsParametresDto'
+    put:
+      summary: Enregistre les hypotheses de l'analyse des prets
+      description: |
+        Toutes les valeurs sont obligatoires sauf marketRate (absent = pas de taux de marche saisi).
+        Une valeur hors plage renvoie un 400 avec un message explicite.
+      operationId: updateAnalysePretsParametres
+      tags:
+        - AnalysePrets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalysePretsParametresValuesDto'
+      responses:
+        '200':
+          description: Hypotheses enregistrees, avec les valeurs par defaut
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysePretsParametresDto'
+
   # ---------------------------------------------------------------------------
   # TAUX DE MARCHE (aide a la saisie des taux)
   # ---------------------------------------------------------------------------
@@ -2216,3 +2251,37 @@ components:
           type: integer
         reason:
           type: string
+
+    AnalysePretsParametresValuesDto:
+      type: object
+      description: Hypotheses modifiables de l'analyse des prets (taux en fractions, montants en euros)
+      properties:
+        marketRate:
+          type: number
+          description: Taux d'un credit immobilier neuf saisi a la main, absent si non renseigne
+        repayMarginRate:
+          type: number
+          description: Ecart (0 a 0.05) sous lequel cout du pret et rendement de l'epargne sont juges equivalents
+        renegotiationMinGapRate:
+          type: number
+          description: Ecart minimal (0 a 0.05) taux du pret / taux de marche pour envisager une renegociation
+        renegotiationMinCrd:
+          type: number
+          description: Capital restant du minimal pour envisager une renegociation
+        renegotiationMinRemainingMonths:
+          type: integer
+          description: Duree restante minimale (0 a 600 mois) pour envisager une renegociation
+        renegotiationFixedCosts:
+          type: number
+          description: Frais de dossier, garantie et mainlevee estimes, hors indemnite de remboursement anticipe
+        flatTaxRate:
+          type: number
+          description: Fiscalite (0 a 1) appliquee aux rendements des placements liquides hors livrets
+
+    AnalysePretsParametresDto:
+      type: object
+      properties:
+        values:
+          $ref: '#/components/schemas/AnalysePretsParametresValuesDto'
+        defaults:
+          $ref: '#/components/schemas/AnalysePretsParametresValuesDto'
