@@ -14,13 +14,16 @@ public class SettingsEntity {
     private Integer birthYear;
     private Integer retireAge;
     private Integer simulateUntilAge;
+    @Column(precision = 19, scale = 8)
     private BigDecimal inflationRate;
     private String pivotDate;
     private String pivotMode;
     private BigDecimal startBalance;
     private Integer childExitAge;
+    @Column(precision = 19, scale = 8)
     private BigDecimal taxAbattement;
     private BigDecimal pass2026;
+    @Column(precision = 19, scale = 8)
     private BigDecimal passGrowthRate;
     private Boolean sweepEnabled;
     private BigDecimal cashCeiling;

@@ -14,9 +14,11 @@ public class RetirementEntity {
     private Long id;
     
     private BigDecimal pass2026;
+    @Column(precision = 19, scale = 8)
     private BigDecimal passGrowthRate;
     private BigDecimal agircPointValue;
     private String agircPointDateGlobal;
+    @Column(precision = 19, scale = 8)
     private BigDecimal agircPointGrowthRate;
     
     // ATTENTION : mappedBy="retirement" est indispensable ici. RetirementPersonEntity

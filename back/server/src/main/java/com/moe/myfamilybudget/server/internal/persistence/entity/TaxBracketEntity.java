@@ -13,6 +13,7 @@ public class TaxBracketEntity {
     
     private String uid;
     private BigDecimal upTo;
+    @Column(precision = 19, scale = 8)
     private BigDecimal rate;
     
     @ManyToOne(fetch = FetchType.LAZY)

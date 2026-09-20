@@ -16,6 +16,7 @@ public class RealEstateEntity {
     private String type;
     private BigDecimal currentValue;
     private Integer valuationYear;
+    @Column(precision = 19, scale = 8)
     private BigDecimal annualGrowthRate;
     private String notes;
     

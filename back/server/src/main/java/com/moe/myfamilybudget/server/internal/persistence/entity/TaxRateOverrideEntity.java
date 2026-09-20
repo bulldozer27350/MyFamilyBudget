@@ -13,6 +13,7 @@ public class TaxRateOverrideEntity {
     
     @Column(name = "year_value")
     private Integer year;
+    @Column(precision = 19, scale = 8)
     private BigDecimal rate;
     
     @ManyToOne(fetch = FetchType.LAZY)

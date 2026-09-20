@@ -14,6 +14,7 @@ public class VariableIncomeEntity {
     private String uid;
     private String label;
     private String refIncomeLabel;
+    @Column(precision = 19, scale = 8)
     private BigDecimal rate;
     private Integer startYear;
     private Integer endYear;

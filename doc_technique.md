@@ -240,6 +240,8 @@ Actuellement H2 en mode fichier (`./data/myfamilybudget`), avec `ddl-auto: updat
 
 Pour repartir d'une base vide : arrêter le serveur puis supprimer le dossier `back/server/data/`.
 
+**Précision des taux.** Les taux sont stockés en fractions (`0,0251` pour 2,51 %) dans des colonnes `NUMERIC(19,8)` (`@Column(precision = 19, scale = 8)` sur chaque champ de taux des entités). Sans cette annotation, Hibernate crée `NUMERIC(38,2)` et arrondit `0,0251` à `0,03` : un taux de prêt de 2,5 % revenait 3 % après rechargement. `ddl-auto: update` ne modifie jamais une colonne existante : sur une base déjà créée, exécuter une fois `tools/sql/0012-precision-taux.sql` (idempotent, compatible PostgreSQL et H2), puis re-saisir les taux déjà arrondis.
+
 ---
 
 ## 7. Bugs connus corrigés — pourquoi ils existaient

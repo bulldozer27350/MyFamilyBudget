@@ -17,6 +17,7 @@ public class IncomeEntity {
     private String start;
     @Column(name = "end_date")
     private String end;
+    @Column(precision = 19, scale = 8)
     private BigDecimal growthRate;
     private String categoryId;
     private String notes;

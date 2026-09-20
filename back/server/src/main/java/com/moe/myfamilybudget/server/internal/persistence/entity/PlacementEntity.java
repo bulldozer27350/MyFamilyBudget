@@ -21,8 +21,11 @@ public class PlacementEntity {
     private BigDecimal monthly;
     private String monthlyFrom;
     private String monthlyUntil;
+    @Column(precision = 19, scale = 8)
     private BigDecimal ratePess;
+    @Column(precision = 19, scale = 8)
     private BigDecimal rateCorr;
+    @Column(precision = 19, scale = 8)
     private BigDecimal rateOpti;
     private Boolean excludedFromRetirement;
     private String notes;

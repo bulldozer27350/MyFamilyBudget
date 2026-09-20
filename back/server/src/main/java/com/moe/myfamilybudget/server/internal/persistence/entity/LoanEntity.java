@@ -14,6 +14,7 @@ public class LoanEntity {
     private String uid;
     private String label;
     private BigDecimal crd;
+    @Column(precision = 19, scale = 8)
     private BigDecimal rate;
     private BigDecimal monthly;
     private BigDecimal insurance;
