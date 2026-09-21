@@ -337,6 +337,50 @@ class PatrimoineServiceImplTest {
     }
 
     @Test
+    void savePatrimoineLigne_loans_contractInfoIsPersistedAndCleared() {
+        // Informations du contrat bancaire (tableau d'amortissement) : optionnelles, effaçables.
+        String loanId = "loan_contract_1";
+        Map<String, Object> body = new HashMap<>();
+        body.put("id", loanId);
+        body.put("label", "Pret B lisse");
+        body.put("crd", new BigDecimal("170000"));
+        body.put("rate", new BigDecimal("0.0225"));
+        body.put("monthly", new BigDecimal("825"));
+        body.put("insurance", new BigDecimal("25"));
+        body.put("startDate", "2026-08-05");
+        body.put("endDate", "2046-01-05");
+        body.put("initialAmount", new BigDecimal("180000"));
+        body.put("totalInstallments", 240);
+        body.put("stepDate", "2036-01-05");
+
+        service.savePatrimoineLigne("loans", body);
+
+        LoanDto created = service.getPatrimoine(false).getBody().getLoans().stream()
+                .filter(l -> loanId.equals(l.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(created);
+        assertEquals(0, new BigDecimal("180000").compareTo(created.getInitialAmount()));
+        assertEquals(Integer.valueOf(240), created.getTotalInstallments());
+        assertEquals("2036-01-05", created.getStepDate());
+
+        // Effacement : nombre absent et date vide => valeurs absentes (pas de chaîne vide conservée).
+        body.put("initialAmount", null);
+        body.put("totalInstallments", null);
+        body.put("stepDate", "");
+        service.savePatrimoineLigne("loans", body);
+
+        LoanDto cleared = service.getPatrimoine(false).getBody().getLoans().stream()
+                .filter(l -> loanId.equals(l.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(cleared);
+        assertNull(cleared.getInitialAmount());
+        assertNull(cleared.getTotalInstallments());
+        assertNull(cleared.getStepDate());
+    }
+
+    @Test
     void deletePatrimoineLigne_loans_deletesSuccessfully() {
         String loanId = "loan_del_1";
         Map<String, Object> body = new HashMap<>();

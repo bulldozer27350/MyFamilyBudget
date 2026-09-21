@@ -20,6 +20,10 @@ public class LoanEntity {
     private BigDecimal insurance;
     private String startDate;
     private String endDate;
+    // Informations du contrat bancaire (optionnelles) : tableau d'amortissement.
+    private BigDecimal initialAmount;
+    private Integer totalInstallments;
+    private String stepDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "budget_data_id")
@@ -38,6 +42,15 @@ public class LoanEntity {
         this.insurance = insurance;
         this.startDate = startDate;
         this.endDate = endDate;
+    }
+
+    public LoanEntity(String uid, String label, BigDecimal crd, BigDecimal rate,
+                      BigDecimal monthly, BigDecimal insurance, String startDate, String endDate,
+                      BigDecimal initialAmount, Integer totalInstallments, String stepDate) {
+        this(uid, label, crd, rate, monthly, insurance, startDate, endDate);
+        this.initialAmount = initialAmount;
+        this.totalInstallments = totalInstallments;
+        this.stepDate = stepDate;
     }
 
     // Getters and Setters
@@ -59,6 +72,12 @@ public class LoanEntity {
     public void setStartDate(String startDate) { this.startDate = startDate; }
     public String getEndDate() { return endDate; }
     public void setEndDate(String endDate) { this.endDate = endDate; }
+    public BigDecimal getInitialAmount() { return initialAmount; }
+    public void setInitialAmount(BigDecimal initialAmount) { this.initialAmount = initialAmount; }
+    public Integer getTotalInstallments() { return totalInstallments; }
+    public void setTotalInstallments(Integer totalInstallments) { this.totalInstallments = totalInstallments; }
+    public String getStepDate() { return stepDate; }
+    public void setStepDate(String stepDate) { this.stepDate = stepDate; }
     public BudgetDataEntity getBudgetData() { return budgetData; }
     public void setBudgetData(BudgetDataEntity budgetData) { this.budgetData = budgetData; }
 }

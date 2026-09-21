@@ -145,6 +145,9 @@ public class PatrimoineMapper {
         dto.setInsurance(m.insurance());
         dto.setStartDate(m.startDate());
         dto.setEndDate(m.endDate());
+        dto.setInitialAmount(m.initialAmount());
+        dto.setTotalInstallments(m.totalInstallments());
+        dto.setStepDate(m.stepDate());
         return dto;
     }
 
@@ -158,7 +161,10 @@ public class PatrimoineMapper {
                 dto.getMonthly(),
                 dto.getInsurance(),
                 dto.getStartDate(),
-                dto.getEndDate()
+                dto.getEndDate(),
+                dto.getInitialAmount(),
+                dto.getTotalInstallments(),
+                dto.getStepDate()
         );
     }
 

@@ -474,8 +474,16 @@ class BudgetMutationService {
                 BigDecimal insurance = getBigDecimal(body, "insurance", BigDecimal.ZERO);
                 String startDate = getString(body, "startDate", "2026-01-01");
                 String endDate = getString(body, "endDate", "2046-01-01");
+                // Informations du contrat bancaire : optionnelles, absentes tant qu'elles ne sont pas saisies.
+                BigDecimal initialAmount = getBigDecimal(body, "initialAmount", null);
+                Integer totalInstallments = getInteger(body, "totalInstallments", null);
+                String stepDate = getString(body, "stepDate", null);
+                if (stepDate != null && stepDate.isBlank()) {
+                    stepDate = null;
+                }
 
-                LoanModel model = new LoanModel(uid, label, crd, rate, monthly, insurance, startDate, endDate);
+                LoanModel model = new LoanModel(uid, label, crd, rate, monthly, insurance, startDate, endDate,
+                        initialAmount, totalInstallments, stepDate);
 
                 for (LoanModel l : base.getEffectiveLoans()) {
                     if (Objects.equals(l.id(), uid)) {
@@ -496,6 +504,9 @@ class BudgetMutationService {
                 resultRow.put("insurance", insurance);
                 resultRow.put("startDate", startDate);
                 resultRow.put("endDate", endDate);
+                resultRow.put("initialAmount", initialAmount);
+                resultRow.put("totalInstallments", totalInstallments);
+                resultRow.put("stepDate", stepDate);
 
                 return base.withLoans(list);
             } else if ("objectifs".equalsIgnoreCase(listKey)) {

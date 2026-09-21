@@ -214,7 +214,10 @@ public class EntityModelConverter {
             model.monthly(),
             model.insurance(),
             model.startDate(),
-            model.endDate()
+            model.endDate(),
+            model.initialAmount(),
+            model.totalInstallments(),
+            model.stepDate()
         );
         entity.setBudgetData(budgetData);
         return entity;
@@ -230,7 +233,10 @@ public class EntityModelConverter {
             entity.getMonthly(),
             entity.getInsurance(),
             entity.getStartDate(),
-            entity.getEndDate()
+            entity.getEndDate(),
+            entity.getInitialAmount(),
+            entity.getTotalInstallments(),
+            entity.getStepDate()
         );
     }
 

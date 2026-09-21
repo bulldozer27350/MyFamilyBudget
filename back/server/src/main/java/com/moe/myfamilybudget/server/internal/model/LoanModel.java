@@ -10,8 +10,20 @@ public record LoanModel(
     BigDecimal monthly,
     BigDecimal insurance,
     String startDate,
-    String endDate
+    String endDate,
+    BigDecimal initialAmount,
+    Integer totalInstallments,
+    String stepDate
 ) {
+    /**
+     * Constructeur historique (sans les informations du contrat bancaire) : les champs
+     * optionnels initialAmount, totalInstallments et stepDate restent absents.
+     */
+    public LoanModel(String id, String label, BigDecimal crd, BigDecimal rate, BigDecimal monthly,
+            BigDecimal insurance, String startDate, String endDate) {
+        this(id, label, crd, rate, monthly, insurance, startDate, endDate, null, null, null);
+    }
+
     public BigDecimal getEffectiveCrd() {
         return crd != null ? crd : BigDecimal.ZERO;
     }

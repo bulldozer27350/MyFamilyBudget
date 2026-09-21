@@ -1333,6 +1333,12 @@ components:
           type: string
         endDate:
           type: string
+        initialAmount:
+          type: number
+        totalInstallments:
+          type: integer
+        stepDate:
+          type: string
 
     RealEstateDto:
       type: object

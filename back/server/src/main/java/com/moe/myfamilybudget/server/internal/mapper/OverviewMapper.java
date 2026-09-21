@@ -816,7 +816,8 @@ public class OverviewMapper {
             return null;
         }
         return new LoanModel(dto.getId(), dto.getLabel(), dto.getCrd(), dto.getRate(), dto.getMonthly(),
-                dto.getInsurance(), dto.getStartDate(), dto.getEndDate());
+                dto.getInsurance(), dto.getStartDate(), dto.getEndDate(),
+                dto.getInitialAmount(), dto.getTotalInstallments(), dto.getStepDate());
     }
 
     private LoanDto toLoanDto(LoanModel model) {
@@ -832,6 +833,9 @@ public class OverviewMapper {
         dto.setInsurance(model.insurance());
         dto.setStartDate(model.startDate());
         dto.setEndDate(model.endDate());
+        dto.setInitialAmount(model.initialAmount());
+        dto.setTotalInstallments(model.totalInstallments());
+        dto.setStepDate(model.stepDate());
         return dto;
     }
 
