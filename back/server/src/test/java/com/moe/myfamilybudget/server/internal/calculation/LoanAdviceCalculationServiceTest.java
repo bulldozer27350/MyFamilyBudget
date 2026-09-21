@@ -308,4 +308,42 @@ class LoanAdviceCalculationServiceTest {
         assertNull(LoanAdviceCalculationService.parseDate(null));
         assertNull(LoanAdviceCalculationService.parseDate(" "));
     }
+
+    // ------------------------------------------------------------------ mensualité lissée (palier)
+
+    /**
+     * Prêt lissé : 800 € hors assurance jusqu'en janvier 2036 inclus, puis mensualité recalculée pour
+     * solder le prêt à sa date de fin. Valeurs attendues calculées indépendamment (script Python).
+     */
+    private static LoanModel smoothedLoan(String stepDate) {
+        return new LoanModel("s", "Prêt lissé", bd("170000"), bd("0.0225"), bd("825"), bd("25"), "2026-09-01",
+                "2046-01-05", null, null, stepDate);
+    }
+
+    @Test
+    @DisplayName("projectCrd() : après la fin du palier, la mensualité est recalculée pour solder le prêt")
+    void projectCrdAfterStep() {
+        assertEquals(169518.75, LoanAdviceCalculationService.projectCrd(smoothedLoan("2036-01-05"), TODAY), EUR);
+        assertEquals(64150.93, LoanAdviceCalculationService.projectCrd(smoothedLoan("2036-01-05"), LocalDate.of(2040, 6, 15)), EUR);
+        // Sans palier, la mensualité reste 800 € : le CRD de 2040 est nettement plus élevé.
+        assertEquals(76385.28, LoanAdviceCalculationService.projectCrd(smoothedLoan(null), LocalDate.of(2040, 6, 15)), EUR);
+    }
+
+    @Test
+    @DisplayName("Analyse : durée et intérêts restants tiennent compte de la mensualité lissée")
+    void remainingScheduleWithStep() {
+        LoanItem item = run(List.of(smoothedLoan("2036-01-05")), List.of(), null).loans().get(0);
+
+        assertEquals(232, item.remainingMonths());
+        assertEquals(42454.03, item.remainingInterest().doubleValue(), 0.05);
+    }
+
+    @Test
+    @DisplayName("Analyse sans palier : comportement inchangé (mensualité constante jusqu'à la date de fin)")
+    void remainingScheduleWithoutStepUnchanged() {
+        LoanItem item = run(List.of(smoothedLoan(null)), List.of(), null).loans().get(0);
+
+        assertEquals(232, item.remainingMonths());
+        assertEquals(45625.67, item.remainingInterest().doubleValue(), 0.05);
+    }
 }

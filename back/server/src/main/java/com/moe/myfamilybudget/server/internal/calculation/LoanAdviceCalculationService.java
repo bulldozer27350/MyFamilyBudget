@@ -112,7 +112,14 @@ public class LoanAdviceCalculationService {
         LocalDate end = parseDate(loan.endDate());
         boolean hasEnd = end != null;
         int cap = hasEnd ? Math.max(0, monthsUntil(today, end)) : MAX_SIMULATION_MONTHS;
-        Schedule schedule = simulate(crd, rate, netPayment, cap, hasEnd);
+        // Mensualité lissée : nombre d'échéances restantes à la mensualité saisie (0 = palier déjà passé).
+        LocalDate step = parseDate(loan.stepDate());
+        Integer phase1Months = step != null && hasEnd && cap > 0 ? Math.max(0, monthsUntil(today, step)) : null;
+        if (phase1Months != null && phase1Months == 0) {
+            // La mensualité actuelle est déjà celle qui solde le prêt à sa date de fin.
+            netPayment = annuity(crd, rate, cap);
+        }
+        Schedule schedule = simulate(crd, rate, netPayment, cap, hasEnd, phase1Months);
 
         Integer remainingMonths = schedule.horizonKnown() ? schedule.months() : null;
         Double remainingInterest = schedule.horizonKnown() ? schedule.totalInterest() : null;
@@ -274,12 +281,19 @@ public class LoanAdviceCalculationService {
         double rate = value(loan.rate());
         double netPayment = Math.max(0, value(loan.monthly()) - value(loan.insurance()));
         LocalDate end = parseDate(loan.endDate());
+        LocalDate step = parseDate(loan.stepDate());
+        boolean stepApplied = step == null;
 
         int y = start.getYear();
         int m = start.getMonthValue() - 1;
         int targetAbs = target.getYear() * 12 + target.getMonthValue() - 1;
         while (crd > 0 && y * 12 + m <= targetAbs) {
             double monthlyInterest = crd * (rate / 12);
+            if (!stepApplied) {
+                // Mensualité lissée : après la fin du palier, recalculée pour solder le prêt à sa date de fin.
+                netPayment = paymentAfterStep(netPayment, crd, rate, step, end, y * 12 + m);
+                stepApplied = y * 12 + m > monthIndex(step);
+            }
             double principalPaid = Math.min(crd, netPayment - monthlyInterest);
             crd = Math.max(0, crd - principalPaid);
             if (end != null && (y > end.getYear() || (y == end.getYear() && m >= end.getMonthValue() - 1))) {
@@ -294,13 +308,19 @@ public class LoanAdviceCalculationService {
         return round2(crd);
     }
 
-    private static Schedule simulate(double crd, double rate, double netPayment, int maxMonths, boolean hasEnd) {
+    private static Schedule simulate(double crd, double rate, double netPayment, int maxMonths, boolean hasEnd,
+            Integer phase1Months) {
         double balance = crd;
         double interestSum = 0;
         int months = 0;
+        double payment = netPayment;
         while (balance > EPSILON && months < maxMonths) {
+            if (phase1Months != null && months == phase1Months && phase1Months > 0) {
+                // Fin du palier : la mensualité est recalculée sur le solde et les échéances restantes.
+                payment = annuity(balance, rate, maxMonths - months);
+            }
             double interest = balance * rate / 12;
-            double principal = Math.min(balance, netPayment - interest);
+            double principal = Math.min(balance, payment - interest);
             if (principal <= 0) {
                 if (hasEnd) {
                     // Le prêt ne s'amortit pas mais une date de fin existe : intérêts seuls jusqu'à l'échéance.
@@ -314,6 +334,24 @@ public class LoanAdviceCalculationService {
             months++;
         }
         return new Schedule(months, interestSum, balance <= EPSILON || hasEnd);
+    }
+
+    private static int monthIndex(LocalDate d) {
+        return d.getYear() * 12 + d.getMonthValue() - 1;
+    }
+
+    /**
+     * Mensualité (hors assurance) applicable au mois donné pour un prêt à mensualité lissée :
+     * inchangée jusqu'au mois de la date de palier inclus ; ensuite, annuité qui solde le capital à
+     * la date de fin (reproduit paymentAfterStep() de calculations.js).
+     */
+    private static double paymentAfterStep(double currentPayment, double crd, double annualRate, LocalDate step,
+            LocalDate end, int nowAbs) {
+        if (step == null || end == null || nowAbs <= monthIndex(step)) {
+            return currentPayment;
+        }
+        int remaining = monthIndex(end) - nowAbs + 1;
+        return remaining <= 0 ? currentPayment : annuity(crd, annualRate, remaining);
     }
 
     /** Mensualité d'un prêt à annuités constantes (hors assurance). */
