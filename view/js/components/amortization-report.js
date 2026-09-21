@@ -140,12 +140,14 @@
     if (s.payment2 !== null) {
       notes.push(`Mensualité lissée : ${money.format(s.payment1)} jusqu'au ${dateFR(s.stepDate)} inclus, puis ${money.format(s.payment2)} (recalculée pour solder le capital à la dernière échéance).`);
     }
-    if (s.referenceCheck) {
+    if (s.referenceCheck && s.referenceCheck.consistent) {
       const rc = s.referenceCheck;
       notes.push(`Contrôle du relevé du ${dateFR(rc.date)} : CRD saisi ${money.format(rc.declared)}, CRD théorique ${money.format(rc.theoretical)} (${rc.closest === 'before' ? 'avant' : 'après'} l'échéance du mois), écart ${money.format(rc.gap)}.`);
     }
-    const warningsHtml = schedule.warnings.length
-      ? `<div class="warnings"><strong>À vérifier</strong><ul>${schedule.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('')}</ul></div>`
+    const toCheck = schedule.warnings.slice();
+    if (s.referenceCheck && s.referenceCheck.message) toCheck.push(s.referenceCheck.message);
+    const warningsHtml = toCheck.length
+      ? `<div class="warnings"><strong>À vérifier</strong><ul>${toCheck.map(w => `<li>${escapeHtml(w)}</li>`).join('')}</ul></div>`
       : '';
 
     return `<!DOCTYPE html>

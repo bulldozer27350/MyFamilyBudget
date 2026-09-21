@@ -255,8 +255,10 @@
               ? h(Note, { tone: check.consistent ? 'ok' : 'warn' },
                 check.consistent
                   ? `Cohérent avec le tableau : CRD théorique ${money(check.theoretical)} (${check.closest === 'before' ? 'avant' : 'après'} l'échéance du mois), écart ${money(check.gap)}.`
-                  : `Écart de ${money(Math.abs(check.gap))} avec le CRD théorique (${money(check.theoretical)}) : capital emprunté, taux, mensualité, nombre d'échéances ou date de fin à vérifier.`)
-              : h(Note, null, 'Le CRD et sa date servent aux autres écrans (vue d\'ensemble, analyse des prêts). Avec le capital emprunté renseigné, ils servent aussi de contrôle du tableau.')),
+                  : check.message)
+              : h(Note, null, 'Le CRD et sa date servent aux autres écrans (vue d\'ensemble, analyse des prêts). Avec le capital emprunté renseigné, ils servent aussi de contrôle du tableau.'),
+            h('div', { style: { fontSize: 10.5, color: inkSoft, marginTop: 8, lineHeight: 1.4 } },
+              'Les autres écrans considèrent l\'échéance du mois de cette date comme restant à payer : saisissez le CRD d\'aujourd\'hui avec la date de la prochaine échéance (avant son prélèvement). Le contrôle du tableau accepte aussi un CRD juste après une échéance.')),
 
           schedule && !schedule.ok ? h(Note, { tone: 'warn' }, schedule.reason) : null,
           schedule && schedule.ok && schedule.warnings.length

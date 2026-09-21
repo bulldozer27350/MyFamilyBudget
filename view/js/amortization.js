@@ -262,7 +262,9 @@
     const closest = Math.abs(declared - before) <= Math.abs(declared - after) ? 'before' : 'after';
     const theoretical = closest === 'before' ? before : after;
     const gap = round2(declared - theoretical);
-    return {
+    const tolerance = Math.max(25, declared * 0.001);
+    const consistent = Math.abs(gap) <= tolerance;
+    const check = {
       date: loan.startDate,
       declared: round2(declared),
       theoreticalBefore: before,
@@ -270,8 +272,45 @@
       closest,
       theoretical,
       gap,
-      consistent: Math.abs(gap) <= Math.max(25, declared * 0.001)
+      consistent,
+      shift: null,
+      message: null
     };
+    if (!consistent) {
+      check.shift = findShift(rows, abs, closest, declared, tolerance);
+      check.message = referenceMessage(check);
+    }
+    return check;
+  }
+
+  /**
+   * Le CRD déclaré correspond-il à une autre échéance du tableau (décalage de quelques mois entre
+   * la date saisie et le rang réel : nombre d'échéances ou date de fin décalés) ?
+   * Position d'un CRD = « après l'échéance du mois X » ; « avant l'échéance X » = « après X-1 ».
+   */
+  function findShift(rows, referenceAbs, closest, declared, tolerance) {
+    const referencePosition = closest === 'after' ? referenceAbs : referenceAbs - 1;
+    let best = null;
+    for (const row of rows) {
+      const months = row.abs - referencePosition;
+      if (months === 0 || Math.abs(months) > 12) continue;
+      const gap = Math.abs(declared - row.balanceAfter);
+      if (gap <= tolerance && (!best || gap < best.gap)) {
+        best = { months, gap, number: row.number, index: row.index, date: row.date, balance: row.balanceAfter };
+      }
+    }
+    return best ? { ...best, gap: round2(best.gap) } : null;
+  }
+
+  function referenceMessage(check) {
+    const declared = eurText(check.declared);
+    if (check.shift) {
+      const s = check.shift;
+      const rank = s.number !== null ? `n° ${s.number}` : `n° ${s.index} du tableau`;
+      const direction = s.months > 0 ? `${s.months} mois plus tard` : `${-s.months} mois plus tôt`;
+      return `Le CRD du relevé (${declared}) correspond à la situation après l'échéance du ${s.date.split('-').reverse().join('/')} (${rank}), soit ${direction} que la date saisie : le nombre d'échéances, la date de dernière échéance ou la date du relevé sont probablement décalés.`;
+    }
+    return `Le CRD du relevé (${declared}) s'écarte de ${eurText(Math.abs(check.gap))} du CRD théorique (${eurText(check.theoretical)}) : capital emprunté, taux, mensualité, nombre d'échéances ou date de fin à vérifier.`;
   }
 
   /**
@@ -310,10 +349,9 @@
       warnings.push(`La mensualité saisie hors assurance (${eurText(p.payment)}) s'écarte de la mensualité théorique de ce prêt (${eurText(theoreticalPayment)} pour ${p.count} échéances au taux saisi) : dernière échéance ajustée à ${eurText(last.payment)}. Vérifiez le taux, le capital ou une éventuelle mensualité lissée.`);
     }
 
+    // Le contrôle du relevé (referenceCheck, avec son message) est présenté à part par l'écran et
+    // le rapport : il n'est volontairement pas dupliqué dans `warnings`.
     const referenceCheck = checkReference(loan, p, rows);
-    if (referenceCheck && !referenceCheck.consistent) {
-      warnings.push(`Le CRD du relevé (${eurText(referenceCheck.declared)}) s'écarte de ${eurText(Math.abs(referenceCheck.gap))} du CRD théorique : capital emprunté, taux, mensualité ou nombre d'échéances à vérifier.`);
-    }
 
     const paidCount = rows.filter(r => r.date <= today).length;
     const next = rows[paidCount] || null;

@@ -105,10 +105,37 @@ test('relevé cohérent : écart faible avec le CRD théorique', () => {
   assert.ok(!s.warnings.some(w => w.includes('CRD du relevé')));
 });
 
-test('relevé incohérent : avertissement', () => {
+test('relevé incohérent : message dans le contrôle, pas de doublon dans les avertissements', () => {
   const s = buildSchedule({ ...classic, crd: 150000, startDate: '2026-07-01' }, { today: TODAY });
   assert.strictEqual(s.summary.referenceCheck.consistent, false);
-  assert.ok(s.warnings.some(w => w.includes('CRD du relevé')));
+  assert.ok(s.summary.referenceCheck.message.includes('CRD du relevé'));
+  assert.strictEqual(s.summary.referenceCheck.shift, null);
+  assert.ok(!s.warnings.some(w => w.includes('CRD du relevé')));
+});
+
+test('relevé décalé d\'un mois : le décalage est diagnostiqué', () => {
+  // Prêt de 50 000 € sur 120 échéances se terminant le 05/11/2030 : la 71e échéance est au 05/10/2026.
+  const loan = { initialAmount: 50000, totalInstallments: 120, rate: 0.0075, monthly: 0, insurance: 10, endDate: '2030-11-05' };
+  const table = buildSchedule(loan, { today: TODAY });
+  const row71 = table.rows.find(r => r.date === '2026-10-05');
+  const row72 = table.rows.find(r => r.date === '2026-11-05');
+  // CRD saisi = situation après la 72e échéance, mais daté du 05/10/2026 (71e).
+  const s = buildSchedule({ ...loan, crd: row72.balanceAfter + 8.5, startDate: row71.date }, { today: TODAY });
+  const check = s.summary.referenceCheck;
+  assert.strictEqual(check.consistent, false);
+  assert.ok(check.shift, 'décalage détecté');
+  assert.strictEqual(check.shift.months, 1);
+  assert.strictEqual(check.shift.date, '2026-11-05');
+  assert.strictEqual(check.shift.number, 72);
+  assert.ok(check.message.includes('1 mois plus tard'));
+});
+
+test('relevé cohérent avec le tableau : pas de message ni de décalage', () => {
+  const s = buildSchedule({ ...classic, crd: 100000, startDate: '2026-07-01' }, { today: TODAY });
+  const ok = buildSchedule({ ...classic, crd: s.rows[5].balanceAfter, startDate: s.rows[5].date }, { today: TODAY });
+  assert.strictEqual(ok.summary.referenceCheck.consistent, true);
+  assert.strictEqual(ok.summary.referenceCheck.message, null);
+  assert.strictEqual(ok.summary.referenceCheck.shift, null);
 });
 
 test('mode restant : échéancier depuis le CRD du relevé, mois du relevé inclus', () => {
@@ -235,7 +262,7 @@ test('rapport : contenu clé, totaux annuels, ligne de changement de mensualité
   assert.strictEqual((html.match(/<tr class="year">/g) || []).length, schedule.yearly.length);
   assert.strictEqual((html.match(/<tr class="step">/g) || []).length, 1);
   assert.ok(html.includes('class="next"'));
-  assert.ok(html.includes('Contrôle du relevé'));
+  assert.ok(html.includes('Contrôle du relevé'), 'relevé cohérent : note de contrôle');
   // 240 lignes d'échéances + totaux annuels + 1 ligne de palier + 1 ligne d'en-tête
   assert.strictEqual((html.match(/<tr/g) || []).length, 240 + schedule.yearly.length + 1 + 1);
 });
@@ -245,6 +272,14 @@ test('rapport : mode restant, sans numéro d\'échéance ni contrôle de relevé
   const schedule = buildSchedule(loan, { today: TODAY });
   const html = buildAmortizationHTML(loan, schedule, { generatedAt: new Date('2026-09-21T10:00:00') });
   assert.ok(html.includes('CRD au dernier relevé'));
+  assert.ok(!html.includes('Contrôle du relevé'));
+});
+
+test('rapport : relevé incohérent, le message figure une seule fois dans « À vérifier »', () => {
+  const loan = { ...smoothedB, stepDate: null, crd: 90000, startDate: '2026-08-05' };
+  const schedule = buildSchedule(loan, { today: TODAY });
+  const html = buildAmortizationHTML(loan, schedule, { generatedAt: new Date('2026-09-21T10:00:00') });
+  assert.strictEqual((html.match(/CRD du relevé/g) || []).length, 1);
   assert.ok(!html.includes('Contrôle du relevé'));
 });
 

@@ -16,6 +16,23 @@
   }
 
   /**
+   * À appeler une fois qu'une écriture (POST / DELETE) est acceptée par le back-end.
+   *
+   * Les vues qui relisent le back-end s'abonnent au store local, qui les notifie AVANT que la
+   * requête d'écriture n'ait abouti : elles relisent alors l'ancien état du serveur (ligne
+   * ajoutée absente, ligne supprimée encore présente) jusqu'au prochain rechargement de la page.
+   * Cette seconde notification, émise une fois le serveur à jour, déclenche la relecture utile.
+   */
+  function notifyServerSynced() {
+    try {
+      const store = app().BudgetStore;
+      if (store && typeof store.notifyRemoteChange === 'function') store.notifyRemoteChange();
+    } catch (e) {
+      console.warn('notifyServerSynced', e);
+    }
+  }
+
+  /**
    * Adresse et port du serveur Back-end
    */
   const API_BASE_URL = typeof window !== 'undefined'
@@ -357,6 +374,7 @@
               body: JSON.stringify(row)
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
+            notifyServerSynced();
           } else {
             console.warn('updatePatrimoineLigne: ligne introuvable (cache local et currentRow absents), synchronisation ignorée pour', listKey, id);
           }
@@ -405,6 +423,7 @@
               body: JSON.stringify(targetRow)
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
+            notifyServerSynced();
           }
         } catch (e) {
           console.error("Failed to sync new patrimoine line to backend", e);
@@ -432,6 +451,7 @@
         try {
           const res = await fetch(url, { method: 'DELETE' });
           if (!res.ok) throw new Error('HTTP ' + res.status);
+          notifyServerSynced();
         } catch (e) {
           console.error("Failed to sync deleted patrimoine line to backend", e);
           if (app().SyncStatus) {
@@ -1657,6 +1677,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
           });
+          notifyServerSynced();
         } catch (e) {
           // Mode client seul / hors-ligne
         }
@@ -1674,6 +1695,7 @@
       if (typeof fetch !== 'undefined') {
         try {
           await fetch(API_BASE_URL + '/budget/reset', { method: 'POST' });
+          notifyServerSynced();
         } catch (e) {
           // Mode client seul / hors-ligne
         }

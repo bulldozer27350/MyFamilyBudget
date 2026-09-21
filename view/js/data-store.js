@@ -180,8 +180,10 @@
             }).then(res => {
               if (!res.ok) {
                 if (callback) callback(false, "Import local reussi, mais la synchronisation serveur a echoue (" + res.status + ")");
-              } else if (callback) {
-                callback(true, "Données importées avec succès");
+              } else {
+                // Le serveur est à jour : les vues relisent ses données sans rechargement de page.
+                notifyListeners();
+                if (callback) callback(true, "Données importées avec succès");
               }
             }).catch(() => {
               if (callback) callback(false, "Import local reussi, mais la synchronisation serveur a echoue (hors ligne ?)");
@@ -202,13 +204,23 @@
         this.setData(defaultData);
         if (typeof fetch !== "undefined") {
           const apiBase = window.API_BASE_URL || '/api/v1';
-          fetch(apiBase + "/budget/reset", { method: "POST" }).catch(() => {});
+          fetch(apiBase + "/budget/reset", { method: "POST" }).then(res => {
+            // Le serveur est à jour : les vues relisent ses données sans rechargement de page.
+            if (res.ok) notifyListeners();
+          }).catch(() => {});
         }
       }
     },
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
+    },
+    /**
+     * Le back-end vient d'accepter une écriture (ou un import / une réinitialisation) : prévient
+     * les vues, sans rien modifier, pour qu'elles relisent le serveur maintenant à jour.
+     */
+    notifyRemoteChange() {
+      notifyListeners();
     }
   };
 
