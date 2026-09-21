@@ -206,6 +206,15 @@ Le package `marketdata` interroge des sources publiques pour **suggérer** des t
 - **Front** : `view/js/components/rate-suggestion.js` (chargé par `patrimoine.html`) affiche la suggestion dans la fiche d'un placement, sous « 3. Hypothèses de rendement annuel ». « Appliquer » écrit les trois taux séquentiellement via `handleCellChange` (qui renvoie désormais la promesse de mise à jour). L'amplitude choisie est mémorisée dans le navigateur (`localStorage`, clé `mfb.rateSuggestion.amplitudePt`). Back-end injoignable : aucun bloc n'est affiché.
 - Ce qui n'est **pas** fait : scénarios par année future et projection des taux réglementés (il manque l'inflation prévue).
 
+### 4.9 Tableau d'amortissement d'un prêt
+
+- **Données** : trois champs optionnels sur le prêt (`initialAmount`, `totalInstallments`, `stepDate`), persistés comme les autres (`LoanModel`, `LoanEntity`, `LoanDto`). Le constructeur à 8 arguments de `LoanModel` est conservé. Les colonnes sont ajoutées par `ddl-auto: update` (nullables) : aucune migration SQL.
+- **Moteur** : `view/js/amortization.js` (fonctions pures, testées par `node view/scratch/test-amortization.js`). Mode *complet* (capital + nombre d'échéances + date de fin : le tableau part de l'échéance 1, les dates se déduisent de la date de fin et du nombre d'échéances) ou *restant* (CRD + date du relevé, mois du relevé inclus, comme `projectLoanCrdToDate`). Intérêts du mois = CRD × taux / 12 arrondis au centime, assurance constante, dernière échéance ajustée.
+- **Mensualité lissée** : `stepDate` est la dernière échéance à la mensualité actuelle ; ensuite la mensualité est recalculée (annuité sur le solde et les échéances restantes). `estimateStep` cherche la date pour laquelle la nouvelle mensualité vaut l'ancienne + celle du prêt lissé (un lissage garde la somme des mensualités constante).
+- **Contrôle** : le CRD du relevé est comparé au CRD théorique du mois du relevé (avant ou après échéance).
+- **Front** : `components/loans-panel.js` (cartes + tiroir, remplace le tableau éditable ; repli sur celui-ci si le fichier n'est pas chargé) et `components/amortization-report.js` (impression navigateur, comme le bilan patrimonial), chargés par `patrimoine.html`.
+- **Limites connues** : taux fixe uniquement (pas de taux variable, différé, remboursement anticipé) ; l'analyse des prêts côté serveur (`LoanAdviceCalculationService`) et les projections (`projectLoanCrdToDate`) ne connaissent pas encore le palier de mensualité lissée.
+
 ## 5. Comment lancer le projet
 
 **Backend seul (dev)** :

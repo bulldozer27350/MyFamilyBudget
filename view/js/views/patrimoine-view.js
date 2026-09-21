@@ -39,6 +39,8 @@
   const NEUTRAL_CATEGORY_COLOR = "#8A8778";
   // Composant de suggestion de taux (components/rate-suggestion.js) ; absent => aucune suggestion affichée.
   const RateSuggestionRef = () => exports.RateSuggestion || window.BudgetApp && window.BudgetApp.RateSuggestion;
+  // Cartes + tiroir des crédits (components/loans-panel.js) ; absent => ancien tableau éditable.
+  const LoansPanelRef = () => exports.LoansPanel || window.BudgetApp && window.BudgetApp.LoansPanel;
   function getCategoryTheme(categoryName, categories) {
     const catObj = (categories || []).find(c => c.name === categoryName);
     const bucket = catObj ? catObj.bucket : "cash";
@@ -1166,7 +1168,13 @@
     })), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Crédits & Passif Immobilier",
       subtitle: "Capital Restant Dû, taux et mensualités pour l'amortissement"
-    }, /*#__PURE__*/React.createElement(EditableTable, {
+    }, LoansPanelRef() ? React.createElement(LoansPanelRef(), {
+      loans: loans,
+      onCell: (id, field, value) => BudgetApi.updatePatrimoineLigne("loans", id, field, value, loans.find(l => l.id === id) || null),
+      onCreateDraft: () => BudgetApi.createPatrimoineLigne("loans"),
+      onSaveNew: row => BudgetApi.addPatrimoineLigne("loans", row),
+      onRemove: id => BudgetApi.removePatrimoineLigne("loans", id)
+    }) : /*#__PURE__*/React.createElement(EditableTable, {
       columns: [{
         key: "label",
         label: "Libellé",
