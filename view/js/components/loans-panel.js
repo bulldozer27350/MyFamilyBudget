@@ -253,7 +253,9 @@
               h(Labeled, { label: 'Date du relevé (« Date CRD »)' }, dateField('startDate'))),
             check
               ? h(Note, { tone: check.consistent ? 'ok' : 'warn' },
-                check.consistent
+                check.consistent && check.calibrated
+                  ? `Tableau recalé sur ce relevé : l'écart d'origine (${money(summary.calibration.gapBefore)}) est imputé aux intérêts de la 1re échéance (+${money(summary.calibration.adjustment)}), car la 1re période dure souvent plus d'un mois. Les échéances passent maintenant par ce CRD.`
+                  : check.consistent
                   ? `Cohérent avec le tableau : CRD théorique ${money(check.theoretical)} (${check.closest === 'before' ? 'avant' : 'après'} l'échéance du mois), écart ${money(check.gap)}.`
                   : check.message)
               : h(Note, null, 'Le CRD et sa date servent aux autres écrans (vue d\'ensemble, analyse des prêts). Avec le capital emprunté renseigné, ils servent aussi de contrôle du tableau.'),

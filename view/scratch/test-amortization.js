@@ -102,8 +102,66 @@ test('relevé cohérent : écart faible avec le CRD théorique', () => {
   const s = buildSchedule({ ...classic, crd: row.balanceAfter + 3.2, startDate: row.date }, { today: TODAY });
   assert.ok(s.summary.referenceCheck.consistent);
   assert.strictEqual(s.summary.referenceCheck.closest, 'after');
-  near(s.summary.referenceCheck.gap, 3.2, 0.01);
+  // Écart faible : le tableau est recalé sur le relevé (intérêts de la 1re échéance ajustés).
+  assert.strictEqual(s.summary.referenceCheck.calibrated, true);
+  near(s.summary.calibration.gapBefore, 3.2, 0.01);
+  near(s.summary.calibration.adjustment, 3.2 / Math.pow(1 + classic.rate / 12, 5), 0.05);
+  near(s.summary.referenceCheck.gap, 0, 0.005);
+  near(s.rows[5].balanceAfter, row.balanceAfter + 3.2, 0.005);
   assert.ok(!s.warnings.some(w => w.includes('CRD du relevé')));
+});
+
+test('recalage : un relevé exact ne modifie pas le tableau', () => {
+  const full = buildSchedule(classic, { today: TODAY });
+  const s = buildSchedule({ ...classic, crd: full.rows[5].balanceAfter, startDate: full.rows[5].date }, { today: TODAY });
+  assert.strictEqual(s.summary.calibration, null);
+  assert.strictEqual(s.rows[0].interest, full.rows[0].interest);
+});
+
+test('recalage : reproduit un tableau de banque à première période longue et reliquat final', () => {
+  // « Banque » simulée : 50 000 € à 0,75 %, 120 échéances régulières dès le 05/11/2020, intérêts de la
+  // 1re échéance majorés de 8,14 € (période plus longue), puis une dernière échéance de reliquat.
+  const rate = 0.0075;
+  const insurance = 10.5;
+  const payment = Math.round(annuity(50000, rate, 120) * 100) / 100;
+  const bank = [];
+  let balance = 50000;
+  for (let i = 0; i < 121 && balance > 0.004; i++) {
+    const interest = Math.round((balance * rate / 12 + (i === 0 ? 8.14 : 0)) * 100) / 100;
+    const principal = i === 120 ? balance : Math.min(balance, Math.round((payment - interest) * 100) / 100);
+    const before = balance;
+    balance = Math.round((balance - principal) * 100) / 100;
+    bank.push({ interest, principal, balanceBefore: before, balanceAfter: balance });
+  }
+  assert.strictEqual(bank.length, 121);
+  const reliquat = bank[120].interest + bank[120].principal;
+  assert.ok(reliquat > 1 && reliquat < 30, 'reliquat final plausible : ' + reliquat);
+
+  // Relevé : CRD juste avant la 72e échéance (05/10/2026), tel que la banque l'affiche.
+  const loan = { initialAmount: 50000, totalInstallments: 121, rate, monthly: payment + insurance, insurance, endDate: '2030-11-05', crd: bank[71].balanceBefore, startDate: '2026-10-05' };
+  const s = buildSchedule(loan, { today: TODAY });
+  assert.strictEqual(s.rows.length, 121);
+  near(s.summary.calibration.adjustment, 8.14, 0.06, 'écart de 1re période retrouvé');
+  bank.forEach((b, i) => {
+    near(s.rows[i].balanceAfter, b.balanceAfter, 0.06, 'CRD échéance ' + (i + 1));
+  });
+  near(s.rows[120].payment, reliquat, 0.06, 'reliquat final');
+  near(s.rows[71].interest, bank[71].interest, 0.02, 'intérêts de l\'échéance du relevé');
+});
+
+test('recalage : un écart trop grand n\'est pas absorbé (erreur de saisie à corriger)', () => {
+  const s = buildSchedule({ ...classic, crd: buildSchedule(classic, { today: TODAY }).rows[5].balanceAfter + 900, startDate: '2026-07-15' }, { today: TODAY });
+  assert.strictEqual(s.summary.calibration, null);
+  assert.strictEqual(s.summary.referenceCheck.consistent, false);
+});
+
+test('décalage de rang : suggestion d\'une échéance de reliquat quand le décalage est d\'un mois', () => {
+  const loan = { initialAmount: 50000, totalInstallments: 120, rate: 0.0075, monthly: 0, insurance: 10, endDate: '2030-11-05' };
+  const table = buildSchedule(loan, { today: TODAY });
+  const r71 = table.rows.find(r => r.date === '2026-10-05');
+  const r72 = table.rows.find(r => r.date === '2026-11-05');
+  const s = buildSchedule({ ...loan, crd: r72.balanceAfter, startDate: r71.date }, { today: TODAY });
+  assert.ok(s.summary.referenceCheck.message.includes('essayez 121 échéances'));
 });
 
 test('relevé incohérent : message dans le contrôle, pas de doublon dans les avertissements', () => {
@@ -338,6 +396,14 @@ test('projectLoanCrdToDate : avec palier, suit le tableau d\'amortissement (à 2
   const without = projectLoanCrdToDate({ ...loan, stepDate: null }, '2040-06-15');
   assert.ok(without > projectLoanCrdToDate(loan, '2040-06-15') + 1000);
   assert.strictEqual(projectLoanCrdToDate(loan, '2046-02-15'), 0);
+});
+
+test('rapport : la note de recalage remplace la note de contrôle du relevé', () => {
+  const base = buildSchedule(classic, { today: TODAY });
+  const loan = { ...classic, crd: base.rows[5].balanceAfter + 3.2, startDate: base.rows[5].date };
+  const html = buildAmortizationHTML(loan, buildSchedule(loan, { today: TODAY }), { generatedAt: new Date('2026-09-21T10:00:00') });
+  assert.ok(html.includes('Tableau recalé sur le relevé'));
+  assert.ok(!html.includes('Contrôle du relevé'));
 });
 
 console.log(`\n${passed} tests passés.`);

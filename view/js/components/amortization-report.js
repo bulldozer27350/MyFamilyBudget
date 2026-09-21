@@ -140,7 +140,9 @@
     if (s.payment2 !== null) {
       notes.push(`Mensualité lissée : ${money.format(s.payment1)} jusqu'au ${dateFR(s.stepDate)} inclus, puis ${money.format(s.payment2)} (recalculée pour solder le capital à la dernière échéance).`);
     }
-    if (s.referenceCheck && s.referenceCheck.consistent) {
+    if (s.calibration) {
+      notes.push(`Tableau recalé sur le relevé du ${dateFR(loan.startDate)} : l'écart d'origine de ${money.format(s.calibration.gapBefore)} avec le CRD théorique est imputé aux intérêts de la 1re échéance (+${money.format(s.calibration.adjustment)}), la 1re période durant en général plus d'un mois. Les CRD antérieurs au relevé sont une reconstitution.`);
+    } else if (s.referenceCheck && s.referenceCheck.consistent) {
       const rc = s.referenceCheck;
       notes.push(`Contrôle du relevé du ${dateFR(rc.date)} : CRD saisi ${money.format(rc.declared)}, CRD théorique ${money.format(rc.theoretical)} (${rc.closest === 'before' ? 'avant' : 'après'} l'échéance du mois), écart ${money.format(rc.gap)}.`);
     }

@@ -168,7 +168,14 @@
     return p.totalInstallments - (p.lastAbs - abs);
   }
 
-  function amortize(p, stepAbs) {
+  /**
+   * @param {object} p                   paramètres préparés (prepare)
+   * @param {number|null} stepAbs        dernier mois à la mensualité actuelle (palier), ou null
+   * @param {number} [firstInterestExtra] intérêts supplémentaires de la 1re échéance (recalage sur
+   *                                     le relevé : à capital égal, la 1re période est souvent
+   *                                     plus longue qu'un mois)
+   */
+  function amortize(p, stepAbs, firstInterestExtra) {
     const rows = [];
     const notes = [];
     const monthlyRate = p.rate / 12;
@@ -185,7 +192,7 @@
         payment2 = payment;
         phase = 2;
       }
-      const interest = round2(balance * monthlyRate);
+      const interest = round2(balance * monthlyRate + (i === 0 && firstInterestExtra ? firstInterestExtra : 0));
       const isLast = p.count !== null && i === p.count - 1;
       let principal = round2(payment - interest);
       if (principal < 0) {
@@ -273,6 +280,8 @@
       theoretical,
       gap,
       consistent,
+      totalInstallments: p.totalInstallments,
+      calibrated: false,
       shift: null,
       message: null
     };
@@ -308,9 +317,45 @@
       const s = check.shift;
       const rank = s.number !== null ? `n° ${s.number}` : `n° ${s.index} du tableau`;
       const direction = s.months > 0 ? `${s.months} mois plus tard` : `${-s.months} mois plus tôt`;
-      return `Le CRD du relevé (${declared}) correspond à la situation après l'échéance du ${s.date.split('-').reverse().join('/')} (${rank}), soit ${direction} que la date saisie : le nombre d'échéances, la date de dernière échéance ou la date du relevé sont probablement décalés.`;
+      const reliquat = s.months === 1 && check.totalInstallments
+        ? ` Si votre banque annonce ${check.totalInstallments} échéances mais une date de fin un mois plus tard, une dernière échéance de reliquat est probable : essayez ${check.totalInstallments + 1} échéances.`
+        : '';
+      return `Le CRD du relevé (${declared}) correspond à la situation après l'échéance du ${s.date.split('-').reverse().join('/')} (${rank}), soit ${direction} que la date saisie : le nombre d'échéances, la date de dernière échéance ou la date du relevé sont probablement décalés.${reliquat}`;
     }
     return `Le CRD du relevé (${declared}) s'écarte de ${eurText(Math.abs(check.gap))} du CRD théorique (${eurText(check.theoretical)}) : capital emprunté, taux, mensualité, nombre d'échéances ou date de fin à vérifier.`;
+  }
+
+  /**
+   * Recale le tableau sur le CRD du relevé quand il s'en écarte légèrement.
+   *
+   * Un tableau reconstitué depuis le capital emprunté s'écarte souvent de quelques euros de celui de
+   * la banque : la 1re période court en général de la mise à disposition des fonds à la 1re
+   * échéance, soit plus (ou moins) d'un mois d'intérêts. L'écart est imputé aux intérêts de la
+   * 1re échéance (mensualité inchangée), ce qui décale ensuite chaque CRD de cet écart capitalisé :
+   * le tableau passe alors exactement par le CRD du relevé, et la dernière échéance (reliquat)
+   * s'en déduit. Réservé aux écarts faibles : au-delà, c'est une erreur de saisie à corriger.
+   *
+   * @returns {{delta: number, result: object}|null}
+   */
+  function calibrateOnReference(loan, p, rows, check) {
+    if (p.mode !== 'complet' || !check || !check.consistent) return null;
+    const reference = parseDate(loan.startDate);
+    const paymentsMade = monthAbs(reference) - rows[0].abs + (check.closest === 'after' ? 1 : 0);
+    if (paymentsMade < 1 || paymentsMade > rows.length || rows[paymentsMade - 1].phase !== 1) return null;
+    const declared = check.declared;
+    const growth = Math.pow(1 + p.rate / 12, paymentsMade - 1);
+    const limit = Math.max(50, p.balance0 * 0.002);
+    let delta = 0;
+    let result = { rows, payment2: null, notes: [] };
+    let gap = check.gap;
+    for (let attempt = 0; attempt < 4 && Math.abs(gap) >= 0.005; attempt++) {
+      delta += gap / growth;
+      if (Math.abs(delta) > limit) return null;
+      result = amortize(p, p.stepAbs, delta);
+      if (result.rows.length < paymentsMade) return null;
+      gap = round2(declared - result.rows[paymentsMade - 1].balanceAfter);
+    }
+    return Math.abs(delta) < 0.005 ? null : { delta: round2(delta), result };
   }
 
   /**
@@ -327,7 +372,7 @@
     const p = prepare(loan);
     if (!p.ok) return p;
     const today = (options && options.today) || todayISO();
-    const { rows, payment2, notes } = amortize(p, p.stepAbs);
+    let { rows, payment2, notes } = amortize(p, p.stepAbs, 0);
     const warnings = p.warnings.slice();
     if (rows.length === 0) {
       return { ok: false, reason: 'Aucune échéance à afficher : capital nul ou déjà soldé.' };
@@ -351,7 +396,15 @@
 
     // Le contrôle du relevé (referenceCheck, avec son message) est présenté à part par l'écran et
     // le rapport : il n'est volontairement pas dupliqué dans `warnings`.
-    const referenceCheck = checkReference(loan, p, rows);
+    let referenceCheck = checkReference(loan, p, rows);
+    let calibration = null;
+    const calibrated = calibrateOnReference(loan, p, rows, referenceCheck);
+    if (calibrated) {
+      calibration = { adjustment: calibrated.delta, gapBefore: referenceCheck.gap };
+      rows = calibrated.result.rows;
+      payment2 = calibrated.result.payment2;
+      referenceCheck = { ...checkReference(loan, p, rows), calibrated: true };
+    }
 
     const paidCount = rows.filter(r => r.date <= today).length;
     const next = rows[paidCount] || null;
@@ -380,7 +433,8 @@
       balanceToday: paidCount > 0 ? rows[paidCount - 1].balanceAfter : rows[0].balanceBefore,
       remainingInterest: sum(future, 'interest'),
       remainingInsurance: sum(future, 'insurance'),
-      referenceCheck
+      referenceCheck,
+      calibration
     };
     return { ok: true, mode: p.mode, rows, yearly: yearlyRecap(rows), summary, warnings };
   }
