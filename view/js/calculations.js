@@ -313,7 +313,10 @@
       monthly: Number(l.monthly) || 0,
       insurance: Number(l.insurance) || 0,
       startDate: l.startDate || "2026-08-01",
-      endDate: l.endDate || "2035-07-05"
+      endDate: l.endDate || "2035-07-05",
+      stepDate: l.stepDate || null,
+      netPayment: Math.max(0, (Number(l.monthly) || 0) - (Number(l.insurance) || 0)),
+      stepApplied: false
     }));
     const taxMap = {};
     const children = data.taxChildren || [];
@@ -596,7 +599,12 @@
             const startM = l.startDate ? new Date(l.startDate).getMonth() : 0;
             if (y > startY || y === startY && m >= startM) {
               const monthlyInterest = l.crd * (l.rate / 12);
-              const netPayment = Math.max(0, l.monthly - l.insurance);
+              // Mensualité lissée : après la fin du palier, la mensualité est recalculée pour solder le prêt à sa date de fin.
+              if (!l.stepApplied && l.stepDate) {
+                l.netPayment = paymentAfterStep(l.netPayment, l.crd, l.rate, l.stepDate, l.endDate, y, m);
+                l.stepApplied = l.stepDate !== null && y * 12 + m > monthIndexOf(l.stepDate);
+              }
+              const netPayment = l.netPayment;
               const principalPaid = Math.min(l.crd, netPayment - monthlyInterest);
               l.crd = Math.max(0, l.crd - principalPaid);
               const endY = yearOf(l.endDate) || 2099;
@@ -752,13 +760,18 @@
     let y = start.getFullYear();
     let m = start.getMonth();
     const targetAbs = target.getFullYear() * 12 + target.getMonth();
+    let netPayment = Math.max(0, monthly - insurance);
+    let stepApplied = !loan.stepDate;
 
     // Un pas par mois, du mois de référence (inclus) jusqu'au mois cible (inclus) : cohérent
     // avec la boucle de simulation, où le CRD affiché au 1er jour d'un mois reflète déjà le
     // paiement de ce mois-là.
     while (crd > 0 && y * 12 + m <= targetAbs) {
       const monthlyInterest = crd * (rate / 12);
-      const netPayment = Math.max(0, monthly - insurance);
+      if (!stepApplied) {
+        netPayment = paymentAfterStep(netPayment, crd, rate, loan.stepDate, loan.endDate, y, m);
+        stepApplied = y * 12 + m > monthIndexOf(loan.stepDate);
+      }
       const principalPaid = Math.min(crd, netPayment - monthlyInterest);
       crd = Math.max(0, crd - principalPaid);
       if (end && (y > end.getFullYear() || y === end.getFullYear() && m >= end.getMonth())) {
@@ -771,6 +784,28 @@
       }
     }
     return Math.round(crd * 100) / 100;
+  }
+
+  /** Mois absolu (année × 12 + mois 0-11) d'une date ISO ; NaN si invalide. */
+  function monthIndexOf(iso) {
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? NaN : d.getFullYear() * 12 + d.getMonth();
+  }
+
+  /**
+   * Mensualité (hors assurance) applicable au mois (y, m) pour un prêt à mensualité lissée :
+   * inchangée jusqu'au mois de `stepDate` inclus ; ensuite, annuité constante qui solde le CRD à la
+   * date de fin. Sans date de fin valide, la mensualité reste celle saisie.
+   */
+  function paymentAfterStep(currentPayment, crd, annualRate, stepDate, endDate, y, m) {
+    const stepAbs = monthIndexOf(stepDate);
+    const endAbs = endDate ? monthIndexOf(endDate) : NaN;
+    const nowAbs = y * 12 + m;
+    if (isNaN(stepAbs) || isNaN(endAbs) || nowAbs <= stepAbs) return currentPayment;
+    const remaining = endAbs - nowAbs + 1;
+    if (remaining <= 0) return currentPayment;
+    const r = annualRate / 12;
+    return Math.abs(r) < 1e-12 ? crd / remaining : crd * r / (1 - Math.pow(1 + r, -remaining));
   }
 
   function projectPlacementBalanceAt(p, targetDateISO, rateKey, transfers) {

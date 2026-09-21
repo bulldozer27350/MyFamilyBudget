@@ -6,6 +6,7 @@ const assert = require('assert');
 const path = require('path');
 
 const { Amortization } = require(path.join(__dirname, '..', 'js', 'amortization.js'));
+const { projectLoanCrdToDate } = require(path.join(__dirname, '..', 'js', 'calculations.js'));
 const { buildAmortizationHTML } = require(path.join(__dirname, '..', 'js', 'components', 'amortization-report.js'));
 const { buildSchedule, estimateStep, previewStep, annuity } = Amortization;
 
@@ -281,6 +282,62 @@ test('rapport : relevé incohérent, le message figure une seule fois dans « À
   const html = buildAmortizationHTML(loan, schedule, { generatedAt: new Date('2026-09-21T10:00:00') });
   assert.strictEqual((html.match(/CRD du relevé/g) || []).length, 1);
   assert.ok(!html.includes('Contrôle du relevé'));
+});
+
+// ---------------------------------------------------------------------------
+// Projection du CRD (calculations.js) et mensualité lissée
+// ---------------------------------------------------------------------------
+
+/** Boucle historique de projectLoanCrdToDate, sans notion de palier (référence de non-régression). */
+function legacyProjection(loan, target) {
+  let crd = Number(loan.crd) || 0;
+  if (crd <= 0) return 0;
+  const start = new Date(loan.startDate);
+  const end = loan.endDate ? new Date(loan.endDate) : null;
+  const t = new Date(target);
+  let y = start.getFullYear();
+  let m = start.getMonth();
+  const targetAbs = t.getFullYear() * 12 + t.getMonth();
+  while (crd > 0 && y * 12 + m <= targetAbs) {
+    const interest = crd * (loan.rate / 12);
+    const net = Math.max(0, loan.monthly - loan.insurance);
+    crd = Math.max(0, crd - Math.min(crd, net - interest));
+    if (end && (y > end.getFullYear() || (y === end.getFullYear() && m >= end.getMonth()))) crd = 0;
+    m += 1;
+    if (m > 11) { m = 0; y += 1; }
+  }
+  return Math.round(crd * 100) / 100;
+}
+
+test('projectLoanCrdToDate : sans palier, résultat identique à l\'ancienne boucle', () => {
+  let seed = 12345;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  for (let i = 0; i < 200; i++) {
+    const loan = {
+      crd: 5000 + Math.floor(rnd() * 300000),
+      rate: Math.round(rnd() * 500) / 10000,
+      monthly: 300 + Math.floor(rnd() * 1500),
+      insurance: Math.floor(rnd() * 60),
+      startDate: `20${20 + Math.floor(rnd() * 8)}-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}-05`,
+      endDate: `20${30 + Math.floor(rnd() * 15)}-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}-05`
+    };
+    const target = `20${25 + Math.floor(rnd() * 30)}-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}-15`;
+    assert.strictEqual(projectLoanCrdToDate(loan, target), legacyProjection(loan, target), JSON.stringify([loan, target]));
+  }
+});
+
+test('projectLoanCrdToDate : avec palier, suit le tableau d\'amortissement (à 2 € près)', () => {
+  const loan = { crd: 170000, startDate: '2026-10-05', rate: 0.0225, monthly: 825, insurance: 25, endDate: '2046-01-05', stepDate: '2036-01-05' };
+  const table = buildSchedule(loan, { today: TODAY });
+  assert.ok(table.summary.payment2 > table.summary.payment1);
+  for (const date of ['2030-05-15', '2036-01-15', '2036-02-15', '2040-06-15', '2045-12-15']) {
+    const row = table.rows.find(r => r.date.slice(0, 7) === date.slice(0, 7));
+    near(projectLoanCrdToDate(loan, date), row.balanceAfter, 2, date);
+  }
+  // Sans la prise en compte du palier, le CRD de 2040 serait très supérieur.
+  const without = projectLoanCrdToDate({ ...loan, stepDate: null }, '2040-06-15');
+  assert.ok(without > projectLoanCrdToDate(loan, '2040-06-15') + 1000);
+  assert.strictEqual(projectLoanCrdToDate(loan, '2046-02-15'), 0);
 });
 
 console.log(`\n${passed} tests passés.`);
