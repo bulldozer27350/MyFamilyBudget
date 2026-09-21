@@ -244,6 +244,78 @@
     return true;
   }
 
+  // ---------------------------------------------------------------------------
+  // Export CSV (Excel français : séparateur « ; », virgule décimale, dates JJ/MM/AAAA)
+  // ---------------------------------------------------------------------------
+
+  function csvNumber(value) {
+    return (Math.round((Number(value) || 0) * 100) / 100).toFixed(2).replace('.', ',');
+  }
+
+  function csvText(value) {
+    const text = String(value === null || value === undefined ? '' : value);
+    return /[";\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+  }
+
+  /**
+   * Tableau d'amortissement au format CSV : UTF-8 avec BOM (accents corrects dans Excel), lignes en
+   * CRLF. Les nombres ont 2 décimales avec une virgule, sans séparateur de milliers.
+   *
+   * @param {object} schedule  résultat de Amortization.buildSchedule (ok === true)
+   */
+  function buildAmortizationCSV(schedule) {
+    const header = ['N°', 'Date', 'Échéance hors assurance', 'Intérêts', 'Capital amorti',
+      'Remboursement anticipé', 'Assurance', 'Total à payer', 'CRD après échéance'];
+    const lines = [header.map(csvText).join(';')];
+    schedule.rows.forEach(r => {
+      lines.push([
+        r.number !== null ? r.number : r.index,
+        dateFR(r.date),
+        csvNumber(r.payment),
+        csvNumber(r.interest),
+        csvNumber(r.principal),
+        csvNumber(r.extraPrincipal),
+        csvNumber(r.insurance),
+        csvNumber(r.total + r.extraPrincipal),
+        csvNumber(r.balanceAfter)
+      ].join(';'));
+    });
+    return '\uFEFF' + lines.join('\r\n') + '\r\n';
+  }
+
+  /** « Prêt immo — B » -> « pret-immo-b » (nom de fichier). */
+  function fileSlug(label) {
+    const slug = String(label || 'pret').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return slug || 'pret';
+  }
+
+  /**
+   * Télécharge le tableau d'amortissement en CSV.
+   * @returns {boolean} false si le tableau ne peut pas être construit (message affiché).
+   */
+  function exportAmortizationCSV(loan, opts) {
+    const schedule = (opts && opts.schedule) || engine().buildSchedule(loan, opts);
+    if (!schedule.ok) {
+      window.alert(schedule.reason);
+      return false;
+    }
+    const suffix = schedule.summary.earlyRepayment ? '-simulation' : '';
+    const blob = new Blob([buildAmortizationCSV(schedule)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tableau-amortissement-${fileSlug(loan.label)}${suffix}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  }
+
   exports.buildAmortizationHTML = buildAmortizationHTML;
   exports.exportAmortizationPDF = exportAmortizationPDF;
+  exports.buildAmortizationCSV = buildAmortizationCSV;
+  exports.exportAmortizationCSV = exportAmortizationCSV;
+  exports.amortizationFileSlug = fileSlug;
 })(typeof window !== 'undefined' ? (window.BudgetApp = window.BudgetApp || {}) : module.exports);

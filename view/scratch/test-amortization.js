@@ -7,7 +7,7 @@ const path = require('path');
 
 const { Amortization } = require(path.join(__dirname, '..', 'js', 'amortization.js'));
 const { projectLoanCrdToDate } = require(path.join(__dirname, '..', 'js', 'calculations.js'));
-const { buildAmortizationHTML } = require(path.join(__dirname, '..', 'js', 'components', 'amortization-report.js'));
+const { buildAmortizationHTML, buildAmortizationCSV, amortizationFileSlug } = require(path.join(__dirname, '..', 'js', 'components', 'amortization-report.js'));
 const { buildSchedule, estimateStep, previewStep, annuity, simulateEarlyRepayment } = Amortization;
 
 let passed = 0;
@@ -499,6 +499,49 @@ test('rapport : simulation de remboursement anticipé (bandeau, ligne dédiée, 
   assert.ok(html.includes('<strong>Simulation</strong>'));
   assert.strictEqual((html.match(/<tr class="early">/g) || []).length, 1);
   assert.ok(html.includes('mensualité conservée, durée réduite'));
+});
+
+// ---------------------------------------------------------------------------
+// Export CSV
+// ---------------------------------------------------------------------------
+
+test('CSV : BOM UTF-8, CRLF, séparateur « ; », virgule décimale, dates JJ/MM/AAAA', () => {
+  const schedule = buildSchedule(classic, { today: TODAY });
+  const csv = buildAmortizationCSV(schedule);
+  assert.strictEqual(csv.charCodeAt(0), 0xFEFF);
+  const lines = csv.slice(1).split('\r\n');
+  assert.strictEqual(lines.length, 240 + 2); // en-tête + 240 échéances + fin de fichier vide
+  assert.strictEqual(lines[lines.length - 1], '');
+  assert.strictEqual(lines[0], 'N°;Date;Échéance hors assurance;Intérêts;Capital amorti;Remboursement anticipé;Assurance;Total à payer;CRD après échéance');
+  const first = lines[1].split(';');
+  assert.strictEqual(first.length, 9);
+  assert.strictEqual(first[0], '1');
+  assert.strictEqual(first[1], '15/02/2026');
+  assert.strictEqual(first[2], '1109,20');
+  assert.strictEqual(first[3], '500,00');
+  assert.strictEqual(first[5], '0,00');
+  assert.strictEqual(first[6], '30,00');
+  assert.strictEqual(first[7], '1139,20');
+  assert.ok(lines.slice(1, -1).every(l => l.split(';').length === 9 && !l.includes('.')));
+  assert.strictEqual(lines[lines.length - 2].split(';')[8], '0,00');
+  assert.ok(!csv.slice(1).includes('\n') || csv.slice(1).split('\n').every((l, i, a) => i === a.length - 1 || l.endsWith('\r')), 'toutes les fins de ligne sont CRLF');
+});
+
+test('CSV : la simulation de remboursement anticipé apparaît dans sa colonne, avec le total décaissé', () => {
+  const sim = simulateEarlyRepayment(classic, { date: '2030-03-10', amount: 20000, mode: 'duree' }, { today: TODAY });
+  const rows = buildAmortizationCSV(sim.after).slice(1).split('\r\n').slice(1, -1).map(l => l.split(';'));
+  const early = rows.filter(r => r[5] !== '0,00');
+  assert.strictEqual(early.length, 1);
+  assert.strictEqual(early[0][5], '20000,00');
+  assert.strictEqual(early[0][1], '15/03/2030');
+  // total à payer = échéance + assurance + remboursement anticipé
+  near(Number(early[0][7].replace(',', '.')), 1109.2 + 30 + 20000, 0.01);
+});
+
+test('CSV : nom de fichier sans accents ni caractères spéciaux', () => {
+  assert.strictEqual(amortizationFileSlug('Prêt immo — B (lissé) !'), 'pret-immo-b-lisse');
+  assert.strictEqual(amortizationFileSlug(''), 'pret');
+  assert.strictEqual(amortizationFileSlug('***'), 'pret');
 });
 
 console.log(`\n${passed} tests passés.`);

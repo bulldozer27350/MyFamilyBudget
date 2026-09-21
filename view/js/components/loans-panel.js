@@ -21,6 +21,7 @@
 
   // Résolus à l'appel : ces modules peuvent être chargés après celui-ci.
   const engine = () => exports.Amortization || (window.BudgetApp && window.BudgetApp.Amortization) || null;
+  const csvExporter = () => exports.exportAmortizationCSV || (window.BudgetApp && window.BudgetApp.exportAmortizationCSV) || null;
   const reportExporter = () => exports.exportAmortizationPDF || (window.BudgetApp && window.BudgetApp.exportAmortizationPDF) || null;
 
   // ---------------------------------------------------------------------------
@@ -236,10 +237,12 @@
         h('div', { style: { fontSize: 11, color: inkSoft, marginTop: 6, lineHeight: 1.4 } },
           'À comparer au rendement qu\'aurait cette somme placée (livret, fonds en euros) : c\'est le sujet de l\'analyse des prêts.'),
         h('div', { style: { marginTop: 10 } },
-          h('button', { type: 'button', onClick: () => { const x = reportExporter(); if (x) x(loan, { schedule: sim.after }); }, style: softButton }, '📄 Tableau après remboursement'))) : null);
+          h('div', { style: { display: 'flex', gap: 8 } },
+            h('button', { type: 'button', onClick: () => { const x = reportExporter(); if (x) x(loan, { schedule: sim.after }); }, style: softButton }, '📄 Tableau après remboursement'),
+            h('button', { type: 'button', title: 'Télécharger le tableau simulé au format CSV (Excel)', onClick: () => { const x = csvExporter(); if (x) x(loan, { schedule: sim.after }); }, style: softButton }, '⬇ CSV')))) : null);
   }
 
-  function LoanDrawer({ loan, loans, isNew, onChange, onClose, onSaveNew, onRemove, onExport }) {
+  function LoanDrawer({ loan, loans, isNew, onChange, onClose, onSaveNew, onRemove, onExport, onExportCsv }) {
     if (!loan) return null;
     const e = engine();
     const schedule = scheduleOf(loan);
@@ -326,7 +329,12 @@
             h('button', {
               type: 'button', disabled: !(schedule && schedule.ok), onClick: onExport,
               style: { ...softButton, opacity: schedule && schedule.ok ? 1 : 0.45, cursor: schedule && schedule.ok ? 'pointer' : 'not-allowed' }
-            }, '📄 Tableau d\'amortissement')),
+            }, '📄 Tableau d\'amortissement'),
+            h('button', {
+              type: 'button', disabled: !(schedule && schedule.ok), onClick: onExportCsv,
+              title: 'Télécharger le tableau au format CSV (Excel)',
+              style: { ...softButton, opacity: schedule && schedule.ok ? 1 : 0.45, cursor: schedule && schedule.ok ? 'pointer' : 'not-allowed' }
+            }, '⬇ CSV')),
           isNew
             ? h('div', { style: { display: 'flex', gap: 8 } },
               h('button', { type: 'button', onClick: onClose, style: softButton }, 'Annuler'),
@@ -406,7 +414,8 @@
               close();
             }
           },
-          onExport: () => exportPdf(active)
+          onExport: () => exportPdf(active),
+          onExportCsv: () => { const x = csvExporter(); if (x) x(active); }
         })
         : null);
   }

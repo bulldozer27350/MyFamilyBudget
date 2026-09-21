@@ -123,7 +123,7 @@ Chaque prêt est une **carte** (CRD du dernier relevé, CRD théorique du jour, 
 
 4. **Simuler un remboursement anticipé** (facultatif, non enregistré) : montant, échéance et effet (réduire la durée ou la mensualité). L'outil compare au tableau sans remboursement : intérêts et assurance économisés, indemnité (estimée, modifiable), gain net, et permet d'exporter le tableau simulé.
 
-Le bouton **📄 Tableau d'amortissement** ouvre un document imprimable (choisir « Enregistrer en PDF » dans la boîte d'impression) : échéances, intérêts, capital amorti, assurance, CRD, totaux par année. Il est **reconstitué** à partir de vos saisies (taux fixe, assurance constante) et peut différer de quelques euros du tableau contractuel de la banque. Sans capital emprunté, seul l'échéancier des échéances à venir est produit, depuis le CRD du relevé.
+Le bouton **📄 Tableau d'amortissement** ouvre un document imprimable (choisir « Enregistrer en PDF » dans la boîte d'impression) : échéances, intérêts, capital amorti, assurance, CRD, totaux par année. Il est **reconstitué** à partir de vos saisies (taux fixe, assurance constante) et peut différer de quelques euros du tableau contractuel de la banque. Sans capital emprunté, seul l'échéancier des échéances à venir est produit, depuis le CRD du relevé. Le bouton **⬇ CSV** télécharge le même tableau pour Excel (séparateur « ; », virgule décimale).
 
 ### Actif Immobilier Physique
 Résidence principale, terrains, nue-propriété. Valeur estimée à une date de référence et taux de revalorisation annuel.
