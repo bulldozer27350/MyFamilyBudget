@@ -188,6 +188,57 @@
         h('button', { type: 'button', onClick: () => onApply(p.result.stepDate), style: primaryButton }, 'Appliquer'))));
   }
 
+  // ---------------------------------------------------------------------------
+  // Simulation d'un remboursement anticipé partiel (rien n'est enregistré)
+  // ---------------------------------------------------------------------------
+
+  function EarlyRepaymentSimulator({ loan, defaultDate }) {
+    const [amount, setAmount] = useState('');
+    const [date, setDate] = useState('');
+    const [mode, setMode] = useState('duree');
+    const [indemnity, setIndemnity] = useState('');
+    const e = engine();
+    if (!e) return null;
+
+    const effectiveDate = date || defaultDate || '';
+    const amountValue = toNumberOrNull(amount);
+    const sim = amountValue > 0
+      ? e.simulateEarlyRepayment(loan, { date: effectiveDate, amount: amountValue, mode, indemnity: toNumberOrNull(indemnity) })
+      : null;
+    const c = sim && sim.ok ? sim.comparison : null;
+    const row = (label, value, strong) => h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12.5, padding: '3px 0', fontWeight: strong ? 700 : 400, color: ink } },
+      h('span', { style: { color: strong ? ink : inkSoft } }, label), h('span', { style: { fontFamily: "'IBM Plex Mono', monospace" } }, value));
+
+    return h(Block, { title: '5. Simuler un remboursement anticipé (facultatif)' },
+      h('div', { style: { fontSize: 12, color: inkSoft, marginBottom: 10 } },
+        'Remboursement partiel appliqué à l\'échéance choisie. Simulation uniquement : rien n\'est enregistré.'),
+      h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
+        h(Labeled, { label: 'Montant remboursé (€)' },
+          h(Field, { type: 'number', mono: true, align: 'right', value: amount, onChange: setAmount })),
+        h(Labeled, { label: 'À l\'échéance du', hint: defaultDate ? `Par défaut : prochaine échéance (${dateFR(defaultDate)}).` : undefined },
+          h(Field, { type: 'date', value: date || defaultDate || '', onChange: setDate })),
+        h(Labeled, { label: 'Effet du remboursement', hint: 'Durée : mensualité conservée. Mensualité : durée conservée.' },
+          h('select', { value: mode, onChange: ev => setMode(ev.target.value), style: { width: '100%', border: 'none', background: 'transparent', fontSize: 13, padding: '6px 2px' } },
+            h('option', { value: 'duree' }, 'Réduire la durée'),
+            h('option', { value: 'mensualite' }, 'Réduire la mensualité'))),
+        h(Labeled, { label: 'Indemnité de remboursement anticipé (€)', hint: 'Vide : estimée (moindre de 6 mois d\'intérêts et 3 % du montant).' },
+          h(Field, { type: 'number', mono: true, align: 'right', value: indemnity, onChange: setIndemnity }))),
+      sim && !sim.ok ? h(Note, { tone: 'warn' }, sim.reason) : null,
+      c ? h('div', { style: { marginTop: 12, paddingTop: 10, borderTop: `1px dashed ${line}` } },
+        c.cappedAmount ? h(Note, { tone: 'warn' }, `Montant ramené au capital restant dû (${money(c.amount)}) : le prêt est soldé.`) : null,
+        c.mode === 'duree'
+          ? row('Fin du prêt', `${dateFR(c.lastDateBefore)} → ${dateFR(c.lastDateAfter)} (${c.monthsSaved > 0 ? '−' + c.monthsSaved + ' mois' : 'inchangée'})`)
+          : row('Mensualité hors assurance', `${money(c.paymentBefore)} → ${money(c.paymentAfter)}`),
+        row('Intérêts économisés', money(c.interestSaved)),
+        row('Assurance économisée (supposée constante)', money(c.insuranceSaved)),
+        row(c.indemnityEstimated ? 'Indemnité estimée' : 'Indemnité saisie', '− ' + money(c.indemnity)),
+        row('Gain net', money(c.netGain), true),
+        h('div', { style: { fontSize: 11, color: inkSoft, marginTop: 6, lineHeight: 1.4 } },
+          'À comparer au rendement qu\'aurait cette somme placée (livret, fonds en euros) : c\'est le sujet de l\'analyse des prêts.'),
+        h('div', { style: { marginTop: 10 } },
+          h('button', { type: 'button', onClick: () => { const x = reportExporter(); if (x) x(loan, { schedule: sim.after }); }, style: softButton }, '📄 Tableau après remboursement'))) : null);
+  }
+
   function LoanDrawer({ loan, loans, isNew, onChange, onClose, onSaveNew, onRemove, onExport }) {
     if (!loan) return null;
     const e = engine();
@@ -261,6 +312,8 @@
               : h(Note, null, 'Le CRD et sa date servent aux autres écrans (vue d\'ensemble, analyse des prêts). Avec le capital emprunté renseigné, ils servent aussi de contrôle du tableau.'),
             h('div', { style: { fontSize: 10.5, color: inkSoft, marginTop: 8, lineHeight: 1.4 } },
               'Les autres écrans considèrent l\'échéance du mois de cette date comme restant à payer : saisissez le CRD d\'aujourd\'hui avec la date de la prochaine échéance (avant son prélèvement). Le contrôle du tableau accepte aussi un CRD juste après une échéance.')),
+
+          summary ? h(EarlyRepaymentSimulator, { key: loan.id, loan, defaultDate: summary.nextDate }) : null,
 
           schedule && !schedule.ok ? h(Note, { tone: 'warn' }, schedule.reason) : null,
           schedule && schedule.ok && schedule.warnings.length

@@ -8,7 +8,7 @@ const path = require('path');
 const { Amortization } = require(path.join(__dirname, '..', 'js', 'amortization.js'));
 const { projectLoanCrdToDate } = require(path.join(__dirname, '..', 'js', 'calculations.js'));
 const { buildAmortizationHTML } = require(path.join(__dirname, '..', 'js', 'components', 'amortization-report.js'));
-const { buildSchedule, estimateStep, previewStep, annuity } = Amortization;
+const { buildSchedule, estimateStep, previewStep, annuity, simulateEarlyRepayment } = Amortization;
 
 let passed = 0;
 function test(name, fn) {
@@ -404,6 +404,101 @@ test('rapport : la note de recalage remplace la note de contrôle du relevé', (
   const html = buildAmortizationHTML(loan, buildSchedule(loan, { today: TODAY }), { generatedAt: new Date('2026-09-21T10:00:00') });
   assert.ok(html.includes('Tableau recalé sur le relevé'));
   assert.ok(!html.includes('Contrôle du relevé'));
+});
+
+// ---------------------------------------------------------------------------
+// Remboursement anticipé partiel
+// ---------------------------------------------------------------------------
+
+test('remboursement anticipé, durée réduite : nouvelle durée conforme à la formule', () => {
+  const base = buildSchedule(classic, { today: TODAY });
+  const at = base.rows[59]; // 60e échéance
+  const sim = simulateEarlyRepayment(classic, { date: at.date, amount: 20000, mode: 'duree' }, { today: TODAY });
+  assert.ok(sim.ok, sim.reason);
+  const c = sim.comparison;
+  assert.strictEqual(c.installmentIndex, 60);
+  assert.strictEqual(c.amount, 20000);
+  // Durée théorique après remboursement : n = -ln(1 - B r / P) / ln(1 + r)
+  const B = at.balanceAfter - 20000;
+  const r = classic.rate / 12;
+  const P = 1109.2;
+  const n = -Math.log(1 - B * r / P) / Math.log(1 + r);
+  assert.ok(Math.abs(sim.after.rows.length - (60 + Math.ceil(n))) <= 1, `durée ${sim.after.rows.length} vs ${60 + Math.ceil(n)}`);
+  assert.ok(Math.abs(c.monthsSaved - (180 - Math.ceil(n))) <= 1, 'mois économisés ' + c.monthsSaved);
+  assert.ok(c.monthsSaved > 10);
+  assert.strictEqual(c.paymentBefore, c.paymentAfter);
+  assert.strictEqual(sim.after.rows[sim.after.rows.length - 1].balanceAfter, 0);
+  near(c.interestSaved, base.summary.totalInterest - sim.after.summary.totalInterest, 0.005);
+});
+
+test('remboursement anticipé, mensualité réduite : durée inchangée, mensualité recalculée', () => {
+  const base = buildSchedule(classic, { today: TODAY });
+  const at = base.rows[59];
+  const sim = simulateEarlyRepayment(classic, { date: at.date, amount: 20000, mode: 'mensualite' }, { today: TODAY });
+  assert.ok(sim.ok, sim.reason);
+  const c = sim.comparison;
+  assert.strictEqual(c.monthsSaved, 0);
+  assert.strictEqual(sim.after.rows.length, 240);
+  near(c.paymentAfter, annuity(at.balanceAfter - 20000, classic.rate, 180), 0.02);
+  assert.ok(c.paymentAfter < c.paymentBefore);
+  assert.strictEqual(sim.after.rows[239].balanceAfter, 0);
+  assert.ok(c.interestSaved > 0);
+  assert.strictEqual(c.insuranceSaved, 0);
+});
+
+test('remboursement anticipé : le capital amorti total (avec le versement) vaut le capital emprunté', () => {
+  const sim = simulateEarlyRepayment(classic, { date: '2030-03-10', amount: 15000, mode: 'duree' }, { today: TODAY });
+  near(sim.after.summary.totalPrincipal, 200000, 0.01);
+  assert.strictEqual(sim.after.summary.totalEarly, 15000);
+  assert.strictEqual(sim.after.summary.earlyRepayment.date, '2030-03-15');
+});
+
+test('remboursement anticipé : indemnité estimée (moindre de 6 mois d\'intérêts et 3 %) ou saisie', () => {
+  const est = simulateEarlyRepayment(classic, { date: '2030-03-10', amount: 20000 }, { today: TODAY });
+  // 3 % / 2 = 1,5 % du montant remboursé (inférieur au plafond de 3 %)
+  near(est.comparison.indemnity, 300, 0.01);
+  assert.strictEqual(est.comparison.indemnityEstimated, true);
+  const custom = simulateEarlyRepayment(classic, { date: '2030-03-10', amount: 20000, indemnity: 0 }, { today: TODAY });
+  assert.strictEqual(custom.comparison.indemnity, 0);
+  assert.strictEqual(custom.comparison.indemnityEstimated, false);
+  near(custom.comparison.netGain - est.comparison.netGain, 300, 0.01);
+  const high = simulateEarlyRepayment({ ...classic, rate: 0.08 }, { date: '2030-03-10', amount: 10000 }, { today: TODAY });
+  near(high.comparison.indemnity, 300, 0.01); // plafond de 3 %
+});
+
+test('remboursement anticipé : montant supérieur au CRD plafonné, prêt soldé', () => {
+  const sim = simulateEarlyRepayment(classic, { date: '2040-01-10', amount: 999999 }, { today: TODAY });
+  assert.ok(sim.ok);
+  assert.strictEqual(sim.comparison.cappedAmount, true);
+  const last = sim.after.rows[sim.after.rows.length - 1];
+  assert.strictEqual(last.balanceAfter, 0);
+  assert.strictEqual(last.index, sim.comparison.installmentIndex);
+});
+
+test('remboursement anticipé : demandes inexploitables', () => {
+  assert.strictEqual(simulateEarlyRepayment(classic, { date: '2030-03-10', amount: 0 }, { today: TODAY }).ok, false);
+  assert.strictEqual(simulateEarlyRepayment(classic, { date: '', amount: 5000 }, { today: TODAY }).ok, false);
+  const late = simulateEarlyRepayment(classic, { date: '2050-01-01', amount: 5000 }, { today: TODAY });
+  assert.strictEqual(late.ok, false);
+  assert.ok(late.reason.includes('sans effet'));
+});
+
+test('remboursement anticipé sur un prêt recalé : la simulation part du tableau recalé', () => {
+  const full = buildSchedule(classic, { today: TODAY });
+  const loan = { ...classic, crd: full.rows[5].balanceAfter + 3.2, startDate: full.rows[5].date };
+  const base = buildSchedule(loan, { today: TODAY });
+  assert.ok(base.summary.calibration);
+  const sim = simulateEarlyRepayment(loan, { date: '2030-03-10', amount: 10000 }, { today: TODAY });
+  assert.strictEqual(sim.after.rows[0].interest, base.rows[0].interest);
+  assert.strictEqual(sim.after.summary.referenceCheck, null);
+});
+
+test('rapport : simulation de remboursement anticipé (bandeau, ligne dédiée, totaux annuels)', () => {
+  const sim = simulateEarlyRepayment(classic, { date: '2030-03-10', amount: 20000, mode: 'duree' }, { today: TODAY });
+  const html = buildAmortizationHTML(classic, sim.after, { generatedAt: new Date('2026-09-21T10:00:00') });
+  assert.ok(html.includes('<strong>Simulation</strong>'));
+  assert.strictEqual((html.match(/<tr class="early">/g) || []).length, 1);
+  assert.ok(html.includes('mensualité conservée, durée réduite'));
 });
 
 console.log(`\n${passed} tests passés.`);

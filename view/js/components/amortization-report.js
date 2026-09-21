@@ -77,12 +77,15 @@
         + `<td class="n strong">${escapeHtml(money.format(r.total))}</td>`
         + `<td class="n">${escapeHtml(money.format(r.balanceAfter))}</td>`
         + '</tr>');
+      if (r.extraPrincipal > 0) {
+        html.push(`<tr class="early"><td colspan="8">Remboursement anticipé de ${escapeHtml(money.format(r.extraPrincipal))} le ${escapeHtml(dateFR(r.date))} : CRD ramené à ${escapeHtml(money.format(r.balanceAfter))}</td></tr>`);
+      }
       const year = Number(r.date.slice(0, 4));
       const next = rows[i + 1];
       if (!next || Number(next.date.slice(0, 4)) !== year) {
         const y = yearTotals.get(year);
         html.push(`<tr class="year"><td colspan="2">Total ${year} (${y.count} éch.)</td>`
-          + `<td class="n">${escapeHtml(money.format(y.interest + y.principal))}</td>`
+          + `<td class="n">${escapeHtml(money.format(y.interest + y.principal - y.early))}</td>`
           + `<td class="n">${escapeHtml(money.format(y.interest))}</td>`
           + `<td class="n">${escapeHtml(money.format(y.principal))}</td>`
           + `<td class="n">${escapeHtml(money.format(y.insurance))}</td>`
@@ -129,6 +132,10 @@
       today.push('prêt intégralement remboursé');
     }
 
+    const early = s.earlyRepayment;
+    const simulationBanner = early
+      ? `<div class="warnings"><strong>Simulation</strong> — remboursement anticipé partiel de ${escapeHtml(money.format(early.amount))} à l'échéance du ${escapeHtml(dateFR(early.date))} (${early.mode === 'mensualite' ? 'durée conservée, mensualité recalculée' : 'mensualité conservée, durée réduite'}). Ce tableau n'est pas celui de votre contrat.</div>`
+      : '';
     const notes = [
       'Taux fixe supposé ; intérêts du mois = capital restant dû × taux ÷ 12, arrondis au centime.',
       'Assurance supposée constante sur toute la durée.',
@@ -183,6 +190,7 @@
   tr.paid td { color: #8A9096; }
   tr.next td { background: #E4F0EA; font-weight: 700; }
   tr.year td { background: #EFEAE0; font-weight: 700; border-top: 1px solid #C9BFA6; }
+  tr.early td { background: #E7EEF8; color: #1F4E79; font-weight: 700; text-align: center; padding: 4px; }
   tr.step td { background: #FFF2D6; color: #7A5B00; font-style: italic; text-align: center; padding: 4px; }
   .legend { font-size: 9.5px; color: #6B7278; margin: 6px 0 10px; }
   .notes { font-size: 9.5px; color: #4A5257; margin-top: 12px; }
@@ -196,7 +204,7 @@
   <div class="subtitle">Généré le ${escapeHtml(dateGeneration)} à ${escapeHtml(heureGeneration)} — MyFamilyBudget (tableau reconstitué, indicatif : il peut différer du tableau contractuel de la banque)</div>
   <div class="kpis">${kpis}</div>
   <div class="today">${today.join(' — ')}</div>
-  ${warningsHtml}
+  ${simulationBanner}${warningsHtml}
   <table>
     <thead><tr><th>N°</th><th>Date</th><th>Échéance hors ass.</th><th>Intérêts</th><th>Capital amorti</th><th>Assurance</th><th>Total à payer</th><th>CRD après échéance</th></tr></thead>
     <tbody>${buildRowsHtml(schedule)}</tbody>
@@ -213,7 +221,8 @@
    * @returns {boolean} false si le tableau ne peut pas être construit (message affiché).
    */
   function exportAmortizationPDF(loan, opts) {
-    const schedule = engine().buildSchedule(loan, opts);
+    // `opts.schedule` : tableau déjà calculé (simulation de remboursement anticipé, par exemple).
+    const schedule = (opts && opts.schedule) || engine().buildSchedule(loan, opts);
     if (!schedule.ok) {
       window.alert(schedule.reason);
       return false;

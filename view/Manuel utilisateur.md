@@ -121,6 +121,8 @@ Chaque prêt est une **carte** (CRD du dernier relevé, CRD théorique du jour, 
 2. **Mensualité lissée** (facultatif) : pour un prêt lissé avec un autre, dont la mensualité augmente quand l'autre se termine. Renseignez la dernière échéance payée à la mensualité actuelle ; le bouton *Estimer* la retrouve à partir du prêt avec lequel il est lissé (la somme des mensualités reste constante).
 3. **Dernier relevé bancaire** : CRD et date. Il sert aux autres écrans et de contrôle du tableau (un écart important signale une saisie à vérifier). Quand l'écart est faible (quelques euros, souvent dû à une 1re période plus longue qu'un mois), le tableau est **recalé** sur ce CRD et la dernière échéance de reliquat s'en déduit.
 
+4. **Simuler un remboursement anticipé** (facultatif, non enregistré) : montant, échéance et effet (réduire la durée ou la mensualité). L'outil compare au tableau sans remboursement : intérêts et assurance économisés, indemnité (estimée, modifiable), gain net, et permet d'exporter le tableau simulé.
+
 Le bouton **📄 Tableau d'amortissement** ouvre un document imprimable (choisir « Enregistrer en PDF » dans la boîte d'impression) : échéances, intérêts, capital amorti, assurance, CRD, totaux par année. Il est **reconstitué** à partir de vos saisies (taux fixe, assurance constante) et peut différer de quelques euros du tableau contractuel de la banque. Sans capital emprunté, seul l'échéancier des échéances à venir est produit, depuis le CRD du relevé.
 
 ### Actif Immobilier Physique

@@ -174,10 +174,16 @@
    * @param {number} [firstInterestExtra] intérêts supplémentaires de la 1re échéance (recalage sur
    *                                     le relevé : à capital égal, la 1re période est souvent
    *                                     plus longue qu'un mois)
+   * @param {{dateISO:string, amount:number, mode:string}|null} [event] remboursement anticipé
+   *        partiel, appliqué à la 1re échéance dont la date est ≥ dateISO, après le paiement de
+   *        celle-ci. mode « duree » : mensualité inchangée, prêt raccourci ; « mensualite » :
+   *        durée inchangée, mensualité recalculée.
    */
-  function amortize(p, stepAbs, firstInterestExtra) {
+  function amortize(p, stepAbs, firstInterestExtra, event) {
     const rows = [];
     const notes = [];
+    let eventDone = false;
+    let eventInfo = null;
     const monthlyRate = p.rate / 12;
     const limit = p.count !== null ? Math.min(p.count, MAX_ROWS) : MAX_ROWS;
     let balance = p.balance0;
@@ -202,15 +208,28 @@
       if (isLast || principal > balance) principal = balance;
       const before = balance;
       balance = round2(balance - principal);
+      const date = isoFromAbs(abs, p.day);
+      let extraPrincipal = 0;
+      if (event && !eventDone && date >= event.dateISO && balance > 0.004) {
+        eventDone = true;
+        extraPrincipal = Math.min(round2(event.amount), balance);
+        balance = round2(balance - extraPrincipal);
+        eventInfo = { index: i + 1, date, amount: extraPrincipal, mode: event.mode, balanceAfter: balance, payment: null };
+        if (event.mode === 'mensualite' && p.count !== null && balance > 0.004 && p.count - (i + 1) > 0) {
+          payment = round2(annuity(balance, p.rate, p.count - (i + 1)));
+          eventInfo.payment = payment;
+        }
+      }
       rows.push({
         index: i + 1,
         number: numberFor(p, abs),
         abs,
-        date: isoFromAbs(abs, p.day),
+        date,
         phase,
         balanceBefore: before,
         interest,
         principal,
+        extraPrincipal,
         payment: round2(interest + principal),
         insurance: p.insurance,
         total: round2(interest + principal + p.insurance),
@@ -218,7 +237,7 @@
       });
       if (principal === 0 && interest === 0) break;
     }
-    return { rows, payment2, notes };
+    return { rows, payment2, notes, event: eventInfo };
   }
 
   function sum(rows, key) {
@@ -230,20 +249,22 @@
     for (const r of rows) {
       const year = Number(r.date.slice(0, 4));
       if (!byYear.has(year)) {
-        byYear.set(year, { year, count: 0, interest: 0, principal: 0, insurance: 0, total: 0, balanceEnd: 0 });
+        byYear.set(year, { year, count: 0, interest: 0, principal: 0, early: 0, insurance: 0, total: 0, balanceEnd: 0 });
       }
       const y = byYear.get(year);
       y.count += 1;
       y.interest += r.interest;
-      y.principal += r.principal;
+      y.principal += r.principal + r.extraPrincipal;
+      y.early += r.extraPrincipal;
       y.insurance += r.insurance;
-      y.total += r.total;
+      y.total += r.total + r.extraPrincipal;
       y.balanceEnd = r.balanceAfter;
     }
     return Array.from(byYear.values()).map(y => ({
       ...y,
       interest: round2(y.interest),
       principal: round2(y.principal),
+      early: round2(y.early),
       insurance: round2(y.insurance),
       total: round2(y.total)
     }));
@@ -372,8 +393,13 @@
     const p = prepare(loan);
     if (!p.ok) return p;
     const today = (options && options.today) || todayISO();
-    let { rows, payment2, notes } = amortize(p, p.stepAbs, 0);
+    const early = normalizeEarlyRepayment(options && options.earlyRepayment);
+    const forcedExtra = options && typeof options.firstInterestExtra === 'number' ? options.firstInterestExtra : null;
+    let { rows, payment2, notes, event } = amortize(p, p.stepAbs, forcedExtra || 0, early);
     const warnings = p.warnings.slice();
+    if (early && !event) {
+      warnings.push('Le remboursement anticipé simulé est sans effet : sa date est postérieure à la dernière échéance ou le capital est déjà soldé.');
+    }
     if (rows.length === 0) {
       return { ok: false, reason: 'Aucune échéance à afficher : capital nul ou déjà soldé.' };
     }
@@ -385,20 +411,21 @@
     if (p.count === null && last.balanceAfter > 0.004) {
       warnings.push('Le prêt n\'est pas soldé au bout de 60 ans : mensualité insuffisante ou date de fin manquante.');
     }
-    if (p.count !== null && rows.length < p.count && last.balanceAfter <= 0.004) {
+    if (!early && p.count !== null && rows.length < p.count && last.balanceAfter <= 0.004) {
       warnings.push(`Le capital est soldé dès l'échéance ${last.number || last.index} sur ${p.count} : la mensualité saisie est supérieure à celle qu'exige la durée.`);
     }
     const theoreticalPayment = p.count !== null ? round2(annuity(p.balance0, p.rate, p.count)) : null;
-    if (p.stepAbs === null && !p.paymentComputed && theoreticalPayment !== null
+    if (!early && p.stepAbs === null && !p.paymentComputed && theoreticalPayment !== null
         && Math.abs(p.payment - theoreticalPayment) > Math.max(2, theoreticalPayment * 0.01)) {
       warnings.push(`La mensualité saisie hors assurance (${eurText(p.payment)}) s'écarte de la mensualité théorique de ce prêt (${eurText(theoreticalPayment)} pour ${p.count} échéances au taux saisi) : dernière échéance ajustée à ${eurText(last.payment)}. Vérifiez le taux, le capital ou une éventuelle mensualité lissée.`);
     }
 
     // Le contrôle du relevé (referenceCheck, avec son message) est présenté à part par l'écran et
     // le rapport : il n'est volontairement pas dupliqué dans `warnings`.
-    let referenceCheck = checkReference(loan, p, rows);
+    // Une simulation (remboursement anticipé) ne se recale pas et ne se contrôle pas sur le relevé.
+    let referenceCheck = early || forcedExtra !== null ? null : checkReference(loan, p, rows);
     let calibration = null;
-    const calibrated = calibrateOnReference(loan, p, rows, referenceCheck);
+    const calibrated = early || forcedExtra !== null ? null : calibrateOnReference(loan, p, rows, referenceCheck);
     if (calibrated) {
       calibration = { adjustment: calibrated.delta, gapBefore: referenceCheck.gap };
       rows = calibrated.result.rows;
@@ -417,10 +444,12 @@
       lastDate: last.date,
       initialBalance: p.balance0,
       totalInterest: sum(rows, 'interest'),
-      totalPrincipal: sum(rows, 'principal'),
+      totalPrincipal: round2(sum(rows, 'principal') + sum(rows, 'extraPrincipal')),
+      totalEarly: sum(rows, 'extraPrincipal'),
+      earlyRepayment: event,
       totalInsurance: sum(rows, 'insurance'),
       totalPayments: sum(rows, 'payment'),
-      totalPaid: sum(rows, 'total'),
+      totalPaid: round2(sum(rows, 'total') + sum(rows, 'extraPrincipal')),
       payment1: p.payment,
       payment2,
       paymentComputed: p.paymentComputed,
@@ -437,6 +466,83 @@
       calibration
     };
     return { ok: true, mode: p.mode, rows, yearly: yearlyRecap(rows), summary, warnings };
+  }
+
+  /** Demande de remboursement anticipé -> événement pour amortize, ou null si inexploitable. */
+  function normalizeEarlyRepayment(request) {
+    if (!request) return null;
+    const amount = num(request.amount);
+    const date = parseDate(request.date);
+    if (!(amount > 0) || !date) return null;
+    return {
+      dateISO: isoFromAbs(monthAbs(date), date.d),
+      amount,
+      mode: request.mode === 'mensualite' ? 'mensualite' : 'duree'
+    };
+  }
+
+  /**
+   * Simule un remboursement anticipé PARTIEL et le compare au tableau sans remboursement.
+   *
+   * Le montant est appliqué à la 1re échéance dont la date est ≥ à la date demandée, après le
+   * paiement de celle-ci. Mode « duree » : mensualité inchangée, prêt raccourci. Mode « mensualite » :
+   * durée inchangée, mensualité recalculée. L'assurance est supposée constante (elle baisse en
+   * pratique avec le CRD sur certains contrats : l'économie d'assurance est alors sous-estimée).
+   * L'indemnité est estimée au moindre de 6 mois d'intérêts et 3 % du capital remboursé, sauf si
+   * `request.indemnity` est fournie.
+   *
+   * @param {object} loan
+   * @param {{date:string, amount:number, mode?:'duree'|'mensualite', indemnity?:number|null}} request
+   * @param {object} [options]  { today }
+   */
+  function simulateEarlyRepayment(loan, request, options) {
+    const base = buildSchedule(loan, options);
+    if (!base.ok) return { ok: false, reason: base.reason };
+    if (!(num(request && request.amount) > 0)) {
+      return { ok: false, reason: 'Indiquez le montant remboursé par anticipation.' };
+    }
+    if (!parseDate(request && request.date)) {
+      return { ok: false, reason: 'Indiquez la date du remboursement anticipé.' };
+    }
+    const delta = base.summary.calibration ? base.summary.calibration.adjustment : 0;
+    const after = buildSchedule(loan, { ...(options || {}), earlyRepayment: request, firstInterestExtra: delta });
+    if (!after.ok) return { ok: false, reason: after.reason };
+    const event = after.summary.earlyRepayment;
+    if (!event) {
+      return { ok: false, reason: 'Aucune échéance à cette date ou après : le remboursement anticipé serait sans effet.' };
+    }
+    const rate = num(loan.rate);
+    const estimatedIndemnity = round2(event.amount * Math.min(rate / 2, 0.03));
+    const customIndemnity = request.indemnity !== null && request.indemnity !== undefined && request.indemnity !== ''
+      && Number.isFinite(Number(request.indemnity)) && Number(request.indemnity) >= 0;
+    const indemnity = customIndemnity ? round2(Number(request.indemnity)) : estimatedIndemnity;
+    const interestSaved = round2(base.summary.totalInterest - after.summary.totalInterest);
+    const insuranceSaved = round2(base.summary.totalInsurance - after.summary.totalInsurance);
+    const nextBefore = base.rows[event.index] || null;
+    const nextAfter = after.rows[event.index] || null;
+    return {
+      ok: true,
+      base,
+      after,
+      comparison: {
+        applyDate: event.date,
+        installmentIndex: event.index,
+        amount: event.amount,
+        cappedAmount: event.amount < round2(num(request.amount)),
+        mode: event.mode,
+        balanceAfterEvent: event.balanceAfter,
+        indemnity,
+        indemnityEstimated: !customIndemnity,
+        interestSaved,
+        insuranceSaved,
+        monthsSaved: base.summary.count - after.summary.count,
+        lastDateBefore: base.summary.lastDate,
+        lastDateAfter: after.summary.lastDate,
+        paymentBefore: nextBefore ? nextBefore.payment : null,
+        paymentAfter: nextAfter ? nextAfter.payment : null,
+        netGain: round2(interestSaved + insuranceSaved - indemnity)
+      }
+    };
   }
 
   /**
@@ -480,6 +586,7 @@
     buildSchedule,
     estimateStep,
     previewStep,
+    simulateEarlyRepayment,
     annuity,
     parseDate,
     round2
