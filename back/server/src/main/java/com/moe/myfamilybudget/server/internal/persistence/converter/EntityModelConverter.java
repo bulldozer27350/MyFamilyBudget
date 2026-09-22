@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.persistence.converter;
 
+import com.moe.myfamilybudget.server.internal.migration.LegacyObjectifAllocationMigrator;
 import com.moe.myfamilybudget.server.internal.model.*;
 import com.moe.myfamilybudget.server.internal.persistence.entity.*;
 
@@ -332,19 +333,53 @@ public class EntityModelConverter {
             model.notes()
         );
         entity.setBudgetData(budgetData);
+
+        List<ObjectifAllocationEntity> allocations = model.getEffectiveAllocations().stream()
+            .map(a -> toEntity(a, entity))
+            .collect(Collectors.toList());
+        entity.setAllocations(allocations);
+
         return entity;
     }
 
     public static ObjectifModel toModel(ObjectifEntity entity) {
         if (entity == null) return null;
-        return new ObjectifModel(
+        List<ObjectifAllocationModel> allocations = entity.getAllocations().stream()
+            .map(EntityModelConverter::toModel)
+            .collect(Collectors.toList());
+        ObjectifModel model = new ObjectifModel(
             entity.getUid(),
             entity.getLabel(),
             entity.getTargetAmount(),
             entity.getAllocatedAmount(),
             entity.getTargetDate(),
             entity.getSourcePlacementId(),
-            entity.getNotes()
+            entity.getNotes(),
+            allocations
+        );
+        // Filet de sécurité temporaire : voir LegacyObjectifAllocationMigrator (à supprimer dans
+        // un patch futur).
+        return LegacyObjectifAllocationMigrator.migrate(model);
+    }
+
+    // ObjectifAllocation conversions
+    public static ObjectifAllocationEntity toEntity(ObjectifAllocationModel model, ObjectifEntity objectif) {
+        if (model == null) return null;
+        ObjectifAllocationEntity entity = new ObjectifAllocationEntity(
+            model.id(),
+            model.placementId(),
+            model.amount()
+        );
+        entity.setObjectif(objectif);
+        return entity;
+    }
+
+    public static ObjectifAllocationModel toModel(ObjectifAllocationEntity entity) {
+        if (entity == null) return null;
+        return new ObjectifAllocationModel(
+            entity.getUid(),
+            entity.getPlacementId(),
+            entity.getAmount()
         );
     }
 

@@ -39,6 +39,7 @@ import com.moe.myfamilybudget.api.model.TaxChildDto;
 import com.moe.myfamilybudget.api.model.TaxRateOverrideDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
 import com.moe.myfamilybudget.api.model.ObjectifDto;
+import com.moe.myfamilybudget.api.model.ObjectifAllocationDto;
 import com.moe.myfamilybudget.api.model.TripleAmountDto;
 import com.moe.myfamilybudget.api.model.VariableIncomeDto;
 import com.moe.myfamilybudget.api.model.VariableOverrideDto;
@@ -65,6 +66,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
+import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.server.internal.model.TripleAmountModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
@@ -609,8 +611,11 @@ public class OverviewMapper {
     private ObjectifModel toObjectifModel(ObjectifDto dto) {
         if (dto == null)
             return null;
+        List<ObjectifAllocationModel> allocations = dto.getAllocations() != null
+                ? dto.getAllocations().stream().map(this::toObjectifAllocationModel).collect(Collectors.toList())
+                : List.of();
         return new ObjectifModel(dto.getId(), dto.getLabel(), dto.getTargetAmount(), dto.getAllocatedAmount(),
-                dto.getTargetDate(), dto.getSourcePlacementId(), dto.getNotes());
+                dto.getTargetDate(), dto.getSourcePlacementId(), dto.getNotes(), allocations);
     }
 
     private ObjectifDto toObjectifDto(ObjectifModel m) {
@@ -624,6 +629,24 @@ public class OverviewMapper {
         dto.setTargetDate(m.targetDate());
         dto.setSourcePlacementId(m.sourcePlacementId());
         dto.setNotes(m.notes());
+        dto.setAllocations(m.getEffectiveAllocations().stream().map(this::toObjectifAllocationDto)
+                .collect(Collectors.toList()));
+        return dto;
+    }
+
+    private ObjectifAllocationModel toObjectifAllocationModel(ObjectifAllocationDto dto) {
+        if (dto == null)
+            return null;
+        return new ObjectifAllocationModel(dto.getId(), dto.getPlacementId(), dto.getAmount());
+    }
+
+    private ObjectifAllocationDto toObjectifAllocationDto(ObjectifAllocationModel m) {
+        if (m == null)
+            return null;
+        ObjectifAllocationDto dto = new ObjectifAllocationDto();
+        dto.setId(m.id());
+        dto.setPlacementId(m.placementId());
+        dto.setAmount(m.amount());
         return dto;
     }
 

@@ -2,6 +2,8 @@ package com.moe.myfamilybudget.server.internal.persistence.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "objectif")
@@ -14,10 +16,18 @@ public class ObjectifEntity {
     private String uid;
     private String label;
     private BigDecimal targetAmount;
+    // Champs historiques (mono-compte) : voir LegacyObjectifAllocationMigrator.
     private BigDecimal allocatedAmount;
     private String targetDate;
     private String sourcePlacementId;
     private String notes;
+
+    // ATTENTION : mappedBy="objectif" est indispensable ici, même raison que pour
+    // PlacementEntity#history : ObjectifAllocationEntity possède déjà la colonne FK
+    // "objectif_id" (côté propriétaire, @ManyToOne "objectif"). Sans mappedBy, JPA ignorerait
+    // cette colonne et créerait en plus une table de jointure implicite.
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "objectif")
+    private List<ObjectifAllocationEntity> allocations = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "budget_data_id")
@@ -106,6 +116,14 @@ public class ObjectifEntity {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public List<ObjectifAllocationEntity> getAllocations() {
+        return allocations;
+    }
+
+    public void setAllocations(List<ObjectifAllocationEntity> allocations) {
+        this.allocations = allocations;
     }
 
     public BudgetDataEntity getBudgetData() {

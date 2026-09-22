@@ -19,6 +19,7 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
+import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
@@ -515,13 +516,14 @@ class BudgetMutationService {
 
                 String label = getString(body, "label", "Nouvel objectif");
                 BigDecimal targetAmount = getBigDecimal(body, "targetAmount", BigDecimal.ZERO);
-                BigDecimal allocatedAmount = getBigDecimal(body, "allocatedAmount", null);
                 String targetDate = getString(body, "targetDate", "2027-01-01");
-                String sourcePlacementId = getString(body, "sourcePlacementId", "");
                 String notes = getString(body, "notes", "");
+                List<ObjectifAllocationModel> allocations = getObjectifAllocations(body);
 
-                ObjectifModel model = new ObjectifModel(uid, label, targetAmount, allocatedAmount, targetDate,
-                        sourcePlacementId, notes);
+                validateObjectifAllocations(uid, allocations, base);
+
+                ObjectifModel model = new ObjectifModel(uid, label, targetAmount, null, targetDate, "", notes,
+                        allocations);
 
                 for (ObjectifModel o : base.getEffectiveObjectifs()) {
                     if (Objects.equals(o.id(), uid)) {
@@ -537,10 +539,9 @@ class BudgetMutationService {
 
                 resultRow.put("label", label);
                 resultRow.put("targetAmount", targetAmount);
-                resultRow.put("allocatedAmount", allocatedAmount);
                 resultRow.put("targetDate", targetDate);
-                resultRow.put("sourcePlacementId", sourcePlacementId);
                 resultRow.put("notes", notes);
+                resultRow.put("allocations", allocations);
 
                 return base.withObjectifs(list);
             }
@@ -864,6 +865,86 @@ class BudgetMutationService {
             BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             return base.withBankImport(bankImport);
         });
+    }
+
+    // --- Objectifs : allocations multi-comptes ---
+
+    /**
+     * Lit le champ "allocations" du corps de requête d'un objectif (tableau JSON
+     * {@code [{id, placementId, amount}, ...]}) envoyé par le tiroir d'édition. Un identifiant
+     * d'allocation absent ou vide (nouvelle ligne saisie côté tiroir) est généré ici.
+     */
+    @SuppressWarnings("unchecked")
+    private List<ObjectifAllocationModel> getObjectifAllocations(Map<String, Object> body) {
+        Object raw = body != null ? body.get("allocations") : null;
+        if (!(raw instanceof List<?> rawList)) {
+            return List.of();
+        }
+
+        List<ObjectifAllocationModel> allocations = new ArrayList<>();
+        for (Object item : rawList) {
+            if (!(item instanceof Map<?, ?>)) {
+                continue;
+            }
+            Map<String, Object> entry = (Map<String, Object>) item;
+            String allocationId = getString(entry, "id", null);
+            if (allocationId == null || allocationId.isBlank()) {
+                allocationId = UUID.randomUUID().toString();
+            }
+            String placementId = getString(entry, "placementId", "");
+            BigDecimal amount = getBigDecimal(entry, "amount", BigDecimal.ZERO);
+            allocations.add(new ObjectifAllocationModel(allocationId, placementId, amount));
+        }
+        return allocations;
+    }
+
+    /**
+     * Bloque la sauvegarde si les allocations demandées dépassent le solde d'un compte, une fois
+     * déduites les allocations déjà réservées par les AUTRES objectifs (celles de l'objectif en
+     * cours de sauvegarde sont intégralement remplacées par {@code allocations}, elles ne
+     * comptent donc pas dans le "déjà alloué ailleurs").
+     */
+    private void validateObjectifAllocations(String objectifUid, List<ObjectifAllocationModel> allocations,
+                                              BudgetDataModel base) {
+        if (allocations == null || allocations.isEmpty()) {
+            return;
+        }
+
+        Map<String, BigDecimal> soldeParCompte = new HashMap<>();
+        Map<String, String> libelleParCompte = new HashMap<>();
+        for (PlacementModel p : base.getEffectivePlacements()) {
+            soldeParCompte.put(p.id(), p.getEffectiveBalance());
+            libelleParCompte.put(p.id(), p.label());
+        }
+
+        Map<String, BigDecimal> dejaAlloueAilleurs = new HashMap<>();
+        for (ObjectifModel o : base.getEffectiveObjectifs()) {
+            if (Objects.equals(o.id(), objectifUid)) {
+                continue;
+            }
+            for (ObjectifAllocationModel a : o.getEffectiveAllocations()) {
+                dejaAlloueAilleurs.merge(a.placementId(), a.getEffectiveAmount(), BigDecimal::add);
+            }
+        }
+
+        Map<String, BigDecimal> demandeParCompte = new HashMap<>();
+        for (ObjectifAllocationModel a : allocations) {
+            demandeParCompte.merge(a.placementId(), a.getEffectiveAmount(), BigDecimal::add);
+        }
+
+        for (Map.Entry<String, BigDecimal> entry : demandeParCompte.entrySet()) {
+            String placementId = entry.getKey();
+            BigDecimal demande = entry.getValue();
+            BigDecimal solde = soldeParCompte.getOrDefault(placementId, BigDecimal.ZERO);
+            BigDecimal dejaAlloue = dejaAlloueAilleurs.getOrDefault(placementId, BigDecimal.ZERO);
+            BigDecimal disponible = solde.subtract(dejaAlloue);
+            if (demande.compareTo(disponible) > 0) {
+                String libelle = libelleParCompte.getOrDefault(placementId, placementId);
+                throw new IllegalArgumentException("Le compte '" + libelle
+                        + "' n'a pas un solde suffisant pour cette allocation : disponible "
+                        + disponible + " €, montant demandé " + demande + " €.");
+            }
+        }
     }
 
     // --- Utilitaires de conversion ---

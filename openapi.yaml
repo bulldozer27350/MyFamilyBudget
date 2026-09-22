@@ -1485,17 +1485,41 @@ components:
           type: number
         allocatedAmount:
           type: number
+          deprecated: true
           description: >-
-            Montant du compte support (sourcePlacementId) réservé à cet objectif.
-            Absent/null = comportement historique (100% du solde du compte compte
-            pour cet objectif). Permet de partager un même compte entre plusieurs
-            objectifs ou de n'en réserver qu'une partie.
+            Champ historique (objectifs mono-compte). Remplacé par `allocations` ;
+            conservé uniquement pour la bascule en lecture des objectifs enregistrés
+            avant l'introduction du multi-comptes.
         targetDate:
           type: string
         sourcePlacementId:
           type: string
+          deprecated: true
+          description: >-
+            Champ historique (objectifs mono-compte). Remplacé par `allocations` ;
+            conservé uniquement pour la bascule en lecture des objectifs enregistrés
+            avant l'introduction du multi-comptes.
         notes:
           type: string
+        allocations:
+          type: array
+          description: >-
+            Comptes (vue Patrimoine) alimentant cet objectif, chacun avec le montant
+            qui lui est réservé. Un même compte peut apparaître dans plusieurs
+            objectifs différents ; la somme de ses allocations, tous objectifs
+            confondus, ne peut pas dépasser son solde.
+          items:
+            $ref: '#/components/schemas/ObjectifAllocationDto'
+
+    ObjectifAllocationDto:
+      type: object
+      properties:
+        id:
+          type: string
+        placementId:
+          type: string
+        amount:
+          type: number
 
     VariableIncomeDto:
       type: object
