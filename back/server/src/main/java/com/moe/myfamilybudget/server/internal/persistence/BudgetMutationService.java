@@ -515,11 +515,13 @@ class BudgetMutationService {
 
                 String label = getString(body, "label", "Nouvel objectif");
                 BigDecimal targetAmount = getBigDecimal(body, "targetAmount", BigDecimal.ZERO);
+                BigDecimal allocatedAmount = getBigDecimal(body, "allocatedAmount", null);
                 String targetDate = getString(body, "targetDate", "2027-01-01");
                 String sourcePlacementId = getString(body, "sourcePlacementId", "");
                 String notes = getString(body, "notes", "");
 
-                ObjectifModel model = new ObjectifModel(uid, label, targetAmount, targetDate, sourcePlacementId, notes);
+                ObjectifModel model = new ObjectifModel(uid, label, targetAmount, allocatedAmount, targetDate,
+                        sourcePlacementId, notes);
 
                 for (ObjectifModel o : base.getEffectiveObjectifs()) {
                     if (Objects.equals(o.id(), uid)) {
@@ -535,6 +537,7 @@ class BudgetMutationService {
 
                 resultRow.put("label", label);
                 resultRow.put("targetAmount", targetAmount);
+                resultRow.put("allocatedAmount", allocatedAmount);
                 resultRow.put("targetDate", targetDate);
                 resultRow.put("sourcePlacementId", sourcePlacementId);
                 resultRow.put("notes", notes);

@@ -609,8 +609,8 @@ public class OverviewMapper {
     private ObjectifModel toObjectifModel(ObjectifDto dto) {
         if (dto == null)
             return null;
-        return new ObjectifModel(dto.getId(), dto.getLabel(), dto.getTargetAmount(), dto.getTargetDate(),
-                dto.getSourcePlacementId(), dto.getNotes());
+        return new ObjectifModel(dto.getId(), dto.getLabel(), dto.getTargetAmount(), dto.getAllocatedAmount(),
+                dto.getTargetDate(), dto.getSourcePlacementId(), dto.getNotes());
     }
 
     private ObjectifDto toObjectifDto(ObjectifModel m) {
@@ -620,6 +620,7 @@ public class OverviewMapper {
         dto.setId(m.id());
         dto.setLabel(m.label());
         dto.setTargetAmount(m.targetAmount());
+        dto.setAllocatedAmount(m.allocatedAmount());
         dto.setTargetDate(m.targetDate());
         dto.setSourcePlacementId(m.sourcePlacementId());
         dto.setNotes(m.notes());

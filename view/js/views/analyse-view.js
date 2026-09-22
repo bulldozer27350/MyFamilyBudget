@@ -1786,10 +1786,6 @@
         type: "number",
         align: "right"
       }, {
-        key: "targetDate",
-        label: "Échéance",
-        type: "date"
-      }, {
         key: "sourcePlacementId",
         label: "Compte support",
         type: "select",
@@ -1797,6 +1793,15 @@
           value: p.id,
           label: p.label
         }))
+      }, {
+        key: "allocatedAmount",
+        label: "Réservé sur ce compte (€)",
+        type: "number",
+        align: "right"
+      }, {
+        key: "targetDate",
+        label: "Échéance",
+        type: "date"
       }, {
         key: "notes",
         label: "Notes",
@@ -1877,7 +1882,7 @@
             color: C?.inkSoft || "#6B7278",
             marginTop: 2
           }
-        }, "Visé ", eur(g.targetAmount), g.sourceLabel ? ` · ${g.sourceLabel} : ${eur(g.currentBalance)} (${gapLabel})` : ` · ${gapLabel}`)), /*#__PURE__*/React.createElement("div", {
+        }, "Visé ", eur(g.targetAmount), g.sourceLabel ? ` · ${g.sourceLabel} : ${eur(g.currentBalance)}${g.hasAllocation ? " réservé" : ""} (${gapLabel})` : ` · ${gapLabel}`)), /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 12,
             fontWeight: 600,

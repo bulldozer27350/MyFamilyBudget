@@ -413,6 +413,10 @@ function deps() {
         id: uid(),
         label: "Nouvel objectif",
         targetAmount: 0,
+        // 0 (et non null) : un nouvel objectif part d'une enveloppe vide, à remplir
+        // progressivement. null reste réservé aux objectifs existants créés avant
+        // l'ajout de ce champ (comportement historique = 100% du compte support).
+        allocatedAmount: 0,
         targetDate: new Date(new Date().getFullYear() + 1, 0, 1).toISOString().slice(0, 10),
         sourcePlacementId: data?.placements?.[0]?.id || "",
         notes: ""

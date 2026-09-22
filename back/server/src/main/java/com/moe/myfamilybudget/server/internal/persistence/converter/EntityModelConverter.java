@@ -326,6 +326,7 @@ public class EntityModelConverter {
             model.id(),
             model.label(),
             model.targetAmount(),
+            model.allocatedAmount(),
             model.targetDate(),
             model.sourcePlacementId(),
             model.notes()
@@ -340,6 +341,7 @@ public class EntityModelConverter {
             entity.getUid(),
             entity.getLabel(),
             entity.getTargetAmount(),
+            entity.getAllocatedAmount(),
             entity.getTargetDate(),
             entity.getSourcePlacementId(),
             entity.getNotes()

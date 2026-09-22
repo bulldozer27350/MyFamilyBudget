@@ -1427,7 +1427,11 @@
         if (targetDate.getDate() < today.getDate()) monthsRemaining -= 1;
       }
       const source = o.sourcePlacementId ? placementsById[o.sourcePlacementId] : null;
-      const currentBalance = source ? Number(source.balance) || 0 : null;
+      // allocatedAmount renseigné (même à 0) => montant réellement réservé sur le compte
+      // support. Absent/null (objectifs créés avant ce champ) => comportement historique,
+      // la totalité du solde du compte compte pour l'objectif.
+      const hasAllocation = o.allocatedAmount !== null && o.allocatedAmount !== undefined && o.allocatedAmount !== "";
+      const currentBalance = hasAllocation ? Number(o.allocatedAmount) || 0 : source ? Number(source.balance) || 0 : null;
       const gap = currentBalance !== null ? targetAmount - currentBalance : null;
 
       let status = "inconnu";
@@ -1443,6 +1447,8 @@
         monthsRemaining,
         sourcePlacementId: o.sourcePlacementId || null,
         sourceLabel: source ? source.label : null,
+        sourceBalance: source ? Number(source.balance) || 0 : null,
+        hasAllocation,
         currentBalance,
         gap,
         status,
@@ -1451,6 +1457,79 @@
         notes: o.notes || ""
       };
     });
+  }
+
+  /**
+   * Vue consolidée de la trésorerie une fois les réservations (Objectifs.allocatedAmount)
+   * déduites des comptes support, séparée liquide / illiquide (classification via
+   * AssetCategoryDto.bucket : cash + fondsEuros = liquide, le reste = illiquide).
+   * "Données prêtes pour le front" : ne rend rien, se contente de calculer — les vues
+   * consommatrices restent à construire.
+   */
+  function computeTresorerieDisponible(data) {
+    const LIQUID_BUCKETS = { cash: true, fondsEuros: true };
+    const bucketByCategory = {};
+    (data?.assetCategories || []).forEach(c => {
+      bucketByCategory[c.name] = c.bucket;
+    });
+
+    const reservedByPlacement = {};
+    (data?.objectifs || []).forEach(o => {
+      if (!o.sourcePlacementId) return;
+      const hasAllocation = o.allocatedAmount !== null && o.allocatedAmount !== undefined && o.allocatedAmount !== "";
+      // Comportement historique pour les objectifs sans allocatedAmount : traités comme
+      // réservant 100% du compte (cohérent avec computeGoalReallocation ci-dessus), donc
+      // exclus ici du décompte au montant réel (voir placement.balance ci-dessous).
+      if (!hasAllocation) return;
+      const amount = Number(o.allocatedAmount) || 0;
+      reservedByPlacement[o.sourcePlacementId] = (reservedByPlacement[o.sourcePlacementId] || 0) + amount;
+    });
+
+    const legacyFullyReservedPlacementIds = new Set(
+      (data?.objectifs || [])
+        .filter(o => o.sourcePlacementId && (o.allocatedAmount === null || o.allocatedAmount === undefined || o.allocatedAmount === ""))
+        .map(o => o.sourcePlacementId)
+    );
+
+    const totals = {
+      liquide: { total: 0, reserve: 0, disponible: 0 },
+      illiquide: { total: 0, reserve: 0, disponible: 0 }
+    };
+    const parPlacement = [];
+
+    (data?.placements || []).forEach(p => {
+      const balance = Number(p.balance) || 0;
+      const bucket = bucketByCategory[p.category];
+      const groupe = bucket && LIQUID_BUCKETS.hasOwnProperty(bucket) ? "liquide" : "illiquide";
+      const reserve = legacyFullyReservedPlacementIds.has(p.id)
+        ? balance
+        : Math.min(reservedByPlacement[p.id] || 0, balance);
+      const disponible = balance - reserve;
+
+      totals[groupe].total += balance;
+      totals[groupe].reserve += reserve;
+      totals[groupe].disponible += disponible;
+
+      parPlacement.push({
+        id: p.id,
+        label: p.label,
+        groupe,
+        balance,
+        reserve,
+        disponible
+      });
+    });
+
+    return {
+      liquide: totals.liquide,
+      illiquide: totals.illiquide,
+      total: {
+        total: totals.liquide.total + totals.illiquide.total,
+        reserve: totals.liquide.reserve + totals.illiquide.reserve,
+        disponible: totals.liquide.disponible + totals.illiquide.disponible
+      },
+      parPlacement
+    };
   }
 
   /* ============================== Fiscal & prêts (Analyse) ============================== */
@@ -1574,6 +1653,7 @@
   exports.computeRealAverages = computeRealAverages;
   exports.computeBudgetDiagnostic = computeBudgetDiagnostic;
   exports.computeGoalReallocation = computeGoalReallocation;
+  exports.computeTresorerieDisponible = computeTresorerieDisponible;
   exports.computeFiscalPatrimonialAdvice = computeFiscalPatrimonialAdvice;
   exports.getEarliestDate = getEarliestDate;
   exports.findEarliestYear = findEarliestYear;

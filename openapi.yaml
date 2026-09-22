@@ -1483,6 +1483,13 @@ components:
           type: string
         targetAmount:
           type: number
+        allocatedAmount:
+          type: number
+          description: >-
+            Montant du compte support (sourcePlacementId) réservé à cet objectif.
+            Absent/null = comportement historique (100% du solde du compte compte
+            pour cet objectif). Permet de partager un même compte entre plusieurs
+            objectifs ou de n'en réserver qu'une partie.
         targetDate:
           type: string
         sourcePlacementId:

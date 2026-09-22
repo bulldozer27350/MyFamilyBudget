@@ -14,6 +14,7 @@ public class ObjectifEntity {
     private String uid;
     private String label;
     private BigDecimal targetAmount;
+    private BigDecimal allocatedAmount;
     private String targetDate;
     private String sourcePlacementId;
     private String notes;
@@ -25,11 +26,18 @@ public class ObjectifEntity {
     // Constructors
     public ObjectifEntity() {}
 
+    // Conservé pour compatibilité ascendante (anciens appelants sans allocatedAmount).
     public ObjectifEntity(String uid, String label, BigDecimal targetAmount, String targetDate,
                            String sourcePlacementId, String notes) {
+        this(uid, label, targetAmount, null, targetDate, sourcePlacementId, notes);
+    }
+
+    public ObjectifEntity(String uid, String label, BigDecimal targetAmount, BigDecimal allocatedAmount,
+                           String targetDate, String sourcePlacementId, String notes) {
         this.uid = uid;
         this.label = label;
         this.targetAmount = targetAmount;
+        this.allocatedAmount = allocatedAmount;
         this.targetDate = targetDate;
         this.sourcePlacementId = sourcePlacementId;
         this.notes = notes;
@@ -66,6 +74,14 @@ public class ObjectifEntity {
 
     public void setTargetAmount(BigDecimal targetAmount) {
         this.targetAmount = targetAmount;
+    }
+
+    public BigDecimal getAllocatedAmount() {
+        return allocatedAmount;
+    }
+
+    public void setAllocatedAmount(BigDecimal allocatedAmount) {
+        this.allocatedAmount = allocatedAmount;
     }
 
     public String getTargetDate() {
