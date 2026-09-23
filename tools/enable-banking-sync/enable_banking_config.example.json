@@ -1,0 +1,12 @@
+{
+  "application_id": "VOTRE_APPLICATION_ID_ENABLE_BANKING",
+  "private_key_path": "C:\\Users\\VotreNom\\enable-banking\\private_key.pem",
+  "api_base_url": "http://localhost:8080/api/v1",
+  "state_file": "sync_state.json",
+  "accounts": [
+    { "label": "Compte ****1", "uid": "684554ff-ed8c-45ec-a2a3-3dd8208aec96" },
+    { "label": "Compte ****2", "uid": "5bf2f797-ab5e-4909-97d4-29acae8e0e70" },
+    { "label": "Compte ****3", "uid": "fad468de-b35a-4466-8243-5496d1393835" },
+    { "label": "Compte ****4", "uid": "0023923d-cc57-427b-b6d6-f2d763f6adb8" }
+  ]
+}
