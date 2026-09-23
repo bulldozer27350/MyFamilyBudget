@@ -1402,11 +1402,58 @@
   }
 
   /* ============================== Objectifs & réallocation (Analyse) ============================== */
+
+  // Catégories d'actifs considérées comme liquides (voir AssetCategoryDto.bucket : cash et fonds
+  // euros). Partagé entre computeGoalReallocation (répartition liquide/illiquide par objectif) et
+  // computeTresorerieDisponible (répartition liquide/illiquide de la trésorerie globale).
+  const LIQUID_BUCKETS = { cash: true, fondsEuros: true };
+
+  function buildBucketByCategory(data) {
+    const bucketByCategory = {};
+    (data?.assetCategories || []).forEach(c => {
+      bucketByCategory[c.name] = c.bucket;
+    });
+    return bucketByCategory;
+  }
+
+  function bucketGroupFor(category, bucketByCategory) {
+    const bucket = bucketByCategory[category];
+    return bucket && LIQUID_BUCKETS.hasOwnProperty(bucket) ? "liquide" : "illiquide";
+  }
+
   /**
-   * Pour chaque objectif d'épargne (montant cible, échéance, compte support), calcule le temps
-   * restant et le statut de bascule (lointain / à sécuriser / à rapatrier vers le liquide) en
-   * fonction des deux seuils réglables dans Paramètres. Calcul pur, aucun appel réseau — ne
-   * décide de rien, se contente de qualifier la situation pour que l'utilisateur arbitre.
+   * Allocations effectives d'un objectif (comptes support + montant réservé sur chacun). Un
+   * objectif au nouveau format (multi-comptes) porte directement son tableau `allocations`
+   * ([{id, placementId, amount}]). Un objectif "ancien format" (mono-compte, sans `allocations`)
+   * est ramené ici à une allocation équivalente unique — même filet de sécurité temporaire que
+   * `LegacyObjectifAllocationMigrator` côté back-end (qui a normalement déjà fait ce travail
+   * avant que la donnée n'arrive ici) : à supprimer avec lui dans un patch futur.
+   *
+   * `amount` reste `null` quand il correspond au comportement historique "100% du solde du
+   * compte compte pour l'objectif" (objectifs créés avant l'introduction d'`allocatedAmount`) —
+   * c'est à l'appelant de le résoudre avec le solde réel du compte, qu'il a déjà sous la main.
+   */
+  function getEffectiveObjectifAllocations(o) {
+    if (Array.isArray(o?.allocations) && o.allocations.length > 0) {
+      return o.allocations;
+    }
+    if (o?.sourcePlacementId) {
+      const hasAllocation = o.allocatedAmount !== null && o.allocatedAmount !== undefined && o.allocatedAmount !== "";
+      return [{
+        id: (o.id || "objectif") + "-legacy",
+        placementId: o.sourcePlacementId,
+        amount: hasAllocation ? Number(o.allocatedAmount) || 0 : null
+      }];
+    }
+    return [];
+  }
+
+  /**
+   * Pour chaque objectif d'épargne (montant cible, échéance, un ou plusieurs comptes support),
+   * calcule le temps restant, le montant déjà réuni (total et par bucket liquide/illiquide) et le
+   * statut de bascule (lointain / à sécuriser / à rapatrier vers le liquide) en fonction des deux
+   * seuils réglables dans Paramètres. Calcul pur, aucun appel réseau — ne décide de rien, se
+   * contente de qualifier la situation pour que l'utilisateur arbitre.
    */
   function computeGoalReallocation(data) {
     const settings = data?.settings || {};
@@ -1417,6 +1464,7 @@
     (data?.placements || []).forEach(p => {
       placementsById[p.id] = p;
     });
+    const bucketByCategory = buildBucketByCategory(data);
 
     return (data?.objectifs || []).map(o => {
       const targetAmount = Number(o.targetAmount) || 0;
@@ -1426,18 +1474,47 @@
         monthsRemaining = (targetDate.getFullYear() - today.getFullYear()) * 12 + (targetDate.getMonth() - today.getMonth());
         if (targetDate.getDate() < today.getDate()) monthsRemaining -= 1;
       }
-      const source = o.sourcePlacementId ? placementsById[o.sourcePlacementId] : null;
-      // allocatedAmount renseigné (même à 0) => montant réellement réservé sur le compte
-      // support. Absent/null (objectifs créés avant ce champ) => comportement historique,
-      // la totalité du solde du compte compte pour l'objectif.
-      const hasAllocation = o.allocatedAmount !== null && o.allocatedAmount !== undefined && o.allocatedAmount !== "";
-      const currentBalance = hasAllocation ? Number(o.allocatedAmount) || 0 : source ? Number(source.balance) || 0 : null;
-      const gap = currentBalance !== null ? targetAmount - currentBalance : null;
+
+      // Résout chaque allocation vers son compte support (libellé, bucket liquide/illiquide) et
+      // son montant effectif (comportement historique : solde entier du compte quand amount est
+      // null, voir getEffectiveObjectifAllocations ci-dessus).
+      const allocations = getEffectiveObjectifAllocations(o).map(a => {
+        const placement = a.placementId ? placementsById[a.placementId] : null;
+        const amount = a.amount !== null && a.amount !== undefined
+          ? Number(a.amount) || 0
+          : placement ? Number(placement.balance) || 0 : 0;
+        return {
+          id: a.id,
+          placementId: a.placementId || null,
+          placementLabel: placement ? placement.label : null,
+          amount,
+          bucket: placement ? bucketGroupFor(placement.category, bucketByCategory) : "illiquide"
+        };
+      });
+
+      const currentBalance = allocations.reduce((s, a) => s + a.amount, 0);
+      const liquidCoveredAmount = allocations.filter(a => a.bucket === "liquide").reduce((s, a) => s + a.amount, 0);
+      const illiquidCoveredAmount = allocations.filter(a => a.bucket === "illiquide").reduce((s, a) => s + a.amount, 0);
+      // % du montant visé couvert par du liquide / de l'illiquide (pas de plafond à 100% ici :
+      // c'est à l'affichage — la barre de progression — de tronquer si besoin).
+      const liquidPct = targetAmount > 0 ? liquidCoveredAmount / targetAmount * 100 : 0;
+      const illiquidPct = targetAmount > 0 ? illiquidCoveredAmount / targetAmount * 100 : 0;
+      const gap = targetAmount - currentBalance;
 
       let status = "inconnu";
       if (monthsRemaining !== null) {
         if (monthsRemaining <= 0) status = "echu";else if (monthsRemaining <= liquidHorizonMonths) status = "a_rapatrier";else if (monthsRemaining <= secureHorizonMonths) status = "a_securiser";else status = "lointain";
       }
+
+      // Champs historiques conservés pour compatibilité avec l'affichage "Suivi & bascule"
+      // actuel (remplacé par des cartes dans un patch à venir) : ramènent les allocations à un
+      // seul "compte support" quand c'est possible (0 ou 1 allocation), sinon à un libellé agrégé.
+      const hasAllocation = allocations.length > 0;
+      const sourcePlacementId = allocations.length === 1 ? allocations[0].placementId : null;
+      const sourceLabel = allocations.length === 0 ? null : allocations.length === 1 ? allocations[0].placementLabel : `${allocations.length} comptes`;
+      const sourceBalance = allocations.length === 1 && allocations[0].placementId
+        ? Number((placementsById[allocations[0].placementId] || {}).balance) || 0
+        : null;
 
       return {
         id: o.id,
@@ -1445,51 +1522,50 @@
         targetAmount,
         targetDate: o.targetDate || null,
         monthsRemaining,
-        sourcePlacementId: o.sourcePlacementId || null,
-        sourceLabel: source ? source.label : null,
-        sourceBalance: source ? Number(source.balance) || 0 : null,
-        hasAllocation,
+        allocations,
         currentBalance,
+        liquidCoveredAmount,
+        illiquidCoveredAmount,
+        liquidPct,
+        illiquidPct,
         gap,
         status,
         secureHorizonMonths,
         liquidHorizonMonths,
-        notes: o.notes || ""
+        notes: o.notes || "",
+        // Champs historiques, voir commentaire ci-dessus :
+        sourcePlacementId,
+        sourceLabel,
+        sourceBalance,
+        hasAllocation
       };
     });
   }
 
   /**
-   * Vue consolidée de la trésorerie une fois les réservations (Objectifs.allocatedAmount)
-   * déduites des comptes support, séparée liquide / illiquide (classification via
-   * AssetCategoryDto.bucket : cash + fondsEuros = liquide, le reste = illiquide).
-   * "Données prêtes pour le front" : ne rend rien, se contente de calculer — les vues
-   * consommatrices restent à construire.
+   * Vue consolidée de la trésorerie une fois les réservations (Objectifs.allocations, un ou
+   * plusieurs comptes par objectif) déduites des comptes support, séparée liquide / illiquide
+   * (classification via AssetCategoryDto.bucket : cash + fondsEuros = liquide, le reste =
+   * illiquide). "Données prêtes pour le front" : ne rend rien, se contente de calculer.
    */
   function computeTresorerieDisponible(data) {
-    const LIQUID_BUCKETS = { cash: true, fondsEuros: true };
-    const bucketByCategory = {};
-    (data?.assetCategories || []).forEach(c => {
-      bucketByCategory[c.name] = c.bucket;
-    });
+    const bucketByCategory = buildBucketByCategory(data);
 
     const reservedByPlacement = {};
+    const fullyReservedPlacementIds = new Set();
     (data?.objectifs || []).forEach(o => {
-      if (!o.sourcePlacementId) return;
-      const hasAllocation = o.allocatedAmount !== null && o.allocatedAmount !== undefined && o.allocatedAmount !== "";
-      // Comportement historique pour les objectifs sans allocatedAmount : traités comme
-      // réservant 100% du compte (cohérent avec computeGoalReallocation ci-dessus), donc
-      // exclus ici du décompte au montant réel (voir placement.balance ci-dessous).
-      if (!hasAllocation) return;
-      const amount = Number(o.allocatedAmount) || 0;
-      reservedByPlacement[o.sourcePlacementId] = (reservedByPlacement[o.sourcePlacementId] || 0) + amount;
+      getEffectiveObjectifAllocations(o).forEach(a => {
+        if (!a.placementId) return;
+        if (a.amount === null || a.amount === undefined) {
+          // Comportement historique (objectifs "ancien format" sans allocatedAmount) : 100% du
+          // solde du compte compte pour l'objectif.
+          fullyReservedPlacementIds.add(a.placementId);
+          return;
+        }
+        const amount = Number(a.amount) || 0;
+        reservedByPlacement[a.placementId] = (reservedByPlacement[a.placementId] || 0) + amount;
+      });
     });
-
-    const legacyFullyReservedPlacementIds = new Set(
-      (data?.objectifs || [])
-        .filter(o => o.sourcePlacementId && (o.allocatedAmount === null || o.allocatedAmount === undefined || o.allocatedAmount === ""))
-        .map(o => o.sourcePlacementId)
-    );
 
     const totals = {
       liquide: { total: 0, reserve: 0, disponible: 0 },
@@ -1499,9 +1575,8 @@
 
     (data?.placements || []).forEach(p => {
       const balance = Number(p.balance) || 0;
-      const bucket = bucketByCategory[p.category];
-      const groupe = bucket && LIQUID_BUCKETS.hasOwnProperty(bucket) ? "liquide" : "illiquide";
-      const reserve = legacyFullyReservedPlacementIds.has(p.id)
+      const groupe = bucketGroupFor(p.category, bucketByCategory);
+      const reserve = fullyReservedPlacementIds.has(p.id)
         ? balance
         : Math.min(reservedByPlacement[p.id] || 0, balance);
       const disponible = balance - reserve;
@@ -1530,6 +1605,35 @@
       },
       parPlacement
     };
+  }
+
+  /**
+   * Montant encore disponible sur un compte pour l'allocation d'UN objectif donné : solde du
+   * compte moins ce qui lui est déjà réservé par les AUTRES objectifs (celles de l'objectif
+   * `excludeObjectifId` ne comptent pas, il va les remplacer intégralement à la sauvegarde — même
+   * règle que la validation côté back-end, voir BudgetMutationService#validateObjectifAllocations).
+   * Utilisée par le tiroir d'édition pour bloquer/avertir avant l'envoi au serveur.
+   */
+  function computeDisponiblePourAllocation(data, placementId, excludeObjectifId) {
+    const placement = (data?.placements || []).find(p => p.id === placementId);
+    const balance = placement ? Number(placement.balance) || 0 : 0;
+
+    let reserveAilleurs = 0;
+    let fullyReservedAilleurs = false;
+    (data?.objectifs || []).forEach(o => {
+      if (o.id === excludeObjectifId) return;
+      getEffectiveObjectifAllocations(o).forEach(a => {
+        if (a.placementId !== placementId) return;
+        if (a.amount === null || a.amount === undefined) {
+          fullyReservedAilleurs = true;
+          return;
+        }
+        reserveAilleurs += Number(a.amount) || 0;
+      });
+    });
+
+    if (fullyReservedAilleurs) return 0;
+    return Math.max(0, balance - reserveAilleurs);
   }
 
   /* ============================== Fiscal & prêts (Analyse) ============================== */
@@ -1654,6 +1758,7 @@
   exports.computeBudgetDiagnostic = computeBudgetDiagnostic;
   exports.computeGoalReallocation = computeGoalReallocation;
   exports.computeTresorerieDisponible = computeTresorerieDisponible;
+  exports.computeDisponiblePourAllocation = computeDisponiblePourAllocation;
   exports.computeFiscalPatrimonialAdvice = computeFiscalPatrimonialAdvice;
   exports.getEarliestDate = getEarliestDate;
   exports.findEarliestYear = findEarliestYear;
