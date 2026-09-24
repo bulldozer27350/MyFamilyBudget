@@ -36,6 +36,8 @@
   // Cartes + tiroir d'édition des objectifs (components/objectif-card.js) ; absent => ancien
   // tableau éditable + bloc "Suivi & bascule" (voir plus bas).
   const ObjectifsPanelRef = () => exports.ObjectifsPanel || window.BudgetApp && window.BudgetApp.ObjectifsPanel;
+  // En-têtes Disponible liquide/illiquide/total de la page Objectifs (components/tresorerie-header.js).
+  const TresorerieHeaderCardsRef = () => exports.TresorerieHeaderCards || window.BudgetApp && window.BudgetApp.TresorerieHeaderCards;
   const inputStyle = {
     border: `1px solid ${C?.line || "#DED6C4"}`,
     borderRadius: 7,
@@ -1775,7 +1777,9 @@
           whiteSpace: "nowrap"
         }
       }, "−", p.gapPts.toFixed(2), " pt")]))));
-    })()), activeTab === "objectifs" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionCard, {
+    })()), activeTab === "objectifs" && /*#__PURE__*/React.createElement(React.Fragment, null, TresorerieHeaderCardsRef() && /*#__PURE__*/React.createElement(TresorerieHeaderCardsRef(), {
+      rawData: rawData
+    }), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Objectifs d'épargne",
       subtitle: "Montant visé, échéance et comptes support (un objectif peut être alimenté par plusieurs comptes). Les seuils de bascule se règlent dans Paramètres."
     }, ObjectifsPanelRef() ? /*#__PURE__*/React.createElement(ObjectifsPanelRef(), {
