@@ -1303,6 +1303,30 @@
     },
 
     /**
+     * Déclenche une synchronisation manuelle des comptes Enable Banking (DSP2) côté backend.
+     * @returns {Promise<Object>} Résumé de la synchronisation (par compte)
+     * @throws {Error} avec le message serveur si la synchronisation n'est pas configurée
+     *                  (certificat/application_id absents) ou a échoué
+     */
+    async syncEnableBanking() {
+      if (typeof fetch === 'undefined') {
+        throw new Error("Synchronisation Enable Banking non disponible dans cet environnement");
+      }
+      const res = await safeFetch(API_BASE_URL + '/bank-import/enable-banking/sync', { method: 'POST' });
+      let body = null;
+      try {
+        body = res ? await res.json() : null;
+      } catch (e) {
+        // Réponse non-JSON (ex : backend injoignable) : on retombe sur le message générique ci-dessous.
+      }
+      if (!res || !res.ok) {
+        const message = (body && body.error) ? body.error : "Échec de la synchronisation Enable Banking";
+        throw new Error(message);
+      }
+      return body;
+    },
+
+    /**
      * S'abonne aux changements des données d'Import Bancaire (saisie, autre onglet, import…).
      * Sera remplacé par du polling ou du websocket côté back-end.
      * @returns {Function} fonction de désabonnement

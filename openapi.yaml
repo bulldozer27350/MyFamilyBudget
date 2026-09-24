@@ -526,6 +526,35 @@ paths:
         '200':
           description: Traitement du CSV effectue
 
+  # ---------------------------------------------------------------------------
+  # SYNCHRONISATION ENABLE BANKING (DSP2)
+  # ---------------------------------------------------------------------------
+  /bank-import/enable-banking/sync:
+    post:
+      summary: >
+        Declenche une synchronisation manuelle des comptes Enable Banking (DSP2) : recupere les
+        transactions recentes de chaque compte configure et les importe (memes regles de
+        deduplication et de categorisation que l'import CSV).
+      operationId: syncEnableBanking
+      tags:
+        - Enable Banking
+      responses:
+        '200':
+          description: Resume de la synchronisation (par compte)
+          content:
+            application/json:
+              schema:
+                type: object
+        '503':
+          description: >
+            Synchronisation non configuree (application_id ou certificat prive Enable Banking
+            manquant) : le corps de la reponse contient un champ "error" a afficher a
+            l'utilisateur.
+          content:
+            application/json:
+              schema:
+                type: object
+
   /bank/convert-excel:
     post:
       summary: Convertit un fichier Excel (.xls ou .xlsx) en texte CSV

@@ -153,6 +153,8 @@ back/server/src/main/java/com/moe/myfamilybudget/
     ├── impl/                   → *ServiceImpl : un par domaine métier, implémente l'interface générée, fait aussi
     │                             office de calculateur (beaucoup de logique de projection vit ici, ex.
     │                             PatrimoineServiceImpl.computePatrimoineProjections())
+    ├── enablebanking/          → synchronisation bancaire DSP2 (Enable Banking) : JWT, client HTTP,
+    │                             mapping des transactions, service d'orchestration, planificateur (voir §4.6bis)
     ├── mapper/                 → Dto <-> Model
     ├── marketdata/             → aide à la saisie des taux : client des sources publiques (Caisse des Dépôts), instantané
                                 persisté et fraîcheur des données (voir §4.6)
@@ -182,6 +184,19 @@ Le package `marketdata` interroge des sources publiques pour **suggérer** des t
 - `BdfMortgageRateClient` lit le taux moyen des nouveaux crédits à l'habitat hors renégociations (Webstat, série `MIR1.M.FR.B.A22HR.A.5.A.2254U6.EUR.N`). **Clé d'API requise**, fournie par la variable d'environnement `MYFAMILYBUDGET_BDF_API_KEY` (docker-compose : `environment:`) ; sans clé, la source est ignorée sans erreur. La clé n'est jamais journalisée ni exposée par l'API.
 - Chaque source est rafraîchie indépendamment : une source en échec conserve sa donnée précédente, ses erreurs sont concaténées dans `lastRefreshError`.
 - Configuration : `myfamilybudget.market-data.*` dans `application.yml` (`enabled`, `timeout-seconds`, `refresh.*`, `cdc.*`, `ecb.*`, `bdf.*`). Désactivé dans les tests.
+
+### 4.6bis Synchronisation bancaire automatique (Enable Banking / DSP2)
+
+Le package `enablebanking` récupère automatiquement les transactions bancaires via l'API DSP2 d'[Enable Banking](https://enablebanking.com/) et les importe en réutilisant directement `BankImportCalculator.importTransactions` — le même moteur, la même déduplication (date + libellé + montant), que l'import CSV manuel. Aucun appel HTTP vers la propre API de l'application n'est nécessaire : mapping et persistance se font dans le même processus.
+
+- `EnableBankingConfig` centralise la configuration et détermine une seule fois au démarrage si la synchronisation peut être activée (`isConfigured()`) : `application-id`, un certificat **lisible** au chemin fourni, et au moins un compte déclaré. Absent, la synchronisation est simplement désactivée (log au démarrage), sans empêcher le reste de l'application de fonctionner — même logique que `BdfMortgageRateClient.isConfigured()` pour la Banque de France.
+- **Le certificat privé n'est jamais embarqué dans l'image Docker ni commité dans le dépôt** : seul son chemin sur l'hôte est fourni, via un bind mount Docker (`docker-compose.prod.yml`, dossier `secrets/enable-banking/`, versionné vide). La distribution portable (`MyFamilyBudget.bat`, destinée à des tiers) ne reçoit jamais ces variables et reste donc désactivée par défaut, sans risque de fuite.
+- `EnableBankingJwtSigner` signe le JWT (RS256) attendu par Enable Banking sans dépendance externe (uniquement `java.security`). Certificat attendu au format PKCS#8 (`-----BEGIN PRIVATE KEY-----`) ; un certificat PKCS#1 doit d'abord être converti (`openssl pkcs8 -topk8 -nocrypt`).
+- `EnableBankingClient` (uniquement `java.net.http.HttpClient`, comme `MarketHttp`) récupère soldes et transactions, avec pagination (`continuation_key`). Seules les transactions `status = BOOK` (comptabilisées) sont importées.
+- `EnableBankingTransactionMapper` déduit le type d'opération (`VIR SEPA`, `PRLV SEPA`, `CARTE`, ...) par heuristique sur le libellé (`remittance_information`), faute de `bank_transaction_code` exploitable pour toutes les banques — à ajuster selon les libellés réellement observés.
+- État de synchronisation (dernière date de transaction importée par compte, recouvrement de sécurité de 3 jours) persisté en base (table `enable_banking_sync_state`), sur le modèle de `market_snapshot`.
+- Deux déclencheurs : `EnableBankingSyncScheduler` (`@Scheduled`, tant que l'application tourne — configurable, désactivable dans les tests) et `POST /bank-import/enable-banking/sync` (bouton "Synchroniser mes comptes" de l'écran Import).
+- Configuration : `myfamilybudget.enable-banking.*` dans `application.yml` (`application-id`, `private-key-path`, `accounts` au format `libellé|uid;...`, `refresh.*`).
 
 ### 4.7 Analyse des prêts (rembourser ? renégocier ?)
 

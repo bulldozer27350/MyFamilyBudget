@@ -61,3 +61,21 @@ myfamilybudget:
       # marché des crédits est à saisir à la main. À fournir par variable d'environnement.
       api-key: ${MYFAMILYBUDGET_BDF_API_KEY:}
       mortgage-series-key: MIR1.M.FR.B.A22HR.A.5.A.2254U6.EUR.N   # nouveaux crédits à l'habitat, hors renégociations
+
+  # Synchronisation bancaire automatique via Enable Banking (DSP2). Le certificat n'est jamais
+  # embarqué dans l'image ni dans le dépôt : seul son chemin sur l'hôte est fourni (voir
+  # docker-compose.prod.yml). Sans application-id, sans certificat lisible à ce chemin, ou sans
+  # compte déclaré, la synchronisation est simplement désactivée (log au démarrage) : l'appli
+  # démarre et fonctionne normalement sans elle. C'est le comportement par défaut de la
+  # distribution portable (MyFamilyBudget.bat), qui ne fournit jamais ces variables.
+  enable-banking:
+    scheduler-enabled: true   # false : aucune synchronisation planifiée (le bouton front reste actif)
+    timeout-seconds: 15
+    application-id: ${MYFAMILYBUDGET_ENABLE_BANKING_APPLICATION_ID:}
+    private-key-path: ${MYFAMILYBUDGET_ENABLE_BANKING_PRIVATE_KEY_PATH:}
+    # Format : "libellé 1|uid-1;libellé 2|uid-2;..." (voir EnableBankingAccounts)
+    accounts: ${MYFAMILYBUDGET_ENABLE_BANKING_ACCOUNTS:}
+    api-base-url: https://api.enablebanking.com
+    refresh:
+      initial-delay: PT1M    # premier essai après le démarrage (durée ISO-8601)
+      interval: PT6H         # délai entre deux synchronisations planifiées

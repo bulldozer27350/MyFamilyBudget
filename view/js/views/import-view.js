@@ -732,6 +732,8 @@
       label: c.label
     }))];
     const [isConverting, setIsConverting] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncMessage, setSyncMessage] = useState(null);
     const [convertError, setConvertError] = useState(null);
 
     const processCSVText = (csvText, name) => {
@@ -800,6 +802,34 @@
         setImportSummary({
           error: "Erreur lors de l'import : " + error.message
         });
+      }
+    };
+    const doSyncEnableBanking = async () => {
+      setIsSyncing(true);
+      setSyncMessage(null);
+      try {
+        const result = await BudgetApi.syncEnableBanking();
+        const accounts = (result && result.accounts) || [];
+        const totalImported = accounts.reduce((sum, a) => sum + (a.imported || 0), 0);
+        const accountsInError = accounts.filter(a => a.error);
+        if (accountsInError.length > 0) {
+          setSyncMessage({
+            error: `${totalImported} transaction(s) importée(s), mais échec pour : ${accountsInError.map(a => a.label).join(", ")}`
+          });
+        } else {
+          setSyncMessage({
+            success: `${totalImported} transaction(s) importée(s) sur ${accounts.length} compte(s) synchronisé(s).`
+          });
+        }
+        const updatedData = await BudgetApi.getBankImport();
+        setBankImportData(updatedData);
+      } catch (error) {
+        console.error("Erreur lors de la synchronisation Enable Banking:", error);
+        setSyncMessage({
+          error: error.message
+        });
+      } finally {
+        setIsSyncing(false);
       }
     };
     const forceImportDuplicate = async tx => {
@@ -987,7 +1017,33 @@
         display: "none"
       },
       onChange: e => handleFile(e.target.files[0])
-    })), fileName && !isConverting && /*#__PURE__*/React.createElement("span", {
+    })), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: doSyncEnableBanking,
+      disabled: isSyncing,
+      title: "Récupère et importe les transactions récentes des comptes Enable Banking configurés",
+      style: {
+        marginLeft: 10,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "9px 16px",
+        borderRadius: 8,
+        border: `1px solid ${C?.line || "#DED6C4"}`,
+        cursor: isSyncing ? "not-allowed" : "pointer",
+        fontSize: 13,
+        fontWeight: 600,
+        color: isSyncing ? C?.inkSoft || "#6B7278" : C?.pine || "#2F5D50",
+        background: isSyncing ? C?.panelAlt || "#EFEAE0" : C?.pineSoft || "#E3ECE8",
+        opacity: isSyncing ? 0.7 : 1
+      }
+    }, isSyncing ? "⏳ Synchronisation…" : "🏦 Synchroniser mes comptes"), syncMessage && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 8,
+        fontSize: 12.5,
+        color: syncMessage.error ? C?.danger || "#B3452B" : C?.pine || "#2F5D50"
+      }
+    }, syncMessage.error || syncMessage.success), fileName && !isConverting && /*#__PURE__*/React.createElement("span", {
       style: {
         marginLeft: 12,
         fontSize: 12.5,

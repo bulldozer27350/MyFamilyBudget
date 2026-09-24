@@ -1,4 +1,0 @@
-# Fichiers locaux generes ou sensibles : a ne jamais committer
-enable_banking_config.json
-sync_state.json
-*.pem

@@ -269,6 +269,24 @@ scp .env.example marco@192.168.1.42:~/myfamilybudget/.env
 
 (Adapte le nom d'utilisateur et l'IP.)
 
+### Étape 7.2bis — Déposer le certificat Enable Banking (optionnel)
+
+Seulement si tu veux activer la synchronisation bancaire automatique
+(sinon, ignore cette étape : l'application fonctionne normalement sans
+elle). Le certificat ne doit **jamais** être commité dans Git ni envoyé
+autrement que directement au serveur :
+
+```bash
+# Sur le serveur (fenêtre SSH)
+mkdir -p ~/myfamilybudget/secrets/enable-banking
+```
+
+```powershell
+# Sur ton PC Windows (nouveau PowerShell), remplace le chemin par
+# l'emplacement réel de ton certificat .pem
+scp C:\Users\TonNom\enable-banking\private_key.pem marco@192.168.1.42:~/myfamilybudget/secrets/enable-banking/
+```
+
 ### Étape 7.3 — Configurer le fichier .env sur le serveur
 
 Retourne dans ta fenêtre SSH (celle connectée au serveur) :
@@ -281,6 +299,11 @@ Dans l'éditeur `nano` :
 - Remplace `TON_PSEUDO_DOCKERHUB/myfamilybudget:latest` par le vrai nom de
   ton image (ex : `marco27350/myfamilybudget:latest`).
 - Remplace `change-moi` par un vrai mot de passe PostgreSQL.
+- Si tu as déposé un certificat à l'étape 7.2bis : renseigne
+  `MYFAMILYBUDGET_ENABLE_BANKING_APPLICATION_ID` et
+  `MYFAMILYBUDGET_ENABLE_BANKING_ACCOUNTS` (format
+  `libellé 1|uid-1;libellé 2|uid-2;...`). Sinon, laisse-les vides : la
+  synchronisation reste désactivée.
 - Laisse le reste tel quel, sauf si tu veux changer les ports.
 
 Pour sauvegarder et quitter nano : `Ctrl+O` puis `Entrée` (sauvegarder),
@@ -374,3 +397,17 @@ mini-PC, avec `image:` au lieu de `build:`) sans toucher au
 et tester en local sur ta machine Windows. Pense à bien remplacer
 `TON_PSEUDO_DOCKERHUB/myfamilybudget:latest` par le vrai nom de ton image
 avant de pousser/déployer.
+
+---
+
+## Concernant le patch Enable Banking (synchronisation bancaire)
+
+Le patch fourni séparément ajoute la synchronisation automatique des
+comptes bancaires (Enable Banking, DSP2), directement intégrée au
+serveur Java (plus de script séparé à maintenir). Elle est **désactivée
+par défaut** : sans certificat déposé (étape 7.2bis) ni `.env` rempli,
+l'application démarre et fonctionne exactement comme avant, avec juste
+une ligne de log au démarrage le rappelant. Le certificat reste sur le
+serveur en permanence (`~/myfamilybudget/secrets/enable-banking/`) : il
+n'est ni commité dans Git, ni reconstruit dans l'image Docker à chaque
+mise à jour (`docker compose pull`), donc à déposer une seule fois.

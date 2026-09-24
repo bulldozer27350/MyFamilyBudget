@@ -35,8 +35,15 @@ services:
       # uniquement a la substitution de variables dans ce fichier : sans cette ligne, la variable
       # n'atteint jamais le conteneur. Vide (defaut) => source ignoree, taux a saisir a la main.
       MYFAMILYBUDGET_BDF_API_KEY: ${MYFAMILYBUDGET_BDF_API_KEY:-}
+      # Synchronisation bancaire Enable Banking (DSP2) : voir docker-compose.prod.yml pour le
+      # detail des commentaires. Vide par defaut => synchronisation desactivee.
+      MYFAMILYBUDGET_ENABLE_BANKING_APPLICATION_ID: ${MYFAMILYBUDGET_ENABLE_BANKING_APPLICATION_ID:-}
+      MYFAMILYBUDGET_ENABLE_BANKING_PRIVATE_KEY_PATH: /run/secrets/enable-banking/private_key.pem
+      MYFAMILYBUDGET_ENABLE_BANKING_ACCOUNTS: ${MYFAMILYBUDGET_ENABLE_BANKING_ACCOUNTS:-}
     ports:
       - "${APP_PORT:-8080}:8080"
+    volumes:
+      - ${MYFAMILYBUDGET_ENABLE_BANKING_SECRETS_DIR:-./secrets/enable-banking}:/run/secrets/enable-banking:ro
 
 volumes:
   pgdata:

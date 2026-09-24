@@ -36,8 +36,25 @@ services:
       # uniquement a la substitution de variables dans ce fichier : sans cette ligne, la variable
       # n'atteint jamais le conteneur. Vide (defaut) => source ignoree, taux a saisir a la main.
       MYFAMILYBUDGET_BDF_API_KEY: ${MYFAMILYBUDGET_BDF_API_KEY:-}
+      # Synchronisation bancaire Enable Banking (DSP2). Le certificat prive lui-meme N'EST JAMAIS
+      # ici : seul son chemin dans le conteneur (fixe, voir le volume ci-dessous) est indique.
+      # Application-id et liste de comptes vides (defaut) => synchronisation desactivee, log au
+      # demarrage, le reste de l'application fonctionne normalement.
+      MYFAMILYBUDGET_ENABLE_BANKING_APPLICATION_ID: ${MYFAMILYBUDGET_ENABLE_BANKING_APPLICATION_ID:-}
+      MYFAMILYBUDGET_ENABLE_BANKING_PRIVATE_KEY_PATH: /run/secrets/enable-banking/private_key.pem
+      # Format : "libelle 1|uid-1;libelle 2|uid-2;..." -- voir tools/enable-banking-sync (ou la
+      # documentation du projet) pour recuperer les uid de comptes aupres d'Enable Banking.
+      MYFAMILYBUDGET_ENABLE_BANKING_ACCOUNTS: ${MYFAMILYBUDGET_ENABLE_BANKING_ACCOUNTS:-}
     ports:
       - "${APP_PORT:-8080}:8080"
+    volumes:
+      # Bind mount : le certificat reste sur l'hote (ce dossier), jamais dans l'image ni dans Git.
+      # ${MYFAMILYBUDGET_ENABLE_BANKING_SECRETS_DIR:-./secrets/enable-banking} pointe par defaut
+      # vers le dossier versionne (vide) du depot : il existe donc toujours, meme sans certificat
+      # -- un bind mount vers un chemin hote inexistant creerait sinon un dossier vide au mauvais
+      # endroit cote conteneur. Deposer le fichier private_key.pem dans ce dossier sur le mini-PC
+      # (jamais commite : voir secrets/enable-banking/.gitignore) pour activer la synchronisation.
+      - ${MYFAMILYBUDGET_ENABLE_BANKING_SECRETS_DIR:-./secrets/enable-banking}:/run/secrets/enable-banking:ro
     labels:
       # Seul ce conteneur porte ce label : watchtower ne surveillera donc que
       # lui, jamais "db" (une mise a jour automatique de Postgres pourrait
