@@ -79,3 +79,14 @@ myfamilybudget:
     refresh:
       initial-delay: PT1M    # premier essai après le démarrage (durée ISO-8601)
       interval: PT6H         # délai entre deux synchronisations planifiées
+
+  # Notifications (débit/solde/objectifs, voir server.internal.notification). Le canal push
+  # mobile (Web Push / PWA, sans passer par un store d'applications) nécessite une paire de clés
+  # VAPID ; sans elles, le canal se désactive silencieusement au démarrage (log), même
+  # comportement par défaut que enable-banking/bdf ci-dessus. Générer la paire avec, par exemple,
+  # `npx web-push generate-vapid-keys`.
+  notifications:
+    push:
+      vapid-public-key: ${MYFAMILYBUDGET_VAPID_PUBLIC_KEY:}
+      vapid-private-key: ${MYFAMILYBUDGET_VAPID_PRIVATE_KEY:}
+      vapid-subject: ${MYFAMILYBUDGET_VAPID_SUBJECT:}   # ex. mailto:vous@example.com

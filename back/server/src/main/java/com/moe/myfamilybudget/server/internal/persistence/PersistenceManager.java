@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,9 +77,14 @@ public class PersistenceManager {
     // Strangler Fig) : dispatcher du point 3, sections trésorerie/patrimoine/retraite/fiscalité/
     // catégories d'actifs/historique de placement/import bancaire. PersistenceManager est
     // désormais une pure façade : chacune de ses méthodes publiques ne fait plus que déléguer à
-    // la méthode de même nom ici. Comme `gateway` et `cacheStore`, volontairement pas un bean
-    // Spring.
+    // la méthode de même nom ici.
     private final BudgetMutationService mutationService;
+
+    // Publication d'un BudgetMutatedEvent après chaque mutation réussie (voir publishMutated),
+    // consommé par NotificationDispatchService pour déclencher un contrôle des notifications.
+    // Bean Spring générique (contexte d'application), aucune dépendance vers le package
+    // notification depuis PersistenceManager.
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
     public PersistenceManager(BudgetDataRepository budgetDataRepository,
@@ -100,7 +106,8 @@ public class PersistenceManager {
                             BankImportRepository bankImportRepository,
                             LoanRepository loanRepository,
                             ObjectifRepository objectifRepository,
-                            PlatformTransactionManager transactionManager) {
+                            PlatformTransactionManager transactionManager,
+                            ApplicationEventPublisher eventPublisher) {
         this.budgetDataRepository = budgetDataRepository;
         this.settingsRepository = settingsRepository;
         this.incomeRepository = incomeRepository;
@@ -129,6 +136,7 @@ public class PersistenceManager {
                 assetCategoryRepository, bankImportRepository, loanRepository, objectifRepository);
         this.cacheStore = new BudgetCacheStore(this.gateway, this.transactionTemplate);
         this.mutationService = new BudgetMutationService(this.cacheStore);
+        this.eventPublisher = eventPublisher;
     }
 
     @PostConstruct
@@ -149,6 +157,7 @@ public class PersistenceManager {
      */
     public void setBudgetData(BudgetDataModel data) {
         cacheStore.setBudgetData(data);
+        publishMutated("setBudgetData");
     }
 
     /**
@@ -156,14 +165,18 @@ public class PersistenceManager {
      * {@link BudgetCacheStore#resetData}.
      */
     public BudgetDataModel resetData() {
-        return cacheStore.resetData();
+        BudgetDataModel result = cacheStore.resetData();
+        publishMutated("resetData");
+        return result;
     }
 
     /**
      * Ajoute une nouvelle ligne dans une section de trésorerie (incomes, charges, oneoff, variableIncomes, variableOverrides, placements).
      */
     public Map<String, Object> addTresorerieRow(String listKey, Map<String, Object> body) {
-        return mutationService.addTresorerieRow(listKey, body);
+        Map<String, Object> result = mutationService.addTresorerieRow(listKey, body);
+        publishMutated("addTresorerieRow");
+        return result;
     }
 
     /**
@@ -171,6 +184,7 @@ public class PersistenceManager {
      */
     public void updateTresorerieRow(String listKey, String id, String field, Object value) {
         mutationService.updateTresorerieRow(listKey, id, field, value);
+        publishMutated("updateTresorerieRow");
     }
 
     /**
@@ -178,6 +192,7 @@ public class PersistenceManager {
      */
     public void removeTresorerieRow(String listKey, String id) {
         mutationService.removeTresorerieRow(listKey, id);
+        publishMutated("removeTresorerieRow");
     }
 
     /**
@@ -186,13 +201,16 @@ public class PersistenceManager {
      */
     public void applyTresorerieAjustement(String lineId, String kind, BigDecimal newMonthly) {
         mutationService.applyTresorerieAjustement(lineId, kind, newMonthly);
+        publishMutated("applyTresorerieAjustement");
     }
 
     /**
      * Ajoute ou met à jour une ligne de patrimoine (real estate, placements, loans).
      */
     public Map<String, Object> savePatrimoineRow(String listKey, Map<String, Object> body) {
-        return mutationService.savePatrimoineRow(listKey, body);
+        Map<String, Object> result = mutationService.savePatrimoineRow(listKey, body);
+        publishMutated("savePatrimoineRow");
+        return result;
     }
 
     /**
@@ -200,6 +218,7 @@ public class PersistenceManager {
      */
     public void updateRetirement(RetirementModel retirement) {
         mutationService.updateRetirement(retirement);
+        publishMutated("updateRetirement");
     }
 
     /**
@@ -208,6 +227,7 @@ public class PersistenceManager {
     public void updateTaxConfig(List<TaxChildModel> children, List<TaxBracketModel> brackets,
                                 List<TaxRateOverrideModel> rateOverrides, List<TaxActualOverrideModel> actualOverrides) {
         mutationService.updateTaxConfig(children, brackets, rateOverrides, actualOverrides);
+        publishMutated("updateTaxConfig");
     }
 
     /**
@@ -215,6 +235,7 @@ public class PersistenceManager {
      */
     public void updateTaxSettings(String field, Object value) {
         mutationService.updateTaxSettings(field, value);
+        publishMutated("updateTaxSettings");
     }
 
     /**
@@ -222,6 +243,7 @@ public class PersistenceManager {
      */
     public void updateAssetCategory(String id, String field, Object value) {
         mutationService.updateAssetCategory(id, field, value);
+        publishMutated("updateAssetCategory");
     }
 
     /**
@@ -229,6 +251,7 @@ public class PersistenceManager {
      */
     public void addAssetCategory(AssetCategoryModel category) {
         mutationService.addAssetCategory(category);
+        publishMutated("addAssetCategory");
     }
 
     /**
@@ -236,6 +259,7 @@ public class PersistenceManager {
      */
     public void removeAssetCategory(String id) {
         mutationService.removeAssetCategory(id);
+        publishMutated("removeAssetCategory");
     }
 
     /**
@@ -243,6 +267,7 @@ public class PersistenceManager {
      */
     public void resetDefaultTaxBrackets() {
         mutationService.resetDefaultTaxBrackets();
+        publishMutated("resetDefaultTaxBrackets");
     }
 
     /**
@@ -250,20 +275,25 @@ public class PersistenceManager {
      */
     public void deletePatrimoineRow(String listKey, String id) {
         mutationService.deletePatrimoineRow(listKey, id);
+        publishMutated("deletePatrimoineRow");
     }
 
     /**
      * Ajoute une entrée d'historique de valorisation à un placement.
      */
     public Map<String, Object> addPlacementHistoryEntry(String placementId, Map<String, Object> body) {
-        return mutationService.addPlacementHistoryEntry(placementId, body);
+        Map<String, Object> result = mutationService.addPlacementHistoryEntry(placementId, body);
+        publishMutated("addPlacementHistoryEntry");
+        return result;
     }
 
     /**
      * Met à jour une entrée d'historique de valorisation d'un placement.
      */
     public Map<String, Object> updatePlacementHistoryEntry(String placementId, String entryId, Map<String, Object> body) {
-        return mutationService.updatePlacementHistoryEntry(placementId, entryId, body);
+        Map<String, Object> result = mutationService.updatePlacementHistoryEntry(placementId, entryId, body);
+        publishMutated("updatePlacementHistoryEntry");
+        return result;
     }
 
     /**
@@ -271,6 +301,7 @@ public class PersistenceManager {
      */
     public void deletePlacementHistoryEntry(String placementId, String entryId) {
         mutationService.deletePlacementHistoryEntry(placementId, entryId);
+        publishMutated("deletePlacementHistoryEntry");
     }
 
     /**
@@ -285,5 +316,17 @@ public class PersistenceManager {
      */
     public void updateBankImport(BankImportModel bankImport) {
         mutationService.updateBankImport(bankImport);
+        publishMutated("updateBankImport");
+    }
+
+    /**
+     * Publie un {@link BudgetMutatedEvent} après une mutation réussie, écouté par
+     * {@code NotificationDispatchService} (package {@code notification}) après le commit de la
+     * transaction en cours pour déclencher un contrôle des règles de notification.
+     *
+     * @param mutationKind nom de la méthode à l'origine de la mutation, à titre diagnostique
+     */
+    private void publishMutated(String mutationKind) {
+        eventPublisher.publishEvent(new BudgetMutatedEvent(mutationKind));
     }
 }
