@@ -105,6 +105,7 @@
     const { useState, useEffect, useCallback } = React;
     const [settingsData, setSettingsData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState("general");
 
     // Charger les données via l'API asynchrone
     useEffect(() => {
@@ -193,9 +194,38 @@
     const data = settingsData;
     const retireYear = data?.retireYear || 1985 + 64;
     const years = data?.years || [retireYear];
+    const TAB_STYLE = active => ({
+      padding: "7px 18px",
+      fontSize: 13,
+      fontWeight: 600,
+      cursor: "pointer",
+      borderBottom: active ? `2px solid ${C?.pine || "#2F5D50"}` : `2px solid transparent`,
+      color: active ? C?.pine || "#2F5D50" : C?.inkSoft || "#6B7278",
+      background: "none",
+      border: "none",
+      transition: "all 0.15s"
+    });
     return /*#__PURE__*/React.createElement(SectionCard, {
-      title: "Paramètres généraux"
+      title: "Paramètres"
     }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        borderBottom: `1px solid ${C?.line || "#DED6C4"}`,
+        marginBottom: 22,
+        gap: 0
+      }
+    }, [{
+      key: "general",
+      label: "⚙️ Général"
+    }, {
+      key: "notifications",
+      label: "🔔 Notifications"
+    }].map(t => /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      key: t.key,
+      onClick: () => setActiveTab(t.key),
+      style: TAB_STYLE(activeTab === t.key)
+    }, t.label))), activeTab === "general" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         gap: 30,
@@ -671,7 +701,13 @@
         name: "Nouvelle catégorie",
         bucket: "cash"
       })
-    })));
+    }))), activeTab === "notifications" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "24px 4px",
+        color: C?.inkSoft || "#6B7278",
+        fontSize: 13
+      }
+    }, "Réglages de notifications à venir.")));
   }
   exports.SettingsView = SettingsView;
 })(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);
