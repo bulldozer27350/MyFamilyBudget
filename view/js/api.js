@@ -1679,6 +1679,87 @@
     },
 
     /**
+     * Paramètres de notification (seuils et activation par section) : valeurs en vigueur et
+     * valeurs par défaut.
+     * @returns {Promise<{values: Object, defaults: Object}|null>}
+     */
+    async getNotificationsParametres() {
+      return fetchJsonOrNull('/notifications/parametres');
+    },
+
+    /**
+     * Enregistre les paramètres de notification. Rejette avec le message du serveur (400 :
+     * seuil hors plage) pour que l'interface puisse l'afficher tel quel.
+     * @param {Object} values
+     * @returns {Promise<{values: Object, defaults: Object}>}
+     */
+    async saveNotificationsParametres(values) {
+      const res = await safeFetch(API_BASE_URL + '/notifications/parametres', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values)
+      });
+      if (!res) throw new Error('Serveur injoignable : paramètres non enregistrés.');
+      let body = null;
+      try {
+        body = await res.json();
+      } catch (e) {
+        // Corps absent ou non JSON : on se contente du code HTTP.
+      }
+      if (!res.ok) throw new Error((body && body.message) || 'Enregistrement refusé (HTTP ' + res.status + ').');
+      return body;
+    },
+
+    /**
+     * Déclenche immédiatement un contrôle de toutes les règles de notification actives (bouton
+     * "Vérifier").
+     * @returns {Promise<{alertsSent: number}>}
+     */
+    async verifyNotifications() {
+      const res = await safeFetch(API_BASE_URL + '/notifications/verifier', { method: 'POST' }, 15000);
+      if (!res || !res.ok) throw new Error('Serveur injoignable : vérification impossible.');
+      try {
+        return await res.json();
+      } catch (e) {
+        return { alertsSent: 0 };
+      }
+    },
+
+    /**
+     * Clé publique VAPID à utiliser par le navigateur pour s'abonner au push (voir
+     * push-notifications.js). null si les clés VAPID ne sont pas configurées côté serveur.
+     * @returns {Promise<{publicKey: string|null}|null>}
+     */
+    async getPushPublicKey() {
+      return fetchJsonOrNull('/notifications/push/cle-publique');
+    },
+
+    /**
+     * Enregistre un abonnement Web Push (tel que renvoyé par PushSubscription.toJSON()).
+     * @param {{endpoint: string, keys: {p256dh: string, auth: string}}} subscriptionJson
+     * @returns {Promise<void>}
+     */
+    async registerPushSubscription(subscriptionJson) {
+      const res = await safeFetch(API_BASE_URL + '/notifications/push/abonnement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscriptionJson)
+      });
+      if (!res || !res.ok) throw new Error('Abonnement push non enregistré côté serveur.');
+    },
+
+    /**
+     * Supprime un abonnement Web Push.
+     * @param {string} endpoint
+     * @returns {Promise<void>}
+     */
+    async unregisterPushSubscription(endpoint) {
+      await safeFetch(API_BASE_URL + '/notifications/push/abonnement?endpoint=' + encodeURIComponent(endpoint), {
+        method: 'DELETE'
+      });
+    },
+
+    /**
      * Exporte l'intégralité du modèle de données (Sauvegarde).
      * @returns {Promise<Object>}
      */

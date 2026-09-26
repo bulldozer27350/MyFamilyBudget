@@ -181,6 +181,65 @@
       }
     }, []);
 
+    // --- Notifications (seuils/toggles) : modèle séparé de Settings, chargé une fois au montage ---
+    const [notifSettings, setNotifSettings] = useState(null);
+    const [notifError, setNotifError] = useState(null);
+    const [pushStatus, setPushStatus] = useState("checking");
+    const [pushError, setPushError] = useState(null);
+
+    useEffect(() => {
+      async function loadNotifSettings() {
+        try {
+          const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
+          const res = await api?.getNotificationsParametres();
+          if (res) setNotifSettings(res.values);
+        } catch (error) {
+          console.error("Erreur lors du chargement des paramètres de notification:", error);
+        }
+      }
+      loadNotifSettings();
+    }, []);
+
+    useEffect(() => {
+      async function loadPushStatus() {
+        const push = exports.PushNotifications || window.BudgetApp?.PushNotifications;
+        if (push) setPushStatus(await push.getStatus());
+        else setPushStatus("unsupported");
+      }
+      loadPushStatus();
+    }, []);
+
+    // Fusionne et enregistre un sous-ensemble de champs des paramètres de notification.
+    const saveNotifField = useCallback(async (partial) => {
+      const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
+      if (!api) return;
+      const merged = { ...(notifSettings || {}), ...partial };
+      setNotifSettings(merged);
+      setNotifError(null);
+      try {
+        const res = await api.saveNotificationsParametres(merged);
+        setNotifSettings(res.values);
+      } catch (error) {
+        setNotifError(error.message || "Enregistrement refusé.");
+      }
+    }, [notifSettings]);
+
+    const togglePush = useCallback(async () => {
+      const push = exports.PushNotifications || window.BudgetApp?.PushNotifications;
+      if (!push) return;
+      setPushError(null);
+      try {
+        if (pushStatus === "subscribed") {
+          await push.unsubscribe();
+        } else {
+          await push.subscribe();
+        }
+        setPushStatus(await push.getStatus());
+      } catch (error) {
+        setPushError(error.message || "Échec de l'activation des notifications push.");
+      }
+    }, [pushStatus]);
+
     if (loading) {
       return /*#__PURE__*/React.createElement("div", {
         style: {
@@ -702,12 +761,83 @@
         bucket: "cash"
       })
     }))), activeTab === "notifications" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-      style: {
-        padding: "24px 4px",
-        color: C?.inkSoft || "#6B7278",
-        fontSize: 13
-      }
-    }, "Réglages de notifications à venir.")));
+      style: { padding: "4px 4px 24px" }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 14, fontWeight: 700, color: C?.ink || "#232A2E", marginBottom: 4 }
+    }, "Alertes"), /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12.5, color: C?.inkSoft || "#6B7278", marginBottom: 16 }
+    }, "Chaque section activée envoie une notification push sur les appareils abonnés ci-dessous."), notifError && /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12.5, color: "#B3261E", marginBottom: 12 }
+    }, notifError),
+
+    /*#__PURE__*/React.createElement("div", { style: { marginBottom: 18 } }, /*#__PURE__*/React.createElement("label", {
+      style: { display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      checked: !!notifSettings?.debitThresholdEnabled,
+      onChange: e => saveNotifField({ debitThresholdEnabled: e.target.checked })
+    }), /*#__PURE__*/React.createElement("span", {
+      style: { fontSize: 12.5, color: C?.ink || "#232A2E", fontWeight: 600 }
+    }, "Débit important")), notifSettings?.debitThresholdEnabled && /*#__PURE__*/React.createElement("div", {
+      style: { marginTop: 8, marginLeft: 26 }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12, color: C?.inkSoft || "#6B7278", marginBottom: 6 }
+    }, "Seuil de débit (€)"), /*#__PURE__*/React.createElement(DebouncedInput, {
+      type: "number",
+      value: notifSettings?.debitThresholdAmount ?? "",
+      placeholder: "ex. 500",
+      onChange: v => saveNotifField({ debitThresholdAmount: parseFloat(v || 0) || 0 }),
+      style: inputStyle
+    }))),
+
+    /*#__PURE__*/React.createElement("div", { style: { marginBottom: 18 } }, /*#__PURE__*/React.createElement("label", {
+      style: { display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      checked: !!notifSettings?.balanceFloorEnabled,
+      onChange: e => saveNotifField({ balanceFloorEnabled: e.target.checked })
+    }), /*#__PURE__*/React.createElement("span", {
+      style: { fontSize: 12.5, color: C?.ink || "#232A2E", fontWeight: 600 }
+    }, "Solde du compte courant")), notifSettings?.balanceFloorEnabled && /*#__PURE__*/React.createElement("div", {
+      style: { marginTop: 8, marginLeft: 26 }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12, color: C?.inkSoft || "#6B7278", marginBottom: 6 }
+    }, "Seuil plancher (€)"), /*#__PURE__*/React.createElement(DebouncedInput, {
+      type: "number",
+      value: notifSettings?.balanceFloorAmount ?? "",
+      placeholder: "ex. 500",
+      onChange: v => saveNotifField({ balanceFloorAmount: parseFloat(v || 0) || 0 }),
+      style: inputStyle
+    }))),
+
+    /*#__PURE__*/React.createElement("div", { style: { marginBottom: 18 } }, /*#__PURE__*/React.createElement("label", {
+      style: { display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      checked: !!notifSettings?.objectifReachableEnabled,
+      onChange: e => saveNotifField({ objectifReachableEnabled: e.target.checked })
+    }), /*#__PURE__*/React.createElement("span", {
+      style: { fontSize: 12.5, color: C?.ink || "#232A2E", fontWeight: 600 }
+    }, "Objectif atteignable")), /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 11.5, color: C?.inkSoft || "#6B7278", marginLeft: 26, marginTop: 4 }
+    }, "Prévient dès qu'un objectif devient entièrement couvert par ses comptes alloués.")),
+
+    /*#__PURE__*/React.createElement("div", {
+      style: { marginTop: 24, paddingTop: 18, borderTop: `1px solid ${C?.line || "#DED6C4"}` }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 14, fontWeight: 700, color: C?.ink || "#232A2E", marginBottom: 8 }
+    }, "Notifications sur cet appareil"), pushStatus === "unsupported" && /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12.5, color: C?.inkSoft || "#6B7278" }
+    }, "Non pris en charge par ce navigateur. Sur iPhone/iPad : ouvrir dans Safari, puis \"Partager\" → \"Sur l'écran d'accueil\", et réessayer depuis l'application ajoutée."), pushStatus === "denied" && /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12.5, color: "#B3261E" }
+    }, "Notifications bloquées pour ce site dans les réglages du navigateur."), (pushStatus === "subscribed" || pushStatus === "not-subscribed") && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: togglePush,
+      style: { ...btnSmStyle, padding: "7px 16px", fontSize: 12.5 }
+    }, pushStatus === "subscribed" ? "Désactiver sur cet appareil" : "Activer sur cet appareil"), pushError && /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12, color: "#B3261E", marginTop: 8 }
+    }, pushError)))
+    )));
   }
   exports.SettingsView = SettingsView;
 })(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);

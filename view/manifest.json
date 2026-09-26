@@ -1,0 +1,19 @@
+{
+  "name": "MyFamilyBudget",
+  "short_name": "MyFamilyBudget",
+  "description": "Gestion budgetaire, patrimoine et retraite",
+  "start_url": "/overview.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F6F3EC",
+  "theme_color": "#2F5D50",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
