@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
@@ -83,6 +84,7 @@ public final class PersistenceManagerTestFactory {
                 mock(BankImportRepository.class),
                 mock(LoanRepository.class),
                 mock(ObjectifRepository.class),
-                mock(PlatformTransactionManager.class));
+                mock(PlatformTransactionManager.class),
+                mock(ApplicationEventPublisher.class));
     }
 }
