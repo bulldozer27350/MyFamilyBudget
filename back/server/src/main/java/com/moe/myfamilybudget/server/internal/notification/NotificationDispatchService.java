@@ -2,6 +2,7 @@ package com.moe.myfamilybudget.server.internal.notification;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -24,11 +25,15 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.Notificatio
  * {@link PersistenceManager} après chaque mutation — "toute modification doit déclencher un
  * contrôle des notifications"), après le commit de la transaction en cours
  * ({@link TransactionPhase#AFTER_COMMIT}) pour ne lire que des données effectivement persistées.
- * Une alerte automatique n'est envoyée qu'une fois par 24h (par clé de déduplication).
+ * Une alerte automatique n'est envoyée qu'une fois par 24h (par clé de déduplication), et pas du
+ * tout pendant la plage horaire silencieuse si elle est activée
+ * ({@link NotificationSettingsParameters#isWithinQuietHours}) : le contrôle est alors purement et
+ * simplement sauté (aucune règle évaluée, aucune date de dernier envoi mise à jour), il reprendra
+ * normalement à la prochaine mutation une fois la plage terminée.
  *
  * Déclenchement manuel : {@link #runManualCheck()} (bouton "Vérifier") envoie systématiquement,
- * sans tenir compte du délai de 24h, et remet à jour la date du dernier envoi — ce qui relance
- * aussi le délai de 24h pour le prochain déclenchement automatique.
+ * sans tenir compte du délai de 24h ni de la plage silencieuse, et remet à jour la date du dernier
+ * envoi — ce qui relance aussi le délai de 24h pour le prochain déclenchement automatique.
  */
 @Service
 public class NotificationDispatchService {
@@ -64,6 +69,9 @@ public class NotificationDispatchService {
 
     private int runChecks(boolean manual) {
         NotificationSettingsParameters settings = settingsService.current();
+        if (!manual && settings.isWithinQuietHours(LocalTime.now())) {
+            return 0;
+        }
         BudgetDataModel data = persistenceManager.getBudgetData();
         NotificationContext context = new NotificationContext(data, settings);
         int sent = 0;

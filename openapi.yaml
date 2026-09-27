@@ -1023,7 +1023,9 @@ paths:
       summary: Enregistre les parametres de notification
       description: |
         Seuils exprimes en euros (valeur absolue pour le seuil de debit). Un montant negatif ou
-        invraisemblable renvoie un 400 avec un message explicite.
+        invraisemblable renvoie un 400 avec un message explicite. Les heures de la plage
+        silencieuse (quietHoursStart/quietHoursEnd) sont au format HH:mm ; un format invalide
+        renvoie aussi un 400.
       operationId: updateNotificationsParametres
       tags:
         - Notifications
@@ -2498,10 +2500,19 @@ components:
           description: Active la section "solde sous un seuil"
         balanceFloorAmount:
           type: number
-          description: Seuil plancher du solde total des comptes (euros)
+          description: Seuil plancher du solde du compte courant (euros)
         objectifReachableEnabled:
           type: boolean
           description: Active la section "objectif atteignable"
+        quietHoursEnabled:
+          type: boolean
+          description: Active la plage horaire silencieuse (aucun envoi automatique pendant cette plage)
+        quietHoursStart:
+          type: string
+          description: Debut de la plage silencieuse, format HH:mm (ex. "22:00")
+        quietHoursEnd:
+          type: string
+          description: Fin de la plage silencieuse, format HH:mm (ex. "07:00"). Peut etre anterieure a quietHoursStart (plage chevauchant minuit)
 
     NotificationParametresDto:
       type: object

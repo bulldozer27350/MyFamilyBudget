@@ -857,6 +857,38 @@
       style: { marginTop: 24, paddingTop: 18, borderTop: `1px solid ${C?.line || "#DED6C4"}` }
     }, /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 14, fontWeight: 700, color: C?.ink || "#232A2E", marginBottom: 8 }
+    }, "Plage horaire silencieuse"), /*#__PURE__*/React.createElement("label", {
+      style: { display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 8 }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      checked: !!notifSettings?.quietHoursEnabled,
+      onChange: e => saveNotifField({ quietHoursEnabled: e.target.checked })
+    }), /*#__PURE__*/React.createElement("span", {
+      style: { fontSize: 12.5, color: C?.ink || "#232A2E", fontWeight: 600 }
+    }, "Suspendre les notifications automatiques la nuit")), notifSettings?.quietHoursEnabled && /*#__PURE__*/React.createElement("div", {
+      style: { display: "flex", gap: 16, marginLeft: 26, alignItems: "flex-end" }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12, color: C?.inkSoft || "#6B7278", marginBottom: 6 }
+    }, "De"), /*#__PURE__*/React.createElement("input", {
+      type: "time",
+      value: notifSettings?.quietHoursStart || "22:00",
+      onChange: e => saveNotifField({ quietHoursStart: e.target.value }),
+      style: inputStyle
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12, color: C?.inkSoft || "#6B7278", marginBottom: 6 }
+    }, "À"), /*#__PURE__*/React.createElement("input", {
+      type: "time",
+      value: notifSettings?.quietHoursEnd || "07:00",
+      onChange: e => saveNotifField({ quietHoursEnd: e.target.value }),
+      style: inputStyle
+    }))), /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 11.5, color: C?.inkSoft || "#6B7278", marginLeft: 26, marginTop: 8 }
+    }, "Le bouton \"Vérifier maintenant\" ignore toujours cette plage.")),
+
+    /*#__PURE__*/React.createElement("div", {
+      style: { marginTop: 24, paddingTop: 18, borderTop: `1px solid ${C?.line || "#DED6C4"}` }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 14, fontWeight: 700, color: C?.ink || "#232A2E", marginBottom: 8 }
     }, "Notifications sur cet appareil"), pushStatus === "unsupported" && /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 12.5, color: C?.inkSoft || "#6B7278" }
     }, "Non pris en charge par ce navigateur. Sur iPhone/iPad : ouvrir dans Safari, puis \"Partager\" → \"Sur l'écran d'accueil\", et réessayer depuis l'application ajoutée."), pushStatus === "denied" && /*#__PURE__*/React.createElement("div", {

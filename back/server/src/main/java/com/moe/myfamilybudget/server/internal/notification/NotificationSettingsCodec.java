@@ -24,6 +24,9 @@ final class NotificationSettingsCodec {
         root.put("balanceFloorEnabled", Boolean.TRUE.equals(p.balanceFloorEnabled()));
         root.put("balanceFloorAmount", p.balanceFloorAmount().toPlainString());
         root.put("objectifReachableEnabled", Boolean.TRUE.equals(p.objectifReachableEnabled()));
+        root.put("quietHoursEnabled", Boolean.TRUE.equals(p.quietHoursEnabled()));
+        root.put("quietHoursStart", p.quietHoursStart());
+        root.put("quietHoursEnd", p.quietHoursEnd());
         try {
             return mapper.writeValueAsString(root);
         } catch (JsonProcessingException e) {
@@ -32,17 +35,25 @@ final class NotificationSettingsCodec {
     }
 
     /**
-     * @throws IllegalStateException si le contenu est illisible ou incomplet
+     * Les 3 champs de plage silencieuse sont lus avec repli sur les valeurs par défaut (absents
+     * d'une ligne enregistrée avant leur introduction), contrairement aux montants qui restent
+     * strictement requis.
+     *
+     * @throws IllegalStateException si le contenu est illisible ou un montant est manquant
      */
     static NotificationSettingsParameters fromJson(String json, ObjectMapper mapper) {
         try {
             JsonNode root = mapper.readTree(json);
+            NotificationSettingsParameters defaults = NotificationSettingsParameters.defaults();
             return new NotificationSettingsParameters(
                     root.path("debitThresholdEnabled").asBoolean(false),
                     requiredDecimal(root, "debitThresholdAmount"),
                     root.path("balanceFloorEnabled").asBoolean(false),
                     requiredDecimal(root, "balanceFloorAmount"),
-                    root.path("objectifReachableEnabled").asBoolean(false));
+                    root.path("objectifReachableEnabled").asBoolean(false),
+                    root.path("quietHoursEnabled").asBoolean(false),
+                    root.path("quietHoursStart").asText(defaults.quietHoursStart()),
+                    root.path("quietHoursEnd").asText(defaults.quietHoursEnd()));
         } catch (JsonProcessingException | NumberFormatException e) {
             throw new IllegalStateException("Paramètres de notification persistés illisibles", e);
         }
