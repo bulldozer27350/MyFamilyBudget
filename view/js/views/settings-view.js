@@ -186,6 +186,9 @@
     const [notifError, setNotifError] = useState(null);
     const [pushStatus, setPushStatus] = useState("checking");
     const [pushError, setPushError] = useState(null);
+    const [verifyStatus, setVerifyStatus] = useState("idle");
+    const [verifyResult, setVerifyResult] = useState(null);
+    const [verifyError, setVerifyError] = useState(null);
 
     useEffect(() => {
       async function loadNotifSettings() {
@@ -239,6 +242,23 @@
         setPushError(error.message || "Échec de l'activation des notifications push.");
       }
     }, [pushStatus]);
+
+    // Déclenchement manuel (bouton "Vérifier") : envoie une véritable notification pour chaque
+    // règle active positive, sans tenir compte du délai de 24h des déclenchements automatiques.
+    const runVerify = useCallback(async () => {
+      const api = exports.BudgetApi || window.BudgetApp?.BudgetApi;
+      if (!api) return;
+      setVerifyStatus("checking");
+      setVerifyError(null);
+      try {
+        const res = await api.verifyNotifications();
+        setVerifyResult(res?.alertsSent ?? 0);
+        setVerifyStatus("done");
+      } catch (error) {
+        setVerifyError(error.message || "Vérification impossible.");
+        setVerifyStatus("error");
+      }
+    }, []);
 
     if (loading) {
       return /*#__PURE__*/React.createElement("div", {
@@ -766,7 +786,18 @@
       style: { fontSize: 14, fontWeight: 700, color: C?.ink || "#232A2E", marginBottom: 4 }
     }, "Alertes"), /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 12.5, color: C?.inkSoft || "#6B7278", marginBottom: 16 }
-    }, "Chaque section activée envoie une notification push sur les appareils abonnés ci-dessous."), notifError && /*#__PURE__*/React.createElement("div", {
+    }, "Chaque section activée envoie une notification push sur les appareils abonnés ci-dessous."), /*#__PURE__*/React.createElement("div", {
+      style: { marginBottom: 16 }
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      disabled: verifyStatus === "checking",
+      onClick: runVerify,
+      style: { ...btnSmStyle, padding: "7px 16px", fontSize: 12.5, opacity: verifyStatus === "checking" ? 0.6 : 1 }
+    }, verifyStatus === "checking" ? "Vérification..." : "Vérifier maintenant"), verifyStatus === "done" && /*#__PURE__*/React.createElement("span", {
+      style: { marginLeft: 10, fontSize: 12.5, color: C?.inkSoft || "#6B7278" }
+    }, verifyResult > 0 ? `${verifyResult} alerte(s) envoyée(s).` : "Aucune alerte à signaler."), verifyStatus === "error" && /*#__PURE__*/React.createElement("span", {
+      style: { marginLeft: 10, fontSize: 12.5, color: "#B3261E" }
+    }, verifyError)), notifError && /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 12.5, color: "#B3261E", marginBottom: 12 }
     }, notifError),
 
