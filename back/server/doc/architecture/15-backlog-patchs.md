@@ -104,11 +104,11 @@ spécifiques à relire avant de le démarrer.
 - Écrire une règle initiale via `FreezingArchRule` (mécanisme de gel des violations existantes) : le package `calculation` ne doit pas dépendre de `BudgetDataModel`. Le gel capture les violations actuelles sans les corriger, et fait échouer uniquement toute nouvelle violation.
 - Documenter dans le test lui-même que la liste des violations gelées doit se réduire domaine par domaine au fil des patchs RF-1xx à RF-9xx (chaque patch de garde-fou de domaine retire ce domaine de la liste gelée).
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-100 — Retraite - Contrats

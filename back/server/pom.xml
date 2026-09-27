@@ -78,6 +78,18 @@
             <scope>test</scope>
         </dependency>
 
+        <!--
+            ArchUnit — garde-fou d'architecture (RF-001, doc/architecture/00-principes.md et
+            01-sequencement.md) : vérifie par la compilation/CI, pas seulement par la discipline,
+            que le package `calculation` ne dépend pas de `BudgetDataModel`.
+        -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>1.3.0</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Apache POI — Lecture fichiers Excel (.xls et .xlsx) -->
         <dependency>
             <groupId>org.apache.poi</groupId>
