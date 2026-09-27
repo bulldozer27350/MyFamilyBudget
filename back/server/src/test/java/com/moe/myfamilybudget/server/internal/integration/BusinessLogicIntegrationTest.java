@@ -777,6 +777,63 @@ class BusinessLogicIntegrationTest {
     }
 
     // =========================================================================
+    // PRÊTS (caractérisation RF-000 : filet de sécurité avant refactoring RF-8xx)
+    // =========================================================================
+
+    @Test
+    @Order(34)
+    @DisplayName("GET /analyse/prets => 200, aucun prêt dans mock-budget.json, hypothèses par défaut")
+    void testAnalysePrets_noLoans_defaultAssumptions() throws Exception {
+        importMockBudget();
+
+        MvcResult result = mockMvc.perform(get("/api/v1/analyse/prets").contextPath("/api/v1"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        // Pas de taux de marché fourni en paramètre ni enregistré => non évalué.
+        assertThat(root.has("marketRateUsed")).isFalse();
+        assertThat(root.has("marketRateSource")).isFalse();
+        assertThat(root.path("loans")).isEmpty();
+
+        JsonNode assumptions = root.path("assumptions");
+        assertThat(assumptions.path("loanType").asText()).isEqualTo("immobilier");
+        assertThat(assumptions.path("repayMarginRate").decimalValue()).isEqualByComparingTo("0.005");
+        assertThat(assumptions.path("renegotiationMinGapRate").decimalValue()).isEqualByComparingTo("0.007");
+        assertThat(assumptions.path("renegotiationMinCrd").decimalValue()).isEqualByComparingTo("70000");
+        assertThat(assumptions.path("renegotiationMinRemainingMonths").asInt()).isEqualTo(84);
+        assertThat(assumptions.path("renegotiationFixedCosts").decimalValue()).isEqualByComparingTo("1500");
+        assertThat(assumptions.path("flatTaxRate").decimalValue()).isEqualByComparingTo("0.30");
+
+        // Sans taux de marché, seules les deux notes générales (IRA, alternative sans risque) sont présentes.
+        assertThat(root.path("notes")).hasSize(2);
+    }
+
+    @Test
+    @Order(35)
+    @DisplayName("GET /analyse/prets/parametres => values = defaults tant que rien n'a été enregistré")
+    void testAnalysePretsParametres_defaultsUntilSaved() throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/analyse/prets/parametres").contextPath("/api/v1"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        JsonNode values = root.path("values");
+        JsonNode defaults = root.path("defaults");
+
+        assertThat(values.has("marketRate")).isFalse();
+        assertThat(defaults.has("marketRate")).isFalse();
+        assertThat(values).isEqualTo(defaults);
+
+        assertThat(defaults.path("repayMarginRate").decimalValue()).isEqualByComparingTo("0.005");
+        assertThat(defaults.path("renegotiationMinGapRate").decimalValue()).isEqualByComparingTo("0.007");
+        assertThat(defaults.path("renegotiationMinCrd").decimalValue()).isEqualByComparingTo("70000");
+        assertThat(defaults.path("renegotiationMinRemainingMonths").asInt()).isEqualTo(84);
+        assertThat(defaults.path("renegotiationFixedCosts").decimalValue()).isEqualByComparingTo("1500");
+        assertThat(defaults.path("flatTaxRate").decimalValue()).isEqualByComparingTo("0.30");
+    }
+
+    // =========================================================================
     // HELPER
     // =========================================================================
 

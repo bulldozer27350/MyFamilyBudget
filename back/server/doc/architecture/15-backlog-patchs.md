@@ -87,11 +87,11 @@ spécifiques à relire avant de le démarrer.
 - Ajouter des tests de caractérisation (snapshots des réponses API actuelles) pour les endpoints fiscal, retraite, trésorerie, patrimoine et prêts, utilisés comme filet de sécurité pendant tout le chantier.
 - Aucune modification du code de production.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-001 — Garde-fou ArchUnit minimal
