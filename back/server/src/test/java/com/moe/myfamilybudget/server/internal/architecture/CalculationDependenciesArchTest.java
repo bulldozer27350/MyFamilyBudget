@@ -47,7 +47,7 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 class CalculationDependenciesArchTest {
 
     @ArchTest
-    static final ArchRule CALCULATION_DOES_NOT_DEPEND_ON_BUDGET_DATA_MODEL = FreezingArchRule.of(
+    static final ArchRule CALCULATION_DOES_NOT_DEPEND_ON_BUDGET_DATA_MODEL = FreezingArchRule.freeze(
             noClasses()
                     .that().resideInAPackage("..internal.calculation..")
                     .should().dependOnClassesThat().areAssignableTo(BudgetDataModel.class)
