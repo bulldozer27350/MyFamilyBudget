@@ -138,11 +138,11 @@ spécifiques à relire avant de le démarrer.
 - Brancher `RetraiteServiceImpl` sur `RetirementInputFactory` + `RetirementCalculationService` au lieu de son calcul interne.
 - Ne pas encore toucher `OverviewCalculationService` ni `TresorerieCalculationService` (voir RF-102).
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-102 — Retraite - Brancher Trésorerie et Overview sur le moteur unique

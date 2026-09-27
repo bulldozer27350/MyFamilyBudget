@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,12 +18,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationInput;
+import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.server.internal.calculation.RetirementInputFactory;
+import com.moe.myfamilybudget.server.internal.calculation.RetirementParameters;
+import com.moe.myfamilybudget.server.internal.calculation.RetirementPersonInput;
 import com.moe.myfamilybudget.server.internal.mapper.RetraiteMapper;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
-import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -31,13 +34,15 @@ class RetraiteServiceImplTest {
     private RetraiteServiceImpl service;
     private RetraiteMapper mapper;
     private PersistenceManager persistenceManager;
+    private RetirementCalculationService calculationService;
 
     @BeforeEach
     void setUp() {
         mapper = new RetraiteMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        service = new RetraiteServiceImpl(persistenceManager, mapper);
+        calculationService = new RetirementCalculationService();
+        service = new RetraiteServiceImpl(persistenceManager, mapper, new RetirementInputFactory(), calculationService);
     }
 
     @Test
@@ -102,15 +107,16 @@ class RetraiteServiceImplTest {
     }
 
     @Test
-    @DisplayName("computeRetirementProjection() calcule la décote lorsque le nombre de trimestres est inférieur à 172")
+    @DisplayName("RetirementCalculationService.compute() calcule la décote lorsque le nombre de trimestres est inférieur à 172")
     void testComputeRetirementProjectionDecote() {
-        BudgetDataModel data = persistenceManager.getBudgetData();
-
-        RetirementModel.RetirementPersonModel person = new RetirementModel.RetirementPersonModel(
-            "p1", "Alice", 1985, "", 120, "2025-01-01", List.of(), new BigDecimal("1000"), new BigDecimal("0.0051"), false
+        RetirementPersonInput person = new RetirementPersonInput(
+            1985, 120, LocalDate.of(2025, 1, 1), List.of(), new BigDecimal("1000"), new BigDecimal("0.0051"), List.of()
+        );
+        RetirementCalculationInput input = new RetirementCalculationInput(
+            2049, new RetirementParameters(null, null, null, null, null), 0, List.of(person)
         );
 
-        RetirementProjectionModel projection = service.computeRetirementProjection(data, person, 2049);
+        RetirementProjectionModel projection = calculationService.compute(input).people().get(0);
 
         assertNotNull(projection);
         assertTrue(projection.manqueTauxPlein());
@@ -121,15 +127,16 @@ class RetraiteServiceImplTest {
     }
 
     @Test
-    @DisplayName("computeRetirementProjection() calcule la surcote lorsque le nombre de trimestres est supérieur à 172")
+    @DisplayName("RetirementCalculationService.compute() calcule la surcote lorsque le nombre de trimestres est supérieur à 172")
     void testComputeRetirementProjectionSurcote() {
-        BudgetDataModel data = persistenceManager.getBudgetData();
-
-        RetirementModel.RetirementPersonModel person = new RetirementModel.RetirementPersonModel(
-            "p2", "Bob", 1970, "", 180, "2025-01-01", List.of(), new BigDecimal("3000"), new BigDecimal("0.0051"), true
+        RetirementPersonInput person = new RetirementPersonInput(
+            1970, 180, LocalDate.of(2025, 1, 1), List.of(), new BigDecimal("3000"), new BigDecimal("0.0051"), List.of()
+        );
+        RetirementCalculationInput input = new RetirementCalculationInput(
+            2034, new RetirementParameters(null, null, null, null, null), 0, List.of(person)
         );
 
-        RetirementProjectionModel projection = service.computeRetirementProjection(data, person, 2034);
+        RetirementProjectionModel projection = calculationService.compute(input).people().get(0);
 
         assertNotNull(projection);
         assertFalse(projection.manqueTauxPlein());
@@ -139,29 +146,16 @@ class RetraiteServiceImplTest {
     }
 
     @Test
-    @DisplayName("computeRetirementProjection() applique une majoration de 10% si la famille compte 3 enfants ou plus")
+    @DisplayName("RetirementCalculationService.compute() applique une majoration de 10% si la famille compte 3 enfants ou plus")
     void testComputeRetirementProjectionMajoration3Enfants() {
-        BudgetDataModel defaultData = persistenceManager.getBudgetData();
-
-        List<TaxChildModel> threeChildren = List.of(
-            new TaxChildModel("c1", "Enfant 1", 2010),
-            new TaxChildModel("c2", "Enfant 2", 2012),
-            new TaxChildModel("c3", "Enfant 3", 2015)
+        RetirementPersonInput person = new RetirementPersonInput(
+            1980, 172, LocalDate.of(2025, 1, 1), List.of(), new BigDecimal("2000"), new BigDecimal("0.0051"), List.of()
+        );
+        RetirementCalculationInput input = new RetirementCalculationInput(
+            2044, new RetirementParameters(null, null, null, null, null), 3, List.of(person)
         );
 
-        BudgetDataModel dataWithChildren = new BudgetDataModel(
-            defaultData.settings(), defaultData.incomes(), defaultData.charges(), defaultData.placements(),
-            defaultData.realEstate(), defaultData.retirement(), threeChildren, defaultData.taxBrackets(),
-            defaultData.taxRateOverrides(), defaultData.taxActualOverrides(), defaultData.oneoff(),
-            defaultData.transfers(), defaultData.variableIncomes(), defaultData.variableOverrides(),
-            defaultData.bankImport()
-        );
-
-        RetirementModel.RetirementPersonModel person = new RetirementModel.RetirementPersonModel(
-            "p3", "Charlie", 1980, "", 172, "2025-01-01", List.of(), new BigDecimal("2000"), new BigDecimal("0.0051"), false
-        );
-
-        RetirementProjectionModel projection = service.computeRetirementProjection(dataWithChildren, person, 2044);
+        RetirementProjectionModel projection = calculationService.compute(input).people().get(0);
 
         assertNotNull(projection);
         assertThat(projection.majoration()).isEqualTo(new BigDecimal("1.10"));
