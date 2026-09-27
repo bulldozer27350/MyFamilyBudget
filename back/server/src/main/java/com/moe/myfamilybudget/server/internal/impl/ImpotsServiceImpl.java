@@ -1,6 +1,7 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
 import com.moe.myfamilybudget.api.controller.ImpotsApi;
+import com.moe.myfamilybudget.server.internal.factory.TaxInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.TaxMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
@@ -8,6 +9,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.server.internal.model.TaxYearlyModel;
 import com.moe.myfamilybudget.server.internal.model.TaxResultModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +36,17 @@ public class ImpotsServiceImpl implements ImpotsApi {
     @Override
     public ResponseEntity<Object> getImpots() {
         BudgetDataModel data = persistenceManager.getBudgetData();
-        TaxResultModel resultModel = TaxCalculator.computeTaxResult(data);
+        var input = TaxInputFactory.from(data);
+        List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(input);
+        List<TaxYearlyModel> taxPreview = TaxCalculator.buildTaxPreview(
+                taxYearly, java.time.LocalDate.now().getYear());
+        TaxResultModel resultModel = new TaxResultModel(
+                data.getEffectiveTaxChildren(),
+                data.getEffectiveTaxBrackets(),
+                data.getEffectiveTaxRateOverrides(),
+                data.getEffectiveTaxActualOverrides(),
+                data.getEffectiveSettings(),
+                taxPreview);
         Map<String, Object> response = taxMapper.toResponseMap(resultModel);
         return ResponseEntity.ok(response);
     }
