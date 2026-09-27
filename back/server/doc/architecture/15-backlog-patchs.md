@@ -187,11 +187,11 @@ spécifiques à relire avant de le démarrer.
 - Créer `TaxCalculationInput`, `TaxSimulationPeriod`, `AnnualTaxIncome`, `TaxHouseholdParameters` et les types associés (brackets/overrides).
 - Créer `TaxInputFactory` (version 1, qui peut encore s'appuyer sur `findEarliestYear(BudgetDataModel)` en interne — c'est la première des deux étapes logiques décrites dans le fichier de domaine).
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-201 — Fiscalité - Branchement du moteur
