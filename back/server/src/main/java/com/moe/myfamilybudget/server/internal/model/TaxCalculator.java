@@ -58,6 +58,24 @@ public class TaxCalculator {
     }
 
     /**
+     * Calcule les parts fiscales à partir du contrat Fiscalité, qui transporte uniquement
+     * les années de naissance des enfants et non les modèles de persistance.
+     */
+    private static double partsForCalculationYear(List<Integer> childBirthYears, int exitAge, int year) {
+        if (childBirthYears == null || childBirthYears.isEmpty()) {
+            return 2.0;
+        }
+        long attached = childBirthYears.stream()
+                .filter(birthYear -> birthYear != null && (year - birthYear) < exitAge)
+                .count();
+        double parts = 2.0;
+        for (int i = 1; i <= attached; i++) {
+            parts += (i <= 2) ? 0.5 : 1.0;
+        }
+        return parts;
+    }
+
+    /**
      * Calcule l'impôt progressif pour une part fiscale.
      */
     public static BigDecimal taxForOnePart(BigDecimal q, List<TaxBracketModel> brackets) {
@@ -116,7 +134,7 @@ public class TaxCalculator {
         Map<Integer, BigDecimal> retirementIncomes = input.retirementIncome() == null
                 ? Map.of()
                 : input.retirementIncome().stream().collect(java.util.stream.Collectors.toMap(
-                        AnnualTaxableRetirementIncome::year, AnnualTaxableRetirementIncome::taxableAmount, BigDecimal::add));
+                        AnnualTaxableRetirementIncome::year, AnnualTaxableRetirementIncome::amount, BigDecimal::add));
         Map<Integer, BigDecimal> rateOverrides = input.rateOverrides() == null
                 ? Map.of()
                 : input.rateOverrides().stream().collect(java.util.stream.Collectors.toMap(
@@ -136,13 +154,13 @@ public class TaxCalculator {
             BigDecimal taxableIncome = grossIncome.multiply(BigDecimal.ONE.subtract(abattement))
                     .setScale(2, RoundingMode.HALF_UP);
 
-            double parts = partsForYear(
+            double parts = partsForCalculationYear(
                     input.childBirthYears() == null ? List.of() : input.childBirthYears(),
                     input.household().childExitAge(), year);
             BigDecimal taxForecast = BigDecimal.ZERO;
             if (parts > 0) {
                 BigDecimal quotient = taxableIncome.divide(BigDecimal.valueOf(parts), 10, RoundingMode.HALF_UP);
-                taxForecast = taxForOnePart(quotient, input.brackets())
+                taxForecast = taxForCalculationPart(quotient, input.brackets())
                         .multiply(BigDecimal.valueOf(parts)).setScale(2, RoundingMode.HALF_UP);
             }
 
@@ -160,7 +178,7 @@ public class TaxCalculator {
         return result;
     }
 
-    private static BigDecimal taxForOnePart(BigDecimal q, List<TaxBracket> brackets) {
+    private static BigDecimal taxForCalculationPart(BigDecimal q, List<TaxBracket> brackets) {
         if (q == null || q.compareTo(BigDecimal.ZERO) <= 0 || brackets == null || brackets.isEmpty()) {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
