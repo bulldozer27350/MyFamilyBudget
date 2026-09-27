@@ -121,11 +121,11 @@ spécifiques à relire avant de le démarrer.
 - Créer `RetirementInputFactory` qui construit l'Input à partir de `BudgetDataModel`, y compris la résolution `incomeLabel -> AnnualSalaryProjection` (actuellement une recherche dans `IncomeModel`).
 - Purement additif : aucun appelant existant n'est modifié.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-101 — Retraite - Moteur centralisé
