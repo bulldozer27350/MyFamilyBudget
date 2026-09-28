@@ -729,7 +729,7 @@ spécifiques à relire avant de le démarrer.
   - [x] Overview (`OverviewServiceImpl`)
   - [x] Fiscalité (`ImpotsServiceImpl`)
   - [x] Analyse / Analyse Prêts (`AnalyseServiceImpl`, `AnalysePretsServiceImpl`)
-  - [ ] Paramètres (`ParametersServiceImpl`)
+  - [x] Paramètres (`ParametersServiceImpl`)
   - [ ] Banque / Import (`StatementBankImportServiceImpl`, `PointageServiceImpl`, `PendingOperationsServiceImpl`)
   - [ ] Suggestions de taux / Système (`SuggestionsTauxServiceImpl`, `SystemeServiceImpl`)
 - **Statut** :

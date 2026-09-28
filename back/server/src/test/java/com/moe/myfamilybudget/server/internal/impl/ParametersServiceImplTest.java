@@ -20,6 +20,9 @@ import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
 import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -34,7 +37,11 @@ class ParametersServiceImplTest {
         mapper = new SettingsMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        service = new ParametersServiceImpl(persistenceManager, mapper,
+        service = new ParametersServiceImpl(
+                new SettingsPersistenceAdapter(persistenceManager),
+                new PatrimoinePersistenceAdapter(persistenceManager),
+                new BankPersistenceAdapter(persistenceManager),
+                mapper,
                 new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore()),
                 new PatrimoineCommandService(persistenceManager),
                 new TaxCommandService(persistenceManager));

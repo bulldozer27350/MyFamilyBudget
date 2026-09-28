@@ -9,31 +9,46 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.ParametresApi;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
+import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
+import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsCalculator;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsResultModel;
-import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
-import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
+/**
+ * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
+ * {@code PersistenceManager}. {@code getSettings()} lit via {@link SettingsReader},
+ * {@link PatrimoineReader} (catégories d'actifs) et {@link BankReader} ; {@code saveSettings()}
+ * ne lit rien et délègue déjà entièrement aux services de commande par domaine.
+ */
 @Service
 @RestController
 public class ParametersServiceImpl implements ParametresApi {
 
-    private final PersistenceManager persistenceManager;
+    private final SettingsReader settingsReader;
+    private final PatrimoineReader patrimoineReader;
+    private final BankReader bankReader;
     private final SettingsMapper settingsMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
     private final PatrimoineCommandService patrimoineCommandService;
     private final TaxCommandService taxCommandService;
 
-    public ParametersServiceImpl(PersistenceManager persistenceManager, SettingsMapper settingsMapper,
+    public ParametersServiceImpl(
+            SettingsReader settingsReader,
+            PatrimoineReader patrimoineReader,
+            BankReader bankReader,
+            SettingsMapper settingsMapper,
             ObjectifsSettingsService objectifsSettingsService,
             PatrimoineCommandService patrimoineCommandService,
             TaxCommandService taxCommandService) {
-        this.persistenceManager = persistenceManager;
+        this.settingsReader = settingsReader;
+        this.patrimoineReader = patrimoineReader;
+        this.bankReader = bankReader;
         this.settingsMapper = settingsMapper;
         this.objectifsSettingsService = objectifsSettingsService;
         this.patrimoineCommandService = patrimoineCommandService;
@@ -42,12 +57,11 @@ public class ParametersServiceImpl implements ParametresApi {
 
     @Override
     public ResponseEntity<Object> getSettings() {
-        BudgetDataModel data = persistenceManager.getBudgetData();
-        SettingsModel settings = data.getEffectiveSettings();
-        List<AssetCategoryModel> categories = data.getEffectiveAssetCategories();
+        SettingsModel settings = settingsReader.getSettings();
+        List<AssetCategoryModel> categories = patrimoineReader.getAssetCategories();
 
         SettingsResultModel result = SettingsCalculator.computeSettingsResult(
-                settings, categories, data.bankImport()
+                settings, categories, bankReader.getBankImport()
         );
 
         Map<String, Object> response = settingsMapper.toResponseMap(result, objectifsSettingsService.current());
