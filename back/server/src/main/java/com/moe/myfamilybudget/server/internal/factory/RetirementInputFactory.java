@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.server.internal.factory;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -7,6 +7,11 @@ import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Component;
 
+import com.moe.myfamilybudget.server.internal.calculation.AnnualSalaryProjection;
+import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationInput;
+import com.moe.myfamilybudget.server.internal.calculation.RetirementParameters;
+import com.moe.myfamilybudget.server.internal.calculation.RetirementPersonInput;
+import com.moe.myfamilybudget.server.internal.calculation.SalaryHistoryEntry;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;

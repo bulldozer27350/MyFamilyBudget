@@ -20,9 +20,9 @@ import org.springframework.http.ResponseEntity;
 
 import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationInput;
 import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
-import com.moe.myfamilybudget.server.internal.calculation.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.calculation.RetirementParameters;
 import com.moe.myfamilybudget.server.internal.calculation.RetirementPersonInput;
+import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.RetraiteMapper;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;

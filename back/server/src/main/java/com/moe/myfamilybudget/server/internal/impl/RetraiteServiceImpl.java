@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.moe.myfamilybudget.api.controller.RetraiteApi;
 import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationInput;
 import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
-import com.moe.myfamilybudget.server.internal.calculation.RetirementInputFactory;
+import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.RetraiteMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;

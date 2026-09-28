@@ -19,10 +19,14 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
  * jamais le modèle persistant complet ; c'est le signal d'alerte central de tout le chantier de
  * découplage (test de conception à 4 questions, voir 00-principes.md).
  *
+ * <p>Les factories de composition ({@code RetirementInputFactory}, {@code TaxInputFactory}...)
+ * vivent dans {@code internal.factory}, hors du périmètre de cette règle : elles sont le lieu
+ * normal où {@code BudgetDataModel} est traduit en {@code XxxInput}. Le domaine Retraite n'a plus
+ * aucune violation depuis RF-103.
+ *
  * <p><b>Gel des violations existantes ({@link FreezingArchRule}).</b> À l'écriture de ce test,
  * {@code OverviewCalculationService} et {@code TresorerieCalculationService} dépendent encore
- * directement de {@code BudgetDataModel} (chacune y recalcule en interne sa propre projection de
- * retraite — voir 01-sequencement.md, étape 2). Plutôt que de casser le build immédiatement, la
+ * directement de {@code BudgetDataModel}. Plutôt que de casser le build immédiatement, la
  * règle est enveloppée dans une {@link FreezingArchRule} : les violations constatées au premier
  * lancement sont gelées dans le dossier {@code archunit_store} (voir {@code archunit.properties})
  * et n'échouent plus tant qu'elles ne s'aggravent pas ; toute <em>nouvelle</em> violation, elle,

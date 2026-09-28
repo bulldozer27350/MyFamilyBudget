@@ -173,9 +173,9 @@ spécifiques à relire avant de le démarrer.
 - **Statut** :
 - [ ] Non commencé
 - [ ] Démarré
-- [x] En attente de réponse
+- [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-200 — Fiscalité - Contrats (version large)
