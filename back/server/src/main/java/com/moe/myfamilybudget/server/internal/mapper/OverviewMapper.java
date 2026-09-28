@@ -200,11 +200,15 @@ public class OverviewMapper {
     }
 
     public OverviewResponseDto toDto(OverviewResultModel model) {
+        return toDto(model, null);
+    }
+
+    public OverviewResponseDto toDto(OverviewResultModel model, BudgetDataModel data) {
         if (model == null) {
             return null;
         }
 
-        BudgetDataDto dataDto = toBudgetDataDto(model.data());
+        BudgetDataDto dataDto = data != null ? toBudgetDataDto(data) : null;
         List<CashflowYearDto> cashflowDtos = model.cashflow() != null
                 ? model.cashflow().stream().map(this::toCashflowYearDto).collect(Collectors.toList())
                 : List.of();

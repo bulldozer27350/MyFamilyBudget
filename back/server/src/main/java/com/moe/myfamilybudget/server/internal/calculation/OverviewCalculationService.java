@@ -2,70 +2,45 @@ package com.moe.myfamilybudget.server.internal.calculation;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.CashflowYearModel;
-import com.moe.myfamilybudget.server.internal.model.ChargeModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
-import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.OverviewResultModel;
-import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
-import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
-import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
-import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
-import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
-import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
-import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
-import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.TripleAmountModel;
-import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
-import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 
 /**
- * Calcul pur de l'aperçu financier global (Overview) : projections de trésorerie, de patrimoine
- * et de retraite. Aucune dépendance Spring Web, aucun état — instanciable et testable
- * indépendamment de la couche HTTP.
+ * Calcul pur de l'aperçu financier global (Overview) : composition et transformation de
+ * projections déjà calculées par les autres domaines (Trésorerie, Patrimoine, Retraite,
+ * Fiscalité, Immobilier).
  *
- * Point 8 de l'audit ({@code audit-mitigation-plan.md}) : extraction de la logique de calcul
- * auparavant mélangée à l'orchestration HTTP dans {@code OverviewServiceImpl} (876 lignes, dont
- * une seule méthode `@Override` exposant un endpoint). Déplacement de code à l'identique, sans
- * réécriture fonctionnelle : {@code OverviewServiceImpl} ne fait plus que déléguer ici après
- * avoir lu les données via {@code PersistenceManager}, puis mapper le résultat en DTO.
+ * <p>RF-901 (voir doc/architecture/11-domaine-overview.md) : ce moteur ne dépend plus d'aucun
+ * modèle persistant ({@code BudgetDataModel}, {@code IncomeModel}, etc.) ni d'aucune logique de
+ * recalcul. Il consomme exclusivement {@link OverviewInput} et produit un {@link OverviewResultModel}.
  */
+@Component
 public class OverviewCalculationService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(OverviewCalculationService.class);
+    public OverviewResultModel computeOverview(OverviewInput input) {
+        Objects.requireNonNull(input, "input");
 
-    private final RetirementInputFactory retirementInputFactory = new RetirementInputFactory();
-    private final RetirementCalculationService retirementCalculationService = new RetirementCalculationService();
+        OverviewParameters parameters = input.parameters();
+        TreasuryProjection treasury = input.treasuryProjection();
+        PatrimoineProjection patrimoine = input.patrimoineProjection();
+        RetirementProjection retirement = input.retirementProjection();
+        RealEstateProjection realEstate = input.realEstateProjection();
 
-    public OverviewResultModel computeOverview(BudgetDataModel data, boolean useConstantEuros) {
-        SettingsModel settings = data.getEffectiveSettings();
-
-        int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
-        FinancialProjections projections = computeFinancialProjections(data, useConstantEuros);
-        List<Integer> years = projections.years();
+        List<Integer> years = treasury.years();
+        int retireYear = parameters.retireYear();
+        boolean useConstantEuros = parameters.useConstantEuros();
+        BigDecimal inflationRate = parameters.inflationRate();
 
         int startYear = years.isEmpty() ? retireYear : years.get(0);
-        BigDecimal inflationRate = settings.getEffectiveInflationRate();
 
         BigDecimal retireDeflator;
         if (useConstantEuros) {
@@ -75,48 +50,54 @@ public class OverviewCalculationService {
             retireDeflator = BigDecimal.ONE;
         }
 
-        TripleAmountModel financialOnlyPatrimoine = computeFinancialOnlyPatrimoine(data, projections.patrimoine(), years, retireYear, retireDeflator);
-        BigDecimal realEstateAtRetire = computeRealEstateAtRetire(data, retireYear, retireDeflator);
+        // 1. Patrimoine financier mobilisable à la retraite
+        int idx = years.indexOf(retireYear);
+        TripleAmountModel financialOnlyPatrimoine = patrimoine.financialOnlyPatrimoine(idx, retireDeflator);
 
+        // 2. Immobilier à la retraite
+        BigDecimal realEstateAtRetire = realEstate.nominalValueAtRetire().multiply(retireDeflator);
+
+        // 3. Patrimoine total à la retraite
         TripleAmountModel retirePatrimoine = new TripleAmountModel(
             financialOnlyPatrimoine.pess().add(realEstateAtRetire),
             financialOnlyPatrimoine.corr().add(realEstateAtRetire),
             financialOnlyPatrimoine.opti().add(realEstateAtRetire)
         );
 
-        Optional<CashflowYearModel> retireYearData = projections.cashflow().stream().filter(c -> c.year() == retireYear).findFirst();
-        BigDecimal retireCharges = retireYearData.map(c -> c.charges().divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP).multiply(retireDeflator))
+        // 4. Charges mensuelles à la retraite
+        Optional<CashflowYearModel> retireYearData = treasury.cashflow().stream()
+            .filter(c -> c.year() == retireYear)
+            .findFirst();
+        BigDecimal retireCharges = retireYearData.map(c -> c.charges()
+            .divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP)
+            .multiply(retireDeflator))
             .orElse(BigDecimal.ZERO);
 
+        // 5. Pensions de retraite mensuelles totales
         BigDecimal totalPensions = BigDecimal.ZERO;
-        RetirementModel retirement = data.retirement();
-        if (retirement != null && retirement.people() != null) {
-            RetirementProjection projection = retirementCalculationService.compute(retirementInputFactory.create(data));
-            for (RetirementProjectionModel proj : projection.people()) {
-                totalPensions = totalPensions.add(proj.pensionTotaleMensuelle());
-            }
+        for (RetirementProjectionModel proj : retirement.people()) {
+            totalPensions = totalPensions.add(proj.pensionTotaleMensuelle());
         }
         totalPensions = totalPensions.multiply(retireDeflator);
 
-        BigDecimal patrimoineActuel = data.getEffectivePlacements().stream()
-            .map(PlacementModel::getEffectiveBalance)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 6. Patrimoine financier actuel
+        BigDecimal patrimoineActuel = patrimoine.currentTotalBalance();
 
-        int currentCalendarYear = LocalDate.now().getYear();
-        BigDecimal fluxNetActuel = projections.cashflow().stream()
+        // 7. Flux net actuel (année civile courante de référence)
+        int currentCalendarYear = parameters.currentYear();
+        BigDecimal fluxNetActuel = treasury.cashflow().stream()
             .filter(c -> c.year() == currentCalendarYear)
             .findFirst()
             .map(CashflowYearModel::net)
-            .orElse(projections.cashflow().isEmpty() ? BigDecimal.ZERO : projections.cashflow().get(0).net());
+            .orElse(treasury.cashflow().isEmpty() ? BigDecimal.ZERO : treasury.cashflow().get(0).net());
 
         return new OverviewResultModel(
-            data,
             years,
-            projections.cashflow(),
-            projections.patrimoine(),
+            treasury.cashflow(),
+            patrimoine.projections(),
             useConstantEuros,
             retireYear,
-            computePivotBalance(data),
+            parameters.pivotBalance(),
             patrimoineActuel,
             fluxNetActuel,
             retireCharges,
@@ -134,648 +115,5 @@ public class OverviewCalculationService {
             patrimoine.corr().multiply(factor),
             patrimoine.opti().multiply(factor)
         );
-    }
-
-    private TripleAmountModel computeFinancialOnlyPatrimoine(BudgetDataModel data, PatrimoineProjectionsModel patrimoine, List<Integer> years, int retireYear, BigDecimal deflator) {
-        int idx = years.indexOf(retireYear);
-        if (idx == -1) {
-            return new TripleAmountModel(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
-        }
-
-        Set<String> excludedLabels = new HashSet<>();
-        for (PlacementModel p : data.getEffectivePlacements()) {
-            if (p.isExcludedFromRetirement()) {
-                excludedLabels.add(p.label());
-            }
-        }
-
-        BigDecimal pess = BigDecimal.ZERO;
-        BigDecimal corr = BigDecimal.ZERO;
-        BigDecimal opti = BigDecimal.ZERO;
-
-        for (PatrimoinePerPlacementModel pp : patrimoine.perPlacement()) {
-            if (excludedLabels.contains(pp.label())) {
-                continue;
-            }
-            if (idx < pp.rows().size()) {
-                PatrimoineYearModel row = pp.rows().get(idx);
-                pess = pess.add(row.pess());
-                corr = corr.add(row.corr());
-                opti = opti.add(row.opti());
-            }
-        }
-
-        return new TripleAmountModel(
-            pess.multiply(deflator),
-            corr.multiply(deflator),
-            opti.multiply(deflator)
-        );
-    }
-
-    private BigDecimal computeRealEstateAtRetire(BudgetDataModel data, int retireYear, BigDecimal deflator) {
-        int currentYear = LocalDate.now().getYear();
-        BigDecimal total = BigDecimal.ZERO;
-
-        for (RealEstateModel r : data.getEffectiveRealEstate()) {
-            int valuationYear = r.valuationYear() != null ? r.valuationYear() : currentYear;
-            int elapsed = Math.max(0, retireYear - valuationYear);
-            double growthFactor = Math.pow(1.0 + r.getEffectiveAnnualGrowthRate().doubleValue(), elapsed);
-            BigDecimal val = r.getEffectiveCurrentValue().multiply(BigDecimal.valueOf(growthFactor)).multiply(deflator);
-            total = total.add(val);
-        }
-        return total;
-    }
-
-    private BigDecimal computePivotBalance(BudgetDataModel data) {
-        if (data.settings() == null || data.settings().pivotDate() == null) {
-            return null;
-        }
-        if ("manual".equalsIgnoreCase(data.settings().pivotMode())) {
-            return data.settings().getEffectiveStartBalance();
-        }
-        BigDecimal base = data.settings().getEffectiveStartBalance();
-        String pivotDate = data.settings().pivotDate();
-
-        BigDecimal sum = BigDecimal.ZERO;
-        if (data.bankImport() != null && data.bankImport().transactions() != null) {
-            for (BankImportModel.BankTransactionModel t : data.bankImport().transactions()) {
-                if (t.date() != null && t.date().compareTo(pivotDate) <= 0) {
-                    sum = sum.add(t.amount() != null ? t.amount() : BigDecimal.ZERO);
-                }
-            }
-        }
-        return base.add(sum);
-    }
-
-    private record FinancialProjections(
-        List<Integer> years,
-        List<CashflowYearModel> cashflow,
-        PatrimoineProjectionsModel patrimoine
-    ) {}
-
-    private FinancialProjections computeFinancialProjections(BudgetDataModel data, boolean useConstantEuros) {
-        SettingsModel settings = data.getEffectiveSettings();
-
-        int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
-        int startYear = findEarliestYear(data);
-        int wantedEnd = settings.getEffectiveBirthYear() + settings.getEffectiveSimulateUntilAge();
-        int endYear = Math.max(retireYear + 3, wantedEnd);
-
-        List<Integer> years = new ArrayList<>();
-        for (int y = startYear; y <= endYear; y++) {
-            years.add(y);
-        }
-
-        int lastYear = years.isEmpty() ? retireYear : years.get(years.size() - 1);
-        List<IncomeModel> effectiveIncomes = new ArrayList<>(data.getEffectiveIncomes());
-        effectiveIncomes.addAll(pensionIncomeRows(data, retireYear, lastYear));
-
-        List<TaxYearlyInfo> taxYearly = computeTaxYearly(data, years, effectiveIncomes);
-
-        BigDecimal pivotBalanceValue = computePivotBalance(data);
-        BigDecimal balance = pivotBalanceValue != null ? pivotBalanceValue : settings.getEffectiveStartBalance();
-
-        List<CashflowYearModel> cashflow = new ArrayList<>();
-        for (int idx = 0; idx < years.size(); idx++) {
-            int year = years.get(idx);
-
-            BigDecimal income = BigDecimal.ZERO;
-            for (IncomeModel i : effectiveIncomes) {
-                income = income.add(incomeAnnualForYear(i, year));
-            }
-
-            BigDecimal variableIncome = computeVariableIncomeForYear(data, year);
-            BigDecimal savings = placementsMonthlyAnnualForYear(data.getEffectivePlacements(), year);
-
-            BigDecimal charges = BigDecimal.ZERO;
-            for (ChargeModel c : data.getEffectiveCharges()) {
-                charges = charges.add(chargeAnnualForYear(c, year, settings.getEffectiveInflationRate()));
-            }
-
-            BigDecimal oneoff = BigDecimal.ZERO;
-            for (OneOffExpenseModel o : data.getEffectiveOneoff()) {
-                if (yearOf(o.date()) != null && yearOf(o.date()) == year) {
-                    oneoff = oneoff.add(o.getEffectiveAmount());
-                }
-            }
-
-            BigDecimal transfersY = BigDecimal.ZERO;
-            for (TransferModel t : data.getEffectiveTransfers()) {
-                if (yearOf(t.date()) != null && yearOf(t.date()) == year) {
-                    transfersY = transfersY.add(t.getEffectiveAmount());
-                }
-            }
-
-            TaxYearlyInfo taxInfo = taxYearly.get(idx);
-            BigDecimal impots = taxInfo.withheld();
-
-            BigDecimal regularisation = BigDecimal.ZERO;
-            if (idx > 0) {
-                TaxYearlyInfo prevTax = taxYearly.get(idx - 1);
-                regularisation = prevTax.taxActual().subtract(prevTax.withheld());
-            }
-
-            BigDecimal net = income.add(variableIncome)
-                .subtract(savings)
-                .subtract(charges)
-                .subtract(oneoff)
-                .add(transfersY)
-                .subtract(impots)
-                .subtract(regularisation);
-
-            balance = balance.add(net);
-
-            cashflow.add(new CashflowYearModel(year, income, variableIncome, savings, charges, oneoff, transfersY, impots, regularisation, net, balance));
-        }
-
-        PatrimoineProjectionsModel patrimoine = computePatrimoineProjections(data, years, useConstantEuros, settings.getEffectiveInflationRate(), cashflow);
-
-        return new FinancialProjections(years, cashflow, patrimoine);
-    }
-
-    private record TaxYearlyInfo(
-        int year,
-        double parts,
-        BigDecimal taxableIncome,
-        BigDecimal taxForecast,
-        BigDecimal taxActual,
-        BigDecimal ratePAS,
-        BigDecimal withheld
-    ) {}
-
-    private List<TaxYearlyInfo> computeTaxYearly(BudgetDataModel data, List<Integer> years, List<IncomeModel> effectiveIncomes) {
-        List<TaxBracketModel> brackets = data.getEffectiveTaxBrackets();
-        List<TaxChildModel> children = data.getEffectiveTaxChildren();
-        int exitAge = data.settings() != null ? data.settings().getEffectiveChildExitAge() : 21;
-        BigDecimal abattement = data.settings() != null ? data.settings().getEffectiveTaxAbattement() : BigDecimal.ZERO;
-
-        List<TaxYearlyInfo> result = new ArrayList<>();
-
-        for (int year : years) {
-            BigDecimal regularIncome = BigDecimal.ZERO;
-            for (IncomeModel i : effectiveIncomes) {
-                regularIncome = regularIncome.add(incomeAnnualForYear(i, year));
-            }
-
-            VariableDetail varDetail = variableIncomeDetailForYear(data, year);
-            BigDecimal grossPayroll = regularIncome.add(varDetail.taxable());
-
-            BigDecimal taxableIncome = grossPayroll.multiply(BigDecimal.ONE.subtract(abattement));
-            double parts = partsForYear(children, exitAge, year);
-
-            BigDecimal taxForecast = BigDecimal.ZERO;
-            if (parts > 0) {
-                BigDecimal q = taxableIncome.divide(BigDecimal.valueOf(parts), 10, RoundingMode.HALF_UP);
-                taxForecast = taxForOnePart(q, brackets).multiply(BigDecimal.valueOf(parts));
-            }
-
-            Optional<TaxActualOverrideModel> taxOverride = data.getEffectiveTaxActualOverrides().stream().filter(o -> o.year() != null && o.year() == year).findFirst();
-            BigDecimal taxActual = taxOverride.map(TaxActualOverrideModel::amount).orElse(taxForecast);
-
-            BigDecimal rateForecast = grossPayroll.compareTo(BigDecimal.ZERO) > 0 ? taxForecast.divide(grossPayroll, 10, RoundingMode.HALF_UP) : BigDecimal.ZERO;
-
-            Optional<TaxRateOverrideModel> rateOverride = data.getEffectiveTaxRateOverrides().stream().filter(o -> o.year() != null && o.year() == year).findFirst();
-            BigDecimal ratePAS = rateOverride.map(TaxRateOverrideModel::rate).orElse(rateForecast);
-
-            BigDecimal withheld = ratePAS.multiply(grossPayroll);
-
-            result.add(new TaxYearlyInfo(year, parts, taxableIncome, taxForecast, taxActual, ratePAS, withheld));
-        }
-
-        return result;
-    }
-
-    private PatrimoineProjectionsModel computePatrimoineProjections(BudgetDataModel data, List<Integer> years, boolean useConstantEuros, BigDecimal inflationRate, List<CashflowYearModel> cashflow) {
-        List<PlacementModel> placements = data.getEffectivePlacements();
-        int n = placements.size();
-
-        // --- Mecanisme de pause automatique des versements (portage de
-        // view/js/calculations.js L.420-427, 509-511, 589-599). Boucles inversees (annee en
-        // dehors, placement en dedans) pour pouvoir suspendre les versements d'une annee en
-        // fonction de l'etat de fin d'annee precedente.
-        SettingsModel settings = data.getEffectiveSettings();
-        List<Integer> bufferWatchIdx = new ArrayList<>();
-        boolean hasSweepAccounts = false;
-        int maxPauseLevel = 0;
-        for (int i = 0; i < n; i++) {
-            PlacementModel p = placements.get(i);
-            if (p.pausePriority() != null) maxPauseLevel = Math.max(maxPauseLevel, p.pausePriority());
-            if (p.pauseTriggerBalance() != null) bufferWatchIdx.add(i);
-            if (p.sweepPriority() != null) hasSweepAccounts = true;
-        }
-        boolean sweepEnabled = Boolean.TRUE.equals(settings.sweepEnabled());
-        BigDecimal cashFloor = settings.cashFloor() != null ? settings.cashFloor() : BigDecimal.ZERO;
-        BigDecimal cashCeiling = settings.cashCeiling();
-        // Seuil d'alerte du compte courant : decorrele du seuil bas (cashFloor). Le seuil bas
-        // ne sert plus qu'a declencher le reapprovisionnement reel (mecanisme de sweep, cote
-        // JS) ; c'est ce seuil d'alerte, s'il est configure, qui pilote desormais a lui seul
-        // l'augmentation du niveau de tension (pauseLevelFromCashAlert). Non configure (null),
-        // il n'a aucun effet.
-        BigDecimal cashAlertThreshold = settings.cashAlertThreshold();
-        int pauseLevelFromCashAlert = 0;
-        int pauseLevel = 0;
-        BigDecimal pivotBalanceValue = computePivotBalance(data);
-        // Tresorerie annuelle utilisee pour le declencheur de refill : on reutilise le
-        // cashflow deja calcule (revenus, charges, impots, transferts) et on y substitue,
-        // pour la part "placements", les versements REELLEMENT appliques ci-dessous (donc
-        // deja impactes par la pause de l'annee precedente) a la place de "savings" qui
-        // ignore la pause.
-        BigDecimal treasuryBalance = pivotBalanceValue != null ? pivotBalanceValue : settings.getEffectiveStartBalance();
-
-        BigDecimal[] pessArr = new BigDecimal[n];
-        BigDecimal[] corrArr = new BigDecimal[n];
-        BigDecimal[] optiArr = new BigDecimal[n];
-        Integer[] monthlyFromYearArr = new Integer[n];
-        Integer[] monthlyUntilYearArr = new Integer[n];
-        List<List<PatrimoineYearModel>> rowsPerPlacement = new ArrayList<>();
-        // Suivi de l'etat de pause d'une annee sur l'autre, pour ne loguer qu'aux
-        // changements d'etat (niveau INFO/DEBUG) plutot qu'a chaque annee.
-        boolean[] pausedPrev = new boolean[n];
-        for (int i = 0; i < n; i++) {
-            PlacementModel p = placements.get(i);
-            pessArr[i] = p.getEffectiveBalance();
-            corrArr[i] = p.getEffectiveBalance();
-            optiArr[i] = p.getEffectiveBalance();
-            Integer monthlyFromYear = yearOf(p.monthlyFrom());
-            monthlyFromYearArr[i] = monthlyFromYear != null ? monthlyFromYear : (years.isEmpty() ? 2026 : years.get(0));
-            monthlyUntilYearArr[i] = yearOf(p.monthlyUntil());
-            rowsPerPlacement.add(new ArrayList<>());
-        }
-
-        for (int yIdx = 0; yIdx < years.size(); yIdx++) {
-            int year = years.get(yIdx);
-            BigDecimal totalContribThisYear = BigDecimal.ZERO;
-
-            // Comptes surveilles actuellement sous leur seuil, calcule UNE FOIS avant la mise
-            // a jour des soldes de l'annee : c'est cet etat (fin d'annee precedente) qui a
-            // determine le pauseLevel utilise ci-dessous, donc c'est lui qu'il faut citer
-            // comme cause dans les logs.
-            List<String> currentlyWatchedBelow = new ArrayList<>();
-            for (int idx : bufferWatchIdx) {
-                if (corrArr[idx].compareTo(placements.get(idx).pauseTriggerBalance()) < 0) {
-                    currentlyWatchedBelow.add(placements.get(idx).label());
-                }
-            }
-
-            for (int i = 0; i < n; i++) {
-                PlacementModel p = placements.get(i);
-                BigDecimal withdraw = BigDecimal.ZERO;
-                for (TransferModel t : data.getEffectiveTransfers()) {
-                    if (p.label() != null && p.label().equalsIgnoreCase(t.placement()) && yearOf(t.date()) != null && yearOf(t.date()) == year) {
-                        withdraw = withdraw.add(t.getEffectiveAmount());
-                    }
-                }
-
-                boolean withinWindow = year >= monthlyFromYearArr[i] && (monthlyUntilYearArr[i] == null || year <= monthlyUntilYearArr[i]);
-                boolean isPaused = p.pausePriority() != null && p.pausePriority() <= pauseLevel;
-                BigDecimal monthlyContrib = withinWindow && !isPaused
-                        ? p.getEffectiveMonthly().multiply(BigDecimal.valueOf(12))
-                        : BigDecimal.ZERO;
-
-                BigDecimal balanceBefore = corrArr[i];
-
-                pessArr[i] = pessArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRatePess())).add(monthlyContrib).subtract(withdraw);
-                corrArr[i] = corrArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRateCorr())).add(monthlyContrib).subtract(withdraw);
-                optiArr[i] = optiArr[i].multiply(BigDecimal.ONE.add(p.getEffectiveRateOpti())).add(monthlyContrib).subtract(withdraw);
-
-                if (p.pausePriority() != null) {
-                    boolean wasPaused = pausedPrev[i];
-                    if (isPaused != wasPaused) {
-                        pausedPrev[i] = isPaused;
-                        if (isPaused) {
-                            String cause = currentlyWatchedBelow.isEmpty()
-                                    ? "tresorerie (cashFloor/cashCeiling) non revenue au niveau de reprise"
-                                    : "compte(s) surveille(s) sous seuil : " + String.join(", ", currentlyWatchedBelow);
-                            LOG.info("{} | Pause activee sur \"{}\" (priorite {}, niveau de tension {}/{}) - cause : {}", year, p.label(), p.pausePriority(), pauseLevel, maxPauseLevel, cause);
-                            LOG.debug("{} | Pause activee sur \"{}\" | solde avant cette annee={} | solde apres cette annee={} | tresorerie annuelle={}", year, p.label(), balanceBefore, corrArr[i], treasuryBalance);
-                        } else {
-                            LOG.info("{} | Reprise des versements sur \"{}\" (niveau de tension redescendu a {}/{})", year, p.label(), pauseLevel, maxPauseLevel);
-                            LOG.debug("{} | Reprise sur \"{}\" | solde avant cette annee={} | solde apres cette annee={} | tresorerie annuelle={}", year, p.label(), balanceBefore, corrArr[i], treasuryBalance);
-                        }
-                    }
-                    LOG.trace("{} | \"{}\" | dans la fenetre={} | en pause={} | niveau de tension={}/{} | solde avant cette annee={} | solde apres cette annee={}", year, p.label(), withinWindow, isPaused, pauseLevel, maxPauseLevel, balanceBefore, corrArr[i]);
-                }
-
-                rowsPerPlacement.get(i).add(new PatrimoineYearModel(year, pessArr[i], corrArr[i], optiArr[i]));
-
-                totalContribThisYear = totalContribThisYear.add(monthlyContrib);
-            }
-
-            // Reevalue le pauseLevel a partir de l'etat de fin d'annee : la decision prise
-            // ici s'appliquera a l'annee SUIVANTE (meme decalage d'une periode que dans le
-            // moteur JS).
-            CashflowYearModel cy = yIdx < cashflow.size() ? cashflow.get(yIdx) : null;
-            if (cy != null) {
-                BigDecimal nonPlacementNet = cy.income().add(cy.variableIncome())
-                        .subtract(cy.charges())
-                        .subtract(cy.oneoff())
-                        .add(cy.transfersY())
-                        .subtract(cy.impots())
-                        .subtract(cy.regularisation());
-                treasuryBalance = treasuryBalance.add(nonPlacementNet).subtract(totalContribThisYear);
-            }
-
-            // Le seuil bas (cashFloor) ne pilote plus le niveau de tension : il ne sert qu'au
-            // reapprovisionnement reel du compte courant (cote JS). Seul le seuil d'alerte
-            // (cashAlertThreshold), s'il est configure, augmente pauseLevelFromCashAlert.
-            boolean cashAlertTriggered = cashAlertThreshold != null && treasuryBalance.compareTo(cashAlertThreshold) < 0;
-            if (cashAlertTriggered) {
-                int updated = Math.min(maxPauseLevel, pauseLevelFromCashAlert + 1);
-                if (updated != pauseLevelFromCashAlert) {
-                    LOG.info("{} | Tresorerie sous le seuil d'alerte -> niveau de tension (compte courant) = {}/{}", year, updated, maxPauseLevel);
-                    LOG.debug("{} | Tresorerie sous le seuil d'alerte | tresorerie annuelle={} | seuil d'alerte={}", year, treasuryBalance, cashAlertThreshold);
-                }
-                pauseLevelFromCashAlert = updated;
-            } else if (cashCeiling != null && treasuryBalance.compareTo(cashCeiling) >= 0) {
-                int updated = Math.max(0, pauseLevelFromCashAlert - 1);
-                if (updated != pauseLevelFromCashAlert) {
-                    LOG.info("{} | Tresorerie revenue au plafond -> niveau de tension (compte courant) redescend a {}/{}", year, updated, maxPauseLevel);
-                    LOG.debug("{} | Tresorerie revenue au plafond | tresorerie annuelle={} | plafond={}", year, treasuryBalance, cashCeiling);
-                }
-                pauseLevelFromCashAlert = updated;
-            }
-
-            int alertCount = 0;
-            for (int idx : bufferWatchIdx) {
-                if (corrArr[idx].compareTo(placements.get(idx).pauseTriggerBalance()) < 0) alertCount++;
-            }
-            int pauseLevelFromAlerts = Math.min(maxPauseLevel, alertCount);
-            pauseLevel = Math.max(pauseLevelFromCashAlert, pauseLevelFromAlerts);
-            LOG.trace("{} | Tresorerie annuelle={} | seuil bas={} | seuil d'alerte={} | plafond={} | niveau de tension={}/{} (alerte compte courant={}, alertes placements={})", year, treasuryBalance, cashFloor, cashAlertThreshold, cashCeiling, pauseLevel, maxPauseLevel, pauseLevelFromCashAlert, pauseLevelFromAlerts);
-        }
-
-        List<PatrimoinePerPlacementModel> perPlacement = new ArrayList<>();
-        for (int i = 0; i < n; i++) {
-            perPlacement.add(new PatrimoinePerPlacementModel(placements.get(i).label(), rowsPerPlacement.get(i)));
-        }
-
-        List<PatrimoineYearModel> totals = new ArrayList<>();
-        int startYear = years.isEmpty() ? 2026 : years.get(0);
-
-        for (int idx = 0; idx < years.size(); idx++) {
-            int year = years.get(idx);
-            double deflatorVal = useConstantEuros ? Math.pow(1.0 / (1.0 + inflationRate.doubleValue()), year - startYear) : 1.0;
-            BigDecimal deflator = BigDecimal.valueOf(deflatorVal);
-
-            BigDecimal totalPess = BigDecimal.ZERO;
-            BigDecimal totalCorr = BigDecimal.ZERO;
-            BigDecimal totalOpti = BigDecimal.ZERO;
-
-            for (PatrimoinePerPlacementModel pp : perPlacement) {
-                PatrimoineYearModel row = pp.rows().get(idx);
-                totalPess = totalPess.add(row.pess());
-                totalCorr = totalCorr.add(row.corr());
-                totalOpti = totalOpti.add(row.opti());
-            }
-
-            totals.add(new PatrimoineYearModel(year, totalPess.multiply(deflator), totalCorr.multiply(deflator), totalOpti.multiply(deflator)));
-        }
-
-        return new PatrimoineProjectionsModel(perPlacement, totals);
-    }
-
-    private List<IncomeModel> pensionIncomeRows(BudgetDataModel data, int retireYear, int lastYear) {
-        List<IncomeModel> rows = new ArrayList<>();
-        BigDecimal inflationRate = data.settings() != null ? data.settings().getEffectiveInflationRate() : BigDecimal.ZERO;
-
-        RetirementModel retirement = data.retirement();
-        if (retirement != null && retirement.people() != null) {
-            List<RetirementModel.RetirementPersonModel> people = retirement.getEffectivePeople();
-            List<RetirementProjectionModel> personProjections =
-                retirementCalculationService.compute(retirementInputFactory.create(data)).people();
-
-            for (int i = 0; i < people.size(); i++) {
-                RetirementModel.RetirementPersonModel person = people.get(i);
-                RetirementProjectionModel proj = personProjections.get(i);
-                if (proj.pensionTotaleMensuelle().compareTo(BigDecimal.ZERO) > 0) {
-                    rows.add(new IncomeModel(
-                        "pension-" + person.id(),
-                        "Pension " + (person.name() != null ? person.name() : "retraite") + " (auto)",
-                        proj.pensionTotaleMensuelle(),
-                        retireYear + "-01-01",
-                        Math.max(retireYear, lastYear) + "-12-31",
-                        inflationRate,
-                        null,
-                        null
-                    ));
-                }
-            }
-        }
-        return rows;
-    }
-
-    /**
-     * Conservé pour compatibilité avec les tests existants qui exercent directement le calcul de
-     * projection retraite d'une personne (voir {@code OverviewServiceImplTest} et
-     * {@code BusinessLogicIntegrationTest}). Ne recalcule plus rien ici (RF-102) : délègue
-     * entièrement à {@link RetirementCalculationService} via {@link RetirementInputFactory}.
-     */
-    public RetirementProjectionModel computeRetirementProjection(
-        BudgetDataModel data, RetirementModel.RetirementPersonModel person, int retireYear
-    ) {
-        RetirementModel retirement = data.retirement();
-        List<RetirementModel.RetirementPersonModel> people = retirement != null ? retirement.getEffectivePeople() : List.of();
-        int index = people.indexOf(person);
-        RetirementProjection projection = retirementCalculationService.compute(retirementInputFactory.create(data));
-        return projection.people().get(index);
-    }
-
-    private BigDecimal incomeAnnualForYear(IncomeModel row, int year) {
-        Integer startYear = yearOf(row.start());
-        if (startYear == null) startYear = year;
-
-        int yearsElapsed = Math.max(0, year - startYear);
-        double factor = Math.pow(1.0 + row.getEffectiveGrowthRate().doubleValue(), yearsElapsed);
-        BigDecimal effectiveMonthly = row.getEffectiveMonthly().multiply(BigDecimal.valueOf(factor));
-
-        int monthsActive = monthsActiveInYear(row.start(), row.end(), year);
-        return effectiveMonthly.multiply(BigDecimal.valueOf(monthsActive));
-    }
-
-    private BigDecimal chargeAnnualForYear(ChargeModel row, int year, BigDecimal defaultInflation) {
-        Integer startYear = yearOf(row.start());
-        if (startYear == null) startYear = year;
-
-        BigDecimal growth = row.getEffectiveGrowthRate(defaultInflation);
-        int yearsElapsed = Math.max(0, year - startYear);
-        double factor = Math.pow(1.0 + growth.doubleValue(), yearsElapsed);
-
-        BigDecimal effectiveMonthly = row.getEffectiveMonthly().multiply(BigDecimal.valueOf(factor));
-        int monthsActive = monthsActiveInYear(row.start(), row.end(), year);
-        return effectiveMonthly.multiply(BigDecimal.valueOf(monthsActive));
-    }
-
-    private BigDecimal placementsMonthlyAnnualForYear(List<PlacementModel> placements, int year) {
-        BigDecimal total = BigDecimal.ZERO;
-        for (PlacementModel p : placements) {
-            BigDecimal monthly = p.getEffectiveMonthly();
-            if (monthly.compareTo(BigDecimal.ZERO) == 0) continue;
-
-            LocalDate fromDate = parseDate(p.monthlyFrom());
-            LocalDate untilDate = parseDate(p.monthlyUntil());
-
-            int startMonth = 0;
-            int endMonth = 11;
-
-            if (fromDate != null) {
-                if (year < fromDate.getYear()) continue;
-                if (year == fromDate.getYear()) startMonth = fromDate.getMonthValue() - 1;
-            }
-
-            if (untilDate != null) {
-                if (year > untilDate.getYear()) continue;
-                if (year == untilDate.getYear()) endMonth = untilDate.getMonthValue() - 1;
-            }
-
-            int months = Math.max(0, endMonth - startMonth + 1);
-            total = total.add(monthly.multiply(BigDecimal.valueOf(months)));
-        }
-        return total;
-    }
-
-    private double partsForYear(List<TaxChildModel> children, int exitAge, int year) {
-        long attached = children.stream().filter(c -> c.birthYear() != null && (year - c.birthYear()) < exitAge).count();
-        double parts = 2.0; // Couple marié/pacsé
-        for (int i = 1; i <= attached; i++) {
-            parts += (i <= 2) ? 0.5 : 1.0;
-        }
-        return parts;
-    }
-
-    private BigDecimal taxForOnePart(BigDecimal q, List<TaxBracketModel> brackets) {
-        List<TaxBracketModel> sorted = new ArrayList<>(brackets);
-        sorted.sort((a, b) -> {
-            if (a.upTo() == null) return 1;
-            if (b.upTo() == null) return -1;
-            return a.upTo().compareTo(b.upTo());
-        });
-
-        BigDecimal tax = BigDecimal.ZERO;
-        BigDecimal prevThreshold = BigDecimal.ZERO;
-
-        for (TaxBracketModel b : sorted) {
-            if (q.compareTo(prevThreshold) > 0) {
-                BigDecimal upper = b.upTo() != null ? q.min(b.upTo()) : q;
-                BigDecimal taxableInBracket = upper.subtract(prevThreshold);
-                tax = tax.add(taxableInBracket.multiply(b.getEffectiveRate()));
-            }
-            if (b.upTo() != null) {
-                prevThreshold = b.upTo();
-                if (q.compareTo(b.upTo()) <= 0) break;
-            } else {
-                break;
-            }
-        }
-        return tax;
-    }
-
-    private record VariableDetail(BigDecimal total, BigDecimal taxable) {}
-
-    private VariableDetail variableIncomeDetailForYear(BudgetDataModel data, int year) {
-        BigDecimal total = BigDecimal.ZERO;
-        BigDecimal taxable = BigDecimal.ZERO;
-
-        for (VariableIncomeModel v : data.getEffectiveVariableIncomes()) {
-            if (v.startYear() != null && year < v.startYear()) continue;
-            if (v.endYear() != null && year > v.endYear()) continue;
-
-            Optional<IncomeModel> refRow = data.getEffectiveIncomes().stream().filter(r -> v.refIncomeLabel() != null && v.refIncomeLabel().equalsIgnoreCase(r.label())).findFirst();
-            BigDecimal refAnnual = refRow.map(r -> incomeAnnualForYear(r, year)).orElse(BigDecimal.ZERO);
-            BigDecimal forecast = refAnnual.multiply(v.getEffectiveRate());
-
-            Optional<VariableOverrideModel> override = data.getEffectiveVariableOverrides().stream()
-                .filter(o -> v.label() != null && v.label().equalsIgnoreCase(o.label()) && o.year() != null && o.year() == year)
-                .findFirst();
-
-            BigDecimal amount = override.map(VariableOverrideModel::getEffectiveAmount).orElse(forecast);
-
-            boolean isTaxable;
-            if (override.isPresent() && "Non".equalsIgnoreCase(override.get().taxable())) {
-                isTaxable = false;
-            } else if (override.isPresent() && "Oui".equalsIgnoreCase(override.get().taxable())) {
-                isTaxable = true;
-            } else {
-                isTaxable = !"Non".equalsIgnoreCase(v.taxable());
-            }
-
-            total = total.add(amount);
-            if (isTaxable) {
-                taxable = taxable.add(amount);
-            }
-        }
-        return new VariableDetail(total, taxable);
-    }
-
-    private BigDecimal computeVariableIncomeForYear(BudgetDataModel data, int year) {
-        return variableIncomeDetailForYear(data, year).total();
-    }
-
-    private int findEarliestYear(BudgetDataModel data) {
-        List<String> dates = new ArrayList<>();
-
-        for (IncomeModel i : data.getEffectiveIncomes()) if (i.start() != null) dates.add(i.start());
-        for (ChargeModel c : data.getEffectiveCharges()) if (c.start() != null) dates.add(c.start());
-        for (PlacementModel p : data.getEffectivePlacements()) {
-            if (p.monthlyFrom() != null) dates.add(p.monthlyFrom());
-            if (p.balanceDate() != null) dates.add(p.balanceDate());
-        }
-        for (OneOffExpenseModel o : data.getEffectiveOneoff()) if (o.date() != null) dates.add(o.date());
-        for (TransferModel t : data.getEffectiveTransfers()) if (t.date() != null) dates.add(t.date());
-        if (data.settings() != null && data.settings().pivotDate() != null) dates.add(data.settings().pivotDate());
-
-        if (data.bankImport() != null && data.bankImport().transactions() != null) {
-            for (BankImportModel.BankTransactionModel t : data.bankImport().transactions()) {
-                if (t.date() != null) dates.add(t.date());
-            }
-        }
-
-        int earliestYear = 2026;
-        boolean found = false;
-
-        for (String d : dates) {
-            Integer y = yearOf(d);
-            if (y != null) {
-                if (!found || y < earliestYear) {
-                    earliestYear = y;
-                    found = true;
-                }
-            }
-        }
-
-        return found ? earliestYear : 2026;
-    }
-
-    private int monthsActiveInYear(String startISO, String endISO, int year) {
-        LocalDate start = parseDate(startISO);
-        LocalDate end = parseDate(endISO);
-        if (start == null || end == null) return 0;
-
-        LocalDate yStart = LocalDate.of(year, 1, 1);
-        LocalDate yEnd = LocalDate.of(year, 12, 31);
-
-        LocalDate s = start.isAfter(yStart) ? start : yStart;
-        LocalDate e = end.isBefore(yEnd) ? end : yEnd;
-
-        if (e.isBefore(s)) return 0;
-        return (e.getYear() - s.getYear()) * 12 + (e.getMonthValue() - s.getMonthValue()) + 1;
-    }
-
-    private Integer yearOf(String dateISO) {
-        LocalDate d = parseDate(dateISO);
-        return d != null ? d.getYear() : null;
-    }
-
-    private LocalDate parseDate(String dateISO) {
-        if (dateISO == null || dateISO.isBlank()) return null;
-        try {
-            if (dateISO.length() == 7) {
-                YearMonth ym = YearMonth.parse(dateISO);
-                return ym.atDay(1);
-            }
-            return LocalDate.parse(dateISO.substring(0, 10));
-        } catch (Exception e) {
-            LOG.warn("Date ISO illisible dans le calcul de l'aperçu (Overview), ignorée : '{}'", dateISO, e);
-            return null;
-        }
     }
 }

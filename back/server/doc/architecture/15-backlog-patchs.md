@@ -643,12 +643,17 @@ spécifiques à relire avant de le démarrer.
 - Brancher `OverviewCalculationService` sur `OverviewInput` ; sa responsabilité devient uniquement la composition/transformation de projections déjà calculées.
 - Supprimer le champ `BudgetDataModel data` de `OverviewResultModel`.
 - Vérifier qu'aucune logique de recalcul (retraite ou autre) ne subsiste dans cette classe.
+- **Notes d'implémentation** :
+- `OverviewCalculationService` réécrit en moteur pur : `computeOverview(OverviewInput)` remplace l'ancienne signature ; toutes les méthodes internes de recalcul (fiscal, patrimonial, retraite, flux de trésorerie) et dépendances aux modèles de persistance (`BudgetDataModel`, `IncomeModel`, etc.) sont supprimées.
+- Le champ `BudgetDataModel data` est supprimé de `OverviewResultModel` (suppression de la fuite par le résultat). `OverviewMapper.toDto` gère l'association du `BudgetDataDto` en recevant optionnellement `BudgetDataModel` en second argument depuis le contrôleur REST `OverviewServiceImpl`.
+- `OverviewServiceImpl` branché sur `OverviewInputFactory` et `OverviewCalculationService` ; la méthode de compatibilité `computeRetirementProjection` délègue directement à `RetirementCalculationService` via `RetirementInputFactory`.
+- Tests `OverviewServiceImplTest` et `BusinessLogicIntegrationTest` passés avec succès (comportement fonctionnel et API 100 % préservés).
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-902 — Overview - Tests de composant + garde-fou
