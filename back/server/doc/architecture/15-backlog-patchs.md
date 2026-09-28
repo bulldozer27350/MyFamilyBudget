@@ -726,7 +726,7 @@ spécifiques à relire avant de le démarrer.
   - [x] Retraite (`RetraiteServiceImpl`)
   - [x] Patrimoine (`PatrimoineServiceImpl`)
   - [x] Trésorerie (`TresorerieServiceImpl`)
-  - [ ] Overview (`OverviewServiceImpl`)
+  - [x] Overview (`OverviewServiceImpl`)
   - [x] Fiscalité (`ImpotsServiceImpl`)
   - [x] Analyse / Analyse Prêts (`AnalyseServiceImpl`, `AnalysePretsServiceImpl`)
   - [ ] Paramètres (`ParametersServiceImpl`)

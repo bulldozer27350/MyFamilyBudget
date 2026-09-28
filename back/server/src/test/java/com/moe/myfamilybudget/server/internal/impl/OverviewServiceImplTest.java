@@ -23,6 +23,14 @@ import com.moe.myfamilybudget.server.internal.model.RetirementModel.RetirementPe
 import com.moe.myfamilybudget.server.internal.model.RetirementModel.SalaryHistoryModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.GoalPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.LoanPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class OverviewServiceImplTest {
@@ -35,7 +43,16 @@ class OverviewServiceImplTest {
     void setUp() {
         mapper = new OverviewMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
-        overviewService = new OverviewServiceImpl(mapper, persistenceManager);
+        overviewService = new OverviewServiceImpl(
+                mapper,
+                new SettingsPersistenceAdapter(persistenceManager),
+                new BudgetPersistenceAdapter(persistenceManager),
+                new PatrimoinePersistenceAdapter(persistenceManager),
+                new RetirementPersistenceAdapter(persistenceManager),
+                new TaxPersistenceAdapter(persistenceManager),
+                new BankPersistenceAdapter(persistenceManager),
+                new LoanPersistenceAdapter(persistenceManager),
+                new GoalPersistenceAdapter(persistenceManager));
     }
 
 

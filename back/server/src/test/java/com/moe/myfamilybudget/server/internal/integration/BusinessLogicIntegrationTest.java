@@ -33,6 +33,14 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.GoalPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.LoanPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -386,7 +394,11 @@ class BusinessLogicIntegrationTest {
 
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
-        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), persistenceManager);
+        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(),
+                new SettingsPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
+                new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
+                new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
+                new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));
         RetirementProjectionModel proj = svc.computeRetirementProjection(data, alice, 2054);
 
         // trimestresDateYear=2025, salaire actif 2026..2053 = 28 annees * 4 = 112
@@ -408,7 +420,11 @@ class BusinessLogicIntegrationTest {
 
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
-        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), persistenceManager);
+        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(),
+                new SettingsPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
+                new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
+                new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
+                new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));
         RetirementProjectionModel proj = svc.computeRetirementProjection(data, alice, 2054);
 
         assertThat(proj.pensionBaseAnnuelle()).isGreaterThan(BigDecimal.ZERO);
@@ -425,7 +441,11 @@ class BusinessLogicIntegrationTest {
         importMockBudget();
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
-        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), persistenceManager);
+        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(),
+                new SettingsPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
+                new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
+                new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
+                new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));
         RetirementProjectionModel proj = svc.computeRetirementProjection(data, alice, 2054);
 
         MvcResult result = mockMvc.perform(get("/api/v1/overview").contextPath("/api/v1")).andExpect(status().isOk()).andReturn();
