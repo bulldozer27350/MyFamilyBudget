@@ -55,21 +55,19 @@ Projection patrimoniale
 Moteur de règles d'allocation / pause / sweep
 ```
 
-## Point ouvert {#point-ouvert}
+## Point ouvert (tranché en RF-400) {#point-ouvert}
 
-Le catalogue d'Inputs du document source mentionne un `ContributionDecisionPlan` en entrée de
-`PatrimoineProjectionInput`, ce qui suggère une dépendance retour Trésorerie/mécanisme de sweep →
-Patrimoine, en plus de la dépendance Patrimoine → Trésorerie (cash-flow de placement consommé par
-`TreasuryProjectionInput`, voir [06-domaine-tresorerie.md](06-domaine-tresorerie.md)). Le document
-source ne tranche pas explicitement comment ces deux flux coexistent sans former le cycle
-Patrimoine ↔ Trésorerie que [00-principes.md](00-principes.md) interdit.
-
-**Ce point doit être tranché avant l'étape 5 (Trésorerie), pas supposé résolu.** Proposition de
-travail : traiter l'étape 4 (Patrimoine) en se limitant à une projection basée sur les paramètres
-déjà stockés par placement (`sweepPriority`, `sweepCap`, `pauseTriggerBalance`, `pausePriority` —
-des valeurs de configuration statiques, pas une décision calculée), et ne reprendre la notion de
-`ContributionDecisionPlan` qu'au moment de l'étape 5, une fois que Trésorerie a un contrat stable
-capable de la produire en sortie.
+Le catalogue d'Inputs du document source mentionnait un `ContributionDecisionPlan` en entrée de
+`PatrimoineProjectionInput`, ce qui aurait introduit une dépendance retour Trésorerie/mécanisme de
+sweep → Patrimoine, en plus de la dépendance Patrimoine → Trésorerie (cash-flow de placement
+consommé par `TreasuryProjectionInput`, voir [06-domaine-tresorerie.md](06-domaine-tresorerie.md)).
+[00-principes.md](00-principes.md) liste explicitement `Patrimoine ↔ Trésorerie` parmi les cycles
+interdits et prescrit « la projection unidirectionnelle » : **RF-400 tranche donc en faveur de
+l'option retenue par RF-301** (`sweepPriority`, `sweepCap`, `pauseTriggerBalance`, `pausePriority`
+restent des valeurs de configuration statiques, jamais une décision calculée par Trésorerie).
+Aucun `ContributionDecisionPlan` n'est introduit ; Trésorerie et Patrimoine approximent chacun
+l'autre indépendamment (voir la section correspondante de 06-domaine-tresorerie.md) plutôt que de
+se référencer.
 
 ## Conclusion
 

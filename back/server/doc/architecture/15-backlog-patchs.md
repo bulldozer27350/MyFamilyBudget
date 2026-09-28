@@ -304,12 +304,18 @@ spécifiques à relire avant de le démarrer.
 - PRÉALABLE OBLIGATOIRE : trancher explicitement, en revue avant d'écrire le code, la relation Patrimoine ↔ Trésorerie documentée comme point ouvert dans `05-domaine-patrimoine.md#point-ouvert` (introduction ou non d'un `ContributionDecisionPlan` produit par Trésorerie et consommé par Patrimoine, sans créer de cycle). Ne pas coder avant validation de la décision par Bulldo.
 - Créer `TreasuryProjectionInput` et ses sous-types (`IncomeProjectionInput`, `ChargeProjectionInput`, `VariableIncomeProjection`, `OneOffCashflow`, `TransferProjection`, `PlacementCashflowInput`, `TaxProjection`, `RetirementIncomeProjection`, `TreasuryParameters`).
 - Créer la Factory assemblant les projections de Fiscalité (RF-202), Retraite (RF-102) et Patrimoine (RF-301).
+- **Notes d'implémentation** :
+- Contrat `TreasuryProjectionInput` dans `internal.calculation`, conforme au sketch de doc/architecture/06-domaine-tresorerie.md : lignes de budget de base normalisées (`IncomeProjectionInput`, `ChargeProjectionInput`, `VariableIncomeProjection`, `OneOffCashflow`, `TransferProjection`), et projections déjà calculées par les autres domaines (`TaxProjection` depuis Fiscalité RF-203, `RetirementIncomeProjection` depuis Retraite RF-101) — aucun modèle source (`IncomeModel`, `ChargeModel`, `TaxYearlyModel` complet...) ne fuite dans le contrat.
+- **Point ouvert Patrimoine/Trésorerie tranché** : pas de `ContributionDecisionPlan` (cycle interdit par 00-principes.md). `PlacementCashflowInput` reste une somme simple des versements configurés, sans le mécanisme de pause de Patrimoine — comportement identique à `placementsMonthlyAnnualForYear` aujourd'hui. Décision documentée des deux côtés (05 et 06).
+- `TreasuryInputFactory` (`internal.factory`) : purement additive, non branchée (RF-401). Réutilise `TaxInputFactory`/`TaxCalculator` (RF-203) et `RetirementInputFactory`/`RetirementCalculationService` (RF-101) au lieu de dupliquer une deuxième fois le calcul de l'impôt et de la pension (`TresorerieCalculationService` a aujourd'hui son propre `computeTaxYearly`, quasi identique à `TaxCalculator.computeTaxYearly`) : à éliminer lors du branchement.
+- Hors contrat, explicitement documenté comme restant à traiter en RF-401 : `computeRealAverages`, `buildCategoryOptions`, `buildTresorerieSuggestions` (moyennes réelles/pointage bancaire, suggestions), non mentionnés par le sketch du document de domaine.
+- Non-régression : `TreasuryInputFactory` vérifiée par un test dédié (normalisation, rattachement des revenus variables, somme des placements sans pause, couverture de la période par les projections fiscale/retraite) et par un harnais direct (javac, sans Maven) confirmant les mêmes résultats. Rien n'est branché : `TresorerieCalculationService` continue de recevoir `BudgetDataModel` sans changement. Build Maven non exécutable dans l'environnement de rédaction : `mvn test` à confirmer en local.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-401 — Trésorerie - Branchement et extraction des fonctions unitaires

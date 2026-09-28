@@ -1,6 +1,6 @@
 # 06 — Trésorerie
 
-Statut : 🟡 à valider
+Statut : 🟢 validé (RF-400)
 
 ## Constat
 
@@ -18,7 +18,7 @@ résultats/projections déjà calculés des autres domaines**, jamais leurs mod�
 
 ```java
 public record TreasuryProjectionInput(
-    SimulationPeriod period,
+    TreasurySimulationPeriod period,
     List<IncomeProjectionInput> incomes,
     List<ChargeProjectionInput> charges,
     List<VariableIncomeProjection> variableIncomes,
@@ -31,18 +31,34 @@ public record TreasuryProjectionInput(
 ) {}
 ```
 
+Implémenté tel quel en RF-400 (`internal.calculation`, voir la liste des fichiers en fin de
+section) ; `incomes`/`charges`/`variableIncomes`/`oneOffExpenses`/`transfers` sont des projections
+minimales du budget de base (ni `id`, ni `categoryId`, ni `notes`), `taxProjection` et
+`retirementIncome` sont déjà calculés par les domaines Fiscalité (RF-203) et Retraite (RF-101), pas
+recalculés une deuxième fois. `TreasuryInputFactory` (purement additive, non branchée jusqu'à
+RF-401) les compose à partir de `BudgetDataModel`.
+
+```
+
 ```text
 Fiscalité ────────→ TaxProjection
 Retraite ─────────→ RetirementIncomeProjection
-Patrimoine ───────→ PlacementCashflowInput / projection
-Banque ───────────→ RealAverageSnapshot
+Patrimoine ───────→ (aucune, voir décision ci-dessous)
+Banque ───────────→ (hors contrat, computeRealAverages/buildTresorerieSuggestions restent
+                      à part — non traité par RF-400, voir points restants en fin de section)
                          ↓
                  TreasuryCalculationService
 ```
 
-Voir le point ouvert dans [05-domaine-patrimoine.md](05-domaine-patrimoine.md#point-ouvert) sur la
-relation retour éventuelle Trésorerie → Patrimoine (décision de contribution) : à trancher au
-moment de cette étape, pas avant.
+**Point ouvert tranché (RF-400).** 00-principes.md liste explicitement `Patrimoine ↔ Trésorerie`
+parmi les cycles interdits et prescrit, pour ce cas, « la projection unidirectionnelle ». Aucun
+`ContributionDecisionPlan` n'est donc introduit en sortie de Trésorerie : `placements` (voir
+`PlacementCashflowInput`) reste une somme simple des versements configurés sur chaque placement,
+sans tenir compte du mécanisme de pause du domaine Patrimoine — exactement le comportement actuel
+de `placementsMonthlyAnnualForYear`. Patrimoine garde de son côté sa propre approximation de la
+trésorerie pour sa décision de pause (voir `PatrimoineProjectionParameters`, RF-301) : les deux
+domaines approximent chacun l'autre indépendamment plutôt que de se référencer, ce qui évite le
+cycle sans changer aucun résultat observable.
 
 ## Fonctions de calcul unitaires déjà publiques
 
@@ -54,16 +70,31 @@ minimal — elles ne doivent pas recevoir `BudgetDataModel`.
 
 ```text
 BudgetDataModel
-    ↓ application/composition
-    ├── projection fiscale
-    ├── projection retraite
-    ├── projection placements
-    ├── données bancaires nécessaires
-    └── lignes revenu/charge normalisées
+    ↓ application/composition (TreasuryInputFactory)
+    ├── impôt déjà projeté (TaxInputFactory + TaxCalculator)
+    ├── pension déjà projetée (RetirementInputFactory + RetirementCalculationService)
+    ├── versements vers placements (somme simple, sans pause — décision ci-dessus)
+    └── lignes revenu/charge/variable/ponctuel/virement normalisées
              ↓
       TreasuryProjectionInput
              ↓
-      TreasuryCalculationService
+      TreasuryCalculationService (RF-401 : branchement, pas encore fait)
 ```
 
 Trésorerie devient un agrégateur de **projections**, pas un agrégateur de modèles de persistance.
+
+## Fichiers RF-400
+
+`internal.calculation` : `TreasuryProjectionInput`, `TreasurySimulationPeriod`,
+`IncomeProjectionInput`, `ChargeProjectionInput`, `VariableIncomeProjection` (+ `Override`
+imbriqué), `OneOffCashflow`, `TransferProjection`, `PlacementCashflowInput`, `TaxProjection` (+
+`Withholding` imbriqué), `RetirementIncomeProjection` (+ `AnnualPension` imbriqué),
+`TreasuryParameters`. `internal.factory` : `TreasuryInputFactory` (purement additive).
+
+## Restant hors RF-400
+
+`computeRealAverages`, `buildCategoryOptions` et `buildTresorerieSuggestions` (moyennes réelles du
+pointage bancaire, suggestions budgétaires) ne sont pas couverts par `TreasuryProjectionInput` : ce
+sont des besoins distincts de la projection de flux, non mentionnés dans le contrat recommandé par
+ce document. À traiter explicitement en RF-401 (branchement) plutôt que supposé résolu par ce
+patch.
