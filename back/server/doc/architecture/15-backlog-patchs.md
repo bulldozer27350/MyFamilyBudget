@@ -443,9 +443,9 @@ spécifiques à relire avant de le démarrer.
 - Créer le contrat `PlacementBalanceSnapshot(placementId, balance)` pour éviter une dépendance forte Objectifs → Patrimoine.
 - Déplacer `goalSecureHorizonMonths` et `goalLiquidHorizonMonths` de `SettingsModel` vers les paramètres du domaine Objectifs.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
-- [ ] En attente de réponse
+- [x] En attente de réponse
 - [ ] Annulé
 - [ ] Terminé
 - [ ] Constaté comme mergé
