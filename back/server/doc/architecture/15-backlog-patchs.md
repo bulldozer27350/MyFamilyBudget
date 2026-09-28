@@ -622,12 +622,16 @@ spécifiques à relire avant de le démarrer.
 - **Fichiers `.md` additionnels à lire** (en plus de `00-principes.md` et `01-sequencement.md`, toujours requis) : `11-domaine-overview.md`
 - **Modifications attendues** :
 - Créer `OverviewInput` assemblant `TreasuryProjection`, `PatrimoineProjection`, `RetirementProjection`, `TaxProjection`, `RealEstateProjection` déjà produites par les domaines respectifs.
+- **Notes d'implémentation** :
+- Création des records de contrat dans `internal.calculation` : `OverviewInput`, `OverviewParameters`, `PatrimoineProjection` (encapsulant les projections patrimoniales, le solde actuel et les labels exclus), et `RealEstateProjection` (portant la projection immobilière nominale à la retraite, la valeur actuelle totale et le détail unitaire `RealEstateItemProjection`).
+- Création de la factory de composition applicative `OverviewInputFactory` (`internal.factory`), purement additive (non branchée, RF-901) : assemble les projections produites par les moteurs Trésorerie (RF-401), Retraite (RF-101), Fiscalité (RF-203), Patrimoine (RF-301) et projette l'immobilier à l'horizon retraite.
+- Tests unitaires dans `OverviewInputFactoryTest` validant l'assemblage complet, le calcul de projection immobilière et le filtrage des placements exclus de la retraite.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-901 — Overview - Branchement et suppression de la fuite de résultat
