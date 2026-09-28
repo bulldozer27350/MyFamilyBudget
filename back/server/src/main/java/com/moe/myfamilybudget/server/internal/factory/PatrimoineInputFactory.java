@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -14,12 +15,16 @@ import com.moe.myfamilybudget.server.internal.calculation.AnnualCashflow;
 import com.moe.myfamilybudget.server.internal.calculation.CashflowProjection;
 import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionInput;
 import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionParameters;
+import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionInput;
+import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionParameters;
+import com.moe.myfamilybudget.server.internal.calculation.PlacementHistoryPoint;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementProjectionInput;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementTransfer;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
@@ -32,17 +37,17 @@ import com.moe.myfamilybudget.server.internal.model.TransferModel;
  * dépendance à {@code BudgetDataModel} que le domaine ne doit pas avoir : elle vit dans
  * {@code internal.factory}, hors du package {@code internal.calculation} gardé par ArchUnit.
  *
- * <p><b>Purement additif.</b> Aucun appelant existant n'est modifié : {@code PatrimoineServiceImpl}
- * continue de calculer lui-même sa projection jusqu'à RF-301. L'horizon, la reconstitution du flux
- * net annuel et la lecture des dates reprennent volontairement à l'identique les règles de
- * {@code PatrimoineServiceImpl} ({@code findEarliestYear}, {@code incomeAnnualForYear},
- * {@code chargeAnnualForYear}, {@code parseDate}), pour que RF-301 puisse brancher le moteur sans
- * changement de résultat. Ces helpers privés disparaîtront de {@code PatrimoineServiceImpl} à ce
- * moment-là.
+ * <p><b>Branchée par RF-301.</b> {@code PatrimoineServiceImpl} n'est plus qu'une façade : elle
+ * construit ici les contrats de {@code PatrimoineProjectionService} (projection annuelle) et de
+ * {@code PlacementEvolutionService} (chronologie d'un placement). L'horizon, la reconstitution du
+ * flux net annuel et la lecture des dates reprennent à l'identique les règles historiques du
+ * service, pour ne changer aucun résultat.
  */
 public final class PatrimoineInputFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(PatrimoineInputFactory.class);
+
+    private static final int EVOLUTION_HORIZON_YEARS = 15;
 
     private PatrimoineInputFactory() {
     }
@@ -69,6 +74,47 @@ public final class PatrimoineInputFactory {
                 .map(PatrimoineInputFactory::toPlacement)
                 .toList();
 
+        return new PatrimoineProjectionInput(
+                placements, toTransfers(data), cashflow(data, settings, startYear, endYear), parameters);
+    }
+
+    /**
+     * Construit l'entrée de la chronologie d'un placement (RF-301) : historique du placement tracé,
+     * dernière valeur connue de chaque placement (pour la simulation d'arrière-plan de la pause) et
+     * retraits programmés.
+     *
+     * @param today date du jour, fournie par l'appelant pour garder la Factory déterministe
+     */
+    public static PlacementEvolutionInput forPlacementEvolution(
+            BudgetDataModel data, PlacementModel placement, LocalDate today) {
+        Objects.requireNonNull(data, "data");
+        Objects.requireNonNull(placement, "placement");
+        SettingsModel settings = data.getEffectiveSettings();
+
+        List<PlacementHistoryPoint> history = new ArrayList<>();
+        for (PlacementHistoryEntryModel entry : placement.getEffectiveHistory()) {
+            LocalDate date = parseDate(entry.date());
+            if (date != null) {
+                history.add(new PlacementHistoryPoint(date, entry.getEffectiveValue()));
+            }
+        }
+
+        List<PlacementEvolutionInput.BackgroundPlacement> background = data.getEffectivePlacements().stream()
+                .map(p -> new PlacementEvolutionInput.BackgroundPlacement(toPlacement(p), latestKnownBalance(p)))
+                .toList();
+
+        PlacementEvolutionParameters parameters = new PlacementEvolutionParameters(
+                today,
+                EVOLUTION_HORIZON_YEARS,
+                settings.getEffectiveInflationRate(),
+                settings.getEffectiveStartBalance(),
+                settings.cashCeiling(),
+                settings.cashAlertThreshold());
+
+        return new PlacementEvolutionInput(toPlacement(placement), history, background, toTransfers(data), parameters);
+    }
+
+    private static List<PlacementTransfer> toTransfers(BudgetDataModel data) {
         List<PlacementTransfer> transfers = new ArrayList<>();
         for (TransferModel transfer : data.getEffectiveTransfers()) {
             LocalDate date = parseDate(transfer.date());
@@ -77,9 +123,18 @@ public final class PatrimoineInputFactory {
             }
             transfers.add(new PlacementTransfer(transfer.placement(), date, transfer.getEffectiveAmount()));
         }
+        return transfers;
+    }
 
-        return new PatrimoineProjectionInput(
-                placements, transfers, cashflow(data, settings, startYear, endYear), parameters);
+    /** Dernière valeur réelle saisie (date valide) d'un placement, sinon son solde de référence. */
+    private static BigDecimal latestKnownBalance(PlacementModel p) {
+        List<PlacementHistoryEntryModel> history = new ArrayList<>(p.getEffectiveHistory());
+        history.removeIf(h -> parseDate(h.date()) == null);
+        if (!history.isEmpty()) {
+            history.sort(Comparator.comparing(h -> parseDate(h.date())));
+            return history.get(history.size() - 1).getEffectiveValue();
+        }
+        return p.getEffectiveBalance();
     }
 
     private static PlacementProjectionInput toPlacement(PlacementModel placement) {

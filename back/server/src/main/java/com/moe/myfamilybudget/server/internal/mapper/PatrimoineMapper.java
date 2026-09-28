@@ -1,5 +1,7 @@
 package com.moe.myfamilybudget.server.internal.mapper;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,9 +19,12 @@ import com.moe.myfamilybudget.api.model.PatrimoineProjectionsDto;
 import com.moe.myfamilybudget.api.model.PatrimoineResponseDto;
 import com.moe.myfamilybudget.api.model.PatrimoineYearDto;
 import com.moe.myfamilybudget.api.model.PlacementDto;
+import com.moe.myfamilybudget.api.model.PlacementEvolutionDto;
+import com.moe.myfamilybudget.api.model.PlacementEvolutionPointDto;
 import com.moe.myfamilybudget.api.model.PlacementHistoryEntryDto;
 import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
+import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolution;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
@@ -228,6 +233,41 @@ public class PatrimoineMapper {
         dto.setPerPlacement(perPlacement);
         dto.setTotals(totals);
         return dto;
+    }
+
+    /**
+     * Traduit la chronologie du domaine en DTO : horodatage UTC, date ISO et libellé
+     * « jj/Mois/aaaa » sont des éléments de présentation, produits ici et non par le moteur.
+     */
+    public PlacementEvolutionDto toPlacementEvolutionDto(PlacementEvolution m) {
+        if (m == null) return null;
+        List<PlacementEvolutionPointDto> points = m.points().stream().map(pt -> {
+            PlacementEvolutionPointDto dto = new PlacementEvolutionPointDto();
+            dto.setTimestamp(toEpochMillis(pt.date()));
+            dto.setDateISO(pt.date().toString());
+            dto.setLabel(formatLabel(pt.date()));
+            dto.setReal(pt.real());
+            dto.setPess(pt.pess());
+            dto.setCorr(pt.corr());
+            dto.setOpti(pt.opti());
+            return dto;
+        }).collect(Collectors.toList());
+
+        PlacementEvolutionDto dto = new PlacementEvolutionDto();
+        dto.setPlacementId(m.placementId());
+        dto.setAnchorTimestamp(toEpochMillis(m.anchorDate()));
+        dto.setTodayTimestamp(toEpochMillis(m.today()));
+        dto.setPoints(points);
+        return dto;
+    }
+
+    private static long toEpochMillis(LocalDate date) {
+        return date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+    }
+
+    private static String formatLabel(LocalDate d) {
+        String[] monthNames = {"Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"};
+        return String.format("%02d/%s/%d", d.getDayOfMonth(), monthNames[d.getMonthValue() - 1], d.getYear());
     }
 
     public PatrimoineResponseDto toPatrimoineResponseDto(BudgetDataModel data, PatrimoineProjectionsModel projections) {

@@ -25,6 +25,8 @@ import com.moe.myfamilybudget.api.model.PlacementEvolutionDto;
 import com.moe.myfamilybudget.api.model.PlacementHistoryEntryDto;
 import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
+import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionService;
+import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionService;
 import com.moe.myfamilybudget.server.internal.mapper.PatrimoineMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
@@ -46,7 +48,8 @@ class PatrimoineServiceImplTest {
         mapper = new PatrimoineMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        service = new PatrimoineServiceImpl(mapper, persistenceManager);
+        service = new PatrimoineServiceImpl(
+                mapper, persistenceManager, new PatrimoineProjectionService(), new PlacementEvolutionService());
     }
 
     // -------------------------------------------------------------------------

@@ -268,11 +268,11 @@ spécifiques à relire avant de le démarrer.
 - Séparer explicitement le moteur de projection patrimoniale du moteur de règles d'allocation/pause/sweep (aujourd'hui mêlés dans `PatrimoineServiceImpl`).
 - Brancher `PatrimoineServiceImpl` sur les deux moteurs via la Factory ; le contrôleur REST devient une façade mince.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-302 — Patrimoine - Tests de composant + garde-fou

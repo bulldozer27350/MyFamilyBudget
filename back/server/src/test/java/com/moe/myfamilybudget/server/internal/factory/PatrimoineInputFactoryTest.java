@@ -12,20 +12,23 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.server.internal.calculation.AnnualCashflow;
 import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionInput;
+import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionInput;
+import com.moe.myfamilybudget.server.internal.calculation.PlacementHistoryPoint;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementProjectionInput;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementTransfer;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 
 /**
- * RF-300 : vérifie la traduction {@code BudgetDataModel → PatrimoineProjectionInput} réalisée par
- * {@link PatrimoineInputFactory}. Ce n'est pas un test du moteur patrimonial, qui n'existe pas
- * encore sous cette forme (voir RF-301 et RF-302).
+ * RF-300 / RF-301 : vérifie la traduction {@code BudgetDataModel → PatrimoineProjectionInput} et
+ * {@code → PlacementEvolutionInput} réalisée par {@link PatrimoineInputFactory}. Ce n'est pas un
+ * test des moteurs patrimoniaux (voir RF-302).
  */
 class PatrimoineInputFactoryTest {
 
@@ -222,5 +225,59 @@ class PatrimoineInputFactoryTest {
         assertThat(input.transfers()).isEmpty();
         assertThat(input.cashflow().years()).isNotEmpty();
         assertThat(input.parameters().startYear()).isEqualTo(2026);
+    }
+
+    private static PlacementModel placementWithHistory(
+            String label, String balance, List<PlacementHistoryEntryModel> history) {
+        return new PlacementModel("pl_" + label, label, "Livret", new BigDecimal(balance), "2024-01-01",
+                new BigDecimal("100"), "2024-01", null, new BigDecimal("0.01"), new BigDecimal("0.03"),
+                new BigDecimal("0.05"), null, "", null, null, null, null, "", history);
+    }
+
+    @Test
+    @DisplayName("forPlacementEvolution() : historique trié à part, dates illisibles écartées, paramètres repris")
+    void placementEvolutionInput() {
+        PlacementModel traced = placementWithHistory("Livret A", "1000", List.of(
+                new PlacementHistoryEntryModel("h1", "2025-03-01", new BigDecimal("1200"), null),
+                new PlacementHistoryEntryModel("h2", "pas une date", new BigDecimal("999"), null),
+                new PlacementHistoryEntryModel("h3", "2025-01-01", new BigDecimal("1100"), null)));
+        BudgetDataModel data = budget(settings(new BigDecimal("9000"), new BigDecimal("300")), List.of(), List.of(),
+                List.of(traced), List.of(), List.of());
+
+        PlacementEvolutionInput input = PatrimoineInputFactory.forPlacementEvolution(
+                data, traced, LocalDate.of(2026, 9, 28));
+
+        assertThat(input.placement().label()).isEqualTo("Livret A");
+        assertThat(input.history()).extracting(PlacementHistoryPoint::date)
+                .containsExactlyInAnyOrder(LocalDate.of(2025, 3, 1), LocalDate.of(2025, 1, 1));
+        assertThat(input.parameters().today()).isEqualTo(LocalDate.of(2026, 9, 28));
+        assertThat(input.parameters().horizonYears()).isEqualTo(15);
+        assertThat(input.parameters().inflationRate()).isEqualByComparingTo("0.02");
+        assertThat(input.parameters().cashCeiling()).isEqualByComparingTo("9000");
+        assertThat(input.parameters().cashAlertThreshold()).isEqualByComparingTo("300");
+    }
+
+    @Test
+    @DisplayName("forPlacementEvolution() : chaque placement porte sa dernière valeur connue, sinon son solde")
+    void placementEvolutionBackground() {
+        PlacementModel withHistory = placementWithHistory("Livret A", "1000", List.of(
+                new PlacementHistoryEntryModel("h1", "2025-01-01", new BigDecimal("1100"), null),
+                new PlacementHistoryEntryModel("h2", "2025-03-01", new BigDecimal("1200"), null)));
+        PlacementModel withoutHistory = placementWithHistory("PEA", "5000", List.of());
+        List<TransferModel> transfers = List.of(
+                new TransferModel("t1", "PEA", "2027-05-20", new BigDecimal("2000"), null),
+                new TransferModel("t2", null, "2027-05-20", new BigDecimal("100"), null));
+        BudgetDataModel data = budget(settings(null, null), List.of(), List.of(),
+                List.of(withHistory, withoutHistory), List.of(), transfers);
+
+        PlacementEvolutionInput input = PatrimoineInputFactory.forPlacementEvolution(
+                data, withoutHistory, LocalDate.of(2026, 9, 28));
+
+        assertThat(input.background()).hasSize(2);
+        assertThat(input.background().get(0).latestKnownBalance()).isEqualByComparingTo("1200");
+        assertThat(input.background().get(1).latestKnownBalance()).isEqualByComparingTo("5000");
+        assertThat(input.history()).isEmpty();
+        assertThat(input.transfers()).hasSize(1);
+        assertThat(input.transfers().get(0).placementLabel()).isEqualTo("PEA");
     }
 }
