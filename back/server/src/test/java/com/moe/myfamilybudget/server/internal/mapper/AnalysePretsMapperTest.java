@@ -14,6 +14,7 @@ import com.moe.myfamilybudget.api.model.AnalysePretDto;
 import com.moe.myfamilybudget.api.model.AnalysePretsDto;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceCalculationService;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.server.internal.factory.LoanAdviceInputFactory;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
 
@@ -25,8 +26,8 @@ class AnalysePretsMapperTest {
         LoanModel loan = new LoanModel("r", "Résidence", new BigDecimal("250000"), new BigDecimal("0.045"),
                 new BigDecimal("1450"), new BigDecimal("50"), "2026-09-01", null);
         LoanAdviceResultModel result = new LoanAdviceCalculationService().compute(
-                List.of(loan), List.of(), List.of(), LoanAdviceParameters.defaults(new BigDecimal("0.03")),
-                LocalDate.of(2026, 9, 19));
+                LoanAdviceInputFactory.from(List.of(loan), List.of(), List.of(),
+                        LoanAdviceParameters.defaults(new BigDecimal("0.03")), null, LocalDate.of(2026, 9, 19)));
 
         AnalysePretsDto dto = new AnalysePretsMapper().toDto(result);
 

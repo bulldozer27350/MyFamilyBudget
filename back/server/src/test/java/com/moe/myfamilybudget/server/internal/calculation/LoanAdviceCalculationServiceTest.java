@@ -12,6 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.server.internal.factory.LoanAdviceInputFactory;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.LoanItem;
@@ -55,7 +56,11 @@ class LoanAdviceCalculationServiceTest {
     }
 
     private LoanAdviceResultModel runWith(List<LoanModel> loans, List<PlacementModel> placements, LoanAdviceParameters p) {
-        return service.compute(loans, placements, CATEGORIES, p, TODAY);
+        return service.compute(LoanAdviceInputFactory.from(loans, placements, CATEGORIES, p, null, TODAY));
+    }
+
+    private static double projectCrd(LoanModel loan, LocalDate target) {
+        return LoanAdviceCalculationService.projectCrd(LoanAdviceInputFactory.toLoanInput(loan), target);
     }
 
     // ------------------------------------------------------------------ CRD projeté
@@ -64,21 +69,21 @@ class LoanAdviceCalculationServiceTest {
     @DisplayName("projectCrd() : une échéance de septembre appliquée sur un prêt référencé au 1er septembre")
     void projectCrdSingleStep() {
         // intérêts 150000 * 5 % / 12 = 625 ; capital amorti = 960 - 625 = 335
-        assertEquals(149665.00, LoanAdviceCalculationService.projectCrd(loanA(), TODAY), EUR);
+        assertEquals(149665.00, projectCrd(loanA(), TODAY), EUR);
     }
 
     @Test
     @DisplayName("projectCrd() : reproduit projectLoanCrdToDate du front sur 21 mois")
     void projectCrdMatchesFrontOnSeveralMonths() {
         LoanModel loan = new LoanModel("x", "x", bd("200000"), bd("0.03"), bd("1000"), bd("0"), "2025-01-01", null);
-        assertEquals(189233.30, LoanAdviceCalculationService.projectCrd(loan, TODAY), EUR);
+        assertEquals(189233.30, projectCrd(loan, TODAY), EUR);
     }
 
     @Test
     @DisplayName("projectCrd() : le capital est soldé une fois la date de fin atteinte")
     void projectCrdZeroAfterEndDate() {
         LoanModel loan = new LoanModel("x", "x", bd("100000"), bd("0.03"), bd("1000"), bd("0"), "2026-01-01", "2026-06-01");
-        assertEquals(0, LoanAdviceCalculationService.projectCrd(loan, TODAY), EUR);
+        assertEquals(0, projectCrd(loan, TODAY), EUR);
     }
 
     @Test
@@ -95,7 +100,7 @@ class LoanAdviceCalculationServiceTest {
     @Test
     @DisplayName("Listes nulles : aucun prêt, pas d'exception")
     void nullLists() {
-        LoanAdviceResultModel result = service.compute(null, null, null, LoanAdviceParameters.defaults(null), TODAY);
+        LoanAdviceResultModel result = service.compute(new LoanAdviceInput(null, null, LoanAdviceParameters.defaults(null), null, TODAY));
 
         assertTrue(result.loans().isEmpty());
     }
@@ -323,10 +328,10 @@ class LoanAdviceCalculationServiceTest {
     @Test
     @DisplayName("projectCrd() : après la fin du palier, la mensualité est recalculée pour solder le prêt")
     void projectCrdAfterStep() {
-        assertEquals(169518.75, LoanAdviceCalculationService.projectCrd(smoothedLoan("2036-01-05"), TODAY), EUR);
-        assertEquals(64150.93, LoanAdviceCalculationService.projectCrd(smoothedLoan("2036-01-05"), LocalDate.of(2040, 6, 15)), EUR);
+        assertEquals(169518.75, projectCrd(smoothedLoan("2036-01-05"), TODAY), EUR);
+        assertEquals(64150.93, projectCrd(smoothedLoan("2036-01-05"), LocalDate.of(2040, 6, 15)), EUR);
         // Sans palier, la mensualité reste 800 € : le CRD de 2040 est nettement plus élevé.
-        assertEquals(76385.28, LoanAdviceCalculationService.projectCrd(smoothedLoan(null), LocalDate.of(2040, 6, 15)), EUR);
+        assertEquals(76385.28, projectCrd(smoothedLoan(null), LocalDate.of(2040, 6, 15)), EUR);
     }
 
     @Test

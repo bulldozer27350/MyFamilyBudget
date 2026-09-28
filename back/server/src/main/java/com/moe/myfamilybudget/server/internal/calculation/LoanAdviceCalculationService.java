@@ -11,7 +11,6 @@ import java.util.Locale;
 
 import org.springframework.stereotype.Service;
 
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.Assumptions;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.LoanItem;
@@ -19,14 +18,15 @@ import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.Renego
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RenegotiationVerdict;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RepayVerdict;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RepaymentAdvice;
-import com.moe.myfamilybudget.server.internal.model.LoanModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 
 /**
  * Analyse des prêts en cours : faut-il les solder plus vite, les renégocier, ou les conserver ?
  *
- * Service sans état, sans accès à la persistance : toutes les données arrivent en paramètres, ce qui
- * le rend testable directement (même conception que OverviewCalculationService).
+ * Service sans état, sans accès à la persistance : toutes les données arrivent dans un
+ * {@link LoanAdviceInput} (RF-801, voir doc/architecture/10-domaine-prets-suggestions.md), ce qui
+ * le rend testable directement. Le moteur ne connaît plus ni {@code LoanModel}, ni
+ * {@code PlacementModel}, ni {@code AssetCategoryModel} : prêts et alternatives de placement sont
+ * assemblés en amont (voir {@code LoanAdviceInputFactory}).
  *
  * Hypothèses structurantes (exposées dans le résultat et dans les notes) :
  * <ul>
@@ -48,6 +48,10 @@ public class LoanAdviceCalculationService {
     private static final double IRA_CAP_RATE = 0.03;
     private static final String LOAN_TYPE = "immobilier";
 
+    /** Buckets d'actifs comparables à un remboursement anticipé (liquides et sans risque). */
+    private static final String BUCKET_CASH = "cash";
+    private static final String BUCKET_FONDS_EUROS = "fondsEuros";
+
     /** Meilleur placement liquide sans risque retenu comme alternative au remboursement. */
     private record Alternative(String label, double netYield) {
     }
@@ -56,23 +60,21 @@ public class LoanAdviceCalculationService {
     private record Schedule(int months, double totalInterest, boolean horizonKnown) {
     }
 
-    public LoanAdviceResultModel compute(
-            List<LoanModel> loans,
-            List<PlacementModel> placements,
-            List<AssetCategoryModel> categories,
-            LoanAdviceParameters params,
-            LocalDate today) {
+    public LoanAdviceResultModel compute(LoanAdviceInput input) {
+        LoanAdviceParameters params = input.parameters();
+        LocalDate today = input.today();
 
         List<String> notes = new ArrayList<>();
-        BigDecimal market = params.marketRate();
+        // Le taux résolu par l'appelant prime sur celui des hypothèses.
+        BigDecimal market = input.marketRate() != null ? input.marketRate() : params.marketRate();
         if (market != null && (market.signum() <= 0 || market.compareTo(LoanAdviceParameters.MAX_PLAUSIBLE_MARKET_RATE) > 0)) {
             notes.add("Taux de marché ignoré : valeur hors de la plage plausible (0 % à 30 %).");
             market = null;
         }
 
-        Alternative alternative = bestLiquidAlternative(placements, categories, params);
+        Alternative alternative = bestLiquidAlternative(input.alternatives(), params);
         List<LoanItem> items = new ArrayList<>();
-        for (LoanModel loan : loans == null ? List.<LoanModel>of() : loans) {
+        for (LoanInput loan : input.loans()) {
             double crd = projectCrd(loan, today);
             if (crd <= EPSILON) {
                 continue;
@@ -102,7 +104,7 @@ public class LoanAdviceCalculationService {
 
     // ------------------------------------------------------------------ prêt par prêt
 
-    private LoanItem analyseLoan(LoanModel loan, double crd, Alternative alternative, BigDecimal market,
+    private LoanItem analyseLoan(LoanInput loan, double crd, Alternative alternative, BigDecimal market,
             LoanAdviceParameters params, LocalDate today) {
         double rate = value(loan.rate());
         double monthly = value(loan.monthly());
@@ -239,15 +241,13 @@ public class LoanAdviceCalculationService {
 
     // ------------------------------------------------------------------ alternative de placement
 
-    private static Alternative bestLiquidAlternative(List<PlacementModel> placements,
-            List<AssetCategoryModel> categories, LoanAdviceParameters params) {
-        AssetBucketResolver buckets = new AssetBucketResolver(categories);
+    private static Alternative bestLiquidAlternative(List<LiquidPlacementAlternative> alternatives,
+            LoanAdviceParameters params) {
         double flatTax = params.flatTaxRate().doubleValue();
         Alternative best = null;
-        for (PlacementModel p : placements == null ? List.<PlacementModel>of() : placements) {
-            String bucket = buckets.bucketOf(p);
-            boolean cash = "cash".equals(bucket);
-            if (!cash && !"fondsEuros".equals(bucket)) {
+        for (LiquidPlacementAlternative p : alternatives) {
+            boolean cash = BUCKET_CASH.equals(p.bucket());
+            if (!cash && !BUCKET_FONDS_EUROS.equals(p.bucket())) {
                 continue;
             }
             double rate = value(p.rateCorr());
@@ -269,7 +269,7 @@ public class LoanAdviceCalculationService {
      * projectLoanCrdToDate() de calculations.js (un pas par mois, du mois de référence au mois cible
      * inclus) pour que le serveur et l'affichage local restent cohérents.
      */
-    static double projectCrd(LoanModel loan, LocalDate target) {
+    static double projectCrd(LoanInput loan, LocalDate target) {
         double crd = value(loan.crd());
         if (crd <= 0) {
             return 0;

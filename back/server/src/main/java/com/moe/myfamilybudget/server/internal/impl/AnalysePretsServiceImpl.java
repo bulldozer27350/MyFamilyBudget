@@ -15,6 +15,7 @@ import com.moe.myfamilybudget.api.model.AnalysePretsParametresValuesDto;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceCalculationService;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceParameters;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceSettingsService;
+import com.moe.myfamilybudget.server.internal.factory.LoanAdviceInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.AnalysePretsMapper;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketDataService;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
@@ -58,11 +59,7 @@ public class AnalysePretsServiceImpl implements AnalysePretsApi {
         ResolvedMarketRate resolved = resolveMarketRate(marketRate, saved, marketDataService.current());
         LoanAdviceParameters effective = withMarketRate(saved, resolved.rate());
         LoanAdviceResultModel result = calculationService.compute(
-                data.getEffectiveLoans(),
-                data.getEffectivePlacements(),
-                data.getEffectiveAssetCategories(),
-                effective,
-                LocalDate.now());
+                LoanAdviceInputFactory.from(data, effective, resolved.rate(), LocalDate.now()));
         // Le calcul ignore un taux hors plage : l'origine n'est alors pas affichée.
         LoanAdviceResultModel described = result.marketRateUsed() != null
                 ? result.withMarketRateSource(resolved.source())

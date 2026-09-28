@@ -530,12 +530,17 @@ spécifiques à relire avant de le démarrer.
 - **Modifications attendues** :
 - Brancher `LoanAdviceCalculationService` et l'orchestration REST sur `LoanAdviceInput`.
 - Encapsulation de frontière uniquement : ne pas sur-refactorer un moteur déjà largement pur (avertissement explicite du document de domaine).
+- **Notes d'implémentation** :
+- `LoanAdviceCalculationService.compute(LoanAdviceInput)` remplace `compute(loans, placements, categories, params, today)` ; le moteur ne connaît plus `LoanModel`, `PlacementModel` ni `AssetCategoryModel` (la résolution du bucket est faite par l'appelant).
+- Assemblage dans `LoanAdviceInputFactory` (`internal.factory`) ; `AnalysePretsServiceImpl` l'appelle avec le taux de marché résolu. Le taux de `LoanAdviceInput.marketRate` prime sur `parameters.marketRate`, comportement inchangé.
+- Aucune règle de calcul modifiée : les tests existants sont conservés (adaptés à la nouvelle signature). `AssetBucketResolver` reste dans `internal.calculation` (décision traitée en RF-802).
+- Build Maven non exécutable dans l'environnement de rédaction (Maven Central inaccessible) : sources compilées avec javac et valeurs de référence recontrôlées, `mvn test` à confirmer en local.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-802 — Suggestions de taux - Contrat et branchement
