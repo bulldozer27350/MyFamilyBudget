@@ -18,7 +18,12 @@ import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxYearlyModel;
 import com.moe.myfamilybudget.server.internal.model.TaxResultModel;
 import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.server.internal.port.BudgetReader;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.server.internal.port.RetirementReader;
+import com.moe.myfamilybudget.server.internal.port.SettingsReader;
+import com.moe.myfamilybudget.server.internal.port.TaxReader;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,32 +33,76 @@ import java.util.Map;
 /**
  * Service/Contrôleur implémentant l'API OpenAPI ImpotsApi.
  * Orchestre les échanges entre la couche REST DTO et le domaine interne.
+ *
+ * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
+ * {@code PersistenceManager}. Les lectures passent par les ports de domaine ({@link
+ * SettingsReader}, {@link TaxReader}, {@link BudgetReader}, {@link PatrimoineReader},
+ * {@link RetirementReader}, {@link BankReader}) ; le {@link BudgetDataModel} attendu par
+ * {@link TaxSimulationPeriodResolver}, {@link RetirementInputFactory} et {@link TaxInputFactory}
+ * est recomposé localement à partir de ces ports.
  */
 @RestController
 public class ImpotsServiceImpl implements ImpotsApi {
 
-    private final PersistenceManager persistenceManager;
     private final TaxMapper taxMapper;
     private final RetirementInputFactory retirementInputFactory;
     private final RetirementCalculationService retirementCalculationService;
     private final TaxCommandService taxCommandService;
+    private final SettingsReader settingsReader;
+    private final TaxReader taxReader;
+    private final BudgetReader budgetReader;
+    private final PatrimoineReader patrimoineReader;
+    private final RetirementReader retirementReader;
+    private final BankReader bankReader;
 
     public ImpotsServiceImpl(
-            PersistenceManager persistenceManager,
             TaxMapper taxMapper,
             RetirementInputFactory retirementInputFactory,
             RetirementCalculationService retirementCalculationService,
-            TaxCommandService taxCommandService) {
-        this.persistenceManager = persistenceManager;
+            TaxCommandService taxCommandService,
+            SettingsReader settingsReader,
+            TaxReader taxReader,
+            BudgetReader budgetReader,
+            PatrimoineReader patrimoineReader,
+            RetirementReader retirementReader,
+            BankReader bankReader) {
         this.taxMapper = taxMapper;
         this.retirementInputFactory = retirementInputFactory;
         this.retirementCalculationService = retirementCalculationService;
         this.taxCommandService = taxCommandService;
+        this.settingsReader = settingsReader;
+        this.taxReader = taxReader;
+        this.budgetReader = budgetReader;
+        this.patrimoineReader = patrimoineReader;
+        this.retirementReader = retirementReader;
+        this.bankReader = bankReader;
+    }
+
+    private BudgetDataModel composeBudgetData() {
+        return new BudgetDataModel(
+                settingsReader.getSettings(),
+                budgetReader.getIncomes(),
+                budgetReader.getCharges(),
+                patrimoineReader.getPlacements(),
+                patrimoineReader.getRealEstate(),
+                retirementReader.getRetirement(),
+                taxReader.getTaxChildren(),
+                taxReader.getTaxBrackets(),
+                taxReader.getTaxRateOverrides(),
+                taxReader.getTaxActualOverrides(),
+                budgetReader.getOneoffExpenses(),
+                patrimoineReader.getTransfers(),
+                budgetReader.getVariableIncomes(),
+                budgetReader.getVariableOverrides(),
+                bankReader.getBankImport(),
+                null,
+                null,
+                null);
     }
 
     @Override
     public ResponseEntity<Object> getImpots() {
-        BudgetDataModel data = persistenceManager.getBudgetData();
+        BudgetDataModel data = composeBudgetData();
         TaxSimulationPeriod period = TaxSimulationPeriodResolver.resolve(data);
         RetirementProjection retirement = retirementCalculationService.compute(retirementInputFactory.create(data));
         TaxCalculationInput input = TaxInputFactory.from(data, period, retirement);

@@ -727,7 +727,7 @@ spécifiques à relire avant de le démarrer.
   - [x] Patrimoine (`PatrimoineServiceImpl`)
   - [x] Trésorerie (`TresorerieServiceImpl`)
   - [ ] Overview (`OverviewServiceImpl`)
-  - [ ] Fiscalité (`ImpotsServiceImpl`)
+  - [x] Fiscalité (`ImpotsServiceImpl`)
   - [ ] Analyse / Analyse Prêts (`AnalyseServiceImpl`, `AnalysePretsServiceImpl`)
   - [ ] Paramètres (`ParametersServiceImpl`)
   - [ ] Banque / Import (`StatementBankImportServiceImpl`, `PointageServiceImpl`, `PendingOperationsServiceImpl`)
