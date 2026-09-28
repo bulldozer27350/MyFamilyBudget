@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
 import com.moe.myfamilybudget.server.internal.mapper.AnalyseMapper;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class AnalyseServiceImplTest {
@@ -25,7 +27,8 @@ class AnalyseServiceImplTest {
         mapper = new AnalyseMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        service = new AnalyseServiceImpl(persistenceManager, mapper);
+        service = new AnalyseServiceImpl(persistenceManager, mapper,
+                new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore()));
     }
 
     @Test

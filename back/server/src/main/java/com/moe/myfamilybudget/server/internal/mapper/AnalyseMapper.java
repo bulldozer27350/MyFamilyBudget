@@ -6,6 +6,7 @@ import com.moe.myfamilybudget.api.model.AnalyseKpiDto;
 import com.moe.myfamilybudget.api.model.AnalyseLandingRowDto;
 import com.moe.myfamilybudget.api.model.AnalyseMonthlyCompareDto;
 import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
+import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.model.AnalyseCategorySummaryModel;
 import com.moe.myfamilybudget.server.internal.model.AnalyseDriftRowModel;
 import com.moe.myfamilybudget.server.internal.model.AnalyseKpiModel;
@@ -33,13 +34,21 @@ public class AnalyseMapper {
     }
 
     public AnalyseResponseDto toDto(AnalyseResultModel model) {
+        return toDto(model, ObjectifsParameters.defaults());
+    }
+
+    /**
+     * Les paramètres du domaine Objectifs (RF-700) sont réinjectés dans {@code settings} : la vue
+     * Analyse, onglet Objectifs, lit les seuils de bascule depuis {@code data.settings}.
+     */
+    public AnalyseResponseDto toDto(AnalyseResultModel model, ObjectifsParameters objectifs) {
         if (model == null) {
             return new AnalyseResponseDto();
         }
 
         AnalyseResponseDto dto = new AnalyseResponseDto();
         if (model.data() != null && overviewMapper != null) {
-            var dataDto = overviewMapper.toBudgetDataDto(model.data());
+            var dataDto = overviewMapper.toBudgetDataDto(model.data(), objectifs);
             dto.setData(dataDto);
             dto.setBankImport(dataDto.getBankImport());
             dto.setCharges(dataDto.getCharges());

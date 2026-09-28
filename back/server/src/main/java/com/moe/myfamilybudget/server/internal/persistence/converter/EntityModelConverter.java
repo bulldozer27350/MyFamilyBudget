@@ -29,8 +29,6 @@ public class EntityModelConverter {
         entity.setCashCeiling(model.cashCeiling());
         entity.setCashFloor(model.cashFloor());
         entity.setCashAlertThreshold(model.cashAlertThreshold());
-        entity.setGoalSecureHorizonMonths(model.goalSecureHorizonMonths());
-        entity.setGoalLiquidHorizonMonths(model.goalLiquidHorizonMonths());
         return entity;
     }
 
@@ -51,9 +49,7 @@ public class EntityModelConverter {
             entity.getSweepEnabled(),
             entity.getCashCeiling(),
             entity.getCashFloor(),
-            entity.getCashAlertThreshold(),
-            entity.getGoalSecureHorizonMonths(),
-            entity.getGoalLiquidHorizonMonths()
+            entity.getCashAlertThreshold()
         );
     }
 

@@ -17,34 +17,8 @@ public record SettingsModel(
     Boolean sweepEnabled,
     BigDecimal cashCeiling,
     BigDecimal cashFloor,
-    BigDecimal cashAlertThreshold,
-    Integer goalSecureHorizonMonths,
-    Integer goalLiquidHorizonMonths
+    BigDecimal cashAlertThreshold
 ) {
-    // Constructeur de compatibilite ascendante : conserve la signature historique a 15
-    // parametres (avant l'ajout des seuils de bascule des objectifs) pour ne pas avoir a
-    // modifier tous les appels existants qui construisent encore ces 15 champs. Les deux
-    // nouveaux seuils valent alors null (valeurs par defaut appliquees par les getEffective*).
-    public SettingsModel(
-        Integer birthYear,
-        Integer retireAge,
-        Integer simulateUntilAge,
-        BigDecimal inflationRate,
-        String pivotDate,
-        String pivotMode,
-        BigDecimal startBalance,
-        Integer childExitAge,
-        BigDecimal taxAbattement,
-        BigDecimal pass2026,
-        BigDecimal passGrowthRate,
-        Boolean sweepEnabled,
-        BigDecimal cashCeiling,
-        BigDecimal cashFloor,
-        BigDecimal cashAlertThreshold
-    ) {
-        this(birthYear, retireAge, simulateUntilAge, inflationRate, pivotDate, pivotMode, startBalance, childExitAge, taxAbattement, pass2026, passGrowthRate, sweepEnabled, cashCeiling, cashFloor, cashAlertThreshold, null, null);
-    }
-
     public SettingsModel(
         Integer birthYear,
         Integer retireAge,
@@ -111,13 +85,4 @@ public record SettingsModel(
     public BigDecimal getEffectiveTaxAbattement() {
         return taxAbattement != null ? taxAbattement : BigDecimal.ZERO;
     }
-
-    public int getEffectiveGoalSecureHorizonMonths() {
-        return goalSecureHorizonMonths != null ? goalSecureHorizonMonths : 12;
-    }
-
-    public int getEffectiveGoalLiquidHorizonMonths() {
-        return goalLiquidHorizonMonths != null ? goalLiquidHorizonMonths : 3;
-    }
 }
-

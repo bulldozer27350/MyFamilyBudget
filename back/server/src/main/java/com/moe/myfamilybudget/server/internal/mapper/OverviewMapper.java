@@ -43,6 +43,7 @@ import com.moe.myfamilybudget.api.model.ObjectifAllocationDto;
 import com.moe.myfamilybudget.api.model.TripleAmountDto;
 import com.moe.myfamilybudget.api.model.VariableIncomeDto;
 import com.moe.myfamilybudget.api.model.VariableOverrideDto;
+import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
@@ -135,6 +136,14 @@ public class OverviewMapper {
     }
 
     public BudgetDataDto toBudgetDataDto(BudgetDataModel model) {
+        return toBudgetDataDto(model, ObjectifsParameters.defaults());
+    }
+
+    /**
+     * Comme {@link #toBudgetDataDto(BudgetDataModel)}, en réinjectant les paramètres du domaine
+     * Objectifs dans {@code settings} pour conserver le contrat d'API inchangé (RF-700).
+     */
+    public BudgetDataDto toBudgetDataDto(BudgetDataModel model, ObjectifsParameters objectifs) {
         if (model == null) {
             return null;
         }
@@ -156,7 +165,7 @@ public class OverviewMapper {
                 ? model.loans().stream().map(this::toLoanDto).collect(Collectors.toList())
                 : List.of());
         dto.setRetirement(toRetirementDto(model.retirement()));
-        dto.setSettings(toSettingsDto(model.settings()));
+        dto.setSettings(toSettingsDto(model.settings(), objectifs));
         dto.setTaxChildren(model.taxChildren() != null
                 ? model.taxChildren().stream().map(this::toTaxChildDto).collect(Collectors.toList())
                 : List.of());
@@ -296,11 +305,24 @@ public class OverviewMapper {
         return new SettingsModel(dto.getBirthYear(), dto.getRetireAge(), dto.getSimulateUntilAge(),
                 dto.getInflationRate(), dto.getPivotDate(), dto.getPivotMode(), dto.getStartBalance(),
                 dto.getChildExitAge(), dto.getTaxAbattement(), dto.getPass2026(), dto.getPassGrowthRate(),
-                dto.getSweepEnabled(), dto.getCashCeiling(), dto.getCashFloor(), dto.getCashAlertThreshold(),
-                dto.getGoalSecureHorizonMonths(), dto.getGoalLiquidHorizonMonths());
+                dto.getSweepEnabled(), dto.getCashCeiling(), dto.getCashFloor(), dto.getCashAlertThreshold());
     }
 
-    private SettingsDto toSettingsDto(SettingsModel model) {
+    /**
+     * Extrait les paramètres du domaine Objectifs d'un {@link BudgetDataDto} (RF-700) : ils ne
+     * font plus partie de {@link SettingsModel} mais restent portés par {@code settings} dans le
+     * contrat d'API.
+     */
+    public ObjectifsParameters toObjectifsParameters(BudgetDataDto dto) {
+        if (dto == null || dto.getSettings() == null) {
+            return ObjectifsParameters.defaults();
+        }
+        return new ObjectifsParameters(
+                dto.getSettings().getGoalSecureHorizonMonths(),
+                dto.getSettings().getGoalLiquidHorizonMonths());
+    }
+
+    private SettingsDto toSettingsDto(SettingsModel model, ObjectifsParameters objectifs) {
         if (model == null)
             return null;
         SettingsDto dto = new SettingsDto();
@@ -319,8 +341,9 @@ public class OverviewMapper {
         dto.setCashCeiling(model.cashCeiling());
         dto.setCashFloor(model.cashFloor());
         dto.setCashAlertThreshold(model.cashAlertThreshold());
-        dto.setGoalSecureHorizonMonths(model.goalSecureHorizonMonths());
-        dto.setGoalLiquidHorizonMonths(model.goalLiquidHorizonMonths());
+        ObjectifsParameters goals = objectifs != null ? objectifs : ObjectifsParameters.defaults();
+        dto.setGoalSecureHorizonMonths(goals.secureHorizonMonths());
+        dto.setGoalLiquidHorizonMonths(goals.liquidHorizonMonths());
         return dto;
     }
 

@@ -15,8 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class ParametersServiceImplTest {
@@ -30,7 +32,8 @@ class ParametersServiceImplTest {
         mapper = new SettingsMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        service = new ParametersServiceImpl(persistenceManager, mapper);
+        service = new ParametersServiceImpl(persistenceManager, mapper,
+                new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore()));
     }
 
     @Test
@@ -76,6 +79,27 @@ class ParametersServiceImplTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> settings = (Map<String, Object>) body.get("settings");
         assertEquals(new BigDecimal("0.025"), settings.get("inflationRate"));
+    }
+
+    @Test
+    @DisplayName("Les seuils des objectifs sont routés vers le domaine Objectifs et restent exposés dans settings")
+    void testObjectifsHorizonsRoutedThroughSettingsFacade() {
+        ResponseEntity<Object> initial = service.getSettings();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> initialSettings = (Map<String, Object>) ((Map<String, Object>) initial.getBody()).get("settings");
+        assertThat(initialSettings).containsEntry("goalSecureHorizonMonths", null);
+        assertThat(initialSettings).containsEntry("goalLiquidHorizonMonths", null);
+
+        service.saveSettings(Map.of("field", "goalSecureHorizonMonths", "value", 18));
+        service.saveSettings(Map.of("settings", Map.of("goalLiquidHorizonMonths", "6")));
+
+        ResponseEntity<Object> updated = service.getSettings();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> settings = (Map<String, Object>) ((Map<String, Object>) updated.getBody()).get("settings");
+        assertEquals(18, settings.get("goalSecureHorizonMonths"));
+        assertEquals(6, settings.get("goalLiquidHorizonMonths"));
+        // Les autres paramètres ne sont pas affectés.
+        assertEquals(1985, settings.get("birthYear"));
     }
 
     @Test

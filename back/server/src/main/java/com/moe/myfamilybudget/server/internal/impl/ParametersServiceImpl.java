@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.ParametresApi;
+import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
@@ -22,10 +23,13 @@ public class ParametersServiceImpl implements ParametresApi {
 
     private final PersistenceManager persistenceManager;
     private final SettingsMapper settingsMapper;
+    private final ObjectifsSettingsService objectifsSettingsService;
 
-    public ParametersServiceImpl(PersistenceManager persistenceManager, SettingsMapper settingsMapper) {
+    public ParametersServiceImpl(PersistenceManager persistenceManager, SettingsMapper settingsMapper,
+            ObjectifsSettingsService objectifsSettingsService) {
         this.persistenceManager = persistenceManager;
         this.settingsMapper = settingsMapper;
+        this.objectifsSettingsService = objectifsSettingsService;
     }
 
     @Override
@@ -38,7 +42,7 @@ public class ParametersServiceImpl implements ParametresApi {
                 settings, categories, data.bankImport()
         );
 
-        Map<String, Object> response = settingsMapper.toResponseMap(result);
+        Map<String, Object> response = settingsMapper.toResponseMap(result, objectifsSettingsService.current());
         return ResponseEntity.ok(response);
     }
 
@@ -66,15 +70,27 @@ public class ParametersServiceImpl implements ParametresApi {
             } else if (typedMap.containsKey("field") && typedMap.get("field") != null) {
                 String field = String.valueOf(typedMap.get("field"));
                 Object value = typedMap.get("value");
-                persistenceManager.updateTaxSettings(field, value);
+                updateSetting(field, value);
             } else if (typedMap.containsKey("settings") && typedMap.get("settings") instanceof Map<?, ?> sMap) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> typedSMap = (Map<String, Object>) sMap;
                 for (Map.Entry<String, Object> entry : typedSMap.entrySet()) {
-                    persistenceManager.updateTaxSettings(entry.getKey(), entry.getValue());
+                    updateSetting(entry.getKey(), entry.getValue());
                 }
             }
         }
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Façade unique de {@code PATCH /settings} (voir doc/architecture/12-settings.md) : chaque
+     * champ est routé vers le domaine propriétaire.
+     */
+    private void updateSetting(String field, Object value) {
+        if (ObjectifsSettingsService.owns(field)) {
+            objectifsSettingsService.updateField(field, value);
+        } else {
+            persistenceManager.updateTaxSettings(field, value);
+        }
     }
 }

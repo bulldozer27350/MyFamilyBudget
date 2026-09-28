@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.mapper;
 
+import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsResultModel;
@@ -14,6 +15,16 @@ import java.util.stream.Collectors;
 public class SettingsMapper {
 
     public Map<String, Object> toResponseMap(SettingsResultModel model) {
+        return toResponseMap(model, ObjectifsParameters.defaults());
+    }
+
+    /**
+     * Les seuils des objectifs ne font plus partie de {@code SettingsModel} (RF-700) : ils sont
+     * fournis à part par le domaine Objectifs et réinjectés ici pour conserver le contrat
+     * {@code GET /settings} inchangé.
+     */
+    public Map<String, Object> toResponseMap(SettingsResultModel model, ObjectifsParameters objectifs) {
+        ObjectifsParameters goals = objectifs != null ? objectifs : ObjectifsParameters.defaults();
         if (model == null) {
             return new HashMap<>();
         }
@@ -38,8 +49,8 @@ public class SettingsMapper {
             sMap.put("cashCeiling", s.cashCeiling());
             sMap.put("cashFloor", s.cashFloor());
             sMap.put("cashAlertThreshold", s.cashAlertThreshold());
-            sMap.put("goalSecureHorizonMonths", s.goalSecureHorizonMonths());
-            sMap.put("goalLiquidHorizonMonths", s.goalLiquidHorizonMonths());
+            sMap.put("goalSecureHorizonMonths", goals.secureHorizonMonths());
+            sMap.put("goalLiquidHorizonMonths", goals.liquidHorizonMonths());
             response.put("settings", sMap);
         } else {
             response.put("settings", new HashMap<>());

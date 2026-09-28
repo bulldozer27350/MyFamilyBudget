@@ -599,9 +599,7 @@ class BudgetMutationService {
                     "sweepEnabled".equals(field) ? (value != null && Boolean.parseBoolean(String.valueOf(value))) : s.sweepEnabled(),
                     "cashCeiling".equals(field) ? toBigDecimal(value, null) : s.cashCeiling(),
                     "cashFloor".equals(field) ? toBigDecimal(value, null) : s.cashFloor(),
-                    "cashAlertThreshold".equals(field) ? toBigDecimal(value, null) : s.cashAlertThreshold(),
-                    "goalSecureHorizonMonths".equals(field) ? toInteger(value, null) : s.goalSecureHorizonMonths(),
-                    "goalLiquidHorizonMonths".equals(field) ? toInteger(value, null) : s.goalLiquidHorizonMonths()
+                    "cashAlertThreshold".equals(field) ? toBigDecimal(value, null) : s.cashAlertThreshold()
             );
             return base.withSettings(updatedSettings);
         });
