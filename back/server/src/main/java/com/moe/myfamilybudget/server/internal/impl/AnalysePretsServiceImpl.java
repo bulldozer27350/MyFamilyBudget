@@ -23,7 +23,8 @@ import com.moe.myfamilybudget.server.internal.marketdata.MortgageRateQuote;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.LoanReader;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 
 /**
  * Contrôleur REST implémentant le contrat OpenAPI AnalysePretsApi (Tag: AnalysePrets) : façade
@@ -32,29 +33,43 @@ import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
  *
  * Le taux de marché de la renégociation est choisi dans cet ordre : paramètre de requête (simulation),
  * taux saisi dans les hypothèses, puis taux moyen des nouveaux crédits de la Banque de France.
+ *
+ * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
+ * {@code PersistenceManager}. {@link LoanAdviceInputFactory} ne lit que loans, placements et
+ * assetCategories (voir son usage de {@code BudgetDataModel}) : seuls {@link LoanReader} et
+ * {@link PatrimoineReader} sont composés ici, les autres domaines restent à {@code null}.
  */
 @RestController
 public class AnalysePretsServiceImpl implements AnalysePretsApi {
 
-    private final PersistenceManager persistenceManager;
     private final LoanAdviceCalculationService calculationService;
     private final LoanAdviceSettingsService settingsService;
     private final MarketDataService marketDataService;
     private final AnalysePretsMapper mapper;
+    private final LoanReader loanReader;
+    private final PatrimoineReader patrimoineReader;
 
-    public AnalysePretsServiceImpl(PersistenceManager persistenceManager,
+    public AnalysePretsServiceImpl(
             LoanAdviceCalculationService calculationService, LoanAdviceSettingsService settingsService,
-            MarketDataService marketDataService, AnalysePretsMapper mapper) {
-        this.persistenceManager = persistenceManager;
+            MarketDataService marketDataService, AnalysePretsMapper mapper,
+            LoanReader loanReader, PatrimoineReader patrimoineReader) {
         this.calculationService = calculationService;
         this.settingsService = settingsService;
         this.marketDataService = marketDataService;
         this.mapper = mapper;
+        this.loanReader = loanReader;
+        this.patrimoineReader = patrimoineReader;
+    }
+
+    private BudgetDataModel composeBudgetData() {
+        return new BudgetDataModel(
+                null, null, null, patrimoineReader.getPlacements(), null, null, null, null, null, null, null, null,
+                null, null, null, patrimoineReader.getAssetCategories(), loanReader.getLoans(), null);
     }
 
     @Override
     public ResponseEntity<AnalysePretsDto> getAnalysePrets(BigDecimal marketRate) {
-        BudgetDataModel data = persistenceManager.getBudgetData();
+        BudgetDataModel data = composeBudgetData();
         LoanAdviceParameters saved = settingsService.current();
         ResolvedMarketRate resolved = resolveMarketRate(marketRate, saved, marketDataService.current());
         LoanAdviceParameters effective = withMarketRate(saved, resolved.rate());
