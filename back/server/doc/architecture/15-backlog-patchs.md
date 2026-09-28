@@ -725,7 +725,7 @@ spécifiques à relire avant de le démarrer.
 - **Suivi (peut être scindé) :**
   - [x] Retraite (`RetraiteServiceImpl`)
   - [x] Patrimoine (`PatrimoineServiceImpl`)
-  - [ ] Trésorerie (`TresorerieServiceImpl`)
+  - [x] Trésorerie (`TresorerieServiceImpl`)
   - [ ] Overview (`OverviewServiceImpl`)
   - [ ] Fiscalité (`ImpotsServiceImpl`)
   - [ ] Analyse / Analyse Prêts (`AnalyseServiceImpl`, `AnalysePretsServiceImpl`)

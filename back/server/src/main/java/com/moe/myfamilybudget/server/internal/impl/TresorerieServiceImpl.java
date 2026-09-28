@@ -38,7 +38,10 @@ import com.moe.myfamilybudget.server.internal.model.TresorerieResultModel;
 import com.moe.myfamilybudget.server.internal.model.TresorerieSuggestionModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.command.TresorerieCommandService;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.server.internal.port.BudgetReader;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
 /**
  * Contrôleur REST de la trésorerie prévisionnelle (Trésorerie) : orchestration HTTP uniquement
@@ -49,28 +52,54 @@ import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
  * à {@link TresorerieCalculationService} via {@link TreasuryInputFactory}. Les moyennes réelles
  * du pointage bancaire, les suggestions budgétaires et la liste des catégories d'options sont
  * assemblées ici au niveau application.
+ *
+ * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
+ * {@code PersistenceManager}. Les lectures passent par les ports de domaine ({@link
+ * SettingsReader}, {@link BudgetReader}, {@link PatrimoineReader}, {@link BankReader}) ; le
+ * {@link BudgetDataModel} attendu par {@link TreasuryInputFactory} est recomposé localement à
+ * partir de ces ports, avec les domaines non lus laissés à {@code null}.
  */
 @RestController
 public class TresorerieServiceImpl implements TresorerieApi {
 
     private final TresorerieMapper mapper;
-    private final PersistenceManager persistenceManager;
     private final TresorerieCalculationService calculationService;
     private final TreasuryInputFactory treasuryInputFactory;
     private final TresorerieCommandService tresorerieCommandService;
+    private final SettingsReader settingsReader;
+    private final BudgetReader budgetReader;
+    private final PatrimoineReader patrimoineReader;
+    private final BankReader bankReader;
 
-    public TresorerieServiceImpl(TresorerieMapper mapper, PersistenceManager persistenceManager,
-            TresorerieCommandService tresorerieCommandService) {
+    public TresorerieServiceImpl(
+            TresorerieMapper mapper,
+            TresorerieCommandService tresorerieCommandService,
+            SettingsReader settingsReader,
+            BudgetReader budgetReader,
+            PatrimoineReader patrimoineReader,
+            BankReader bankReader) {
         this.mapper = mapper;
-        this.persistenceManager = persistenceManager;
         this.tresorerieCommandService = tresorerieCommandService;
         this.calculationService = new TresorerieCalculationService();
         this.treasuryInputFactory = new TreasuryInputFactory();
+        this.settingsReader = settingsReader;
+        this.budgetReader = budgetReader;
+        this.patrimoineReader = patrimoineReader;
+        this.bankReader = bankReader;
+    }
+
+    private BudgetDataModel composeBudgetData() {
+        return new BudgetDataModel(
+                settingsReader.getSettings(), budgetReader.getIncomes(), budgetReader.getCharges(),
+                patrimoineReader.getPlacements(), null, null, null, null, null, null,
+                budgetReader.getOneoffExpenses(), patrimoineReader.getTransfers(),
+                budgetReader.getVariableIncomes(), budgetReader.getVariableOverrides(),
+                bankReader.getBankImport(), null, null, null);
     }
 
     @Override
     public ResponseEntity<TresorerieResponseDto> getTresorerie(Boolean useConstantEuros) {
-        BudgetDataModel data = this.persistenceManager.getBudgetData();
+        BudgetDataModel data = composeBudgetData();
         TresorerieResultModel result = computeTresorerie(data, Boolean.TRUE.equals(useConstantEuros));
         return ResponseEntity.ok(this.mapper.toTresorerieResponseDto(result));
     }
