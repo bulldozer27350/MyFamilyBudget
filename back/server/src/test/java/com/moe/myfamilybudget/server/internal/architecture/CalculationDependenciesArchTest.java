@@ -11,6 +11,7 @@ import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceCalculationS
 import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionService;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
+import com.moe.myfamilybudget.server.internal.calculation.TresorerieCalculationService;
 import com.moe.myfamilybudget.server.internal.factory.AssetBucketResolver;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
@@ -64,10 +65,13 @@ import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
  * domaine Patrimoine depuis RF-302 : le store gelé ne contient aucune violation Patrimoine (les deux
  * moteurs, {@code PatrimoineProjectionService} et {@code PlacementEvolutionService}, ne dépendent
  * plus du budget depuis RF-301) ; ils sont protégés par
- * {@link #PATRIMOINE_ENGINES_DO_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée.
+ * {@link #PATRIMOINE_ENGINES_DO_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée. Et pour le
+ * domaine Trésorerie depuis RF-402 : le store gelé ne contient aucune violation Trésorerie (le
+ * moteur, {@code TresorerieCalculationService}, ne dépend plus du budget depuis RF-401) ; il est
+ * protégé par {@link #TREASURY_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée.
  *
  * <p><b>Gel des violations existantes ({@link FreezingArchRule}).</b> À l'écriture de ce test,
- * {@code OverviewCalculationService} et {@code TresorerieCalculationService} dépendent encore
+ * {@code OverviewCalculationService} dépend encore
  * directement de {@code BudgetDataModel}. Plutôt que de casser le build immédiatement, la
  * règle est enveloppée dans une {@link FreezingArchRule} : les violations constatées au premier
  * lancement sont gelées dans le dossier {@code archunit_store} (voir {@code archunit.properties})
@@ -202,4 +206,25 @@ class CalculationDependenciesArchTest {
             .as("les moteurs patrimoniaux ne doivent dépendre d'aucun modèle du budget : ils "
                     + "consomment uniquement PatrimoineProjectionInput et PlacementEvolutionInput "
                     + "(doc/architecture/05-domaine-patrimoine.md)");
+
+    /**
+     * Garde-fou du domaine Trésorerie (RF-402) : {@link TresorerieCalculationService} ne reçoit que
+     * {@code TreasuryProjectionInput} et ne connaît aucun modèle persistant du budget. Règle stricte
+     * (sans gel) : le domaine ne présente aucune violation préexistante depuis RF-401.
+     */
+    @ArchTest
+    static final ArchRule TREASURY_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
+            .that().areAssignableTo(TresorerieCalculationService.class)
+            .should().dependOnClassesThat().belongToAnyOf(
+                    BudgetDataModel.class,
+                    SettingsModel.class,
+                    IncomeModel.class,
+                    ChargeModel.class,
+                    PlacementModel.class,
+                    VariableIncomeModel.class,
+                    VariableOverrideModel.class,
+                    BankImportModel.class)
+            .as("TresorerieCalculationService ne doit dépendre d'aucun modèle du budget : il "
+                    + "consomme uniquement TreasuryProjectionInput "
+                    + "(doc/architecture/06-domaine-tresorerie.md)");
 }

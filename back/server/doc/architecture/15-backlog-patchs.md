@@ -347,12 +347,15 @@ spécifiques à relire avant de le démarrer.
 - **Modifications attendues** :
 - Tests unitaires sur `TresorerieCalculationService` utilisant uniquement `TreasuryProjectionInput`.
 - Retirer le domaine Trésorerie de la liste des violations gelées ArchUnit.
+- **Notes d'implémentation** :
+- Tests de composant dans `TresorerieCalculationServiceComponentTest` (`internal.calculation`, sans Spring) : fonctions unitaires (`chargeMonthlyForYear`, `chargeAnnualForYear`, `incomeMonthlyForYear`, `incomeAnnualForYear`, `monthsActiveInYear`), scénarios `compute()` (projection vide, revenu seul, revenu-charges, impôts+régularisation, pensions retraite, dépenses ponctuelles, virements, placements, revenus variables avec override, solde cumulé), et aperçu des revenus variables (`previewYears`, `isReal`, hors plage).
+- Règle ArchUnit stricte `TREASURY_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS` (non gelée) ajoutée dans `CalculationDependenciesArchTest` : le moteur ne doit dépendre d'aucun modèle persistant (`BudgetDataModel`, `SettingsModel`, `IncomeModel`, `ChargeModel`, `PlacementModel`, `VariableIncomeModel`, `VariableOverrideModel`, `BankImportModel`). Javadoc de la classe mise à jour pour mentionner le domaine Trésorerie et refléter que seul `OverviewCalculationService` reste dans les violations gelées.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-500 — Pointage - Contrats
