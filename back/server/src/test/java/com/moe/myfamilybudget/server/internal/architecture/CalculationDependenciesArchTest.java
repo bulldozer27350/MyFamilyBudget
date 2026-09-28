@@ -13,6 +13,7 @@ import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionServ
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
 import com.moe.myfamilybudget.server.internal.calculation.TresorerieCalculationService;
 import com.moe.myfamilybudget.server.internal.factory.AssetBucketResolver;
+import com.moe.myfamilybudget.server.internal.model.AnalyseCalculator;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
@@ -71,7 +72,10 @@ import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
  * protégé par {@link #TREASURY_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée. Et pour le
  * domaine Overview depuis RF-901 : {@code OverviewCalculationService} consomme exclusivement
  * {@code OverviewInput} depuis RF-901 ; il est protégé par
- * {@link #OVERVIEW_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée (RF-902).
+ * {@link #OVERVIEW_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée (RF-902). Et pour le
+ * domaine Analyse depuis RF-601 : {@code AnalyseCalculator} consomme exclusivement
+ * {@code AnalyseInput} depuis RF-601 ; il est protégé par
+ * {@link #ANALYSE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée (RF-602).
  *
  * <p><b>Règle durcie (RF-902).</b> Toutes les violations préexistantes ont été résorbées domaine
  * par domaine (RF-103 à RF-902). La règle {@code FreezingArchRule} a été remplacée par une règle
@@ -232,4 +236,24 @@ class CalculationDependenciesArchTest {
             .as("OverviewCalculationService ne doit dépendre d'aucun modèle du budget : il "
                     + "consomme uniquement OverviewInput "
                     + "(doc/architecture/11-domaine-overview.md)");
+
+    /**
+     * Garde-fou du domaine Analyse (RF-602) : {@link AnalyseCalculator} ne reçoit que
+     * {@code AnalyseInput} (et les types de {@code BankImportModel}, calculateur déjà pur) ; il ne
+     * connaît ni le budget, ni les charges, revenus, placements, paramètres, ni {@code BudgetDataModel}.
+     * Règle stricte (sans gel) : le domaine ne présente aucune violation préexistante depuis RF-601.
+     */
+    @ArchTest
+    static final ArchRule ANALYSE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
+            .that().areAssignableTo(AnalyseCalculator.class)
+            .should().dependOnClassesThat().belongToAnyOf(
+                    BudgetDataModel.class,
+                    SettingsModel.class,
+                    IncomeModel.class,
+                    ChargeModel.class,
+                    PlacementModel.class,
+                    VariableIncomeModel.class,
+                    VariableOverrideModel.class)
+            .as("AnalyseCalculator ne doit dépendre d'aucun modèle du budget : il consomme uniquement "
+                    + "AnalyseInput (doc/architecture/08-domaine-analyse.md)");
 }

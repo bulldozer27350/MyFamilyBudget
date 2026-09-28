@@ -455,12 +455,13 @@ spécifiques à relire avant de le démarrer.
 - Tests unitaires sur `AnalyseCalculator` utilisant uniquement `AnalyseInput`.
 - Retirer le domaine Analyse de la liste des violations gelées ArchUnit.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
+- **Notes** : `AnalyseCalculatorComponentTest` créé avec 5 classes imbriquées et tests complets sur `AnalyseInput` pur (validation, KPIs, splits, atterrissage avec pending, comparatif mensuel, dérives 3m/12m) sans aucun modèle persistant ni Spring. Règle stricte ArchUnit `ANALYSE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS` ajoutée dans `CalculationDependenciesArchTest`.
 
 ### RF-700 — Objectifs - Contrat et ownership des settings
 
