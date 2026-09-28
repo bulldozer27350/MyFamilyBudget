@@ -731,13 +731,17 @@ spécifiques à relire avant de le démarrer.
   - [x] Analyse / Analyse Prêts (`AnalyseServiceImpl`, `AnalysePretsServiceImpl`)
   - [x] Paramètres (`ParametersServiceImpl`)
   - [x] Banque / Import (`StatementBankImportServiceImpl`, `PointageServiceImpl`, `PendingOperationsServiceImpl`)
-  - [ ] Suggestions de taux / Système (`SuggestionsTauxServiceImpl`, `SystemeServiceImpl`)
+  - [x] Suggestions de taux / Système (`SuggestionsTauxServiceImpl`, `SystemeServiceImpl`)
+- **Notes d'implémentation** :
+- `SuggestionsTauxServiceImpl` : `PersistenceManager` remplacé par `PatrimoineReader` (placements et catégories d'actifs), déjà suffisant (RF-B00).
+- `SystemeServiceImpl` : `getBudgetFull` et la relecture après import composent les huit ports de domaine (`composeBudgetData()`, sur le modèle d'`OverviewServiceImpl`) au lieu de `persistenceManager.getBudgetData()`. L'import et la réinitialisation restent en écriture directe sur `PersistenceManager` : mutations transverses à tous les domaines, hors périmètre d'un `CommandService` de domaine (RF-A00).
+- Tous les sous-domaines de RF-B01 sont cochés.
 - **Statut** :
 - [ ] Non commencé
-- [x] Démarré
+- [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-C00 — OpenAPI - Split par domaine

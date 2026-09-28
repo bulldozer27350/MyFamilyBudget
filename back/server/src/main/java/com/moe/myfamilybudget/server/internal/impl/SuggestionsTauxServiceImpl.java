@@ -12,26 +12,29 @@ import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestio
 import com.moe.myfamilybudget.server.internal.factory.PlacementRateSuggestionInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.SuggestionsTauxMapper;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketDataService;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 
 /**
  * Contrôleur REST implémentant le contrat OpenAPI SuggestionsTauxApi (Tag: SuggestionsTaux) :
  * façade mince : l'entrée est assemblée par PlacementRateSuggestionInputFactory, tout le calcul est
  * dans PlacementRateSuggestionService. Lecture seule : aucun
  * placement n'est modifié.
+ *
+ * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
+ * {@code PersistenceManager}. Seuls les placements et les catégories d'actifs sont nécessaires,
+ * déjà exposés par {@link PatrimoineReader} (RF-B00).
  */
 @RestController
 public class SuggestionsTauxServiceImpl implements SuggestionsTauxApi {
 
-    private final PersistenceManager persistenceManager;
+    private final PatrimoineReader patrimoineReader;
     private final MarketDataService marketDataService;
     private final PlacementRateSuggestionService suggestionService;
     private final SuggestionsTauxMapper mapper;
 
-    public SuggestionsTauxServiceImpl(PersistenceManager persistenceManager, MarketDataService marketDataService,
+    public SuggestionsTauxServiceImpl(PatrimoineReader patrimoineReader, MarketDataService marketDataService,
             PlacementRateSuggestionService suggestionService, SuggestionsTauxMapper mapper) {
-        this.persistenceManager = persistenceManager;
+        this.patrimoineReader = patrimoineReader;
         this.marketDataService = marketDataService;
         this.suggestionService = suggestionService;
         this.mapper = mapper;
@@ -39,9 +42,9 @@ public class SuggestionsTauxServiceImpl implements SuggestionsTauxApi {
 
     @Override
     public ResponseEntity<SuggestionsTauxDto> getSuggestionsTaux(BigDecimal amplitude) {
-        BudgetDataModel data = persistenceManager.getBudgetData();
         return ResponseEntity.ok(mapper.toDto(suggestionService.compute(
-                PlacementRateSuggestionInputFactory.from(data, marketDataService.current(), amplitude,
+                PlacementRateSuggestionInputFactory.from(patrimoineReader.getPlacements(),
+                        patrimoineReader.getAssetCategories(), marketDataService.current(), amplitude,
                         LocalDate.now()))));
     }
 }
