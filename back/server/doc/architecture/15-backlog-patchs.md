@@ -349,11 +349,11 @@ spécifiques à relire avant de le démarrer.
 - Créer `PointageInput` et le type partagé `BudgetLineProjection` (réutilisé ensuite par Analyse, RF-600).
 - Peut démarrer tôt, en parallèle des domaines précédents : `BankImportCalculator` est déjà un calculateur pur et n'a pas besoin d'un `BankImportInput` global (à ne pas introduire).
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-501 — Pointage - Branchement
