@@ -48,9 +48,10 @@ PlacementRateSuggestionInput
 └── today
 ```
 
-`AssetBucketResolver` peut rester un service de classification du domaine Patrimoine ou de
-l'application selon la décision finale de packaging — à éviter : qu'il devienne une dépendance
-commune de tous les modules simplement parce qu'il est pratique.
+**Décision (RF-802)** : `AssetBucketResolver` est un outil d'assemblage applicatif, pas un service
+de domaine. Il vit dans `internal.factory`, utilisé uniquement par `LoanAdviceInputFactory` et
+`PlacementRateSuggestionInputFactory` ; les moteurs reçoivent un bucket déjà résolu. Il ne doit pas
+devenir une dépendance commune de tous les modules simplement parce qu'il est pratique.
 
 ## `AssetCategoryModel` : classification, pas modèle global
 

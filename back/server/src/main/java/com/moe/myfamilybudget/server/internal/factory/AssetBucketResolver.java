@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.server.internal.factory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +11,12 @@ import com.moe.myfamilybudget.server.internal.model.PlacementModel;
  * Retrouve la classe d'actif (« bucket » : cash, fondsEuros, actions, obligations, immobilier,
  * epargneSalariale) d'un placement à partir des catégories d'actifs de l'utilisateur : d'abord par
  * identifiant de catégorie, à défaut par nom (comme le fait calculations.js côté front).
+ *
+ * <p>Décision RF-802 : ce résolveur est un outil d'<b>assemblage</b>, pas une brique de calcul. Il
+ * vit dans {@code internal.factory}, à côté des factories qui traduisent les placements et
+ * catégories d'actifs en Inputs (prêts, suggestions de taux) ; les moteurs de calcul reçoivent un
+ * bucket déjà résolu et ne peuvent plus l'utiliser. Il ne doit pas devenir une dépendance commune
+ * des domaines.
  */
 public final class AssetBucketResolver {
 

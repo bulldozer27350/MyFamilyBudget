@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.moe.myfamilybudget.api.controller.SuggestionsTauxApi;
 import com.moe.myfamilybudget.api.model.SuggestionsTauxDto;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
+import com.moe.myfamilybudget.server.internal.factory.PlacementRateSuggestionInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.SuggestionsTauxMapper;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketDataService;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
@@ -16,7 +17,8 @@ import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 /**
  * Contrôleur REST implémentant le contrat OpenAPI SuggestionsTauxApi (Tag: SuggestionsTaux) :
- * façade mince, tout le calcul est dans PlacementRateSuggestionService. Lecture seule : aucun
+ * façade mince : l'entrée est assemblée par PlacementRateSuggestionInputFactory, tout le calcul est
+ * dans PlacementRateSuggestionService. Lecture seule : aucun
  * placement n'est modifié.
  */
 @RestController
@@ -39,10 +41,7 @@ public class SuggestionsTauxServiceImpl implements SuggestionsTauxApi {
     public ResponseEntity<SuggestionsTauxDto> getSuggestionsTaux(BigDecimal amplitude) {
         BudgetDataModel data = persistenceManager.getBudgetData();
         return ResponseEntity.ok(mapper.toDto(suggestionService.compute(
-                data.getEffectivePlacements(),
-                data.getEffectiveAssetCategories(),
-                marketDataService.current(),
-                amplitude,
-                LocalDate.now())));
+                PlacementRateSuggestionInputFactory.from(data, marketDataService.current(), amplitude,
+                        LocalDate.now()))));
     }
 }

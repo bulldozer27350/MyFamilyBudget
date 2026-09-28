@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import com.moe.myfamilybudget.api.model.SuggestionTauxPlacementDto;
 import com.moe.myfamilybudget.api.model.SuggestionsTauxDto;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
+import com.moe.myfamilybudget.server.internal.factory.PlacementRateSuggestionInputFactory;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness.Status;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRatesQuote;
@@ -33,8 +34,9 @@ class SuggestionsTauxMapperTest {
                 Status.FRESH, LocalDate.of(2026, 8, 1), null, Status.UNAVAILABLE, false, null, Status.UNAVAILABLE, null);
 
         SuggestionsTauxDto dto = new SuggestionsTauxMapper().toDto(new PlacementRateSuggestionService().compute(
-                List.of(livret), List.of(new AssetCategoryModel("c1", "💶", "Livrets", "cash")), market, null,
-                LocalDate.of(2026, 9, 19)));
+                PlacementRateSuggestionInputFactory.from(List.of(livret),
+                        List.of(new AssetCategoryModel("c1", "💶", "Livrets", "cash")), market, null,
+                        LocalDate.of(2026, 9, 19))));
 
         assertEquals(0, new BigDecimal("0.01").compareTo(dto.getAmplitude()));
         assertEquals(2, dto.getNotes().size());

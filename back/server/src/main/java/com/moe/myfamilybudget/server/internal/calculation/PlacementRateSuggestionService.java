@@ -12,12 +12,11 @@ import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 
+import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput.PlacementRateInput;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRatesQuote;
 import com.moe.myfamilybudget.server.internal.marketdata.YieldCurveQuote;
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementRateSuggestionsModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementRateSuggestionsModel.Item;
 import com.moe.myfamilybudget.server.internal.model.PlacementRateSuggestionsModel.Kind;
@@ -66,19 +65,17 @@ public class PlacementRateSuggestionService {
     }
 
     /**
-     * @param amplitude écart pessimiste/optimiste en fraction (défaut 0,01), entre 0 et 0,05
+     * @param input placements (bucket déjà résolu par l'appelant), données de marché, amplitude et date
      * @throws IllegalArgumentException si l'amplitude est hors plage (traduit en 400)
      */
-    public PlacementRateSuggestionsModel compute(List<PlacementModel> placements, List<AssetCategoryModel> categories,
-            MarketRatesView market, BigDecimal amplitude, LocalDate today) {
-        BigDecimal amp = amplitude == null ? DEFAULT_AMPLITUDE : amplitude;
+    public PlacementRateSuggestionsModel compute(PlacementRateSuggestionInput input) {
+        BigDecimal amp = input.amplitude() == null ? DEFAULT_AMPLITUDE : input.amplitude();
         if (amp.signum() < 0 || amp.compareTo(MAX_AMPLITUDE) > 0) {
             throw new IllegalArgumentException("L'amplitude pessimiste/optimiste doit être comprise entre 0 % et 5 %.");
         }
-        AssetBucketResolver buckets = new AssetBucketResolver(categories);
         List<Item> items = new ArrayList<>();
-        for (PlacementModel p : placements == null ? List.<PlacementModel>of() : placements) {
-            items.add(suggestFor(p, buckets.bucketOf(p), market, amp.doubleValue(), today));
+        for (PlacementRateInput p : input.placements()) {
+            items.add(suggestFor(p, p.bucket(), input.market(), amp.doubleValue(), input.today()));
         }
         List<String> notes = List.of(
                 "Aucune source publique ne publie de scénarios pessimiste et optimiste par placement : le taux « correct » "
@@ -88,7 +85,7 @@ public class PlacementRateSuggestionService {
         return new PlacementRateSuggestionsModel(amp.setScale(6, RoundingMode.HALF_UP), items, notes);
     }
 
-    private Item suggestFor(PlacementModel p, String bucket, MarketRatesView market, double amplitude, LocalDate today) {
+    private Item suggestFor(PlacementRateInput p, String bucket, MarketRatesView market, double amplitude, LocalDate today) {
         Regulated regulated = detectRegulated(p.label(), p.category());
         if (regulated != null) {
             return regulatedItem(p, bucket, regulated, market, amplitude, today);
@@ -107,7 +104,7 @@ public class PlacementRateSuggestionService {
         return none(p, bucket, basis);
     }
 
-    private Item regulatedItem(PlacementModel p, String bucket, Regulated regulated, MarketRatesView market,
+    private Item regulatedItem(PlacementRateInput p, String bucket, Regulated regulated, MarketRatesView market,
             double amplitude, LocalDate today) {
         RegulatedRatesQuote quote = market == null ? null : market.regulatedRates();
         BigDecimal rate = quote == null ? null : switch (regulated) {
@@ -133,7 +130,7 @@ public class PlacementRateSuggestionService {
                 p.ratePess(), p.rateCorr(), p.rateOpti(), basis, caveat);
     }
 
-    private Item referenceItem(PlacementModel p, String bucket, MarketRatesView market, String basisSuffix) {
+    private Item referenceItem(PlacementRateInput p, String bucket, MarketRatesView market, String basisSuffix) {
         YieldCurveQuote curve = market == null ? null : market.yieldCurve();
         if (curve == null) {
             return none(p, bucket, "Courbe des taux indisponible : source non encore interrogée.");
@@ -145,7 +142,7 @@ public class PlacementRateSuggestionService {
                 null, null, null, rate(effective), p.ratePess(), p.rateCorr(), p.rateOpti(), basis, null);
     }
 
-    private Item none(PlacementModel p, String bucket, String basis) {
+    private Item none(PlacementRateInput p, String bucket, String basis) {
         return new Item(p.id(), p.label(), bucket, Kind.NONE, null, null, null, null, null,
                 p.ratePess(), p.rateCorr(), p.rateOpti(), basis, null);
     }

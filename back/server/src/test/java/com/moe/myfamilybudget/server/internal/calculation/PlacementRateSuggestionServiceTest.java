@@ -15,12 +15,11 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput.PlacementRateInput;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness.Status;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRatesQuote;
 import com.moe.myfamilybudget.server.internal.marketdata.YieldCurveQuote;
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementRateSuggestionsModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementRateSuggestionsModel.Item;
 import com.moe.myfamilybudget.server.internal.model.PlacementRateSuggestionsModel.Kind;
@@ -28,21 +27,26 @@ import com.moe.myfamilybudget.server.internal.model.PlacementRateSuggestionsMode
 class PlacementRateSuggestionServiceTest {
 
     private static final LocalDate TODAY = LocalDate.of(2026, 9, 19);
-    private static final List<AssetCategoryModel> CATEGORIES = List.of(
-            new AssetCategoryModel("c1", "💶", "Livrets", "cash"),
-            new AssetCategoryModel("c2", "🛡️", "Assurance-vie euros", "fondsEuros"),
-            new AssetCategoryModel("c3", "📈", "PEA", "actions"),
-            new AssetCategoryModel("c4", "🏦", "Obligations", "obligations"));
-
     private final PlacementRateSuggestionService service = new PlacementRateSuggestionService();
 
     private static BigDecimal bd(String v) {
         return new BigDecimal(v);
     }
 
-    private static PlacementModel placement(String label, String category) {
-        return new PlacementModel("id-" + label, label, category, bd("10000"), "2026-09-01", bd("0"), null, null,
-                bd("0.011"), bd("0.022"), bd("0.033"), false, "");
+    /** Placement d'entrée dont le bucket est déjà résolu (rôle de l'appelant, pas du moteur). */
+    private static PlacementRateInput placement(String label, String category) {
+        return new PlacementRateInput("id-" + label, label, category, bucketOf(category),
+                bd("0.011"), bd("0.022"), bd("0.033"));
+    }
+
+    private static String bucketOf(String category) {
+        return switch (category) {
+            case "Livrets" -> "cash";
+            case "Assurance-vie euros" -> "fondsEuros";
+            case "PEA" -> "actions";
+            case "Obligations" -> "obligations";
+            default -> null;
+        };
     }
 
     private static YieldCurveQuote curve() {
@@ -58,8 +62,9 @@ class PlacementRateSuggestionServiceTest {
     private static final RegulatedRatesQuote AUGUST = new RegulatedRatesQuote(YearMonth.of(2026, 8),
             bd("0.017"), bd("0.017"), bd("0.022"));
 
-    private PlacementRateSuggestionsModel run(List<PlacementModel> placements, MarketRatesView market, String amplitude) {
-        return service.compute(placements, CATEGORIES, market, amplitude == null ? null : bd(amplitude), TODAY);
+    private PlacementRateSuggestionsModel run(List<PlacementRateInput> placements, MarketRatesView market, String amplitude) {
+        return service.compute(new PlacementRateSuggestionInput(placements, market,
+                amplitude == null ? null : bd(amplitude), TODAY));
     }
 
     private static void assertRate(String expected, BigDecimal actual) {
@@ -183,7 +188,7 @@ class PlacementRateSuggestionServiceTest {
     @DisplayName("Amplitude : défaut 1 pt, zéro accepté, hors plage refusée")
     void amplitude() {
         MarketRatesView m = market(AUGUST, Status.FRESH, null);
-        List<PlacementModel> one = List.of(placement("Livret A", "Livrets"));
+        List<PlacementRateInput> one = List.of(placement("Livret A", "Livrets"));
 
         assertRate("0.01", run(one, m, null).amplitude());
         Item flat = run(one, m, "0").suggestions().get(0);

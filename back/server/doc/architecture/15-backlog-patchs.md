@@ -561,12 +561,17 @@ spécifiques à relire avant de le démarrer.
 - **Modifications attendues** :
 - Créer `PlacementRateSuggestionInput` et brancher `PlacementRateSuggestionService` dessus.
 - Décider explicitement (et documenter la décision) si `AssetBucketResolver` reste dans Patrimoine ou devient un service applicatif — ne doit pas devenir une dépendance commune « pratique » de tous les modules.
+- **Notes d'implémentation** :
+- `PlacementRateSuggestionInput` (placements avec bucket déjà résolu, `MarketRatesView`, amplitude, date) et son type imbriqué `PlacementRateInput` sont créés dans `internal.calculation`. `PlacementRateSuggestionService.compute(PlacementRateSuggestionInput)` remplace `compute(placements, categories, market, amplitude, today)` : le moteur ne connaît plus `PlacementModel`, `AssetCategoryModel` ni `AssetBucketResolver`. Aucune règle de calcul modifiée ; la validation de l'amplitude reste dans le moteur (400 inchangé).
+- Assemblage dans `PlacementRateSuggestionInputFactory` (`internal.factory`), appelée par `SuggestionsTauxServiceImpl`.
+- **Décision `AssetBucketResolver`** : c'est un outil d'assemblage, pas un service de domaine partagé. Il est déplacé dans `internal.factory` (seul fichier déplacé, explicitement requis par la décision de ce patch), à côté des deux factories qui l'utilisent (prêts, suggestions de taux). Les moteurs reçoivent un bucket résolu et ne peuvent plus l'importer ; il ne devient pas une dépendance commune des modules. Son test suit (`AssetBucketResolverTest`).
+- Build Maven non exécutable dans l'environnement de rédaction (ni JDK de compilation ni Maven Central) : `mvn test` à confirmer en local (`PlacementRateSuggestionServiceTest`, `PlacementRateSuggestionInputFactoryTest`, `SuggestionsTauxMapperTest`, `AssetBucketResolverTest`, `CalculationDependenciesArchTest`).
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-803 — Prêts / Suggestions - Tests de composant + garde-fou
