@@ -463,12 +463,16 @@ spécifiques à relire avant de le démarrer.
 - **Fichiers `.md` additionnels à lire** (en plus de `00-principes.md` et `01-sequencement.md`, toujours requis) : `09-domaine-objectifs-notifications.md`
 - **Modifications attendues** :
 - Créer `DebitThresholdInput`, `BalanceFloorInput`, `ObjectifReachableInput` — explicitement trois entrées, jamais un `NotificationEvaluationInput` unique regroupant tous les domaines.
+- **Notes d'implémentation** :
+- `DebitThresholdInput`, `BalanceFloorInput` et `ObjectifReachableInput` (avec leurs types imbriqués) sont créés dans `internal.calculation`, sans dépendance aux modèles budgétaires ; `ObjectifReachableInput` réutilise `PlacementBalanceSnapshot` (RF-700).
+- Les filtres métier (fenêtre de 30 jours, opérations `pending` uniquement) restent portés par les règles ; ils seront branchés en RF-702. Purement additif : `NotificationContext` et les règles sont inchangés.
+- Build Maven non exécuté dans l'environnement de rédaction : `mvn test` à confirmer en local.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-702 — Notifications - Branchement et suppression de NotificationContext
