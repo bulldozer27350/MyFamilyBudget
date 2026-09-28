@@ -505,11 +505,11 @@ spécifiques à relire avant de le démarrer.
 - **Modifications attendues** :
 - Créer `LoanAdviceInput`, `LoanInput`, `LiquidPlacementAlternative`. La résolution du bucket d'actif (aujourd'hui via `PlacementModel`/`AssetCategoryModel`) est faite par l'appelant, pas par le moteur.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-801 — Prêts - Branchement
