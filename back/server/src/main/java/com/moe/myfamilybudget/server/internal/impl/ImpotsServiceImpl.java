@@ -1,11 +1,17 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
 import com.moe.myfamilybudget.api.controller.ImpotsApi;
+import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.server.internal.calculation.TaxCalculationInput;
+import com.moe.myfamilybudget.server.internal.calculation.TaxSimulationPeriod;
+import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.factory.TaxInputFactory;
+import com.moe.myfamilybudget.server.internal.factory.TaxSimulationPeriodResolver;
 import com.moe.myfamilybudget.server.internal.mapper.TaxMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
@@ -27,16 +33,26 @@ public class ImpotsServiceImpl implements ImpotsApi {
 
     private final PersistenceManager persistenceManager;
     private final TaxMapper taxMapper;
+    private final RetirementInputFactory retirementInputFactory;
+    private final RetirementCalculationService retirementCalculationService;
 
-    public ImpotsServiceImpl(PersistenceManager persistenceManager, TaxMapper taxMapper) {
+    public ImpotsServiceImpl(
+            PersistenceManager persistenceManager,
+            TaxMapper taxMapper,
+            RetirementInputFactory retirementInputFactory,
+            RetirementCalculationService retirementCalculationService) {
         this.persistenceManager = persistenceManager;
         this.taxMapper = taxMapper;
+        this.retirementInputFactory = retirementInputFactory;
+        this.retirementCalculationService = retirementCalculationService;
     }
 
     @Override
     public ResponseEntity<Object> getImpots() {
         BudgetDataModel data = persistenceManager.getBudgetData();
-        var input = TaxInputFactory.from(data);
+        TaxSimulationPeriod period = TaxSimulationPeriodResolver.resolve(data);
+        RetirementProjection retirement = retirementCalculationService.compute(retirementInputFactory.create(data));
+        TaxCalculationInput input = TaxInputFactory.from(data, period, retirement);
         List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(input);
         List<TaxYearlyModel> taxPreview = TaxCalculator.buildTaxPreview(
                 taxYearly, java.time.LocalDate.now().getYear());

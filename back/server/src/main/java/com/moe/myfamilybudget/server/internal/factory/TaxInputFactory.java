@@ -1,6 +1,7 @@
 package com.moe.myfamilybudget.server.internal.factory;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -16,6 +17,8 @@ import com.moe.myfamilybudget.server.internal.calculation.TaxRateOverride;
 import com.moe.myfamilybudget.server.internal.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
+import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
@@ -24,8 +27,8 @@ import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 
 /**
- * Construit un {@link TaxCalculationInput} à partir de {@link BudgetDataModel} (RF-200, voir
- * doc/architecture/04-domaine-fiscalite.md).
+ * Construit un {@link TaxCalculationInput} à partir de {@link BudgetDataModel} (RF-200, réduit
+ * par RF-202 ; voir doc/architecture/04-domaine-fiscalite.md).
  *
  * <p>Cette classe porte volontairement la dépendance à {@code BudgetDataModel} que le domaine
  * Fiscalité ne doit pas avoir (voir doc/architecture/00-principes.md) : c'est le rôle d'une
@@ -33,50 +36,51 @@ import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
  * {@code internal.calculation}, gardé par le garde-fou ArchUnit de RF-001
  * ({@code CalculationDependenciesArchTest}).
  *
- * <p><b>Version 1 (« large », voir 04-domaine-fiscalite.md § « Migration en deux étapes
- * logiques »).</b> Purement additif : aucun appelant existant n'est modifié, {@link TaxCalculator}
- * reste la seule voie utilisée par {@code ImpotsServiceImpl}. Cette Factory réutilise
- * volontairement les méthodes statiques déjà publiques de {@code TaxCalculator}
- * ({@code findEarliestYear}, {@code pensionIncomeRows}, {@code incomeAnnualForYear},
- * {@code variableIncomeDetailForYear}) plutôt que de dupliquer leur logique : la période de
- * simulation et la pension imposable proviennent donc encore, in fine, de
- * {@code BudgetDataModel}. RF-202 remplacera la pension par une projection issue de
- * {@code RetirementCalculationService} (RF-102) et fera calculer la période en amont, côté
- * application, sans changer le contrat {@link TaxCalculationInput} lui-même.
+ * <p><b>Version 2 (RF-202).</b> Deux couplages ont disparu de {@link TaxCalculator} :
+ * <ul>
+ *   <li>la période de simulation est fournie explicitement par l'appelant (voir
+ *       {@link TaxSimulationPeriodResolver}) au lieu d'être déduite ici de {@code findEarliestYear} ;</li>
+ *   <li>la pension imposable provient de {@link RetirementProjection} (produite par
+ *       {@code RetirementCalculationService}, RF-102) et non plus d'un calcul de pension interne au
+ *       moteur fiscal.</li>
+ * </ul>
+ * {@link TaxCalculationInput} ne transporte ni charges, ni placements, ni opérations ponctuelles,
+ * ni virements, ni import bancaire, ni {@code pivotDate}/{@code inflationRate} : aucun champ
+ * supplémentaire n'était à retirer du contrat.
  */
 public final class TaxInputFactory {
 
     private TaxInputFactory() {
     }
 
-    public static TaxCalculationInput from(BudgetDataModel data) {
+    public static TaxCalculationInput from(
+            BudgetDataModel data, TaxSimulationPeriod period, RetirementProjection retirementProjection) {
         Objects.requireNonNull(data, "data");
+        Objects.requireNonNull(period, "period");
         SettingsModel settings = data.getEffectiveSettings();
 
         int birthYear = settings.getEffectiveBirthYear();
         int retireAge = settings.getEffectiveRetireAge();
         int retireYear = birthYear + retireAge;
-        int startYear = TaxCalculator.findEarliestYear(data);
-        int wantedEnd = birthYear + settings.getEffectiveSimulateUntilAge();
-        int endYear = Math.max(retireYear + 3, wantedEnd);
-
-        List<Integer> years = new ArrayList<>();
-        for (int y = startYear; y <= endYear; y++) {
-            years.add(y);
-        }
-        int lastYear = years.isEmpty() ? retireYear : years.get(years.size() - 1);
+        BigDecimal inflationRate = settings.getEffectiveInflationRate();
+        List<BigDecimal> monthlyPensions = retirementProjection == null
+                ? List.of()
+                : retirementProjection.people().stream()
+                        .map(RetirementProjectionModel::pensionTotaleMensuelle)
+                        .filter(monthly -> monthly != null && monthly.compareTo(BigDecimal.ZERO) > 0)
+                        .toList();
 
         List<IncomeModel> regularIncomes = data.getEffectiveIncomes();
-        List<IncomeModel> pensionRows = TaxCalculator.pensionIncomeRows(data, retireYear, lastYear);
 
         List<AnnualTaxIncome> incomes = new ArrayList<>();
         List<AnnualVariableIncome> variableIncomes = new ArrayList<>();
         List<AnnualTaxableRetirementIncome> retirementIncome = new ArrayList<>();
-        for (int year : years) {
+        for (int year = period.startYear(); year <= period.endYear(); year++) {
             incomes.add(new AnnualTaxIncome(year, sumAnnual(regularIncomes, year)));
             variableIncomes.add(new AnnualVariableIncome(year,
                     TaxCalculator.variableIncomeDetailForYear(data, year).taxable()));
-            retirementIncome.add(new AnnualTaxableRetirementIncome(year, sumAnnual(pensionRows, year)));
+            retirementIncome.add(new AnnualTaxableRetirementIncome(year,
+                    annualPension(monthlyPensions, retireYear, period.endYear(), inflationRate, year)));
         }
 
         List<Integer> childBirthYears = data.getEffectiveTaxChildren().stream()
@@ -99,7 +103,7 @@ public final class TaxInputFactory {
                 .toList();
 
         return new TaxCalculationInput(
-                new TaxSimulationPeriod(startYear, endYear),
+                period,
                 new TaxHouseholdParameters(birthYear, retireAge, settings.getEffectiveChildExitAge(),
                         settings.getEffectiveTaxAbattement()),
                 incomes,
@@ -109,6 +113,26 @@ public final class TaxInputFactory {
                 rateOverrides,
                 actualOverrides,
                 retirementIncome);
+    }
+
+    /**
+     * Pension annuelle d'une année : pension mensuelle de départ indexée sur l'inflation depuis
+     * l'année de départ à la retraite, versée 12 mois par an de {@code retireYear} à
+     * {@code max(retireYear, lastYear)}, arrondie par personne (même règle que l'ancienne ligne de
+     * revenu « pension auto »).
+     */
+    private static BigDecimal annualPension(
+            List<BigDecimal> monthlyPensions, int retireYear, int lastYear, BigDecimal inflationRate, int year) {
+        if (year < retireYear || year > Math.max(retireYear, lastYear)) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal factor = BigDecimal.valueOf(Math.pow(1.0 + inflationRate.doubleValue(), year - retireYear));
+        BigDecimal total = BigDecimal.ZERO;
+        for (BigDecimal monthly : monthlyPensions) {
+            total = total.add(monthly.multiply(factor).multiply(BigDecimal.valueOf(12))
+                    .setScale(2, RoundingMode.HALF_UP));
+        }
+        return total;
     }
 
     private static BigDecimal sumAnnual(List<IncomeModel> rows, int year) {

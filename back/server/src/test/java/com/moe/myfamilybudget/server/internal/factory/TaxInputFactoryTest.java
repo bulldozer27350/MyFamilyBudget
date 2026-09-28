@@ -11,19 +11,23 @@ import org.junit.jupiter.api.Test;
 import com.moe.myfamilybudget.server.internal.calculation.AnnualTaxIncome;
 import com.moe.myfamilybudget.server.internal.calculation.AnnualTaxableRetirementIncome;
 import com.moe.myfamilybudget.server.internal.calculation.AnnualVariableIncome;
+import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.server.internal.calculation.TaxCalculationInput;
+import com.moe.myfamilybudget.server.internal.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
+import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
-import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 
 /**
- * RF-200 : vérifie que {@link TaxInputFactory} reste cohérente avec la logique historique de
- * {@link TaxCalculator} qu'elle réutilise — pas un test de composant du domaine (voir RF-203).
+ * RF-200 / RF-202 : vérifie la construction de {@link TaxCalculationInput} par
+ * {@link TaxInputFactory} (période fournie explicitement, pension issue de
+ * {@link RetirementProjection}) — pas un test de composant du domaine (voir RF-203).
  */
 class TaxInputFactoryTest {
 
@@ -55,24 +59,70 @@ class TaxInputFactoryTest {
                 List.of(), List.of(), List.of(), List.of(), null);
     }
 
+    private static TaxCalculationInput build(BudgetDataModel data) {
+        RetirementProjection projection =
+                new RetirementCalculationService().compute(new RetirementInputFactory().create(data));
+        return TaxInputFactory.from(data, TaxSimulationPeriodResolver.resolve(data), projection);
+    }
+
+    private static RetirementProjectionModel pension(String monthly) {
+        BigDecimal m = new BigDecimal(monthly);
+        return new RetirementProjectionModel(64, 0, 0, 172, false, BigDecimal.ONE, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, m.multiply(BigDecimal.valueOf(12)), m);
+    }
+
     @Test
-    @DisplayName("from() : période de simulation identique à celle de TaxCalculator.findEarliestYear/simulateUntilAge")
-    void testPeriodMatchesLegacyComputation() {
+    @DisplayName("from() : reprend telle quelle la période fournie, une entrée par année")
+    void testPeriodIsProvidedExplicitly() {
         BudgetDataModel data = budgetWithSalaryOnly();
+        TaxSimulationPeriod period = new TaxSimulationPeriod(2030, 2032);
 
-        TaxCalculationInput input = TaxInputFactory.from(data);
+        TaxCalculationInput input = TaxInputFactory.from(data, period, new RetirementProjection(List.of()));
 
-        int expectedStart = TaxCalculator.findEarliestYear(data);
-        int expectedRetireYear = 1985 + 64;
-        int expectedEnd = Math.max(expectedRetireYear + 3, 1985 + 85);
-        assertThat(input.period().startYear()).isEqualTo(expectedStart);
-        assertThat(input.period().endYear()).isEqualTo(expectedEnd);
+        assertThat(input.period()).isEqualTo(period);
+        assertThat(input.incomes()).extracting(AnnualTaxIncome::year).containsExactly(2030, 2031, 2032);
+        assertThat(input.variableIncomes()).hasSize(3);
+        assertThat(input.retirementIncome()).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("from() : pension mensuelle du moteur Retraite -> montant annuel (x12) à partir de l'année de départ")
+    void testRetirementIncomeFromProjection() {
+        BudgetDataModel data = budgetWithSalaryOnly();
+        int retireYear = 1985 + 64;
+        TaxSimulationPeriod period = new TaxSimulationPeriod(retireYear - 1, retireYear + 1);
+        RetirementProjection projection = new RetirementProjection(List.of(pension("1500"), pension("500")));
+
+        TaxCalculationInput input = TaxInputFactory.from(data, period, projection);
+
+        assertThat(input.retirementIncome()).extracting(AnnualTaxableRetirementIncome::year)
+                .containsExactly(retireYear - 1, retireYear, retireYear + 1);
+        assertThat(input.retirementIncome().get(0).amount()).isEqualByComparingTo("0");
+        // (1500 + 500) * 12, inflation 2 % appliquée dès l'année suivante
+        assertThat(input.retirementIncome().get(1).amount()).isEqualByComparingTo("24000.00");
+        assertThat(input.retirementIncome().get(2).amount()).isEqualByComparingTo("24480.00");
+    }
+
+    @Test
+    @DisplayName("from() : une projection retraite absente ou à pension nulle donne une pension nulle")
+    void testRetirementIncomeZeroWithoutPension() {
+        TaxSimulationPeriod period = new TaxSimulationPeriod(2049, 2050);
+
+        TaxCalculationInput none = TaxInputFactory.from(budgetWithSalaryOnly(), period, null);
+        TaxCalculationInput zero = TaxInputFactory.from(budgetWithSalaryOnly(), period,
+                new RetirementProjection(List.of(pension("0"))));
+
+        assertThat(none.retirementIncome()).extracting(AnnualTaxableRetirementIncome::amount)
+                .allSatisfy(a -> assertThat(a).isEqualByComparingTo(BigDecimal.ZERO));
+        assertThat(zero.retirementIncome()).extracting(AnnualTaxableRetirementIncome::amount)
+                .allSatisfy(a -> assertThat(a).isEqualByComparingTo(BigDecimal.ZERO));
     }
 
     @Test
     @DisplayName("from() : household reprend birthYear/retireAge/childExitAge/taxAbattement des settings")
     void testHouseholdParameters() {
-        TaxCalculationInput input = TaxInputFactory.from(budgetWithSalaryOnly());
+        TaxCalculationInput input = build(budgetWithSalaryOnly());
 
         assertThat(input.household().birthYear()).isEqualTo(1985);
         assertThat(input.household().retireAge()).isEqualTo(64);
@@ -84,7 +134,7 @@ class TaxInputFactoryTest {
     @DisplayName("from() : incomes contient le revenu annuel 2026 = 4000 * 12 = 48000, une entrée par année de la période")
     void testAnnualIncomes() {
         BudgetDataModel data = budgetWithSalaryOnly();
-        TaxCalculationInput input = TaxInputFactory.from(data);
+        TaxCalculationInput input = build(data);
 
         int expectedYears = input.period().endYear() - input.period().startYear() + 1;
         assertThat(input.incomes()).hasSize(expectedYears);
@@ -97,7 +147,7 @@ class TaxInputFactoryTest {
     @Test
     @DisplayName("from() : sans revenu variable configuré, variableIncomes est à zéro pour chaque année")
     void testVariableIncomesZeroWhenNoneConfigured() {
-        TaxCalculationInput input = TaxInputFactory.from(budgetWithSalaryOnly());
+        TaxCalculationInput input = build(budgetWithSalaryOnly());
 
         assertThat(input.variableIncomes())
                 .extracting(AnnualVariableIncome::taxableAmount)
@@ -107,7 +157,7 @@ class TaxInputFactoryTest {
     @Test
     @DisplayName("from() : sans personne en retraite configurée, retirementIncome est à zéro pour chaque année")
     void testRetirementIncomeZeroWhenNoRetirementConfigured() {
-        TaxCalculationInput input = TaxInputFactory.from(budgetWithSalaryOnly());
+        TaxCalculationInput input = build(budgetWithSalaryOnly());
 
         assertThat(input.retirementIncome())
                 .extracting(AnnualTaxableRetirementIncome::amount)
@@ -117,7 +167,7 @@ class TaxInputFactoryTest {
     @Test
     @DisplayName("from() : childBirthYears ne retient que les enfants avec une année de naissance connue")
     void testChildBirthYearsIgnoresNullBirthYear() {
-        TaxCalculationInput input = TaxInputFactory.from(budgetWithSalaryOnly());
+        TaxCalculationInput input = build(budgetWithSalaryOnly());
 
         assertThat(input.childBirthYears()).containsExactly(2015);
     }
@@ -125,7 +175,7 @@ class TaxInputFactoryTest {
     @Test
     @DisplayName("from() : brackets/rateOverrides/actualOverrides reprennent les montants du modèle source")
     void testBracketsAndOverrides() {
-        TaxCalculationInput input = TaxInputFactory.from(budgetWithSalaryOnly());
+        TaxCalculationInput input = build(budgetWithSalaryOnly());
 
         assertThat(input.brackets()).hasSize(2);
         assertThat(input.brackets().get(0).upTo()).isEqualByComparingTo("10000");

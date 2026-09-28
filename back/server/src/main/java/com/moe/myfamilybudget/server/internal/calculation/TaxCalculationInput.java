@@ -5,12 +5,10 @@ import java.util.List;
 /**
  * Contrat d'entrée du domaine Fiscalité (RF-200, voir doc/architecture/04-domaine-fiscalite.md).
  *
- * <p>Version 1 (« large ») : {@code retirementIncome} est encore construit par
- * {@code TaxInputFactory} à partir du modèle persistant (via la logique historique de pension de
- * {@code TaxCalculator}), pas encore depuis {@code RetirementCalculationService} — cette
- * substitution est l'objet de RF-202, qui dépend de RF-102 (Retraite branchée sur le moteur
- * unique). {@code period} est de même encore dérivé de {@code findEarliestYear(BudgetDataModel)}
- * par la Factory ; RF-202 le fera calculer en amont, côté application.
+ * <p>Depuis RF-202, {@code period} est calculé en amont par la couche application (voir
+ * {@code TaxSimulationPeriodResolver}) et {@code retirementIncome} provient de
+ * {@code RetirementCalculationService} (RF-102) via {@code TaxInputFactory} : le moteur fiscal ne
+ * recalcule ni horizon ni pension.
  *
  * @param period            horizon de simulation (années incluses, bornes comprises)
  * @param household         paramètres du foyer nécessaires au calcul (parts, décote, abattement)

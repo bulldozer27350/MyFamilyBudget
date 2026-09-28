@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.TaxMapper;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
@@ -30,7 +32,7 @@ class ImpotsServiceImplTest {
         mapper = new TaxMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        service = new ImpotsServiceImpl(persistenceManager, mapper);
+        service = new ImpotsServiceImpl(persistenceManager, mapper, new RetirementInputFactory(), new RetirementCalculationService());
     }
 
     @Test

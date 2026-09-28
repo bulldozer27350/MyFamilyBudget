@@ -220,11 +220,11 @@ spécifiques à relire avant de le démarrer.
 - Sortir `findEarliestYear` du calcul fiscal : la période de simulation est désormais déduite en amont (application) et passée explicitement via `TaxSimulationPeriod`.
 - Retirer de `TaxCalculationInput` les champs devenus inutiles : `charges`, `placements`, `oneoff`, `transfers`, `bankImport`, `settings.pivotDate`, `settings.inflationRate` — à vérifier au cas par cas, pas supposé acquis à l'avance.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-203 — Fiscalité - Tests de composant + garde-fou
