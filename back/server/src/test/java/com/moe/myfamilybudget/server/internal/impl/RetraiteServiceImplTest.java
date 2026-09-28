@@ -28,6 +28,10 @@ import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
 import com.moe.myfamilybudget.server.internal.command.RetirementCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class RetraiteServiceImplTest {
@@ -43,8 +47,15 @@ class RetraiteServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         calculationService = new RetirementCalculationService();
-        service = new RetraiteServiceImpl(persistenceManager, mapper, new RetirementInputFactory(), calculationService,
-                new RetirementCommandService(persistenceManager));
+        service = new RetraiteServiceImpl(
+                mapper,
+                new RetirementInputFactory(),
+                calculationService,
+                new RetirementCommandService(persistenceManager),
+                new SettingsPersistenceAdapter(persistenceManager),
+                new RetirementPersistenceAdapter(persistenceManager),
+                new TaxPersistenceAdapter(persistenceManager),
+                new BudgetPersistenceAdapter(persistenceManager));
     }
 
     @Test

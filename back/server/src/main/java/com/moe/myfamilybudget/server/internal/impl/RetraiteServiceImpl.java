@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.moe.myfamilybudget.api.controller.RetraiteApi;
 import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationInput;
 import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.server.internal.command.RetirementCommandService;
 import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.RetraiteMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
@@ -20,8 +21,10 @@ import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraitePersonWithProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.command.RetirementCommandService;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.BudgetReader;
+import com.moe.myfamilybudget.server.internal.port.RetirementReader;
+import com.moe.myfamilybudget.server.internal.port.SettingsReader;
+import com.moe.myfamilybudget.server.internal.port.TaxReader;
 
 /**
  * Point d'entrée REST du domaine Retraite.
@@ -31,28 +34,44 @@ import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
  * {@link RetirementCalculationInput} à partir de {@link BudgetDataModel}) et
  * {@link RetirementCalculationService} (moteur de calcul pur, sans dépendance à
  * {@code BudgetDataModel}), qui devient l'unique version canonique de ce calcul.
+ *
+ * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
+ * {@code PersistenceManager}. Les lectures passent par les ports de domaine ({@link
+ * SettingsReader}, {@link RetirementReader}, {@link TaxReader}, {@link BudgetReader}) ; le
+ * {@link BudgetDataModel} attendu par {@link RetirementInputFactory} est recomposé localement à
+ * partir de ces ports, avec les domaines non lus laissés à {@code null} (la factory ne les
+ * touche pas).
  */
 @RestController
 public class RetraiteServiceImpl implements RetraiteApi {
 
-    private final PersistenceManager persistenceManager;
     private final RetraiteMapper retraiteMapper;
     private final RetirementInputFactory retirementInputFactory;
     private final RetirementCalculationService retirementCalculationService;
     private final RetirementCommandService retirementCommandService;
+    private final SettingsReader settingsReader;
+    private final RetirementReader retirementReader;
+    private final TaxReader taxReader;
+    private final BudgetReader budgetReader;
 
     public RetraiteServiceImpl(
-        PersistenceManager persistenceManager,
         RetraiteMapper retraiteMapper,
         RetirementInputFactory retirementInputFactory,
         RetirementCalculationService retirementCalculationService,
-        RetirementCommandService retirementCommandService
+        RetirementCommandService retirementCommandService,
+        SettingsReader settingsReader,
+        RetirementReader retirementReader,
+        TaxReader taxReader,
+        BudgetReader budgetReader
     ) {
-        this.persistenceManager = persistenceManager;
         this.retraiteMapper = retraiteMapper;
         this.retirementInputFactory = retirementInputFactory;
         this.retirementCalculationService = retirementCalculationService;
         this.retirementCommandService = retirementCommandService;
+        this.settingsReader = settingsReader;
+        this.retirementReader = retirementReader;
+        this.taxReader = taxReader;
+        this.budgetReader = budgetReader;
     }
 
     @Override
@@ -74,12 +93,17 @@ public class RetraiteServiceImpl implements RetraiteApi {
     }
 
     public RetraiteResultModel buildRetraiteResult() {
-        BudgetDataModel data = persistenceManager.getBudgetData();
-        SettingsModel settings = data.getEffectiveSettings();
+        SettingsModel settings = settingsReader.getSettings();
+        RetirementModel retirement = retirementReader.getRetirement();
+
+        BudgetDataModel data = new BudgetDataModel(
+            settings, budgetReader.getIncomes(), null, null, null,
+            retirement, taxReader.getTaxChildren(), null, null, null,
+            null, null, null, null, null
+        );
 
         int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
 
-        RetirementModel retirement = data.retirement();
         RetirementCalculationInput input = retirementInputFactory.create(data);
         RetirementProjection projection = retirementCalculationService.compute(input);
 
@@ -119,7 +143,7 @@ public class RetraiteServiceImpl implements RetraiteApi {
         return new RetraiteResultModel(
             retWithProj,
             retireYear,
-            data.getEffectiveIncomes(),
+            budgetReader.getIncomes(),
             settings
         );
     }

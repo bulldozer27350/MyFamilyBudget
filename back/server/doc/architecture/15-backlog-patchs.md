@@ -722,9 +722,19 @@ spécifiques à relire avant de le démarrer.
 - **Modifications attendues** :
 - Remplacer les appels directs à `persistenceManager.getBudgetData()` dans les couches application par les ports de lecture dédiés.
 - Peut être scindé par domaine si nécessaire.
+- **Suivi (peut être scindé) :**
+  - [x] Retraite (`RetraiteServiceImpl`)
+  - [ ] Patrimoine (`PatrimoineServiceImpl`)
+  - [ ] Trésorerie (`TresorerieServiceImpl`)
+  - [ ] Overview (`OverviewServiceImpl`)
+  - [ ] Fiscalité (`ImpotsServiceImpl`)
+  - [ ] Analyse / Analyse Prêts (`AnalyseServiceImpl`, `AnalysePretsServiceImpl`)
+  - [ ] Paramètres (`ParametersServiceImpl`)
+  - [ ] Banque / Import (`StatementBankImportServiceImpl`, `PointageServiceImpl`, `PendingOperationsServiceImpl`)
+  - [ ] Suggestions de taux / Système (`SuggestionsTauxServiceImpl`, `SystemeServiceImpl`)
 - **Statut** :
-- [x] Non commencé
-- [ ] Démarré
+- [ ] Non commencé
+- [x] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
 - [ ] Terminé
