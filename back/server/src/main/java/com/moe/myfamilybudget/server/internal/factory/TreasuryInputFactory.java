@@ -5,11 +5,16 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.moe.myfamilybudget.server.internal.calculation.AnnualTaxIncome;
+import com.moe.myfamilybudget.server.internal.calculation.AnnualTaxableRetirementIncome;
+import com.moe.myfamilybudget.server.internal.calculation.AnnualVariableIncome;
 import com.moe.myfamilybudget.server.internal.calculation.ChargeProjectionInput;
 import com.moe.myfamilybudget.server.internal.calculation.IncomeProjectionInput;
 import com.moe.myfamilybudget.server.internal.calculation.OneOffCashflow;
@@ -99,8 +104,21 @@ public final class TreasuryInputFactory {
         RetirementProjection retirement = retirementCalculationService.compute(retirementInputFactory.create(data));
         TaxCalculationInput taxInput = TaxInputFactory.from(data, taxPeriod, retirement);
         List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(taxInput);
+        Map<Integer, BigDecimal> regularIncomes = taxInput.incomes().stream()
+                .collect(Collectors.toMap(AnnualTaxIncome::year, AnnualTaxIncome::amount, BigDecimal::add));
+        Map<Integer, BigDecimal> varIncomes = taxInput.variableIncomes().stream()
+                .collect(Collectors.toMap(AnnualVariableIncome::year, AnnualVariableIncome::taxableAmount, BigDecimal::add));
+        Map<Integer, BigDecimal> retIncomes = taxInput.retirementIncome().stream()
+                .collect(Collectors.toMap(AnnualTaxableRetirementIncome::year, AnnualTaxableRetirementIncome::amount, BigDecimal::add));
+
         TaxProjection taxProjection = new TaxProjection(taxYearly.stream()
-                .map(t -> new TaxProjection.Withholding(t.year(), t.withheld(), t.taxActual()))
+                .map(t -> {
+                    BigDecimal gross = regularIncomes.getOrDefault(t.year(), BigDecimal.ZERO)
+                            .add(varIncomes.getOrDefault(t.year(), BigDecimal.ZERO))
+                            .add(retIncomes.getOrDefault(t.year(), BigDecimal.ZERO));
+                    BigDecimal withheld = t.ratePAS() != null ? t.ratePAS().multiply(gross) : t.withheld();
+                    return new TaxProjection.Withholding(t.year(), withheld, t.taxActual());
+                })
                 .toList());
 
         RetirementIncomeProjection retirementIncome = new RetirementIncomeProjection(
@@ -113,12 +131,12 @@ public final class TreasuryInputFactory {
                 transfers, placements, taxProjection, retirementIncome, parameters);
     }
 
-    private static IncomeProjectionInput toIncome(IncomeModel i) {
+    public static IncomeProjectionInput toIncome(IncomeModel i) {
         return new IncomeProjectionInput(i.label(), i.getEffectiveMonthly(), parseDate(i.start()), parseDate(i.end()),
                 i.getEffectiveGrowthRate());
     }
 
-    private static ChargeProjectionInput toCharge(ChargeModel c) {
+    public static ChargeProjectionInput toCharge(ChargeModel c) {
         return new ChargeProjectionInput(c.label(), c.getEffectiveMonthly(), parseDate(c.start()), parseDate(c.end()),
                 c.growthRate());
     }

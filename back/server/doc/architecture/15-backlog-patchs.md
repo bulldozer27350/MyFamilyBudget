@@ -326,12 +326,17 @@ spécifiques à relire avant de le démarrer.
 - **Modifications attendues** :
 - Brancher `TresorerieCalculationService` sur `TreasuryProjectionInput`.
 - Extraire `chargeMonthlyForYear`, `chargeAnnualForYear`, `incomeMonthlyForYear`, `incomeAnnualForYear` en fonctions de domaine pures prenant uniquement leur modèle minimal.
+- **Notes d'implémentation** :
+- `TreasuryProjection` (`internal.calculation`) créé comme projection de flux canonique (`years`, `cashflow`, `variablePreview`, `previewYears`).
+- `TresorerieCalculationService.compute(TreasuryProjectionInput)` remplace l'ancien calcul interne et ne dépend plus d'aucun modèle persistant (`BudgetDataModel`, `BankImportModel`...).
+- Fonctions unitaires `chargeMonthlyForYear`, `chargeAnnualForYear`, `incomeMonthlyForYear`, `incomeAnnualForYear` extraites sous forme de fonctions pures recevant exclusivement `ChargeProjectionInput` ou `IncomeProjectionInput`.
+- `TresorerieServiceImpl` branché sur `TreasuryInputFactory` + `TresorerieCalculationService` ; l'assemblage applicatif (`buildCategoryOptions`, `buildTresorerieSuggestions`, `computeRealAverages`) est rattaché au service REST.
 - **Statut** :
 - [ ] Non commencé
-- [x] Démarré
+- [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-402 — Trésorerie - Tests de composant + garde-fou
