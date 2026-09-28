@@ -2,9 +2,15 @@ package com.moe.myfamilybudget.server.internal.factory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.moe.myfamilybudget.server.internal.calculation.AnnualTaxIncome;
 import com.moe.myfamilybudget.server.internal.calculation.AnnualTaxableRetirementIncome;
@@ -20,11 +26,10 @@ import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
-import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
-import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
+import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 
 /**
  * Construit un {@link TaxCalculationInput} à partir de {@link BudgetDataModel} (RF-200, réduit
@@ -36,7 +41,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
  * {@code internal.calculation}, gardé par le garde-fou ArchUnit de RF-001
  * ({@code CalculationDependenciesArchTest}).
  *
- * <p><b>Version 2 (RF-202).</b> Deux couplages ont disparu de {@link TaxCalculator} :
+ * <p><b>Version 2 (RF-202).</b> Deux couplages ont disparu de {@code TaxCalculator} :
  * <ul>
  *   <li>la période de simulation est fournie explicitement par l'appelant (voir
  *       {@link TaxSimulationPeriodResolver}) au lieu d'être déduite ici de {@code findEarliestYear} ;</li>
@@ -49,6 +54,8 @@ import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
  * supplémentaire n'était à retirer du contrat.
  */
 public final class TaxInputFactory {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TaxInputFactory.class);
 
     private TaxInputFactory() {
     }
@@ -78,7 +85,7 @@ public final class TaxInputFactory {
         for (int year = period.startYear(); year <= period.endYear(); year++) {
             incomes.add(new AnnualTaxIncome(year, sumAnnual(regularIncomes, year)));
             variableIncomes.add(new AnnualVariableIncome(year,
-                    TaxCalculator.variableIncomeDetailForYear(data, year).taxable()));
+                    variableTaxableForYear(data, year)));
             retirementIncome.add(new AnnualTaxableRetirementIncome(year,
                     annualPension(monthlyPensions, retireYear, period.endYear(), inflationRate, year)));
         }
@@ -135,10 +142,101 @@ public final class TaxInputFactory {
         return total;
     }
 
+    /**
+     * Part imposable des revenus variables d'une année. Logique déplacée ici depuis le moteur
+     * fiscal par RF-203 : projeter les modèles persistants est le rôle de la Factory.
+     */
+    private static BigDecimal variableTaxableForYear(BudgetDataModel data, int year) {
+        BigDecimal taxable = BigDecimal.ZERO;
+        if (data.getEffectiveVariableIncomes() == null) {
+            return taxable.setScale(2, RoundingMode.HALF_UP);
+        }
+
+        for (VariableIncomeModel v : data.getEffectiveVariableIncomes()) {
+            if (v.startYear() != null && year < v.startYear()) continue;
+            if (v.endYear() != null && year > v.endYear()) continue;
+
+            Optional<IncomeModel> refRow = data.getEffectiveIncomes().stream()
+                    .filter(r -> v.refIncomeLabel() != null && v.refIncomeLabel().equalsIgnoreCase(r.label()))
+                    .findFirst();
+            BigDecimal refAnnual = refRow.map(r -> incomeAnnualForYear(r, year)).orElse(BigDecimal.ZERO);
+            BigDecimal forecast = refAnnual.multiply(v.getEffectiveRate());
+
+            Optional<VariableOverrideModel> override = data.getEffectiveVariableOverrides().stream()
+                    .filter(o -> v.label() != null && v.label().equalsIgnoreCase(o.label())
+                            && o.year() != null && o.year() == year)
+                    .findFirst();
+
+            BigDecimal amount = override.map(VariableOverrideModel::getEffectiveAmount).orElse(forecast);
+
+            boolean isTaxable;
+            if (override.isPresent() && "Non".equalsIgnoreCase(override.get().taxable())) {
+                isTaxable = false;
+            } else if (override.isPresent() && "Oui".equalsIgnoreCase(override.get().taxable())) {
+                isTaxable = true;
+            } else {
+                isTaxable = !"Non".equalsIgnoreCase(v.taxable());
+            }
+
+            if (isTaxable) {
+                taxable = taxable.add(amount);
+            }
+        }
+        return taxable.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private static BigDecimal incomeAnnualForYear(IncomeModel row, int year) {
+        if (row == null || row.getEffectiveMonthly().compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        Integer startYear = yearOf(row.start());
+        if (startYear == null) startYear = year;
+
+        int yearsElapsed = Math.max(0, year - startYear);
+        double factor = Math.pow(1.0 + row.getEffectiveGrowthRate().doubleValue(), yearsElapsed);
+        BigDecimal effectiveMonthly = row.getEffectiveMonthly().multiply(BigDecimal.valueOf(factor));
+
+        int monthsActive = monthsActiveInYear(row.start(), row.end(), year);
+        return effectiveMonthly.multiply(BigDecimal.valueOf(monthsActive)).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private static int monthsActiveInYear(String startISO, String endISO, int year) {
+        LocalDate start = parseDate(startISO);
+        LocalDate end = parseDate(endISO);
+        if (start == null || end == null) return 0;
+
+        LocalDate yStart = LocalDate.of(year, 1, 1);
+        LocalDate yEnd = LocalDate.of(year, 12, 31);
+
+        LocalDate s = start.isAfter(yStart) ? start : yStart;
+        LocalDate e = end.isBefore(yEnd) ? end : yEnd;
+
+        if (e.isBefore(s)) return 0;
+        return (e.getYear() - s.getYear()) * 12 + (e.getMonthValue() - s.getMonthValue()) + 1;
+    }
+
+    private static Integer yearOf(String dateISO) {
+        LocalDate d = parseDate(dateISO);
+        return d != null ? d.getYear() : null;
+    }
+
+    private static LocalDate parseDate(String dateISO) {
+        if (dateISO == null || dateISO.isBlank()) return null;
+        try {
+            if (dateISO.length() == 7) {
+                return YearMonth.parse(dateISO).atDay(1);
+            }
+            return LocalDate.parse(dateISO.substring(0, 10));
+        } catch (Exception e) {
+            LOG.warn("Date ISO illisible dans un calcul fiscal, ignorée : '{}'", dateISO, e);
+            return null;
+        }
+    }
+
     private static BigDecimal sumAnnual(List<IncomeModel> rows, int year) {
         BigDecimal total = BigDecimal.ZERO;
         for (IncomeModel row : rows) {
-            total = total.add(TaxCalculator.incomeAnnualForYear(row, year));
+            total = total.add(incomeAnnualForYear(row, year));
         }
         return total;
     }

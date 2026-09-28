@@ -236,11 +236,11 @@ spécifiques à relire avant de le démarrer.
 - Tests unitaires sur `TaxCalculator` utilisant uniquement `TaxCalculationInput` réduit.
 - Retirer le domaine Fiscalité de la liste des violations gelées ArchUnit.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-300 — Patrimoine - Contrats

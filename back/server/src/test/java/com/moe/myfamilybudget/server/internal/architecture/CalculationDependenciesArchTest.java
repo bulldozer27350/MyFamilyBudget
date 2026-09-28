@@ -8,6 +8,15 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
+import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
+import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
+import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
+import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 
 /**
  * Garde-fou d'architecture RF-001 (voir doc/architecture/00-principes.md, section
@@ -22,7 +31,10 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
  * <p>Les factories de composition ({@code RetirementInputFactory}, {@code TaxInputFactory}...)
  * vivent dans {@code internal.factory}, hors du périmètre de cette règle : elles sont le lieu
  * normal où {@code BudgetDataModel} est traduit en {@code XxxInput}. Le domaine Retraite n'a plus
- * aucune violation depuis RF-103.
+ * aucune violation depuis RF-103 ; le domaine Fiscalité n'en a plus depuis RF-203 (aucune
+ * violation Fiscalité n'était présente dans le store gelé : le moteur fiscal vit dans
+ * {@code internal.model}, hors du périmètre de la règle gelée). Il est désormais protégé par la
+ * règle dédiée {@link #TAX_ENGINE_DOES_NOT_DEPEND_ON_PERSISTENT_MODELS}, non gelée.
  *
  * <p><b>Gel des violations existantes ({@link FreezingArchRule}).</b> À l'écriture de ce test,
  * {@code OverviewCalculationService} et {@code TresorerieCalculationService} dépendent encore
@@ -58,4 +70,25 @@ class CalculationDependenciesArchTest {
                     .as("le package internal.calculation ne doit pas dépendre de BudgetDataModel "
                             + "(doc/architecture/00-principes.md) ; violations préexistantes gelées, "
                             + "voir la javadoc de cette classe et archunit.properties"));
+
+    /**
+     * Garde-fou du domaine Fiscalité (RF-203) : {@link TaxCalculator} ne reçoit que
+     * {@code TaxCalculationInput} et ne connaît aucun modèle persistant. Règle stricte (sans gel) :
+     * le domaine ne présente aucune violation préexistante.
+     */
+    @ArchTest
+    static final ArchRule TAX_ENGINE_DOES_NOT_DEPEND_ON_PERSISTENT_MODELS = noClasses()
+            .that().areAssignableTo(TaxCalculator.class)
+            .should().dependOnClassesThat().belongToAnyOf(
+                    BudgetDataModel.class,
+                    SettingsModel.class,
+                    IncomeModel.class,
+                    VariableIncomeModel.class,
+                    VariableOverrideModel.class,
+                    TaxChildModel.class,
+                    TaxBracketModel.class,
+                    TaxRateOverrideModel.class,
+                    TaxActualOverrideModel.class)
+            .as("TaxCalculator ne doit dépendre d'aucun modèle persistant : il consomme uniquement "
+                    + "TaxCalculationInput (doc/architecture/04-domaine-fiscalite.md)");
 }
