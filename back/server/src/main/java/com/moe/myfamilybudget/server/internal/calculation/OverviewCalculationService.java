@@ -5,10 +5,8 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -28,6 +26,8 @@ import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
+import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
@@ -53,13 +53,8 @@ public class OverviewCalculationService {
 
     private static final Logger LOG = LoggerFactory.getLogger(OverviewCalculationService.class);
 
-    private static final int TRIMESTRES_REQUIS = 172;
-    private static final int AGE_TAUX_PLEIN_AUTO = 67;
-    private static final BigDecimal DECOTE_PAR_TRIMESTRE = new BigDecimal("0.00625");
-    private static final BigDecimal SURCOTE_PAR_TRIMESTRE = new BigDecimal("0.0125");
-    private static final BigDecimal TAUX_PLEIN = new BigDecimal("0.50");
-    private static final BigDecimal TAUX_MINORE_PLANCHER = new BigDecimal("0.375");
-    private static final BigDecimal MAJORATION_3_ENFANTS = new BigDecimal("0.10");
+    private final RetirementInputFactory retirementInputFactory = new RetirementInputFactory();
+    private final RetirementCalculationService retirementCalculationService = new RetirementCalculationService();
 
     public OverviewResultModel computeOverview(BudgetDataModel data, boolean useConstantEuros) {
         SettingsModel settings = data.getEffectiveSettings();
@@ -95,8 +90,8 @@ public class OverviewCalculationService {
         BigDecimal totalPensions = BigDecimal.ZERO;
         RetirementModel retirement = data.retirement();
         if (retirement != null && retirement.people() != null) {
-            for (RetirementModel.RetirementPersonModel person : retirement.people()) {
-                RetirementProjection proj = computeRetirementProjection(data, person, retireYear);
+            RetirementProjection projection = retirementCalculationService.compute(retirementInputFactory.create(data));
+            for (RetirementProjectionModel proj : projection.people()) {
                 totalPensions = totalPensions.add(proj.pensionTotaleMensuelle());
             }
         }
@@ -544,8 +539,13 @@ public class OverviewCalculationService {
 
         RetirementModel retirement = data.retirement();
         if (retirement != null && retirement.people() != null) {
-            for (RetirementModel.RetirementPersonModel person : retirement.people()) {
-                RetirementProjection proj = computeRetirementProjection(data, person, retireYear);
+            List<RetirementModel.RetirementPersonModel> people = retirement.getEffectivePeople();
+            List<RetirementProjectionModel> personProjections =
+                retirementCalculationService.compute(retirementInputFactory.create(data)).people();
+
+            for (int i = 0; i < people.size(); i++) {
+                RetirementModel.RetirementPersonModel person = people.get(i);
+                RetirementProjectionModel proj = personProjections.get(i);
                 if (proj.pensionTotaleMensuelle().compareTo(BigDecimal.ZERO) > 0) {
                     rows.add(new IncomeModel(
                         "pension-" + person.id(),
@@ -563,162 +563,20 @@ public class OverviewCalculationService {
         return rows;
     }
 
-    public record RetirementProjection(
-        int ageDepart,
-        int trimestresValides,
-        int trimestresEstimesDepart,
-        int trimestresRequis,
-        boolean manqueTauxPlein,
-        BigDecimal tauxApplique,
-        BigDecimal decote,
-        BigDecimal surcote,
-        BigDecimal SAM,
-        BigDecimal majoration,
-        BigDecimal pensionBaseAnnuelle,
-        BigDecimal pointsEstimes,
-        BigDecimal valeurPointDepart,
-        BigDecimal pensionComplementaireAnnuelle,
-        BigDecimal pensionTotaleAnnuelle,
-        BigDecimal pensionTotaleMensuelle
-    ) {}
-
-    public RetirementProjection computeRetirementProjection(BudgetDataModel data, RetirementModel.RetirementPersonModel person, int retireYear) {
-        int defaultBirthYear = data.settings() != null ? data.settings().getEffectiveBirthYear() : 1985;
-        int birthYear = person.birthYear() != null ? person.birthYear() : defaultBirthYear;
-
-        int trimestresValides = person.getEffectiveTrimestresValides();
-        Integer trimestresDateYear = yearOf(person.trimestresDate());
-        if (trimestresDateYear == null) {
-            trimestresDateYear = LocalDate.now().getYear() - 1;
-        }
-
-        int trimestresFuturs = 0;
-        for (int y = trimestresDateYear + 1; y <= retireYear; y++) {
-            if (projectedAnnualSalary(data, person, y).compareTo(BigDecimal.ZERO) > 0) {
-                trimestresFuturs += 4;
-            }
-        }
-
-        int trimestresEstimesDepart = trimestresValides + trimestresFuturs;
-        int ageDepart = retireYear - birthYear;
-        int trimestresJusquTauxPleinAuto = Math.max(0, (AGE_TAUX_PLEIN_AUTO - ageDepart) * 4);
-
-        BigDecimal tauxApplique = TAUX_PLEIN;
-        BigDecimal decote = BigDecimal.ZERO;
-        BigDecimal surcote = BigDecimal.ZERO;
-
-        if (trimestresEstimesDepart < TRIMESTRES_REQUIS) {
-            int manquants = TRIMESTRES_REQUIS - trimestresEstimesDepart;
-            int trimestresDecote = Math.min(manquants, trimestresJusquTauxPleinAuto);
-            decote = BigDecimal.valueOf(trimestresDecote).multiply(DECOTE_PAR_TRIMESTRE);
-            tauxApplique = TAUX_PLEIN.subtract(decote).max(TAUX_MINORE_PLANCHER);
-        } else if (trimestresEstimesDepart > TRIMESTRES_REQUIS) {
-            surcote = BigDecimal.valueOf(trimestresEstimesDepart - TRIMESTRES_REQUIS).multiply(SURCOTE_PAR_TRIMESTRE);
-            tauxApplique = TAUX_PLEIN.add(surcote);
-        }
-
-        Map<Integer, BigDecimal> byYear = new HashMap<>();
-        for (RetirementModel.SalaryHistoryModel h : person.getEffectiveSalaryHistory()) {
-            if (h.year() != null && h.getEffectiveSalary().compareTo(BigDecimal.ZERO) > 0) {
-                byYear.put(h.year(), h.getEffectiveSalary());
-            }
-        }
-
-        List<YearSalary> futureYears = new ArrayList<>();
-        for (int y = trimestresDateYear + 1; y <= retireYear - 1; y++) {
-            BigDecimal s = projectedAnnualSalary(data, person, y);
-            if (s.compareTo(BigDecimal.ZERO) > 0) {
-                futureYears.add(new YearSalary(y, s));
-                if (!byYear.containsKey(y)) {
-                    byYear.put(y, s);
-                }
-            }
-        }
-
-        List<YearSalary> allEntries = new ArrayList<>();
-        for (Map.Entry<Integer, BigDecimal> e : byYear.entrySet()) {
-            allEntries.add(new YearSalary(e.getKey(), e.getValue()));
-        }
-        allEntries.sort((a, b) -> Integer.compare(b.year(), a.year()));
-
-        List<YearSalary> last25 = allEntries.subList(0, Math.min(25, allEntries.size()));
-        BigDecimal sumCapped = BigDecimal.ZERO;
-        for (YearSalary ys : last25) {
-            BigDecimal pass = passForYear(data, ys.year());
-            BigDecimal capped = ys.salary().min(pass);
-            sumCapped = sumCapped.add(capped);
-        }
-
-        BigDecimal SAM = last25.isEmpty() ? BigDecimal.ZERO : sumCapped.divide(BigDecimal.valueOf(last25.size()), 10, RoundingMode.HALF_UP);
-        BigDecimal majoration = data.getEffectiveTaxChildren().size() >= 3 ? BigDecimal.ONE.add(MAJORATION_3_ENFANTS) : BigDecimal.ONE;
-
-        double ratioTrimestresVal = Math.min(trimestresEstimesDepart, TRIMESTRES_REQUIS) / (double) TRIMESTRES_REQUIS;
-        BigDecimal ratioTrimestres = BigDecimal.valueOf(ratioTrimestresVal);
-
-        BigDecimal pensionBaseAnnuelle = SAM.multiply(tauxApplique).multiply(ratioTrimestres).multiply(majoration);
-
-        BigDecimal pointsActuels = person.getEffectiveAgircPoints();
-        BigDecimal ratioPointsParEuro = person.getEffectiveRatioPointsParEuro();
-
-        BigDecimal pointsFuturs = BigDecimal.ZERO;
-        for (YearSalary fy : futureYears) {
-            pointsFuturs = pointsFuturs.add(fy.salary().multiply(ratioPointsParEuro));
-        }
-
-        BigDecimal pointsEstimes = pointsActuels.add(pointsFuturs);
-        BigDecimal valeurPointDepart = agircPointValueForYear(data, retireYear);
-        BigDecimal pensionComplementaireAnnuelle = pointsEstimes.multiply(valeurPointDepart).multiply(majoration);
-
-        BigDecimal pensionTotaleAnnuelle = pensionBaseAnnuelle.add(pensionComplementaireAnnuelle);
-        BigDecimal pensionTotaleMensuelle = pensionTotaleAnnuelle.divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP);
-
-        return new RetirementProjection(
-            ageDepart,
-            trimestresValides,
-            trimestresEstimesDepart,
-            TRIMESTRES_REQUIS,
-            trimestresEstimesDepart < TRIMESTRES_REQUIS,
-            tauxApplique,
-            decote,
-            surcote,
-            SAM,
-            majoration,
-            pensionBaseAnnuelle,
-            pointsEstimes,
-            valeurPointDepart,
-            pensionComplementaireAnnuelle,
-            pensionTotaleAnnuelle,
-            pensionTotaleMensuelle
-        );
-    }
-
-    private record YearSalary(int year, BigDecimal salary) {}
-
-    private BigDecimal projectedAnnualSalary(BudgetDataModel data, RetirementModel.RetirementPersonModel person, int year) {
-        if (person.incomeLabel() == null || person.incomeLabel().isBlank()) {
-            return BigDecimal.ZERO;
-        }
-        Optional<IncomeModel> income = data.getEffectiveIncomes().stream().filter(i -> person.incomeLabel().equalsIgnoreCase(i.label())).findFirst();
-        return income.map(incomeModel -> incomeAnnualForYear(incomeModel, year)).orElse(BigDecimal.ZERO);
-    }
-
-    private BigDecimal passForYear(BudgetDataModel data, int year) {
-        BigDecimal base = (data.retirement() != null) ? data.retirement().getEffectivePass2026() : new BigDecimal("47100");
-        BigDecimal growth = (data.retirement() != null) ? data.retirement().getEffectivePassGrowthRate() : new BigDecimal("0.015");
-
-        double factor = Math.pow(1.0 + growth.doubleValue(), year - 2026);
-        return base.multiply(BigDecimal.valueOf(factor));
-    }
-
-    private BigDecimal agircPointValueForYear(BudgetDataModel data, int year) {
-        BigDecimal base = (data.retirement() != null) ? data.retirement().getEffectiveAgircPointValue() : new BigDecimal("1.4386");
-        Integer baseYear = (data.retirement() != null) ? yearOf(data.retirement().agircPointDateGlobal()) : 2025;
-
-        BigDecimal growth = (data.retirement() != null) ? data.retirement().getEffectiveAgircPointGrowthRate() : new BigDecimal("0.01");
-        int elapsed = Math.max(0, year - baseYear);
-
-        double factor = Math.pow(1.0 + growth.doubleValue(), elapsed);
-        return base.multiply(BigDecimal.valueOf(factor));
+    /**
+     * Conservé pour compatibilité avec les tests existants qui exercent directement le calcul de
+     * projection retraite d'une personne (voir {@code OverviewServiceImplTest} et
+     * {@code BusinessLogicIntegrationTest}). Ne recalcule plus rien ici (RF-102) : délègue
+     * entièrement à {@link RetirementCalculationService} via {@link RetirementInputFactory}.
+     */
+    public RetirementProjectionModel computeRetirementProjection(
+        BudgetDataModel data, RetirementModel.RetirementPersonModel person, int retireYear
+    ) {
+        RetirementModel retirement = data.retirement();
+        List<RetirementModel.RetirementPersonModel> people = retirement != null ? retirement.getEffectivePeople() : List.of();
+        int index = people.indexOf(person);
+        RetirementProjection projection = retirementCalculationService.compute(retirementInputFactory.create(data));
+        return projection.people().get(index);
     }
 
     private BigDecimal incomeAnnualForYear(IncomeModel row, int year) {

@@ -155,11 +155,11 @@ spécifiques à relire avant de le démarrer.
 - Idem pour `OverviewCalculationService.computeRetirementProjection(...)`.
 - Supprimer les deux implémentations dupliquées une fois les tests de non-régression (snapshots RF-000) verts.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-103 — Retraite - Tests de composant + garde-fou

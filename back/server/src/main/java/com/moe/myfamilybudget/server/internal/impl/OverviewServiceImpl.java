@@ -10,6 +10,7 @@ import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.OverviewResultModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 
 /**
  * Contrôleur REST de l'aperçu financier global (Overview) : orchestration HTTP uniquement (lecture
@@ -43,7 +44,7 @@ public class OverviewServiceImpl implements OverviewApi{
      * projection de retraite d'une personne (voir {@code OverviewServiceImplTest}). Délègue
      * entièrement à {@link OverviewCalculationService#computeRetirementProjection}.
      */
-    public OverviewCalculationService.RetirementProjection computeRetirementProjection(
+    public RetirementProjectionModel computeRetirementProjection(
             BudgetDataModel data, RetirementModel.RetirementPersonModel person, int retireYear) {
         return calculationService.computeRetirementProjection(data, person, retireYear);
     }
