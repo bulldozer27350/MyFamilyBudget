@@ -8,6 +8,8 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionService;
+import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionService;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
 import com.moe.myfamilybudget.server.internal.factory.AssetBucketResolver;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
@@ -18,6 +20,7 @@ import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
+import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PointageCalculator;
 import com.moe.myfamilybudget.server.internal.model.PointageModel;
@@ -57,7 +60,11 @@ import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
  * budget relève des ports de lecture RF-B00/RF-B01). Et pour le domaine Crédit depuis RF-803 : le
  * store gelé ne contient aucune violation Crédit (les deux moteurs, {@code LoanAdviceCalculationService}
  * et {@code PlacementRateSuggestionService}, ne dépendent plus du budget depuis RF-801/RF-802) ; ils
- * sont protégés par {@link #CREDIT_ENGINES_DO_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée.
+ * sont protégés par {@link #CREDIT_ENGINES_DO_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée. Et pour le
+ * domaine Patrimoine depuis RF-302 : le store gelé ne contient aucune violation Patrimoine (les deux
+ * moteurs, {@code PatrimoineProjectionService} et {@code PlacementEvolutionService}, ne dépendent
+ * plus du budget depuis RF-301) ; ils sont protégés par
+ * {@link #PATRIMOINE_ENGINES_DO_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée.
  *
  * <p><b>Gel des violations existantes ({@link FreezingArchRule}).</b> À l'écriture de ce test,
  * {@code OverviewCalculationService} et {@code TresorerieCalculationService} dépendent encore
@@ -176,4 +183,23 @@ class CalculationDependenciesArchTest {
             .as("les moteurs Crédit ne doivent dépendre d'aucun modèle du budget : ils consomment "
                     + "uniquement LoanAdviceInput et PlacementRateSuggestionInput "
                     + "(doc/architecture/10-domaine-prets-suggestions.md)");
+
+    /**
+     * Garde-fou du domaine Patrimoine (RF-302) : les deux moteurs patrimoniaux ne reçoivent que
+     * {@code PatrimoineProjectionInput} et {@code PlacementEvolutionInput} ; ils ne connaissent ni
+     * le budget, ni les placements, ni leur historique de valorisation. Règle stricte (sans gel) :
+     * le domaine ne présente aucune violation préexistante.
+     */
+    @ArchTest
+    static final ArchRule PATRIMOINE_ENGINES_DO_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
+            .that().areAssignableTo(PatrimoineProjectionService.class)
+            .or().areAssignableTo(PlacementEvolutionService.class)
+            .should().dependOnClassesThat().belongToAnyOf(
+                    BudgetDataModel.class,
+                    PlacementModel.class,
+                    PlacementHistoryEntryModel.class,
+                    SettingsModel.class)
+            .as("les moteurs patrimoniaux ne doivent dépendre d'aucun modèle du budget : ils "
+                    + "consomment uniquement PatrimoineProjectionInput et PlacementEvolutionInput "
+                    + "(doc/architecture/05-domaine-patrimoine.md)");
 }

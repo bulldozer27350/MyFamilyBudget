@@ -283,12 +283,16 @@ spécifiques à relire avant de le démarrer.
 - **Modifications attendues** :
 - Tests unitaires sur les deux moteurs patrimoniaux utilisant uniquement les Inputs dédiés.
 - Retirer le domaine Patrimoine de la liste des violations gelées ArchUnit.
+- **Notes d'implémentation** :
+- Ajoute `PatrimoineProjectionServiceTest` et `PlacementEvolutionServiceTest`, construits uniquement avec `PatrimoineProjectionInput` / `PlacementEvolutionInput` (croissance composée, versements, retraits, pause déclenchée par la trésorerie ou par un placement en arrière-plan, euros constants).
+- Aucune violation Patrimoine n'était gelée (les deux moteurs vivent hors du périmètre de la règle gelée depuis RF-301) ; ajoute `PATRIMOINE_ENGINES_DO_NOT_DEPEND_ON_BUDGET_MODELS`, règle stricte sur le modèle Fiscalité/Pointage/Notifications/Crédit ; le store gelé n'est pas modifié.
+- Build Maven non exécutable dans l'environnement de rédaction (Maven Central inaccessible) : les valeurs attendues de chaque test ont été rejouées et confirmées via un harnais javac appelant directement les deux moteurs ; l'absence de référence aux modèles du budget dans le bytecode compilé a aussi été vérifiée. `mvn test` (dont `CalculationDependenciesArchTest`) à confirmer en local.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-400 — Trésorerie - Contrats (et décision du point ouvert Patrimoine/Trésorerie)
