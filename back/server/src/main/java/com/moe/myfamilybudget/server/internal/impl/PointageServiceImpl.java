@@ -8,42 +8,63 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.PointageApi;
+import com.moe.myfamilybudget.server.internal.command.BankImportCommandService;
 import com.moe.myfamilybudget.server.internal.mapper.PointageMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.PointageCalculator;
 import com.moe.myfamilybudget.server.internal.model.PointageModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.server.internal.port.BudgetReader;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
 /**
  * Service et Contrôleur REST implémentant le contrat OpenAPI PointageApi (Tag: Pointage).
  * Les traitements et calculs sont exécutés exclusivement sur le Modèle Interne du domaine.
+ *
+ * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
+ * {@code PersistenceManager}. Lecture via {@link BankReader}, {@link BudgetReader},
+ * {@link PatrimoineReader} et {@link SettingsReader} ; écriture via
+ * {@link BankImportCommandService} (déjà en place depuis RF-A00).
  */
 @Service
 @RestController
 public class PointageServiceImpl implements PointageApi {
 
-    private final PersistenceManager persistenceManager;
+    private final BankReader bankReader;
+    private final BudgetReader budgetReader;
+    private final PatrimoineReader patrimoineReader;
+    private final SettingsReader settingsReader;
+    private final BankImportCommandService bankImportCommandService;
     private final PointageMapper mapper;
 
-    public PointageServiceImpl(PersistenceManager persistenceManager, PointageMapper mapper) {
-        this.persistenceManager = persistenceManager;
+    public PointageServiceImpl(
+            BankReader bankReader,
+            BudgetReader budgetReader,
+            PatrimoineReader patrimoineReader,
+            SettingsReader settingsReader,
+            BankImportCommandService bankImportCommandService,
+            PointageMapper mapper) {
+        this.bankReader = bankReader;
+        this.budgetReader = budgetReader;
+        this.patrimoineReader = patrimoineReader;
+        this.settingsReader = settingsReader;
+        this.bankImportCommandService = bankImportCommandService;
         this.mapper = mapper;
     }
 
     @Override
     public ResponseEntity<Object> getPointage() {
-        BudgetDataModel budgetData = persistenceManager.getBudgetData();
-        BankImportModel bankImport = persistenceManager.getBankImport();
+        BankImportModel bankImport = bankReader.getBankImport();
 
         PointageModel internalModel = new PointageModel(
                 bankImport.transactions(),
                 bankImport.categories(),
                 bankImport.matchings(),
-                budgetData.charges(),
-                budgetData.incomes(),
-                budgetData.placements(),
-                budgetData.settings()
+                budgetReader.getCharges(),
+                budgetReader.getIncomes(),
+                patrimoineReader.getPlacements(),
+                settingsReader.getSettings()
         );
 
         Map<String, Object> responseMap = mapper.toPointageResponseMap(internalModel);
@@ -57,10 +78,10 @@ public class PointageServiceImpl implements PointageApi {
         }
 
         List<BankImportModel.MatchingLinkModel> newLinks = mapper.toMatchingLinks(body);
-        BankImportModel currentImport = persistenceManager.getBankImport();
+        BankImportModel currentImport = bankReader.getBankImport();
 
         BankImportModel updatedImport = PointageCalculator.updateMatchingForMonth(currentImport, monthISO, newLinks);
-        persistenceManager.updateBankImport(updatedImport);
+        bankImportCommandService.updateBankImport(updatedImport);
 
         return ResponseEntity.ok().build();
     }

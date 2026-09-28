@@ -26,12 +26,17 @@ import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportSummaryModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.command.BankImportCommandService;
+import com.moe.myfamilybudget.server.internal.port.BankReader;
 
 import jakarta.validation.Valid;
 
 /**
  * Service et Contrôleur REST implémentant le contrat OpenAPI ImportBancaireApi (Tag: Import Bancaire).
+ *
+ * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
+ * {@code PersistenceManager}. Lecture via {@link BankReader}, écriture via
+ * {@link BankImportCommandService} (déjà en place depuis RF-A00).
  */
 @Service
 @RestController
@@ -39,14 +44,17 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
     private static final Logger LOG = LoggerFactory.getLogger(StatementBankImportServiceImpl.class);
 
-    private final PersistenceManager persistenceManager;
+    private final BankReader bankReader;
+    private final BankImportCommandService bankImportCommandService;
     private final StatementBankImportMapper mapper;
     private final ExcelToCsvService excelToCsvService;
 
-    public StatementBankImportServiceImpl(PersistenceManager persistenceManager,
+    public StatementBankImportServiceImpl(BankReader bankReader,
+                                          BankImportCommandService bankImportCommandService,
                                           StatementBankImportMapper mapper,
                                           ExcelToCsvService excelToCsvService) {
-        this.persistenceManager = persistenceManager;
+        this.bankReader = bankReader;
+        this.bankImportCommandService = bankImportCommandService;
         this.mapper = mapper;
         this.excelToCsvService = excelToCsvService;
     }
@@ -57,14 +65,14 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
     @Override
     public ResponseEntity<Object> getBankImport() {
-        BankImportModel internalModel = persistenceManager.getBankImport();
+        BankImportModel internalModel = bankReader.getBankImport();
         Map<String, Object> responseMap = mapper.toBankImportResponseMap(internalModel);
         return ResponseEntity.ok(responseMap);
     }
 
     @Override
     public ResponseEntity<Void> updateBankImportMapping(Object body) {
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
         Map<String, Object> mappingMap = toMap(body);
         BankImportModel.BankColumnMappingModel newMapping = mapper.toColumnMappingModel(mappingMap);
 
@@ -77,7 +85,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
                 current.matchings()
         );
 
-        persistenceManager.updateBankImport(updatedModel);
+        bankImportCommandService.updateBankImport(updatedModel);
         return ResponseEntity.ok().build();
     }
 
@@ -100,7 +108,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
             }
         }
 
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
         BankImportModel.BankColumnMappingModel mappingModel = current.columnMapping();
 
         List<String> colRoles = new ArrayList<>();
@@ -129,7 +137,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
                 current.matchings()
         );
 
-        persistenceManager.updateBankImport(updatedModel);
+        bankImportCommandService.updateBankImport(updatedModel);
         return ResponseEntity.ok().build();
     }
 
@@ -140,7 +148,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
             return ResponseEntity.badRequest().body(Map.of("error", "Données d'import manquantes."));
         }
 
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
         BankImportModel.BankColumnMappingModel mappingModel;
         if (request.getMapping() != null) {
             mappingModel = mapper.toColumnMappingModel(toMap(request.getMapping()));
@@ -171,7 +179,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
                     current.matchings()
             );
 
-            persistenceManager.updateBankImport(updatedModel);
+            bankImportCommandService.updateBankImport(updatedModel);
             return ResponseEntity.ok(mapper.toImportSummaryMap(summary));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -186,7 +194,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         Map<String, Object> txMap = toMap(body);
         BankImportModel.BankTransactionModel tx = mapper.toTransactionModel(txMap);
 
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
         List<BankImportModel.BankImportRuleModel> rules = current.rules() != null ? current.rules() : Collections.emptyList();
 
         List<BankImportModel.BankTransactionModel> categorized = BankImportCalculator.applyRulesToTransactions(List.of(tx), rules);
@@ -206,14 +214,14 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
                 current.matchings()
         );
 
-        persistenceManager.updateBankImport(updatedModel);
+        bankImportCommandService.updateBankImport(updatedModel);
         return ResponseEntity.ok(mapper.toTransactionMap(finalTx));
     }
 
     @Override
     public ResponseEntity<Void> updateBankTransactionSplits(String txId,
             @Valid List<@Valid BankTransactionSplitDto> bankTransactionSplitDto) {
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
         List<BankImportModel.BankTransactionModel> currentTxs = current.transactions();
 
         int txIndex = -1;
@@ -257,7 +265,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
                 current.matchings()
         );
 
-        persistenceManager.updateBankImport(updatedModel);
+        bankImportCommandService.updateBankImport(updatedModel);
         return ResponseEntity.ok().build();
     }
 
@@ -267,14 +275,14 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
     @Override
     public ResponseEntity<Object> addBankImportLigne(String listKey, Object body) {
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
         Map<String, Object> bodyMap = toMap(body);
 
         if ("categories".equals(listKey)) {
             BankImportModel.CategoryModel newCat = mapper.toCategoryModel(bodyMap);
             List<BankImportModel.CategoryModel> cats = new ArrayList<>(current.categories());
             cats.add(newCat);
-            persistenceManager.updateBankImport(new BankImportModel(
+            bankImportCommandService.updateBankImport(new BankImportModel(
                     current.columnMapping(), cats, current.rules(),
                     current.transactions(), current.pendingOperations(), current.matchings()));
             return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
@@ -283,7 +291,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
             BankImportModel.BankImportRuleModel newRule = mapper.toRuleModel(bodyMap);
             List<BankImportModel.BankImportRuleModel> rules = new ArrayList<>(current.rules());
             rules.add(newRule);
-            persistenceManager.updateBankImport(new BankImportModel(
+            bankImportCommandService.updateBankImport(new BankImportModel(
                     current.columnMapping(), current.categories(), rules,
                     current.transactions(), current.pendingOperations(), current.matchings()));
             return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
@@ -299,7 +307,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         String field = body.getField();
         Object value = body.getValue();
 
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
 
         if ("categories".equals(listKey)) {
             List<BankImportModel.CategoryModel> cats = current.categories();
@@ -316,7 +324,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
             List<BankImportModel.CategoryModel> updated = new ArrayList<>(cats);
             updated.set(idx, new BankImportModel.CategoryModel(existing.id(), label, kind, compressible));
-            persistenceManager.updateBankImport(new BankImportModel(
+            bankImportCommandService.updateBankImport(new BankImportModel(
                     current.columnMapping(), updated, current.rules(),
                     current.transactions(), current.pendingOperations(), current.matchings()));
             return ResponseEntity.ok().build();
@@ -335,7 +343,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
             List<BankImportModel.BankImportRuleModel> updated = new ArrayList<>(rules);
             updated.set(idx, new BankImportModel.BankImportRuleModel(existing.id(), matchText, categoryId));
-            persistenceManager.updateBankImport(new BankImportModel(
+            bankImportCommandService.updateBankImport(new BankImportModel(
                     current.columnMapping(), current.categories(), updated,
                     current.transactions(), current.pendingOperations(), current.matchings()));
             return ResponseEntity.ok().build();
@@ -345,13 +353,13 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
     @Override
     public ResponseEntity<Void> removeBankImportLigne(String listKey, String id) {
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
 
         if ("categories".equals(listKey)) {
             List<BankImportModel.CategoryModel> cats = current.categories().stream()
                     .filter(c -> !c.id().equals(id))
                     .collect(Collectors.toList());
-            persistenceManager.updateBankImport(new BankImportModel(
+            bankImportCommandService.updateBankImport(new BankImportModel(
                     current.columnMapping(), cats, current.rules(),
                     current.transactions(), current.pendingOperations(), current.matchings()));
             return ResponseEntity.noContent().build();
@@ -360,7 +368,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
             List<BankImportModel.BankImportRuleModel> rules = current.rules().stream()
                     .filter(r -> !r.id().equals(id))
                     .collect(Collectors.toList());
-            persistenceManager.updateBankImport(new BankImportModel(
+            bankImportCommandService.updateBankImport(new BankImportModel(
                     current.columnMapping(), current.categories(), rules,
                     current.transactions(), current.pendingOperations(), current.matchings()));
             return ResponseEntity.noContent().build();
@@ -381,7 +389,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         String categoryId = body.getCategoryId();
         String ruleKeyword = body.getRuleKeyword();
 
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
         List<BankImportModel.BankImportRuleModel> currentRules = current.rules() != null ? current.rules() : Collections.emptyList();
         List<BankImportModel.BankImportRuleModel> newRules = new ArrayList<>(currentRules);
 
@@ -424,13 +432,13 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
                 current.matchings()
         );
 
-        persistenceManager.updateBankImport(updatedModel);
+        bankImportCommandService.updateBankImport(updatedModel);
         return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<Void> recalculateBankImportRules() {
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
         List<BankImportModel.BankTransactionModel> currentTxs = current.transactions() != null ? current.transactions() : Collections.emptyList();
         List<BankImportModel.BankImportRuleModel> currentRules = current.rules() != null ? current.rules() : Collections.emptyList();
 
@@ -445,7 +453,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
                 current.matchings()
         );
 
-        persistenceManager.updateBankImport(updatedModel);
+        bankImportCommandService.updateBankImport(updatedModel);
         return ResponseEntity.ok().build();
     }
 

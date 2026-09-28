@@ -13,6 +13,11 @@ import org.springframework.http.ResponseEntity;
 import com.moe.myfamilybudget.server.internal.mapper.PointageMapper;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.command.BankImportCommandService;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 @DisplayName("PointageServiceImpl Integration Test")
@@ -25,7 +30,10 @@ class PointageServiceImplIntegrationTest {
     void setUp() {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        service = new PointageServiceImpl(persistenceManager, new PointageMapper());
+        service = new PointageServiceImpl(
+                new BankPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
+                new PatrimoinePersistenceAdapter(persistenceManager), new SettingsPersistenceAdapter(persistenceManager),
+                new BankImportCommandService(persistenceManager), new PointageMapper());
     }
 
     @Test

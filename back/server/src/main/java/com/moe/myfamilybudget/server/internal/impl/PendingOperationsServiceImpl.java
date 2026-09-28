@@ -11,26 +11,54 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.OperationsEnCoursApi;
 import com.moe.myfamilybudget.api.model.ReconcilePendingOperations200Response;
+import com.moe.myfamilybudget.server.internal.command.BankImportCommandService;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.server.internal.model.AutoMatchResultModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.server.internal.port.BudgetReader;
+import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
 /**
  * Service et Contrôleur REST implémentant le contrat OpenAPI OperationsEnCoursApi (Tag: Operations en cours).
+ *
+ * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
+ * {@code PersistenceManager}. Lecture via {@link BankReader}, {@link BudgetReader} et
+ * {@link SettingsReader} ; écriture via {@link BankImportCommandService} (déjà en place depuis
+ * RF-A00). {@code toPendingOperationsResponseMap} attend encore un {@link BudgetDataModel}
+ * complet (voir {@code StatementBankImportMapper}) : il n'en lit que charges/incomes/oneoff/
+ * settings, les autres domaines sont donc laissés à {@code null}, comme pour Trésorerie.
  */
 @Service
 @RestController
 public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
 
-    private final PersistenceManager persistenceManager;
+    private final BankReader bankReader;
+    private final BudgetReader budgetReader;
+    private final SettingsReader settingsReader;
+    private final BankImportCommandService bankImportCommandService;
     private final StatementBankImportMapper mapper;
 
-    public PendingOperationsServiceImpl(PersistenceManager persistenceManager, StatementBankImportMapper mapper) {
-        this.persistenceManager = persistenceManager;
+    public PendingOperationsServiceImpl(
+            BankReader bankReader,
+            BudgetReader budgetReader,
+            SettingsReader settingsReader,
+            BankImportCommandService bankImportCommandService,
+            StatementBankImportMapper mapper) {
+        this.bankReader = bankReader;
+        this.budgetReader = budgetReader;
+        this.settingsReader = settingsReader;
+        this.bankImportCommandService = bankImportCommandService;
         this.mapper = mapper;
+    }
+
+    private BudgetDataModel composeBudgetData() {
+        return new BudgetDataModel(
+                settingsReader.getSettings(), budgetReader.getIncomes(), budgetReader.getCharges(),
+                null, null, null, null, null, null, null,
+                budgetReader.getOneoffExpenses(), null, null, null, null, null, null, null);
     }
 
     // ---------------------------------------------------------------------------
@@ -39,15 +67,14 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
 
     @Override
     public ResponseEntity<Object> getPendingOperations() {
-        BankImportModel current = persistenceManager.getBankImport();
-        BudgetDataModel budgetData = persistenceManager.getBudgetData();
-        Map<String, Object> responseMap = mapper.toPendingOperationsResponseMap(current, budgetData);
+        BankImportModel current = bankReader.getBankImport();
+        Map<String, Object> responseMap = mapper.toPendingOperationsResponseMap(current, composeBudgetData());
         return ResponseEntity.ok(responseMap);
     }
 
     @Override
     public ResponseEntity<ReconcilePendingOperations200Response> reconcilePendingOperations(Object body) {
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
         AutoMatchResultModel matchResult = BankImportCalculator.autoMatchPendingOperations(
                 current.pendingOperations(), current.transactions()
         );
@@ -57,7 +84,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
                     current.columnMapping(), current.categories(), current.rules(),
                     matchResult.updatedTransactions(), matchResult.updatedOperations(), current.matchings()
             );
-            persistenceManager.updateBankImport(updated);
+            bankImportCommandService.updateBankImport(updated);
         }
 
         ReconcilePendingOperations200Response response = new ReconcilePendingOperations200Response();
@@ -72,7 +99,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         String targetId = String.valueOf(map.getOrDefault("id", map.get("operationId")));
 
         if (targetId != null && !targetId.isBlank() && !"null".equalsIgnoreCase(targetId)) {
-            BankImportModel current = persistenceManager.getBankImport();
+            BankImportModel current = bankReader.getBankImport();
             List<BankImportModel.PendingOperationModel> updatedOps = current.pendingOperations().stream()
                     .map(op -> op.id().equals(targetId)
                             ? new BankImportModel.PendingOperationModel(
@@ -86,7 +113,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
                     current.columnMapping(), current.categories(), current.rules(),
                     current.transactions(), updatedOps, current.matchings()
             );
-            persistenceManager.updateBankImport(updated);
+            bankImportCommandService.updateBankImport(updated);
         }
 
         return ResponseEntity.ok().build();
@@ -116,7 +143,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         String dateFormat = String.valueOf(configMap.getOrDefault("dateFormat", map.getOrDefault("dateFormat", "DD-MM-YYYY")));
         boolean usePurchaseDate = Boolean.parseBoolean(String.valueOf(configMap.getOrDefault("usePurchaseDate", map.getOrDefault("usePurchaseDate", false))));
 
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
         com.moe.myfamilybudget.server.internal.model.PendingImportSummaryModel summary = BankImportCalculator.importPendingCB(
                 rawRows,
                 colRoles,
@@ -133,7 +160,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
                     current.columnMapping(), current.categories(), current.rules(),
                     current.transactions(), allPending, current.matchings()
             );
-            persistenceManager.updateBankImport(updated);
+            bankImportCommandService.updateBankImport(updated);
         }
 
         return ResponseEntity.ok(mapper.toPendingImportSummaryMap(summary));
@@ -148,7 +175,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         BankImportModel.PendingOperationModel bankOp = mapper.toPendingOperationModel(bankOpMap);
 
         if (manualOpId != null && !manualOpId.isBlank()) {
-            BankImportModel current = persistenceManager.getBankImport();
+            BankImportModel current = bankReader.getBankImport();
             List<BankImportModel.PendingOperationModel> mergedList = BankImportCalculator.mergePendingOperation(
                     manualOpId,
                     bankOp,
@@ -159,7 +186,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
                     current.columnMapping(), current.categories(), current.rules(),
                     current.transactions(), mergedList, current.matchings()
             );
-            persistenceManager.updateBankImport(updated);
+            bankImportCommandService.updateBankImport(updated);
         }
 
         return ResponseEntity.ok().build();
@@ -171,7 +198,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         BankImportModel.PendingOperationModel op = mapper.toPendingOperationModel(map);
 
         if (op != null) {
-            BankImportModel current = persistenceManager.getBankImport();
+            BankImportModel current = bankReader.getBankImport();
             BankImportModel.PendingOperationModel resolvedOp = op;
             if ((op.categoryId() == null || op.categoryId().isBlank()) && (op.splits() == null || op.splits().isEmpty())) {
                 List<BankImportModel.PendingOperationModel> rulesApplied = BankImportCalculator.applyRulesToPendingOperations(
@@ -192,7 +219,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
                     current.columnMapping(), current.categories(), current.rules(),
                     current.transactions(), updatedList, current.matchings()
             );
-            persistenceManager.updateBankImport(updated);
+            bankImportCommandService.updateBankImport(updated);
         }
 
         return ResponseEntity.ok().build();
