@@ -706,11 +706,12 @@ spécifiques à relire avant de le démarrer.
 - Introduire les interfaces `budgetReader`, `patrimoineReader`, `retirementReader`, `taxReader`, `bankReader`, `loanReader`, `goalReader`, `settingsReader`.
 - Leur implémentation peut, à ce stade, continuer à déléguer à `PersistenceManager`/`BudgetDataModel` en interne — ce n'est PAS un préalable à la séparation des entités JPA (palier 2, hors périmètre de cette liste, voir `13-persistance.md`).
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
+- **Notes** : 8 interfaces de lecture créées dans `internal.port` (`BudgetReader`, `PatrimoineReader`, `RetirementReader`, `TaxReader`, `BankReader`, `LoanReader`, `GoalReader`, `SettingsReader`). 8 adaptateurs de persistance Spring créés dans `internal.persistence.adapter` délégant à `PersistenceManager`. Suite de tests unitaire `PersistenceAdaptersTest` ajoutée.
 - [ ] Constaté comme mergé
 
 ### RF-B01 — Persistance palier 1 - Branchement des moteurs sur les ports
