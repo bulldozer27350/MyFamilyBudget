@@ -8,9 +8,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransactionModel;
-import com.moe.myfamilybudget.server.internal.notification.NotificationContext;
+import com.moe.myfamilybudget.server.internal.calculation.DebitThresholdInput;
 import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
 import com.moe.myfamilybudget.server.internal.notification.NotificationRule;
 
@@ -24,7 +22,7 @@ import com.moe.myfamilybudget.server.internal.notification.NotificationRule;
  * fois par 24h, quel que soit le nombre de contrôles déclenchés entre-temps.
  */
 @Component
-public class DebitThresholdRule implements NotificationRule {
+public class DebitThresholdRule implements NotificationRule<DebitThresholdInput> {
 
     public static final String KEY = "debit-threshold";
 
@@ -36,18 +34,14 @@ public class DebitThresholdRule implements NotificationRule {
     }
 
     @Override
-    public List<NotificationMessage> check(NotificationContext context) {
-        BigDecimal threshold = context.settings().debitThresholdAmount();
+    public List<NotificationMessage> check(DebitThresholdInput input) {
+        BigDecimal threshold = input.threshold();
         if (threshold == null || threshold.signum() <= 0) {
-            return List.of();
-        }
-        BankImportModel bankImport = context.data().bankImport();
-        if (bankImport == null || bankImport.transactions() == null) {
             return List.of();
         }
         LocalDate cutoff = LocalDate.now().minusDays(RECENT_DAYS_WINDOW);
         List<NotificationMessage> messages = new ArrayList<>();
-        for (BankTransactionModel tx : bankImport.transactions()) {
+        for (DebitThresholdInput.Transaction tx : input.recentTransactions()) {
             BigDecimal amount = tx.amount();
             if (amount == null || amount.signum() >= 0) {
                 continue; // pas un débit

@@ -483,12 +483,17 @@ spécifiques à relire avant de le démarrer.
 - **Modifications attendues** :
 - Brancher `DebitThresholdRule`, `BalanceFloorRule`, `ObjectifReachableRule` sur leurs Inputs respectifs.
 - Supprimer `NotificationContext(BudgetDataModel, NotificationSettingsParameters)` ; l'assemblage des trois snapshots se fait désormais en amont de l'évaluation des règles, dans `NotificationDispatchService`.
+- **Notes d'implémentation** :
+- `NotificationRule<I>` est désormais générique : chaque règle est typée par son entrée propre (`DebitThresholdInput`, `BalanceFloorInput`, `ObjectifReachableInput`). `NotificationContext` est supprimé.
+- Assemblage dans `NotificationInputFactory` (`internal.factory`, une méthode par règle, seuils fournis par l'appelant) ; `NotificationDispatchService` injecte les trois règles par type et n'assemble l'entrée d'une règle que si elle est active. Les erreurs d'assemblage sont journalisées et ignorées comme les erreurs de règle.
+- Le service lit encore le budget via `PersistenceManager` : ce point relève des ports de lecture (RF-B00/RF-B01). Le filtrage (fenêtre de 30 jours, opérations `pending`) reste porté par les règles, comportement inchangé.
+- Build Maven non exécutable dans l'environnement de rédaction : règles et factory compilées avec javac et comportement recontrôlé ; `NotificationDispatchService` et `NotificationInputFactoryTest` à valider par `mvn test` en local.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-703 — Notifications - Tests de composant + garde-fou

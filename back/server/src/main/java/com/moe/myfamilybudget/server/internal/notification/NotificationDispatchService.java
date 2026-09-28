@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,15 +12,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import com.moe.myfamilybudget.server.internal.factory.NotificationInputFactory;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.persistence.BudgetMutatedEvent;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.entity.NotificationSentLogEntity;
+import com.moe.myfamilybudget.server.internal.notification.rules.BalanceFloorRule;
+import com.moe.myfamilybudget.server.internal.notification.rules.DebitThresholdRule;
+import com.moe.myfamilybudget.server.internal.notification.rules.ObjectifReachableRule;
 import com.moe.myfamilybudget.server.internal.persistence.repository.NotificationSentLogRepository;
 
 /**
- * Croise la liste des {@link NotificationRule} actives avec la liste des {@link NotificationChannel},
- * et gère la déduplication.
+ * Croise les {@link NotificationRule} actives avec la liste des {@link NotificationChannel}, et
+ * gère la déduplication.
+ *
+ * Depuis RF-702, ce service assemble en amont l'entrée propre à chaque règle (voir
+ * {@link NotificationInputFactory}) avant de l'évaluer : les règles ne connaissent plus le budget.
+ * L'accès au budget lui-même ({@code PersistenceManager}) reste ici jusqu'aux ports de lecture
+ * (RF-B00/RF-B01).
  *
  * Déclenchement automatique : à chaque {@link BudgetMutatedEvent} (publié par
  * {@link PersistenceManager} après chaque mutation — "toute modification doit déclencher un
@@ -41,16 +51,21 @@ public class NotificationDispatchService {
     private static final Logger LOG = LoggerFactory.getLogger(NotificationDispatchService.class);
     private static final Duration AUTO_TRIGGER_COOLDOWN = Duration.ofHours(24);
 
-    private final List<NotificationRule> rules;
+    private final DebitThresholdRule debitThresholdRule;
+    private final BalanceFloorRule balanceFloorRule;
+    private final ObjectifReachableRule objectifReachableRule;
     private final List<NotificationChannel> channels;
     private final NotificationSettingsService settingsService;
     private final PersistenceManager persistenceManager;
     private final NotificationSentLogRepository sentLogRepository;
 
-    public NotificationDispatchService(List<NotificationRule> rules, List<NotificationChannel> channels,
+    public NotificationDispatchService(DebitThresholdRule debitThresholdRule, BalanceFloorRule balanceFloorRule,
+            ObjectifReachableRule objectifReachableRule, List<NotificationChannel> channels,
             NotificationSettingsService settingsService, PersistenceManager persistenceManager,
             NotificationSentLogRepository sentLogRepository) {
-        this.rules = rules;
+        this.debitThresholdRule = debitThresholdRule;
+        this.balanceFloorRule = balanceFloorRule;
+        this.objectifReachableRule = objectifReachableRule;
         this.channels = channels;
         this.settingsService = settingsService;
         this.persistenceManager = persistenceManager;
@@ -73,27 +88,41 @@ public class NotificationDispatchService {
             return 0;
         }
         BudgetDataModel data = persistenceManager.getBudgetData();
-        NotificationContext context = new NotificationContext(data, settings);
         int sent = 0;
-        for (NotificationRule rule : rules) {
-            if (!settings.isEnabled(rule.key())) {
+        sent += runRule(debitThresholdRule,
+                () -> NotificationInputFactory.debitThreshold(data, settings.debitThresholdAmount()), settings, manual);
+        sent += runRule(balanceFloorRule,
+                () -> NotificationInputFactory.balanceFloor(data, settings.balanceFloorAmount()), settings, manual);
+        sent += runRule(objectifReachableRule,
+                () -> NotificationInputFactory.objectifReachable(data), settings, manual);
+        return sent;
+    }
+
+    /**
+     * Évalue une règle sur son entrée propre (assemblée seulement si la règle est active) et
+     * transmet les messages retenus. Une règle, ou un assemblage, en erreur est journalisé et
+     * ignoré sans bloquer les autres règles.
+     */
+    private <I> int runRule(NotificationRule<I> rule, Supplier<I> inputSupplier,
+            NotificationSettingsParameters settings, boolean manual) {
+        if (!settings.isEnabled(rule.key())) {
+            return 0;
+        }
+        List<NotificationMessage> messages;
+        try {
+            messages = rule.check(inputSupplier.get());
+        } catch (RuntimeException e) {
+            LOG.warn("Règle de notification {} en erreur, ignorée pour ce contrôle", rule.key(), e);
+            return 0;
+        }
+        int sent = 0;
+        for (NotificationMessage message : messages) {
+            if (!manual && !dueForAutoTrigger(message.dedupKey())) {
                 continue;
             }
-            List<NotificationMessage> messages;
-            try {
-                messages = rule.check(context);
-            } catch (RuntimeException e) {
-                LOG.warn("Règle de notification {} en erreur, ignorée pour ce contrôle", rule.key(), e);
-                continue;
-            }
-            for (NotificationMessage message : messages) {
-                if (!manual && !dueForAutoTrigger(message.dedupKey())) {
-                    continue;
-                }
-                dispatchToChannels(message);
-                markSent(message.dedupKey());
-                sent++;
-            }
+            dispatchToChannels(message);
+            markSent(message.dedupKey());
+            sent++;
         }
         return sent;
     }

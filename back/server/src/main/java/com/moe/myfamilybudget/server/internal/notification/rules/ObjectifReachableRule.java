@@ -8,10 +8,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
-import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
-import com.moe.myfamilybudget.server.internal.notification.NotificationContext;
+import com.moe.myfamilybudget.server.internal.calculation.ObjectifReachableInput;
+import com.moe.myfamilybudget.server.internal.calculation.PlacementBalanceSnapshot;
 import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
 import com.moe.myfamilybudget.server.internal.notification.NotificationRule;
 
@@ -31,7 +29,7 @@ import com.moe.myfamilybudget.server.internal.notification.NotificationRule;
  * déduplication (24h) évitant le spam.
  */
 @Component
-public class ObjectifReachableRule implements NotificationRule {
+public class ObjectifReachableRule implements NotificationRule<ObjectifReachableInput> {
 
     public static final String KEY = "objectif-reachable";
 
@@ -41,38 +39,37 @@ public class ObjectifReachableRule implements NotificationRule {
     }
 
     @Override
-    public List<NotificationMessage> check(NotificationContext context) {
-        List<ObjectifModel> objectifs = context.data().getEffectiveObjectifs();
-        if (objectifs.isEmpty()) {
+    public List<NotificationMessage> check(ObjectifReachableInput input) {
+        if (input.goals().isEmpty()) {
             return List.of();
         }
-        Map<String, BigDecimal> balanceByPlacementId = context.data().getEffectivePlacements().stream()
-                .collect(Collectors.toMap(PlacementModel::id,
-                        p -> p.balance() != null ? p.balance() : BigDecimal.ZERO,
+        Map<String, BigDecimal> balanceByPlacementId = input.placementBalances().stream()
+                .collect(Collectors.toMap(PlacementBalanceSnapshot::placementId,
+                        PlacementBalanceSnapshot::balance,
                         (a, b) -> a));
 
         List<NotificationMessage> messages = new ArrayList<>();
-        for (ObjectifModel objectif : objectifs) {
-            BigDecimal target = objectif.getEffectiveTargetAmount();
+        for (ObjectifReachableInput.GoalCoverage goal : input.goals()) {
+            BigDecimal target = goal.targetAmount();
             if (target.signum() <= 0) {
                 continue;
             }
-            BigDecimal covered = coveredAmount(objectif.getEffectiveAllocations(), balanceByPlacementId);
+            BigDecimal covered = coveredAmount(goal.allocations(), balanceByPlacementId);
             if (covered.compareTo(target) >= 0) {
-                messages.add(new NotificationMessage(KEY, objectif.id(), "Objectif atteignable",
+                messages.add(new NotificationMessage(KEY, goal.id(), "Objectif atteignable",
                         String.format("\"%s\" est désormais couvert (%s € visés)",
-                                objectif.label(), target.toPlainString())));
+                                goal.label(), target.toPlainString())));
             }
         }
         return messages;
     }
 
-    private static BigDecimal coveredAmount(List<ObjectifAllocationModel> allocations,
+    private static BigDecimal coveredAmount(List<ObjectifReachableInput.Allocation> allocations,
             Map<String, BigDecimal> balanceByPlacementId) {
         BigDecimal covered = BigDecimal.ZERO;
-        for (ObjectifAllocationModel allocation : allocations) {
+        for (ObjectifReachableInput.Allocation allocation : allocations) {
             BigDecimal accountBalance = balanceByPlacementId.getOrDefault(allocation.placementId(), BigDecimal.ZERO);
-            covered = covered.add(allocation.getEffectiveAmount().min(accountBalance));
+            covered = covered.add(allocation.amount().min(accountBalance));
         }
         return covered;
     }
