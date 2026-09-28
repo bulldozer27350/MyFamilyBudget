@@ -383,12 +383,14 @@ spécifiques à relire avant de le démarrer.
 - **Modifications attendues** :
 - Tests unitaires sur `PointageCalculator` utilisant uniquement `PointageInput`.
 - Retirer le domaine Pointage de la liste des violations gelées ArchUnit (Import bancaire est déjà conforme, aucune action nécessaire de ce côté).
+- **Notes d'implémentation** :
+- Tests de composant dans `PointageCalculatorComponentTest` (uniquement `PointageInput`, sans Spring). Aucune violation Pointage n'était gelée (le moteur vit dans `internal.model`, hors du périmètre de la règle gelée) : le domaine est protégé par la règle stricte `POINTAGE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS`, sur le modèle de la règle Fiscalité. L'exécution de `CalculationDependenciesArchTest` reste à confirmer en local (`mvn test`).
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-600 — Analyse - Contrats

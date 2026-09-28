@@ -8,7 +8,11 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.server.internal.model.PointageCalculator;
+import com.moe.myfamilybudget.server.internal.model.PointageModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
@@ -34,7 +38,10 @@ import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
  * aucune violation depuis RF-103 ; le domaine Fiscalité n'en a plus depuis RF-203 (aucune
  * violation Fiscalité n'était présente dans le store gelé : le moteur fiscal vit dans
  * {@code internal.model}, hors du périmètre de la règle gelée). Il est désormais protégé par la
- * règle dédiée {@link #TAX_ENGINE_DOES_NOT_DEPEND_ON_PERSISTENT_MODELS}, non gelée.
+ * règle dédiée {@link #TAX_ENGINE_DOES_NOT_DEPEND_ON_PERSISTENT_MODELS}, non gelée. Même situation
+ * pour le domaine Pointage depuis RF-502 : aucune violation Pointage dans le store gelé (le moteur
+ * vit dans {@code internal.model}), désormais protégé par
+ * {@link #POINTAGE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée.
  *
  * <p><b>Gel des violations existantes ({@link FreezingArchRule}).</b> À l'écriture de ce test,
  * {@code OverviewCalculationService} et {@code TresorerieCalculationService} dépendent encore
@@ -91,4 +98,24 @@ class CalculationDependenciesArchTest {
                     TaxActualOverrideModel.class)
             .as("TaxCalculator ne doit dépendre d'aucun modèle persistant : il consomme uniquement "
                     + "TaxCalculationInput (doc/architecture/04-domaine-fiscalite.md)");
+
+    /**
+     * Garde-fou du domaine Pointage (RF-502) : {@link PointageCalculator} ne reçoit que
+     * {@code PointageInput} (et les types de {@code BankImportModel}, calculateur déjà pur) ; il ne
+     * connaît ni le budget, ni les charges, revenus, placements, paramètres, ni le modèle de lecture
+     * {@link PointageModel} de {@code GET /pointage}. Règle stricte (sans gel) : le domaine ne
+     * présente aucune violation préexistante.
+     */
+    @ArchTest
+    static final ArchRule POINTAGE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
+            .that().areAssignableTo(PointageCalculator.class)
+            .should().dependOnClassesThat().belongToAnyOf(
+                    BudgetDataModel.class,
+                    ChargeModel.class,
+                    IncomeModel.class,
+                    PlacementModel.class,
+                    SettingsModel.class,
+                    PointageModel.class)
+            .as("PointageCalculator ne doit dépendre d'aucun modèle du budget : il consomme uniquement "
+                    + "PointageInput (doc/architecture/07-domaine-banque-pointage.md)");
 }
