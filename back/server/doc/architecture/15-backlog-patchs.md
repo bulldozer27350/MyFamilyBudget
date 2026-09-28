@@ -724,7 +724,7 @@ spécifiques à relire avant de le démarrer.
 - Peut être scindé par domaine si nécessaire.
 - **Suivi (peut être scindé) :**
   - [x] Retraite (`RetraiteServiceImpl`)
-  - [ ] Patrimoine (`PatrimoineServiceImpl`)
+  - [x] Patrimoine (`PatrimoineServiceImpl`)
   - [ ] Trésorerie (`TresorerieServiceImpl`)
   - [ ] Overview (`OverviewServiceImpl`)
   - [ ] Fiscalité (`ImpotsServiceImpl`)

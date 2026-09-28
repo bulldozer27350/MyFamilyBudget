@@ -36,6 +36,11 @@ import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.LoanPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class PatrimoineServiceImplTest {
@@ -50,8 +55,13 @@ class PatrimoineServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new PatrimoineServiceImpl(
-                mapper, persistenceManager, new PatrimoineProjectionService(), new PlacementEvolutionService(),
-                new PatrimoineCommandService(persistenceManager));
+                mapper, new PatrimoineProjectionService(), new PlacementEvolutionService(),
+                new PatrimoineCommandService(persistenceManager),
+                new SettingsPersistenceAdapter(persistenceManager),
+                new PatrimoinePersistenceAdapter(persistenceManager),
+                new BudgetPersistenceAdapter(persistenceManager),
+                new LoanPersistenceAdapter(persistenceManager),
+                new BankPersistenceAdapter(persistenceManager));
     }
 
     // -------------------------------------------------------------------------

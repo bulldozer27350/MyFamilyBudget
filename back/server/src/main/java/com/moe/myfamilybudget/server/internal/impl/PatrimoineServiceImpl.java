@@ -22,33 +22,65 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.server.internal.port.BudgetReader;
+import com.moe.myfamilybudget.server.internal.port.LoanReader;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
+/**
+ * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
+ * {@code PersistenceManager}. Les lectures passent par les ports de domaine ({@link
+ * SettingsReader}, {@link PatrimoineReader}, {@link BudgetReader}, {@link LoanReader}, {@link
+ * BankReader}) ; le {@link BudgetDataModel} attendu par {@link PatrimoineInputFactory} et par
+ * {@link PatrimoineMapper#toPatrimoineResponseDto} est recomposé localement à partir de ces ports,
+ * avec les domaines non lus laissés à {@code null}.
+ */
 @RestController
 public class PatrimoineServiceImpl implements PatrimoineApi {
 
     private final PatrimoineMapper mapper;
-    private final PersistenceManager persistenceManager;
     private final PatrimoineProjectionService projectionService;
     private final PlacementEvolutionService evolutionService;
     private final PatrimoineCommandService patrimoineCommandService;
+    private final SettingsReader settingsReader;
+    private final PatrimoineReader patrimoineReader;
+    private final BudgetReader budgetReader;
+    private final LoanReader loanReader;
+    private final BankReader bankReader;
 
     public PatrimoineServiceImpl(
             PatrimoineMapper mapper,
-            PersistenceManager persistenceManager,
             PatrimoineProjectionService projectionService,
             PlacementEvolutionService evolutionService,
-            PatrimoineCommandService patrimoineCommandService) {
+            PatrimoineCommandService patrimoineCommandService,
+            SettingsReader settingsReader,
+            PatrimoineReader patrimoineReader,
+            BudgetReader budgetReader,
+            LoanReader loanReader,
+            BankReader bankReader) {
         this.mapper = mapper;
-        this.persistenceManager = persistenceManager;
         this.projectionService = projectionService;
         this.evolutionService = evolutionService;
         this.patrimoineCommandService = patrimoineCommandService;
+        this.settingsReader = settingsReader;
+        this.patrimoineReader = patrimoineReader;
+        this.budgetReader = budgetReader;
+        this.loanReader = loanReader;
+        this.bankReader = bankReader;
+    }
+
+    private BudgetDataModel composeBudgetData() {
+        return new BudgetDataModel(
+                settingsReader.getSettings(), budgetReader.getIncomes(), budgetReader.getCharges(),
+                patrimoineReader.getPlacements(), patrimoineReader.getRealEstate(), null, null, null, null, null,
+                budgetReader.getOneoffExpenses(), patrimoineReader.getTransfers(), null, null,
+                bankReader.getBankImport(), patrimoineReader.getAssetCategories(), loanReader.getLoans(), null);
     }
 
     @Override
     public ResponseEntity<PatrimoineResponseDto> getPatrimoine(Boolean useConstantEuros) {
-        BudgetDataModel data = this.persistenceManager.getBudgetData();
+        BudgetDataModel data = composeBudgetData();
         PatrimoineProjectionsModel projections = computePatrimoineProjections(data, Boolean.TRUE.equals(useConstantEuros));
         PatrimoineResponseDto response = this.mapper.toPatrimoineResponseDto(data, projections);
         return ResponseEntity.ok(response);
@@ -105,7 +137,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
 
     @Override
     public ResponseEntity<PlacementEvolutionDto> getPlacementEvolution(String placementId, Boolean useConstantEuros) {
-        BudgetDataModel data = this.persistenceManager.getBudgetData();
+        BudgetDataModel data = composeBudgetData();
         PlacementModel placement = data.getEffectivePlacements().stream()
                 .filter(p -> java.util.Objects.equals(p.id(), placementId))
                 .findFirst()
