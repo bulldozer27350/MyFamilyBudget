@@ -327,8 +327,8 @@ spécifiques à relire avant de le démarrer.
 - Brancher `TresorerieCalculationService` sur `TreasuryProjectionInput`.
 - Extraire `chargeMonthlyForYear`, `chargeAnnualForYear`, `incomeMonthlyForYear`, `incomeAnnualForYear` en fonctions de domaine pures prenant uniquement leur modèle minimal.
 - **Statut** :
-- [x] Non commencé
-- [ ] Démarré
+- [ ] Non commencé
+- [x] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
 - [ ] Terminé
@@ -430,8 +430,8 @@ spécifiques à relire avant de le démarrer.
 - Brancher `AnalyseCalculator` sur `AnalyseInput` au lieu de `computeAnalyse(BudgetDataModel, BankImportModel, Integer)`.
 - Supprimer le champ `BudgetDataModel data` de `AnalyseResultModel`, après vérification de tous les consommateurs actuels de ce champ (front compris).
 - **Statut** :
-- [x] Non commencé
-- [ ] Démarré
+- [ ] Non commencé
+- [x] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
 - [ ] Terminé
