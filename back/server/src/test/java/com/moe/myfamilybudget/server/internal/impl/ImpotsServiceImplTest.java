@@ -20,6 +20,12 @@ import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.TaxMapper;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class ImpotsServiceImplTest {
@@ -33,8 +39,17 @@ class ImpotsServiceImplTest {
         mapper = new TaxMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        service = new ImpotsServiceImpl(persistenceManager, mapper, new RetirementInputFactory(), new RetirementCalculationService(),
-                new TaxCommandService(persistenceManager));
+        service = new ImpotsServiceImpl(
+                mapper,
+                new RetirementInputFactory(),
+                new RetirementCalculationService(),
+                new TaxCommandService(persistenceManager),
+                new SettingsPersistenceAdapter(persistenceManager),
+                new TaxPersistenceAdapter(persistenceManager),
+                new BudgetPersistenceAdapter(persistenceManager),
+                new PatrimoinePersistenceAdapter(persistenceManager),
+                new RetirementPersistenceAdapter(persistenceManager),
+                new BankPersistenceAdapter(persistenceManager));
     }
 
     @Test
