@@ -439,11 +439,12 @@ spécifiques à relire avant de le démarrer.
 - Supprimer le champ `BudgetDataModel data` de `AnalyseResultModel`, après vérification de tous les consommateurs actuels de ce champ (front compris).
 - **Statut** :
 - [ ] Non commencé
-- [x] Démarré
+- [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
+- **Notes** : `AnalyseInputFactory` créée dans `internal.factory`. `AnalyseCalculator` branché sur `AnalyseInput` (plus aucune dépendance aux modèles persistants ni à `BudgetDataModel`). `BudgetDataModel data` supprimé de `AnalyseResultModel` (fuite de résultat résolue). `AnalyseMapper.toDto` et `AnalyseServiceImpl` adaptés pour continuer à servir `data` au front sans fuite par le moteur de calcul.
 
 ### RF-602 — Analyse - Tests de composant + garde-fou
 

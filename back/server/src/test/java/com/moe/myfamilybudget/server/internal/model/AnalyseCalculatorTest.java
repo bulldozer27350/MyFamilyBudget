@@ -8,6 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.server.internal.factory.AnalyseInputFactory;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.CategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.MatchingLinkModel;
@@ -62,11 +63,9 @@ class AnalyseCalculatorTest {
                 List.of(matching)
         );
 
-        AnalyseResultModel result = AnalyseCalculator.computeAnalyse(data, bankImport, 12);
+        AnalyseResultModel result = AnalyseCalculator.computeAnalyse(new AnalyseInputFactory().from(data, bankImport, 12));
 
         assertThat(result).isNotNull();
-        assertThat(result.data()).isNotNull();
-        assertThat(result.data().charges()).isNotEmpty();
         assertThat(result.kpis()).isNotNull();
         assertThat(result.landingData()).isNotEmpty();
         assertThat(result.categorySummaries()).isNotEmpty();
@@ -125,7 +124,7 @@ class AnalyseCalculatorTest {
                 List.of(matching)
         );
 
-        AnalyseResultModel result = AnalyseCalculator.computeAnalyse(data, bankImport, 12);
+        AnalyseResultModel result = AnalyseCalculator.computeAnalyse(new AnalyseInputFactory().from(data, bankImport, 12));
 
         assertThat(result).isNotNull();
         // Check total expenses and compressible

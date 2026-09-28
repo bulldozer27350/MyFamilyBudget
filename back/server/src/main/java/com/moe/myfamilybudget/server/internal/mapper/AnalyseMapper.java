@@ -13,6 +13,7 @@ import com.moe.myfamilybudget.server.internal.model.AnalyseKpiModel;
 import com.moe.myfamilybudget.server.internal.model.AnalyseLandingRowModel;
 import com.moe.myfamilybudget.server.internal.model.AnalyseMonthlyCompareModel;
 import com.moe.myfamilybudget.server.internal.model.AnalyseResultModel;
+import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import org.springframework.stereotype.Component;
 
 import java.util.stream.Collectors;
@@ -34,21 +35,27 @@ public class AnalyseMapper {
     }
 
     public AnalyseResponseDto toDto(AnalyseResultModel model) {
-        return toDto(model, ObjectifsParameters.defaults());
+        return toDto(model, ObjectifsParameters.defaults(), null);
+    }
+
+    public AnalyseResponseDto toDto(AnalyseResultModel model, ObjectifsParameters objectifs) {
+        return toDto(model, objectifs, null);
     }
 
     /**
      * Les paramètres du domaine Objectifs (RF-700) sont réinjectés dans {@code settings} : la vue
      * Analyse, onglet Objectifs, lit les seuils de bascule depuis {@code data.settings}.
+     * Le modèle persistant {@link BudgetDataModel} n'est plus porté par {@link AnalyseResultModel}
+     * (suppression de la fuite de résultat en RF-601), mais passé séparément pour les consommateurs API.
      */
-    public AnalyseResponseDto toDto(AnalyseResultModel model, ObjectifsParameters objectifs) {
+    public AnalyseResponseDto toDto(AnalyseResultModel model, ObjectifsParameters objectifs, BudgetDataModel data) {
         if (model == null) {
             return new AnalyseResponseDto();
         }
 
         AnalyseResponseDto dto = new AnalyseResponseDto();
-        if (model.data() != null && overviewMapper != null) {
-            var dataDto = overviewMapper.toBudgetDataDto(model.data(), objectifs);
+        if (data != null && overviewMapper != null) {
+            var dataDto = overviewMapper.toBudgetDataDto(data, objectifs);
             dto.setData(dataDto);
             dto.setBankImport(dataDto.getBankImport());
             dto.setCharges(dataDto.getCharges());
