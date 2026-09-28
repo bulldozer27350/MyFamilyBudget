@@ -9,20 +9,11 @@ principale reste cependant `computeAnalyse(BudgetDataModel data, BankImportModel
 Integer monthsBack)` : double agrégation de modèle. C'est un use case de comparaison plutôt qu'un
 domaine source.
 
-## Contrat d'entrée initial (insuffisant — voir l'évolution proposée plus bas)
+## Contrat d'entrée
 
-```java
-public record AnalyseInput(
-    AnalysisPeriod period,
-    List<BankTransaction> transactions,
-    List<MatchingLink> matchings,
-    List<BudgetLineProjection> budgetLines,
-    List<PlacementPerformanceSnapshot> placements
-) {}
-```
-
-Le point clé est `BudgetLineProjection` : Analyse ne doit pas savoir qu'une ligne vient de
-`ChargeModel`, `IncomeModel` ou `PlacementModel`.
+Voir « Contrat d'entrée retenu (RF-600) » plus bas : le contrat initialement esquissé ici s'est
+révélé insuffisant face à ce que le calculateur consomme réellement et a été remplacé avant toute
+implémentation.
 
 ## Fuite par le résultat à corriger
 
@@ -45,14 +36,13 @@ public record AnalyseResultModel(
 Le champ `data` est un candidat clair à supprimer, après vérification de tous les consommateurs
 actuels de ce champ (front compris).
 
-## Évolution proposée du contrat d'entrée (RF-600) — 🟡 à valider
+## Contrat d'entrée retenu (RF-600)
 
-Le patch RF-600 est bloqué (statut « En attente de réponse » dans
-[15-backlog-patchs.md](15-backlog-patchs.md)) tant que cette évolution n'est pas tranchée. Aucun
-autre fichier du dossier ne décrit le contenu de `AnalyseInput` : `01-sequencement.md` et
-`11-domaine-overview.md` ne font que le citer, `07-domaine-banque-pointage.md` définit
-`BudgetLineProjection`, et `09-domaine-objectifs-notifications.md` (`PendingAmount`) est le seul
-précédent de projection d'opérations en cours.
+Validé pour RF-600. Aucun autre fichier du dossier ne décrivait le contenu de `AnalyseInput` avant
+cette évolution : `01-sequencement.md` et `11-domaine-overview.md` ne faisaient que le citer,
+`07-domaine-banque-pointage.md` définit `BudgetLineProjection`, et
+`09-domaine-objectifs-notifications.md` (`PendingAmount`) est le seul précédent de projection
+d'opérations en cours.
 
 ### Constat : ce que `AnalyseCalculator` consomme réellement
 
@@ -68,7 +58,7 @@ précédent de projection d'opérations en cours.
 | Date du jour (coupure, mois courant, moyennes) | `LocalDate.now()` / `YearMonth.now()` dans le calculateur | **non** |
 | Performance des placements | — (aucun usage côté Java : les placements ne servent qu'à connaître la nature d'une ligne ; la détection de placements sous-performants est calculée côté JS) | `PlacementPerformanceSnapshot` sans consommateur |
 
-### Contrat proposé
+### Contrat
 
 ```java
 public record AnalyseInput(
@@ -108,32 +98,6 @@ Choix de conception associés :
 - **Point d'attention à conserver** : dans le calcul actuel, une nature est associée à un
   identifiant par écrasement successif charges → revenus → placements ; `BudgetLineKind` doit
   reproduire cet ordre pour ne pas changer les résultats.
-
-### Options et conséquences
-
-**Option A — étendre le contrat comme ci-dessus (recommandée).**
-
-- RF-600 reste purement additif (quatre records, un test de normalisation, comme RF-500/RF-800).
-- RF-601 branche `AnalyseCalculator` sans changement de résultat : tous les besoins sont couverts.
-- RF-602 peut tester le moteur avec `AnalyseInput` seul, sans budget complet et sans horloge.
-- Coût : sept composants au lieu de cinq. Chacun est une projection à propriétaire unique, sans
-  `SettingsModel` ni modèle du budget : ce n'est pas un nouveau modèle global (voir
-  [00-principes.md](00-principes.md)).
-
-**Option B — conserver le contrat du document tel quel.**
-
-- `AnalyseInput` ne permet pas de brancher `AnalyseCalculator` : RF-601 devrait soit continuer à
-  recevoir `BankImportModel` et `BudgetDataModel` à côté de l'Input (l'objectif du chantier n'est
-  alors pas atteint), soit supprimer catégories, opérations en cours et comparatif mensuel
-  (changement de comportement, snapshots RF-000 en échec).
-- Le contrat serait de toute façon complété dans RF-601, ce qui contredit la règle « un patch = un
-  item » : RF-600 ne livrerait pas un contrat stable.
-- `PlacementPerformanceSnapshot` serait livré sans consommateur, avec une forme non définie.
-
-**Option C (écartée) — un `Input` par sortie** (KPI/catégories, atterrissage, comparatif mensuel,
-dérives), sur le modèle des trois entrées de Notifications. Non retenue : `computeAnalyse` produit
-un seul résultat, consommé par un seul endpoint ; la découpe multiplierait les contrats et
-changerait le titre et le périmètre de RF-601 sans gain de testabilité proportionné.
 
 ### Impact sur les autres patchs
 

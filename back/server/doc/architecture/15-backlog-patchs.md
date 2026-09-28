@@ -400,12 +400,15 @@ spécifiques à relire avant de le démarrer.
 - **Fichiers `.md` additionnels à lire** (en plus de `00-principes.md` et `01-sequencement.md`, toujours requis) : `08-domaine-analyse.md`
 - **Modifications attendues** :
 - Créer `AnalyseInput`, en réutilisant `BudgetLineProjection` défini en RF-500.
+- **Notes d'implémentation** :
+- Contrat étendu par rapport à l'esquisse initiale du document 08, validé par Bulldo (option A) : ajout des catégories bancaires, des opérations en cours, des rapprochements de tous les mois, des lignes budgétaires par mois (`MonthlyBudgetLines`) et de la nature de chaque ligne (`BudgetLineKind`) ; `AnalysisPeriod` porte la date du jour pour rendre le futur calculateur déterministe. `PlacementPerformanceSnapshot` retiré du contrat, faute de consommateur Java.
+- Nouveaux records dans `internal.calculation` : `AnalyseInput`, `AnalysisPeriod`, `MonthlyBudgetLines`, `BudgetLineKind`. Non branché (voir RF-601).
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-601 — Analyse - Branchement et suppression de la fuite de résultat
