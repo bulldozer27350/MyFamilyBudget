@@ -15,6 +15,8 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsCalculator;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsResultModel;
+import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
+import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 @Service
@@ -24,12 +26,18 @@ public class ParametersServiceImpl implements ParametresApi {
     private final PersistenceManager persistenceManager;
     private final SettingsMapper settingsMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
+    private final PatrimoineCommandService patrimoineCommandService;
+    private final TaxCommandService taxCommandService;
 
     public ParametersServiceImpl(PersistenceManager persistenceManager, SettingsMapper settingsMapper,
-            ObjectifsSettingsService objectifsSettingsService) {
+            ObjectifsSettingsService objectifsSettingsService,
+            PatrimoineCommandService patrimoineCommandService,
+            TaxCommandService taxCommandService) {
         this.persistenceManager = persistenceManager;
         this.settingsMapper = settingsMapper;
         this.objectifsSettingsService = objectifsSettingsService;
+        this.patrimoineCommandService = patrimoineCommandService;
+        this.taxCommandService = taxCommandService;
     }
 
     @Override
@@ -58,15 +66,15 @@ public class ParametersServiceImpl implements ParametresApi {
                 String id = typedMap.get("id") != null ? String.valueOf(typedMap.get("id")) : String.valueOf(typedMap.get("assetCategoryId"));
                 String field = String.valueOf(typedMap.get("field"));
                 Object value = typedMap.get("value");
-                persistenceManager.updateAssetCategory(id, field, value);
+                patrimoineCommandService.updateAssetCategory(id, field, value);
             } else if ("addAssetCategory".equals(action)) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> rowMap = (Map<String, Object>) typedMap.get("row");
                 AssetCategoryModel category = settingsMapper.toAssetCategoryModel(rowMap);
-                persistenceManager.addAssetCategory(category);
+                patrimoineCommandService.addAssetCategory(category);
             } else if ("removeAssetCategory".equals(action)) {
                 String id = String.valueOf(typedMap.get("id"));
-                persistenceManager.removeAssetCategory(id);
+                patrimoineCommandService.removeAssetCategory(id);
             } else if (typedMap.containsKey("field") && typedMap.get("field") != null) {
                 String field = String.valueOf(typedMap.get("field"));
                 Object value = typedMap.get("value");
@@ -90,7 +98,7 @@ public class ParametersServiceImpl implements ParametresApi {
         if (ObjectifsSettingsService.owns(field)) {
             objectifsSettingsService.updateField(field, value);
         } else {
-            persistenceManager.updateTaxSettings(field, value);
+            taxCommandService.updateTaxSettings(field, value);
         }
     }
 }

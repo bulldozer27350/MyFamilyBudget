@@ -26,6 +26,7 @@ import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.RetraiteMapper;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
+import com.moe.myfamilybudget.server.internal.command.RetirementCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -42,7 +43,8 @@ class RetraiteServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         calculationService = new RetirementCalculationService();
-        service = new RetraiteServiceImpl(persistenceManager, mapper, new RetirementInputFactory(), calculationService);
+        service = new RetraiteServiceImpl(persistenceManager, mapper, new RetirementInputFactory(), calculationService,
+                new RetirementCommandService(persistenceManager));
     }
 
     @Test

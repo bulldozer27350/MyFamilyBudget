@@ -38,6 +38,7 @@ import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.VariablePreviewCellModel;
 import com.moe.myfamilybudget.server.internal.model.VariablePreviewModel;
+import com.moe.myfamilybudget.server.internal.command.TresorerieCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -52,7 +53,7 @@ class TresorerieServiceImplTest {
         mapper = new TresorerieMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        service = new TresorerieServiceImpl(mapper, persistenceManager);
+        service = new TresorerieServiceImpl(mapper, persistenceManager, new TresorerieCommandService(persistenceManager));
     }
 
     // -------------------------------------------------------------------------

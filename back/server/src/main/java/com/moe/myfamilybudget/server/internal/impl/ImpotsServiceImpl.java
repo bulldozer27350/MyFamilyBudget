@@ -17,6 +17,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxYearlyModel;
 import com.moe.myfamilybudget.server.internal.model.TaxResultModel;
+import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,16 +36,19 @@ public class ImpotsServiceImpl implements ImpotsApi {
     private final TaxMapper taxMapper;
     private final RetirementInputFactory retirementInputFactory;
     private final RetirementCalculationService retirementCalculationService;
+    private final TaxCommandService taxCommandService;
 
     public ImpotsServiceImpl(
             PersistenceManager persistenceManager,
             TaxMapper taxMapper,
             RetirementInputFactory retirementInputFactory,
-            RetirementCalculationService retirementCalculationService) {
+            RetirementCalculationService retirementCalculationService,
+            TaxCommandService taxCommandService) {
         this.persistenceManager = persistenceManager;
         this.taxMapper = taxMapper;
         this.retirementInputFactory = retirementInputFactory;
         this.retirementCalculationService = retirementCalculationService;
+        this.taxCommandService = taxCommandService;
     }
 
     @Override
@@ -76,12 +80,12 @@ public class ImpotsServiceImpl implements ImpotsApi {
             if (map.containsKey("action")) {
                 String action = String.valueOf(map.get("action"));
                 if ("resetDefaultTaxBrackets".equalsIgnoreCase(action)) {
-                    persistenceManager.resetDefaultTaxBrackets();
+                    taxCommandService.resetDefaultTaxBrackets();
                     return ResponseEntity.ok().build();
                 } else if ("updateSettings".equalsIgnoreCase(action) || map.containsKey("field")) {
                     String field = String.valueOf(map.get("field"));
                     Object value = map.get("value");
-                    persistenceManager.updateTaxSettings(field, value);
+                    taxCommandService.updateTaxSettings(field, value);
                     return ResponseEntity.ok().build();
                 }
             }
@@ -134,7 +138,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
                         .toList();
             }
 
-            persistenceManager.updateTaxConfig(children, brackets, rateOverrides, actualOverrides);
+            taxCommandService.updateTaxConfig(children, brackets, rateOverrides, actualOverrides);
         }
 
         return ResponseEntity.ok().build();

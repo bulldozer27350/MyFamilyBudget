@@ -16,6 +16,7 @@ import com.moe.myfamilybudget.server.internal.enablebanking.EnableBankingSyncRes
 import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportSummaryModel;
+import com.moe.myfamilybudget.server.internal.command.BankImportCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.entity.EnableBankingSyncStateEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.EnableBankingSyncStateRepository;
@@ -44,16 +45,19 @@ public class EnableBankingSyncService {
     private final EnableBankingClient client;
     private final PersistenceManager persistenceManager;
     private final EnableBankingSyncStateRepository stateRepository;
+    private final BankImportCommandService bankImportCommandService;
 
     public EnableBankingSyncService(
             EnableBankingConfig config,
             EnableBankingClient client,
             PersistenceManager persistenceManager,
-            EnableBankingSyncStateRepository stateRepository) {
+            EnableBankingSyncStateRepository stateRepository,
+            BankImportCommandService bankImportCommandService) {
         this.config = config;
         this.client = client;
         this.persistenceManager = persistenceManager;
         this.stateRepository = stateRepository;
+        this.bankImportCommandService = bankImportCommandService;
     }
 
     public boolean isConfigured() {
@@ -137,7 +141,7 @@ public class EnableBankingSyncService {
                 allTransactions,
                 current.pendingOperations(),
                 current.matchings());
-        persistenceManager.updateBankImport(updatedModel);
+        bankImportCommandService.updateBankImport(updatedModel);
 
         String latestBookingDate = rows.stream()
                 .map(row -> row.get(0))

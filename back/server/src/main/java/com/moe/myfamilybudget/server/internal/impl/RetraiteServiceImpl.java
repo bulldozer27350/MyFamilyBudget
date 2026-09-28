@@ -20,6 +20,7 @@ import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraitePersonWithProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.server.internal.command.RetirementCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 /**
@@ -38,17 +39,20 @@ public class RetraiteServiceImpl implements RetraiteApi {
     private final RetraiteMapper retraiteMapper;
     private final RetirementInputFactory retirementInputFactory;
     private final RetirementCalculationService retirementCalculationService;
+    private final RetirementCommandService retirementCommandService;
 
     public RetraiteServiceImpl(
         PersistenceManager persistenceManager,
         RetraiteMapper retraiteMapper,
         RetirementInputFactory retirementInputFactory,
-        RetirementCalculationService retirementCalculationService
+        RetirementCalculationService retirementCalculationService,
+        RetirementCommandService retirementCommandService
     ) {
         this.persistenceManager = persistenceManager;
         this.retraiteMapper = retraiteMapper;
         this.retirementInputFactory = retirementInputFactory;
         this.retirementCalculationService = retirementCalculationService;
+        this.retirementCommandService = retirementCommandService;
     }
 
     @Override
@@ -64,7 +68,7 @@ public class RetraiteServiceImpl implements RetraiteApi {
             @SuppressWarnings("unchecked")
             Map<String, Object> typedMap = (Map<String, Object>) map;
             RetirementModel model = retraiteMapper.toRetirementModelFromMap(typedMap);
-            persistenceManager.updateRetirement(model);
+            retirementCommandService.updateRetirement(model);
         }
         return ResponseEntity.ok().build();
     }

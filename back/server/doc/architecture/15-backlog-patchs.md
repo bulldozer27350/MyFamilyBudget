@@ -689,11 +689,12 @@ spécifiques à relire avant de le démarrer.
 - Peut être scindé en un patch par domaine si le volume est trop important pour un seul agent ; l'ordre entre ces sous-patchs est libre, ils sont indépendants entre eux.
 - Ne pas encore supprimer le code existant de `PersistenceManager` (`listKey`/`field`/`value`) — remplacement progressif des appelants uniquement.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
+- **Notes** : 7 CommandServices créés dans `internal.command` (`PatrimoineCommandService`, `RetirementCommandService`, `TaxCommandService`, `BankImportCommandService`, `TresorerieCommandService`, `LoanCommandService`, `GoalCommandService`). `NotificationSettingsService` existait déjà. Appelants migrés : `PatrimoineServiceImpl`, `RetraiteServiceImpl`, `ImpotsServiceImpl`, `ParametersServiceImpl`, `TresorerieServiceImpl`, `EnableBankingSyncService`. `PersistenceManager` conservé.
 - [ ] Constaté comme mergé
 
 ### RF-B00 — Persistance palier 1 - Ports de lecture par domaine

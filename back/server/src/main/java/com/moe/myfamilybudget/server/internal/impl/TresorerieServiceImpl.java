@@ -37,11 +37,13 @@ import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TresorerieResultModel;
 import com.moe.myfamilybudget.server.internal.model.TresorerieSuggestionModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
+import com.moe.myfamilybudget.server.internal.command.TresorerieCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 /**
  * Contrôleur REST de la trésorerie prévisionnelle (Trésorerie) : orchestration HTTP uniquement
- * (lecture/écriture via {@link PersistenceManager}, mapping du résultat en DTO).
+ * (lecture via {@link PersistenceManager}, mutations via {@link TresorerieCommandService},
+ * mapping du résultat en DTO).
  *
  * <p>RF-401 (voir doc/architecture/06-domaine-tresorerie.md) : la projection de flux est déléguée
  * à {@link TresorerieCalculationService} via {@link TreasuryInputFactory}. Les moyennes réelles
@@ -55,10 +57,13 @@ public class TresorerieServiceImpl implements TresorerieApi {
     private final PersistenceManager persistenceManager;
     private final TresorerieCalculationService calculationService;
     private final TreasuryInputFactory treasuryInputFactory;
+    private final TresorerieCommandService tresorerieCommandService;
 
-    public TresorerieServiceImpl(TresorerieMapper mapper, PersistenceManager persistenceManager) {
+    public TresorerieServiceImpl(TresorerieMapper mapper, PersistenceManager persistenceManager,
+            TresorerieCommandService tresorerieCommandService) {
         this.mapper = mapper;
         this.persistenceManager = persistenceManager;
+        this.tresorerieCommandService = tresorerieCommandService;
         this.calculationService = new TresorerieCalculationService();
         this.treasuryInputFactory = new TreasuryInputFactory();
     }
@@ -72,21 +77,21 @@ public class TresorerieServiceImpl implements TresorerieApi {
 
     @Override
     public ResponseEntity<Object> addTresorerieLigne(String listKey, Object body) {
-        Map<String, Object> created = this.persistenceManager.addTresorerieRow(listKey, (Map<String, Object>)body);
+        Map<String, Object> created = this.tresorerieCommandService.addTresorerieRow(listKey, (Map<String, Object>)body);
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(created);
     }
 
     @Override
     public ResponseEntity<Void> updateTresorerieLigne(String listKey, String id, com.moe.myfamilybudget.api.model.UpdateTresorerieLigneRequestDto body) {
         if (body != null) {
-            this.persistenceManager.updateTresorerieRow(listKey, id, body.getField(), body.getValue());
+            this.tresorerieCommandService.updateTresorerieRow(listKey, id, body.getField(), body.getValue());
         }
         return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<Void> removeTresorerieLigne(String listKey, String id) {
-        this.persistenceManager.removeTresorerieRow(listKey, id);
+        this.tresorerieCommandService.removeTresorerieRow(listKey, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -94,7 +99,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
     public ResponseEntity<Void> applyTresorerieAjustement(TresorerieAjustementRequestDto request) {
         if (request != null && request.getLineId() != null && request.getKind() != null && request.getNewMonthly() != null) {
             BigDecimal newMonthly = BigDecimal.valueOf(request.getNewMonthly().doubleValue());
-            this.persistenceManager.applyTresorerieAjustement(request.getLineId(), request.getKind(), newMonthly);
+            this.tresorerieCommandService.applyTresorerieAjustement(request.getLineId(), request.getKind(), newMonthly);
         }
         return ResponseEntity.ok().build();
     }

@@ -21,6 +21,7 @@ import com.moe.myfamilybudget.server.internal.mapper.PatrimoineMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 @RestController
@@ -30,16 +31,19 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
     private final PersistenceManager persistenceManager;
     private final PatrimoineProjectionService projectionService;
     private final PlacementEvolutionService evolutionService;
+    private final PatrimoineCommandService patrimoineCommandService;
 
     public PatrimoineServiceImpl(
             PatrimoineMapper mapper,
             PersistenceManager persistenceManager,
             PatrimoineProjectionService projectionService,
-            PlacementEvolutionService evolutionService) {
+            PlacementEvolutionService evolutionService,
+            PatrimoineCommandService patrimoineCommandService) {
         this.mapper = mapper;
         this.persistenceManager = persistenceManager;
         this.projectionService = projectionService;
         this.evolutionService = evolutionService;
+        this.patrimoineCommandService = patrimoineCommandService;
     }
 
     @Override
@@ -54,13 +58,13 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
     @SuppressWarnings("unchecked")
     public ResponseEntity<Void> savePatrimoineLigne(String listKey, Object body) {
         Map<String, Object> map = (body instanceof Map) ? (Map<String, Object>) body : null;
-        this.persistenceManager.savePatrimoineRow(listKey, map);
+        this.patrimoineCommandService.savePatrimoineRow(listKey, map);
         return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<Void> deletePatrimoineLigne(String listKey, String id) {
-        this.persistenceManager.deletePatrimoineRow(listKey, id);
+        this.patrimoineCommandService.deletePatrimoineRow(listKey, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -71,7 +75,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         map.put("date", body.getDate());
         map.put("value", body.getValue());
         map.put("notes", body.getNotes());
-        Map<String, Object> saved = this.persistenceManager.addPlacementHistoryEntry(placementId, map);
+        Map<String, Object> saved = this.patrimoineCommandService.addPlacementHistoryEntry(placementId, map);
         PlacementHistoryEntryDto dto = new PlacementHistoryEntryDto();
         dto.setId((String) saved.get("id"));
         dto.setDate((String) saved.get("date"));
@@ -88,14 +92,14 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
             if (body.getDate() != null) map.put("date", body.getDate());
             if (body.getValue() != null) map.put("value", body.getValue());
             if (body.getNotes() != null) map.put("notes", body.getNotes());
-            this.persistenceManager.updatePlacementHistoryEntry(placementId, entryId, map);
+            this.patrimoineCommandService.updatePlacementHistoryEntry(placementId, entryId, map);
         }
         return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<Void> deletePlacementHistoriquePoint(String placementId, String entryId) {
-        this.persistenceManager.deletePlacementHistoryEntry(placementId, entryId);
+        this.patrimoineCommandService.deletePlacementHistoryEntry(placementId, entryId);
         return ResponseEntity.noContent().build();
     }
 

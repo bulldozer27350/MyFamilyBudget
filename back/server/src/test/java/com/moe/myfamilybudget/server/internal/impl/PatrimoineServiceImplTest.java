@@ -27,6 +27,7 @@ import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
 import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionService;
+import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.server.internal.mapper.PatrimoineMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
@@ -49,7 +50,8 @@ class PatrimoineServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new PatrimoineServiceImpl(
-                mapper, persistenceManager, new PatrimoineProjectionService(), new PlacementEvolutionService());
+                mapper, persistenceManager, new PatrimoineProjectionService(), new PlacementEvolutionService(),
+                new PatrimoineCommandService(persistenceManager));
     }
 
     // -------------------------------------------------------------------------
