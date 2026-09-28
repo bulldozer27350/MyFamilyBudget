@@ -171,9 +171,9 @@ spécifiques à relire avant de le démarrer.
 - Tests unitaires sur `RetirementCalculationService` utilisant uniquement `RetirementCalculationInput` (aucun `BudgetDataModel`, aucun contexte Spring).
 - Retirer le domaine Retraite de la liste des violations gelées dans la règle ArchUnit de RF-001.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
-- [ ] En attente de réponse
+- [x] En attente de réponse
 - [ ] Annulé
 - [ ] Terminé
 - [ ] Constaté comme mergé
