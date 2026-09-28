@@ -336,32 +336,7 @@ paths:
   # RETRAITE
   # ---------------------------------------------------------------------------
   /retraite:
-    get:
-      summary: Recupere la simulation et la configuration retraite
-      operationId: getRetraite
-      tags:
-        - Retraite
-      responses:
-        '200':
-          description: Configuration et resultats de retraite
-          content:
-            application/json:
-              schema:
-                type: object
-    put:
-      summary: Sauvegarde la configuration retraite
-      operationId: saveRetraite
-      tags:
-        - Retraite
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Configuration enregistree
+    $ref: './openapi/domains/retraite.yaml#/paths/~1retraite'
 
   # ---------------------------------------------------------------------------
   # IMPOTS
