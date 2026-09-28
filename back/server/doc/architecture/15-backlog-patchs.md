@@ -363,12 +363,16 @@ spécifiques à relire avant de le démarrer.
 - **Fichiers `.md` additionnels à lire** (en plus de `00-principes.md` et `01-sequencement.md`, toujours requis) : `07-domaine-banque-pointage.md`
 - **Modifications attendues** :
 - Brancher `PointageServiceImpl`/`PointageCalculator` sur `PointageInput`, en sortant `IncomeModel`/`ChargeModel`/`PlacementModel`/`SettingsModel` du calcul de pointage.
+- **Notes d'implémentation** :
+- Composition des lignes actives déplacée dans `PointageInputFactory` (`internal.factory`) ; `PointageCalculator` n'a plus de dépendance aux charges, revenus, placements ni paramètres et expose des points d'entrée sur `PointageInput`. `PointageBudgetLineModel` est remplacé par `BudgetLineProjection` (RF-500).
+- `AnalyseCalculator` appelle `PointageInputFactory.activeBudgetLines(...)` en attendant RF-601, qui déplacera cette composition en amont.
+- `PointageModel` est conservé comme simple modèle de lecture de `GET /pointage` (le front consomme encore charges/revenus/placements/paramètres) : sa suppression suppose de faire évoluer ce contrat, hors périmètre de RF-501.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-502 — Pointage - Tests de composant + garde-fou

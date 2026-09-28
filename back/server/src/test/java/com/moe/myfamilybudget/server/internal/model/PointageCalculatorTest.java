@@ -11,31 +11,12 @@ import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.server.internal.calculation.BudgetLineProjection;
+import com.moe.myfamilybudget.server.internal.calculation.PointageInput;
+import com.moe.myfamilybudget.server.internal.calculation.PointagePeriod;
+
 @DisplayName("PointageCalculator Unit Tests (Pure Domain Model)")
 class PointageCalculatorTest {
-
-    @Test
-    @DisplayName("calculateActiveBudgetLines filters charges, incomes and placements active for monthISO")
-    void testCalculateActiveBudgetLines() {
-        ChargeModel c1 = new ChargeModel("c1", "Loyer", new BigDecimal("800"), "2026-01", "2026-12", null, "cat1", "");
-        ChargeModel c2 = new ChargeModel("c2", "Assurance", new BigDecimal("50"), "2027-01", null, null, "cat1", "");
-
-        IncomeModel i1 = new IncomeModel("i1", "Salaire", new BigDecimal("3500"), "2026-01", null, null, "cat2", "");
-
-        PlacementModel p1 = new PlacementModel("p1", "Livret A", "cat3", new BigDecimal("200"), "2026-01", new BigDecimal("0"), "2026-01", "2026-12", null, null, null, null, "");
-
-        PointageModel model = new PointageModel(
-                List.of(), List.of(), List.of(),
-                List.of(c1, c2), List.of(i1), List.of(p1), null
-        );
-
-        List<PointageBudgetLineModel> lines = PointageCalculator.calculateActiveBudgetLines(model, "2026-05");
-
-        assertThat(lines).hasSize(2);
-        assertThat(lines).extracting(PointageBudgetLineModel::id).containsExactly("c1", "i1");
-        assertThat(lines.get(0).monthly()).isEqualByComparingTo(new BigDecimal("800.00"));
-        assertThat(lines.get(1).kind()).isEqualTo("revenu");
-    }
 
     @Test
     @DisplayName("filterTransactionsForMonth selects only transactions matching monthISO prefix")
@@ -68,8 +49,8 @@ class PointageCalculatorTest {
     @Test
     @DisplayName("calculateRealByLine aggregates transaction amounts per budget line with whole transactions and splits")
     void testCalculateRealByLine() {
-        PointageBudgetLineModel line1 = new PointageBudgetLineModel("c1", "Loyer", "charge", new BigDecimal("800"), "cat1");
-        PointageBudgetLineModel line2 = new PointageBudgetLineModel("i1", "Salaire", "revenu", new BigDecimal("3000"), "cat2");
+        BudgetLineProjection line1 = new BudgetLineProjection("c1", "Loyer", "charge", new BigDecimal("800"), "cat1");
+        BudgetLineProjection line2 = new BudgetLineProjection("i1", "Salaire", "revenu", new BigDecimal("3000"), "cat2");
 
         BankImportModel.BankTransactionModel tx1 = new BankImportModel.BankTransactionModel("tx1", "2026-05-01", "Loyer mai", new BigDecimal("-800.00"));
         BankImportModel.BankTransactionModel tx2 = new BankImportModel.BankTransactionModel("tx2", "2026-05-28", "Salaire mai", new BigDecimal("3100.00"));
@@ -87,8 +68,8 @@ class PointageCalculatorTest {
     @Test
     @DisplayName("calculateRealByLine handles composite split IDs (txId#splitId)")
     void testCalculateRealByLineWithSplits() {
-        PointageBudgetLineModel lineFood = new PointageBudgetLineModel("c_food", "Courses", "charge", new BigDecimal("300"), "cat_food");
-        PointageBudgetLineModel lineClothes = new PointageBudgetLineModel("c_clothes", "Vêtements", "charge", new BigDecimal("100"), "cat_clothes");
+        BudgetLineProjection lineFood = new BudgetLineProjection("c_food", "Courses", "charge", new BigDecimal("300"), "cat_food");
+        BudgetLineProjection lineClothes = new BudgetLineProjection("c_clothes", "Vêtements", "charge", new BigDecimal("100"), "cat_clothes");
 
         BankImportModel.BankTransactionSplitModel split1 = new BankImportModel.BankTransactionSplitModel("s1", "cat_food", new BigDecimal("-65.00"), "Nourriture");
         BankImportModel.BankTransactionSplitModel split2 = new BankImportModel.BankTransactionSplitModel("s2", "cat_clothes", new BigDecimal("-35.00"), "Pull");
@@ -162,7 +143,7 @@ class PointageCalculatorTest {
     @Test
     @DisplayName("calculateLineStatus evaluates match, economy, over, and pending statuses")
     void testCalculateLineStatus() {
-        PointageBudgetLineModel lineCharge = new PointageBudgetLineModel("c1", "Courses", "charge", new BigDecimal("200.00"), "cat1");
+        BudgetLineProjection lineCharge = new BudgetLineProjection("c1", "Courses", "charge", new BigDecimal("200.00"), "cat1");
 
         BankImportModel.MatchingLinkModel link = new BankImportModel.MatchingLinkModel("c1", List.of("tx1"));
         BankImportModel.MatchingModel matching = new BankImportModel.MatchingModel("2026-05", List.of(link));
@@ -202,5 +183,80 @@ class PointageCalculatorTest {
     void testUpdateMatchingForMonthThrowsOnEmptyMonth() {
         assertThatThrownBy(() -> PointageCalculator.updateMatchingForMonth(null, "", List.of()))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // --- Points d'entrée sur PointageInput (RF-501) : aucun modèle du budget n'est nécessaire ---
+
+    private static PointageInput sampleInput() {
+        BudgetLineProjection loyer = new BudgetLineProjection("c1", "Loyer", "charge", new BigDecimal("800"), "cat1");
+        BudgetLineProjection salaire = new BudgetLineProjection("i1", "Salaire", "revenu", new BigDecimal("3000"), "cat2");
+        BudgetLineProjection epargne = new BudgetLineProjection("p1", "Épargne : Livret A", "placement", new BigDecimal("200"), "cat3");
+
+        BankImportModel.BankTransactionModel txLoyer = new BankImportModel.BankTransactionModel("tx1", "2026-05-01", "Loyer mai", new BigDecimal("-800.00"));
+        BankImportModel.BankTransactionModel txSalaire = new BankImportModel.BankTransactionModel("tx2", "2026-05-28", "Salaire mai", new BigDecimal("3100.00"));
+        BankImportModel.BankTransactionModel txAutre = new BankImportModel.BankTransactionModel("tx3", "2026-05-15", "Achat", new BigDecimal("-25.00"));
+        BankImportModel.BankTransactionModel txJuin = new BankImportModel.BankTransactionModel("tx4", "2026-06-02", "Achat juin", new BigDecimal("-10.00"));
+
+        return new PointageInput(
+                List.of(txLoyer, txSalaire, txAutre, txJuin),
+                List.of(new BankImportModel.MatchingLinkModel("c1", List.of("tx1")),
+                        new BankImportModel.MatchingLinkModel("i1", List.of("tx2")),
+                        new BankImportModel.MatchingLinkModel("inconnue", List.of("tx3"))),
+                List.of(loyer, salaire, epargne),
+                new PointagePeriod("2026-05"));
+    }
+
+    @Test
+    @DisplayName("PointageInput : filterTransactionsForMonth ne garde que le mois de la période")
+    void testFilterTransactionsForMonthFromInput() {
+        assertThat(PointageCalculator.filterTransactionsForMonth(sampleInput()))
+                .extracting(BankImportModel.BankTransactionModel::id)
+                .containsExactly("tx1", "tx2", "tx3");
+    }
+
+    @Test
+    @DisplayName("PointageInput : calculatePointedTxIds ignore les liens vers des lignes non actives")
+    void testCalculatePointedTxIdsFromInput() {
+        assertThat(PointageCalculator.calculatePointedTxIds(sampleInput())).containsExactlyInAnyOrder("tx1", "tx2");
+    }
+
+    @Test
+    @DisplayName("PointageInput : calculateRealByLine agrège le réel par ligne (signe selon la nature)")
+    void testCalculateRealByLineFromInput() {
+        Map<String, BigDecimal> real = PointageCalculator.calculateRealByLine(sampleInput());
+
+        assertThat(real.get("c1")).isEqualByComparingTo("800.00");
+        assertThat(real.get("i1")).isEqualByComparingTo("3100.00");
+    }
+
+    @Test
+    @DisplayName("PointageInput : calculateMonthBankSummary calcule le résumé du mois pointé")
+    void testCalculateMonthBankSummaryFromInput() {
+        PointageMonthSummaryModel summary = PointageCalculator.calculateMonthBankSummary(sampleInput());
+
+        assertThat(summary.totalBankExpenses()).isEqualByComparingTo("825.00");
+        assertThat(summary.totalBankIncome()).isEqualByComparingTo("3100.00");
+        assertThat(summary.unpointedCount()).isEqualTo(1); // tx3, lié à une ligne inactive
+        assertThat(summary.unpointedExpenses()).isEqualByComparingTo("25.00");
+    }
+
+    @Test
+    @DisplayName("PointageInput : calculateLineStatus distingue pending et match")
+    void testCalculateLineStatusFromInput() {
+        PointageInput input = sampleInput();
+        BudgetLineProjection loyer = input.activeBudgetLines().get(0);
+        BudgetLineProjection epargne = input.activeBudgetLines().get(2);
+
+        assertThat(PointageCalculator.calculateLineStatus(loyer, input, new BigDecimal("800.00")).status()).isEqualTo("match");
+        assertThat(PointageCalculator.calculateLineStatus(epargne, input, BigDecimal.ZERO).status()).isEqualTo("pending");
+    }
+
+    @Test
+    @DisplayName("PointageInput nul : les points d'entrée renvoient des résultats vides")
+    void testNullInput() {
+        assertThat(PointageCalculator.filterTransactionsForMonth((PointageInput) null)).isEmpty();
+        assertThat(PointageCalculator.calculatePointedTxIds((PointageInput) null)).isEmpty();
+        assertThat(PointageCalculator.calculateRealByLine((PointageInput) null)).isEmpty();
+        assertThat(PointageCalculator.calculateMonthBankSummary((PointageInput) null).unpointedCount()).isZero();
     }
 }

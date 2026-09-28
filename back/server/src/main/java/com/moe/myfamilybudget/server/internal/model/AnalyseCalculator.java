@@ -14,6 +14,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.moe.myfamilybudget.server.internal.calculation.BudgetLineProjection;
+import com.moe.myfamilybudget.server.internal.factory.PointageInputFactory;
+
 /**
  * Calculateur métier pour l'analyse Réel vs Prévisionnel et dérives.
  * Isolé de toute API REST ou DTO. Opère exclusivement sur le domaine interne.
@@ -151,9 +154,8 @@ public final class AnalyseCalculator {
         String currentMonthISO = currentYM.toString();
         String currentMonthLabel = currentYM.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.FRENCH));
 
-        List<PointageBudgetLineModel> activeLines = PointageCalculator.calculateActiveBudgetLines(
-                new PointageModel(allTx, categories, bankImport.matchings(), data.charges(), data.incomes(), data.placements(), data.settings()),
-                currentMonthISO
+        List<BudgetLineProjection> activeLines = PointageInputFactory.activeBudgetLines(
+                data.charges(), data.incomes(), data.placements(), data.settings(), currentMonthISO
         );
 
         BankImportModel.MatchingModel currentMatching = null;
@@ -190,7 +192,7 @@ public final class AnalyseCalculator {
                 : Collections.emptyList();
 
         List<AnalyseLandingRowModel> landingData = new ArrayList<>();
-        for (PointageBudgetLineModel line : activeLines) {
+        for (BudgetLineProjection line : activeLines) {
             BigDecimal budgeted = line.monthly() != null ? line.monthly() : BigDecimal.ZERO;
             List<String> txIds = lineToTxIds.getOrDefault(line.id(), Collections.emptyList());
 
@@ -293,9 +295,8 @@ public final class AnalyseCalculator {
         for (int i = nMonths - 1; i >= 0; i--) {
             YearMonth ym = currentYM.minusMonths(i);
             String monthISO = ym.toString();
-            List<PointageBudgetLineModel> monthLines = PointageCalculator.calculateActiveBudgetLines(
-                    new PointageModel(allTx, categories, bankImport.matchings(), data.charges(), data.incomes(), data.placements(), data.settings()),
-                    monthISO
+            List<BudgetLineProjection> monthLines = PointageInputFactory.activeBudgetLines(
+                    data.charges(), data.incomes(), data.placements(), data.settings(), monthISO
             );
 
             BigDecimal budgeted = monthLines.stream()
@@ -359,12 +360,11 @@ public final class AnalyseCalculator {
         Map<String, RealAverageModel> realAverages = computeRealAveragesInternal(data, bankImport);
         List<AnalyseDriftRowModel> driftRows = new ArrayList<>();
 
-        List<PointageBudgetLineModel> allPossibleLines = PointageCalculator.calculateActiveBudgetLines(
-                new PointageModel(allTx, categories, bankImport.matchings(), data.charges(), data.incomes(), data.placements(), data.settings()),
-                currentMonthISO
+        List<BudgetLineProjection> allPossibleLines = PointageInputFactory.activeBudgetLines(
+                data.charges(), data.incomes(), data.placements(), data.settings(), currentMonthISO
         );
 
-        for (PointageBudgetLineModel line : allPossibleLines) {
+        for (BudgetLineProjection line : allPossibleLines) {
             RealAverageModel avg = realAverages.get(line.id());
             BigDecimal budgeted = line.monthly() != null ? line.monthly() : BigDecimal.ZERO;
             BigDecimal avg3m = avg != null ? avg.avg3m() : null;

@@ -14,9 +14,15 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.moe.myfamilybudget.server.internal.calculation.BudgetLineProjection;
+import com.moe.myfamilybudget.server.internal.calculation.PointageInput;
+
 /**
  * Calculateur métier pour le domaine du pointage mensuel.
- * Isolé de toute API / DTO REST. Opère exclusivement sur les modèles du domaine interne.
+ * Isolé de toute API / DTO REST. Depuis RF-501, il ne connaît plus les charges, revenus,
+ * placements ni paramètres : il opère sur les transactions, les liens de rapprochement et les
+ * {@link BudgetLineProjection} déjà composées en amont (voir {@link PointageInput} et
+ * {@code PointageInputFactory}).
  */
 public final class PointageCalculator {
 
@@ -24,67 +30,6 @@ public final class PointageCalculator {
 
     private PointageCalculator() {
         // Utility class
-    }
-
-    /**
-     * Extrait les lignes de budget actives pour un mois donné (format YYYY-MM).
-     */
-    public static List<PointageBudgetLineModel> calculateActiveBudgetLines(PointageModel model, String monthISO) {
-        if (model == null || monthISO == null || monthISO.isBlank()) {
-            return Collections.emptyList();
-        }
-
-        int year = parseYearFromMonthISO(monthISO);
-        BigDecimal inflationRate = model.settings() != null ? model.settings().getEffectiveInflationRate() : new BigDecimal("0.02");
-
-        List<PointageBudgetLineModel> activeLines = new ArrayList<>();
-
-        // 1. Charges
-        if (model.charges() != null) {
-            for (ChargeModel c : model.charges()) {
-                if (c == null) continue;
-                boolean startOK = c.start() == null || c.start().isBlank() || monthISO.compareTo(toMonthISO(c.start())) >= 0;
-                boolean endOK = c.end() == null || c.end().isBlank() || monthISO.compareTo(toMonthISO(c.end())) <= 0;
-                if (!startOK || !endOK) continue;
-
-                BigDecimal monthly = calculateChargeMonthly(c, year, inflationRate);
-                if (monthly.compareTo(BigDecimal.ZERO) > 0) {
-                    activeLines.add(new PointageBudgetLineModel(c.id(), c.label(), "charge", monthly, c.categoryId()));
-                }
-            }
-        }
-
-        // 2. Incomes (Revenus)
-        if (model.incomes() != null) {
-            for (IncomeModel inc : model.incomes()) {
-                if (inc == null) continue;
-                boolean startOK = inc.start() == null || inc.start().isBlank() || monthISO.compareTo(toMonthISO(inc.start())) >= 0;
-                boolean endOK = inc.end() == null || inc.end().isBlank() || monthISO.compareTo(toMonthISO(inc.end())) <= 0;
-                if (!startOK || !endOK) continue;
-
-                BigDecimal monthly = calculateIncomeMonthly(inc, year);
-                if (monthly.compareTo(BigDecimal.ZERO) > 0) {
-                    activeLines.add(new PointageBudgetLineModel(inc.id(), inc.label(), "revenu", monthly, inc.categoryId()));
-                }
-            }
-        }
-
-        // 3. Placements (Épargne)
-        if (model.placements() != null) {
-            for (PlacementModel p : model.placements()) {
-                if (p == null) continue;
-                BigDecimal m = p.monthly() != null ? p.monthly() : BigDecimal.ZERO;
-                if (m.compareTo(BigDecimal.ZERO) <= 0) continue;
-
-                boolean fromOK = p.monthlyFrom() == null || p.monthlyFrom().isBlank() || monthISO.compareTo(toMonthISO(p.monthlyFrom())) >= 0;
-                boolean untilOK = p.monthlyUntil() == null || p.monthlyUntil().isBlank() || monthISO.compareTo(toMonthISO(p.monthlyUntil())) <= 0;
-                if (!fromOK || !untilOK) continue;
-
-                activeLines.add(new PointageBudgetLineModel(p.id(), "Épargne : " + p.label(), "placement", m, p.category()));
-            }
-        }
-
-        return activeLines;
     }
 
     /**
@@ -102,16 +47,23 @@ public final class PointageCalculator {
     /**
      * Calcule l'ensemble des identifiants de transactions pointées sur les lignes budgétaires actives.
      */
-    public static Set<String> calculatePointedTxIds(BankImportModel.MatchingModel matching, List<PointageBudgetLineModel> activeLines) {
-        if (matching == null || matching.links() == null || activeLines == null) {
+    public static Set<String> calculatePointedTxIds(BankImportModel.MatchingModel matching, List<BudgetLineProjection> activeLines) {
+        return calculatePointedTxIds(matching != null ? matching.links() : null, activeLines);
+    }
+
+    /**
+     * Variante sur les liens de rapprochement d'un mois (forme portée par {@link PointageInput}).
+     */
+    public static Set<String> calculatePointedTxIds(List<BankImportModel.MatchingLinkModel> links, List<BudgetLineProjection> activeLines) {
+        if (links == null || activeLines == null) {
             return Collections.emptySet();
         }
         Set<String> activeLineIds = activeLines.stream()
-                .map(PointageBudgetLineModel::id)
+                .map(BudgetLineProjection::id)
                 .collect(Collectors.toSet());
 
         Set<String> pointedTxIds = new HashSet<>();
-        for (BankImportModel.MatchingLinkModel link : matching.links()) {
+        for (BankImportModel.MatchingLinkModel link : links) {
             if (link != null && activeLineIds.contains(link.budgetLineId()) && link.txIds() != null) {
                 pointedTxIds.addAll(link.txIds());
             }
@@ -211,14 +163,24 @@ public final class PointageCalculator {
     public static Map<String, BigDecimal> calculateRealByLine(
             List<BankImportModel.BankTransactionModel> transactions,
             BankImportModel.MatchingModel matching,
-            List<PointageBudgetLineModel> activeLines) {
+            List<BudgetLineProjection> activeLines) {
+        return calculateRealByLine(transactions, matching != null ? matching.links() : null, activeLines);
+    }
 
-        if (matching == null || matching.links() == null || activeLines == null || transactions == null) {
+    /**
+     * Variante sur les liens de rapprochement d'un mois (forme portée par {@link PointageInput}).
+     */
+    public static Map<String, BigDecimal> calculateRealByLine(
+            List<BankImportModel.BankTransactionModel> transactions,
+            List<BankImportModel.MatchingLinkModel> links,
+            List<BudgetLineProjection> activeLines) {
+
+        if (links == null || activeLines == null || transactions == null) {
             return Collections.emptyMap();
         }
 
         Map<String, String> lineKindMap = activeLines.stream()
-                .collect(Collectors.toMap(PointageBudgetLineModel::id, PointageBudgetLineModel::kind, (k1, k2) -> k1));
+                .collect(Collectors.toMap(BudgetLineProjection::id, BudgetLineProjection::kind, (k1, k2) -> k1));
 
         Map<String, BankImportModel.BankTransactionModel> txMap = transactions.stream()
                 .filter(t -> t != null && t.id() != null)
@@ -226,7 +188,7 @@ public final class PointageCalculator {
 
         Map<String, BigDecimal> realByLine = new HashMap<>();
 
-        for (BankImportModel.MatchingLinkModel link : matching.links()) {
+        for (BankImportModel.MatchingLinkModel link : links) {
             if (link == null || link.budgetLineId() == null || link.txIds() == null) continue;
             String kind = lineKindMap.getOrDefault(link.budgetLineId(), "charge");
 
@@ -251,8 +213,15 @@ public final class PointageCalculator {
      * Évalue le statut de pointage pour une ligne budgétaire ("pending", "match", "economy", "over").
      */
     public static PointageLineStatusModel calculateLineStatus(
-            PointageBudgetLineModel line,
+            BudgetLineProjection line,
             BankImportModel.MatchingModel matching,
+            BigDecimal realAmount) {
+        return calculateLineStatusFromLinks(line, matching != null ? matching.links() : null, realAmount);
+    }
+
+    private static PointageLineStatusModel calculateLineStatusFromLinks(
+            BudgetLineProjection line,
+            List<BankImportModel.MatchingLinkModel> links,
             BigDecimal realAmount) {
 
         if (line == null) {
@@ -260,8 +229,8 @@ public final class PointageCalculator {
         }
 
         BankImportModel.MatchingLinkModel link = null;
-        if (matching != null && matching.links() != null) {
-            link = matching.links().stream()
+        if (links != null) {
+            link = links.stream()
                     .filter(l -> l != null && line.id().equals(l.budgetLineId()))
                     .findFirst()
                     .orElse(null);
@@ -287,6 +256,55 @@ public final class PointageCalculator {
         }
 
         return new PointageLineStatusModel(line.id(), status, prevu, reel, reel.subtract(prevu));
+    }
+
+    // --- Points d'entrée sur PointageInput (RF-501) ---
+
+    /**
+     * Transactions de {@code input} appartenant au mois pointé.
+     */
+    public static List<BankImportModel.BankTransactionModel> filterTransactionsForMonth(PointageInput input) {
+        if (input == null) {
+            return Collections.emptyList();
+        }
+        return filterTransactionsForMonth(input.transactions(), input.period().monthISO());
+    }
+
+    /**
+     * Identifiants de transactions pointées sur les lignes budgétaires actives de {@code input}.
+     */
+    public static Set<String> calculatePointedTxIds(PointageInput input) {
+        if (input == null) {
+            return Collections.emptySet();
+        }
+        return calculatePointedTxIds(input.matchings(), input.activeBudgetLines());
+    }
+
+    /**
+     * Montant réel associé à chaque ligne budgétaire active de {@code input}.
+     */
+    public static Map<String, BigDecimal> calculateRealByLine(PointageInput input) {
+        if (input == null) {
+            return Collections.emptyMap();
+        }
+        return calculateRealByLine(input.transactions(), input.matchings(), input.activeBudgetLines());
+    }
+
+    /**
+     * Résumé bancaire du mois pointé de {@code input}.
+     */
+    public static PointageMonthSummaryModel calculateMonthBankSummary(PointageInput input) {
+        if (input == null) {
+            return calculateMonthBankSummary(null, null);
+        }
+        return calculateMonthBankSummary(filterTransactionsForMonth(input), calculatePointedTxIds(input));
+    }
+
+    /**
+     * Statut de pointage d'une ligne budgétaire de {@code input}.
+     */
+    public static PointageLineStatusModel calculateLineStatus(BudgetLineProjection line, PointageInput input, BigDecimal realAmount) {
+        return calculateLineStatusFromLinks(line, input != null ? input.matchings() : null, realAmount);
     }
 
     /**
@@ -321,53 +339,5 @@ public final class PointageCalculator {
                 base.pendingOperations(),
                 updatedMatchings
         );
-    }
-
-    // --- Helpers de calcul internes ---
-
-    private static int parseYearFromMonthISO(String monthISO) {
-        try {
-            return Integer.parseInt(monthISO.substring(0, 4));
-        } catch (Exception e) {
-            LOG.warn("Mois ISO illisible, année 2026 utilisée par défaut : '{}'", monthISO, e);
-            return 2026;
-        }
-    }
-
-    private static String toMonthISO(String dateStr) {
-        if (dateStr == null || dateStr.length() < 7) return "";
-        return dateStr.substring(0, 7);
-    }
-
-    private static BigDecimal calculateChargeMonthly(ChargeModel c, int year, BigDecimal inflationRate) {
-        Integer sY = c.start() != null && !c.start().isBlank() ? parseYearFromMonthISO(c.start()) : null;
-        Integer eY = c.end() != null && !c.end().isBlank() ? parseYearFromMonthISO(c.end()) : null;
-        if (sY != null && eY != null && (year < sY || year > eY)) {
-            return BigDecimal.ZERO;
-        }
-
-        BigDecimal growth = (c.growthRate() != null && BigDecimal.ZERO.compareTo(c.growthRate()) != 0)
-                ? c.growthRate()
-                : (inflationRate != null ? inflationRate : new BigDecimal("0.015"));
-
-        int elapsed = sY != null ? Math.max(0, year - sY) : 0;
-        double factor = Math.pow(1.0 + growth.doubleValue(), elapsed);
-
-        BigDecimal baseMonthly = c.getEffectiveMonthly();
-        return baseMonthly.multiply(BigDecimal.valueOf(factor)).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal calculateIncomeMonthly(IncomeModel inc, int year) {
-        Integer sY = inc.start() != null && !inc.start().isBlank() ? parseYearFromMonthISO(inc.start()) : null;
-        Integer eY = inc.end() != null && !inc.end().isBlank() ? parseYearFromMonthISO(inc.end()) : null;
-        if (sY != null && eY != null && (year < sY || year > eY)) {
-            return BigDecimal.ZERO;
-        }
-
-        int elapsed = sY != null ? Math.max(0, year - sY) : 0;
-        double factor = Math.pow(1.0 + inc.getEffectiveGrowthRate().doubleValue(), elapsed);
-
-        BigDecimal baseMonthly = inc.getEffectiveMonthly();
-        return baseMonthly.multiply(BigDecimal.valueOf(factor)).setScale(2, RoundingMode.HALF_UP);
     }
 }

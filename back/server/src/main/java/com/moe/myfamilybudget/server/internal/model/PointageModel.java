@@ -4,8 +4,14 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Modèle de domaine pur représentant l'état du pointage mensuel.
- * Indépendant de tout DTO OpenAPI ou framework REST.
+ * Modèle de lecture (ViewModel) de la réponse {@code GET /pointage} : données brutes composées par la
+ * couche application pour l'écran de pointage (le front calcule encore lui-même ses lignes du mois).
+ *
+ * <p>Depuis RF-501, ce n'est plus une entrée de calcul : aucun calculateur ne le consomme. Le moteur
+ * de pointage ({@link PointageCalculator}) travaille sur
+ * {@link com.moe.myfamilybudget.server.internal.calculation.PointageInput}, qui ne porte ni charges,
+ * ni revenus, ni placements, ni paramètres. Ce modèle ne peut disparaître qu'avec une évolution du
+ * contrat {@code GET /pointage}, hors périmètre de RF-501.
  */
 public record PointageModel(
         List<BankImportModel.BankTransactionModel> transactions,
