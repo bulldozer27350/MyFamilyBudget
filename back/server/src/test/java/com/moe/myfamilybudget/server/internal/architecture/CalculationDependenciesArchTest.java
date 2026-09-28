@@ -6,8 +6,8 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import com.tngtech.archunit.library.freeze.FreezingArchRule;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.server.internal.calculation.OverviewCalculationService;
 import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionService;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
@@ -68,42 +68,27 @@ import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
  * {@link #PATRIMOINE_ENGINES_DO_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée. Et pour le
  * domaine Trésorerie depuis RF-402 : le store gelé ne contient aucune violation Trésorerie (le
  * moteur, {@code TresorerieCalculationService}, ne dépend plus du budget depuis RF-401) ; il est
- * protégé par {@link #TREASURY_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée.
+ * protégé par {@link #TREASURY_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée. Et pour le
+ * domaine Overview depuis RF-901 : {@code OverviewCalculationService} consomme exclusivement
+ * {@code OverviewInput} depuis RF-901 ; il est protégé par
+ * {@link #OVERVIEW_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée (RF-902).
  *
- * <p><b>Gel des violations existantes ({@link FreezingArchRule}).</b> À l'écriture de ce test,
- * {@code OverviewCalculationService} dépend encore
- * directement de {@code BudgetDataModel}. Plutôt que de casser le build immédiatement, la
- * règle est enveloppée dans une {@link FreezingArchRule} : les violations constatées au premier
- * lancement sont gelées dans le dossier {@code archunit_store} (voir {@code archunit.properties})
- * et n'échouent plus tant qu'elles ne s'aggravent pas ; toute <em>nouvelle</em> violation, elle,
- * fait échouer le test immédiatement.
- *
- * <p><b>Règle de vie du store, pour tout agent qui migre un domaine (RF-1xx à RF-9xx).</b> La
- * liste gelée ne doit évoluer que dans un sens : vers zéro. Concrètement :
- * <ul>
- *   <li>chaque patch de garde-fou de domaine (RF-103, RF-203, RF-302, RF-402, RF-502, RF-602,
- *       RF-703, RF-803, RF-902) qui débranche un moteur de {@code BudgetDataModel} doit relancer
- *       ce test avant de committer : {@code archunit.properties} autorise le store à se réduire
- *       automatiquement (violation qui disparaît) ;</li>
- *   <li>si une exécution fait apparaître une violation qui n'existait pas avant votre patch, ne
- *       la gelez pas silencieusement — c'est le garde-fou qui fonctionne, corrigez le code plutôt
- *       que d'élargir le périmètre gelé ;</li>
- *   <li>au patch RF-902 (dernier garde-fou de domaine listé), la liste gelée doit être vide ; à ce
- *       stade cette règle peut être durcie en {@code ArchRuleDefinition.noClasses()...} simple,
- *       sans {@code FreezingArchRule}.</li>
- * </ul>
+ * <p><b>Règle durcie (RF-902).</b> Toutes les violations préexistantes ont été résorbées domaine
+ * par domaine (RF-103 à RF-902). La règle {@code FreezingArchRule} a été remplacée par une règle
+ * stricte {@code noClasses()...} sans gel : le store {@code archunit_store} est vide (seul
+ * {@code .gitkeep} subsiste). Toute nouvelle violation dans {@code internal.calculation} fait
+ * maintenant échouer le build immédiatement.
  */
 @AnalyzeClasses(packages = "com.moe.myfamilybudget", importOptions = ImportOption.DoNotIncludeTests.class)
 class CalculationDependenciesArchTest {
 
     @ArchTest
-    static final ArchRule CALCULATION_DOES_NOT_DEPEND_ON_BUDGET_DATA_MODEL = FreezingArchRule.freeze(
-            noClasses()
-                    .that().resideInAPackage("..internal.calculation..")
-                    .should().dependOnClassesThat().areAssignableTo(BudgetDataModel.class)
-                    .as("le package internal.calculation ne doit pas dépendre de BudgetDataModel "
-                            + "(doc/architecture/00-principes.md) ; violations préexistantes gelées, "
-                            + "voir la javadoc de cette classe et archunit.properties"));
+    static final ArchRule CALCULATION_DOES_NOT_DEPEND_ON_BUDGET_DATA_MODEL = noClasses()
+            .that().resideInAPackage("..internal.calculation..")
+            .should().dependOnClassesThat().areAssignableTo(BudgetDataModel.class)
+            .as("le package internal.calculation ne doit pas dépendre de BudgetDataModel "
+                    + "(doc/architecture/00-principes.md) ; règle durcie en RF-902 : "
+                    + "plus aucune violation n'existe depuis RF-901, voir la javadoc de cette classe");
 
     /**
      * Garde-fou du domaine Fiscalité (RF-203) : {@link TaxCalculator} ne reçoit que
@@ -227,4 +212,24 @@ class CalculationDependenciesArchTest {
             .as("TresorerieCalculationService ne doit dépendre d'aucun modèle du budget : il "
                     + "consomme uniquement TreasuryProjectionInput "
                     + "(doc/architecture/06-domaine-tresorerie.md)");
+
+    /**
+     * Garde-fou du domaine Overview (RF-902) : {@link OverviewCalculationService} ne reçoit que
+     * {@code OverviewInput} et ne connaît aucun modèle persistant du budget. Règle stricte
+     * (sans gel) : le domaine ne présente aucune violation préexistante depuis RF-901.
+     */
+    @ArchTest
+    static final ArchRule OVERVIEW_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
+            .that().areAssignableTo(OverviewCalculationService.class)
+            .should().dependOnClassesThat().belongToAnyOf(
+                    BudgetDataModel.class,
+                    SettingsModel.class,
+                    IncomeModel.class,
+                    ChargeModel.class,
+                    PlacementModel.class,
+                    VariableIncomeModel.class,
+                    VariableOverrideModel.class)
+            .as("OverviewCalculationService ne doit dépendre d'aucun modèle du budget : il "
+                    + "consomme uniquement OverviewInput "
+                    + "(doc/architecture/11-domaine-overview.md)");
 }

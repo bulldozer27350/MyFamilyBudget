@@ -665,12 +665,17 @@ spécifiques à relire avant de le démarrer.
 - Tests unitaires sur `OverviewCalculationService` utilisant uniquement `OverviewInput`.
 - Retirer le domaine Overview de la liste des violations gelées ArchUnit — à ce stade, la règle ne devrait plus geler aucune violation.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
+- **Notes** : `OverviewCalculationServiceComponentTest` (12 tests, 6 classes imbriquées) couvre
+  euros courants, euros constants, règle des 4 %, placements exclus et cas limites.
+  `FreezingArchRule` remplacée par une règle stricte `noClasses()` dans
+  `CalculationDependenciesArchTest` ; nouvelle règle dédiée
+  `OVERVIEW_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS` ajoutée. Store `archunit_store` vide.
 
 ### RF-A00 — Mutations - CommandServices par domaine
 
