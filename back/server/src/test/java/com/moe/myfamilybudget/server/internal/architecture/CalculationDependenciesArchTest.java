@@ -7,9 +7,12 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
+import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
+import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PointageCalculator;
 import com.moe.myfamilybudget.server.internal.model.PointageModel;
@@ -41,7 +44,12 @@ import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
  * règle dédiée {@link #TAX_ENGINE_DOES_NOT_DEPEND_ON_PERSISTENT_MODELS}, non gelée. Même situation
  * pour le domaine Pointage depuis RF-502 : aucune violation Pointage dans le store gelé (le moteur
  * vit dans {@code internal.model}), désormais protégé par
- * {@link #POINTAGE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée.
+ * {@link #POINTAGE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée. Et pour le domaine
+ * Notifications depuis RF-703 : les règles ({@code internal.notification.rules}) n'avaient plus
+ * de dépendance au budget depuis RF-702, le domaine est protégé par
+ * {@link #NOTIFICATION_RULES_DO_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée (le
+ * {@code NotificationDispatchService}, qui assemble les entrées, n'est pas concerné : sa lecture du
+ * budget relève des ports de lecture RF-B00/RF-B01).
  *
  * <p><b>Gel des violations existantes ({@link FreezingArchRule}).</b> À l'écriture de ce test,
  * {@code OverviewCalculationService} et {@code TresorerieCalculationService} dépendent encore
@@ -118,4 +126,24 @@ class CalculationDependenciesArchTest {
                     PointageModel.class)
             .as("PointageCalculator ne doit dépendre d'aucun modèle du budget : il consomme uniquement "
                     + "PointageInput (doc/architecture/07-domaine-banque-pointage.md)");
+
+    /**
+     * Garde-fou du domaine Notifications (RF-703) : les règles ne reçoivent que leur entrée dédiée
+     * ({@code DebitThresholdInput}, {@code BalanceFloorInput}, {@code ObjectifReachableInput}) et ne
+     * connaissent ni le budget ni ses sous-modèles. Règle stricte (sans gel) : le domaine ne
+     * présente aucune violation préexistante.
+     */
+    @ArchTest
+    static final ArchRule NOTIFICATION_RULES_DO_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
+            .that().resideInAPackage("..internal.notification.rules..")
+            .should().dependOnClassesThat().belongToAnyOf(
+                    BudgetDataModel.class,
+                    BankImportModel.class,
+                    ObjectifModel.class,
+                    ObjectifAllocationModel.class,
+                    PlacementModel.class,
+                    SettingsModel.class)
+            .as("les règles de notification ne doivent dépendre d'aucun modèle du budget : elles "
+                    + "consomment uniquement leur Input dédié "
+                    + "(doc/architecture/09-domaine-objectifs-notifications.md)");
 }

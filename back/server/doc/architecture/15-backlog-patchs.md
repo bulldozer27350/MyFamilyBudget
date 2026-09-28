@@ -504,12 +504,17 @@ spécifiques à relire avant de le démarrer.
 - **Modifications attendues** :
 - Un test unitaire par règle, construit avec quelques records seulement (sans budget complet).
 - Retirer le domaine Notifications de la liste des violations gelées ArchUnit.
+- **Notes d'implémentation** :
+- Un test de composant par règle (`DebitThresholdRuleTest`, `BalanceFloorRuleTest`, `ObjectifReachableRuleTest`, package `internal.notification.rules`), construit uniquement avec les records d'entrée, sans `BudgetDataModel` ni contexte Spring.
+- Aucune violation Notifications n'était gelée : les règles vivent dans `internal.notification.rules`, hors du périmètre de la règle gelée (`internal.calculation`). Le domaine est protégé par la règle stricte `NOTIFICATION_RULES_DO_NOT_DEPEND_ON_BUDGET_MODELS`, sur le modèle des règles Fiscalité et Pointage ; le store gelé n'est pas modifié.
+- `NotificationDispatchService` n'est pas couvert par cette règle : il lit encore le budget via `PersistenceManager` en attendant les ports de lecture (RF-B00/RF-B01).
+- Build Maven non exécutable dans l'environnement de rédaction : assertions des tests rejouées sur les règles compilées avec javac, absence de dépendance aux modèles du budget vérifiée dans le bytecode ; `mvn test` (dont `CalculationDependenciesArchTest`) à confirmer en local.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-800 — Prêts - Contrats
