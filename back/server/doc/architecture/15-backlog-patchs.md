@@ -203,12 +203,12 @@ spécifiques à relire avant de le démarrer.
 - Brancher `TaxCalculator` sur `TaxCalculationInput` via la Factory.
 - Encapsulation de frontière uniquement : le contenu de l'Input peut rester large à ce stade (cf. RF-202 pour la réduction).
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
 - [ ] Terminé
-- [ ] Constaté comme mergé
+- [x] Constaté comme mergé
 
 ### RF-202 — Fiscalité - Réduction (sortie de findEarliestYear et de la projection retraite)
 
@@ -252,11 +252,11 @@ spécifiques à relire avant de le démarrer.
 - Créer `PatrimoineProjectionInput`, `PlacementProjectionInput`, `CashflowProjection`, `PatrimoineProjectionParameters` et la Factory associée.
 - Se limiter, à ce stade, aux champs de configuration statiques par placement (`sweepPriority`, `sweepCap`, `pauseTriggerBalance`, `pausePriority`) sans introduire `ContributionDecisionPlan` (voir le point ouvert du fichier de domaine, traité en RF-400).
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-301 — Patrimoine - Séparation des deux moteurs et branchement
