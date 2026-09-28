@@ -7,10 +7,15 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
+import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
+import com.moe.myfamilybudget.server.internal.factory.AssetBucketResolver;
+import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
@@ -49,7 +54,10 @@ import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
  * de dépendance au budget depuis RF-702, le domaine est protégé par
  * {@link #NOTIFICATION_RULES_DO_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée (le
  * {@code NotificationDispatchService}, qui assemble les entrées, n'est pas concerné : sa lecture du
- * budget relève des ports de lecture RF-B00/RF-B01).
+ * budget relève des ports de lecture RF-B00/RF-B01). Et pour le domaine Crédit depuis RF-803 : le
+ * store gelé ne contient aucune violation Crédit (les deux moteurs, {@code LoanAdviceCalculationService}
+ * et {@code PlacementRateSuggestionService}, ne dépendent plus du budget depuis RF-801/RF-802) ; ils
+ * sont protégés par {@link #CREDIT_ENGINES_DO_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée.
  *
  * <p><b>Gel des violations existantes ({@link FreezingArchRule}).</b> À l'écriture de ce test,
  * {@code OverviewCalculationService} et {@code TresorerieCalculationService} dépendent encore
@@ -146,4 +154,26 @@ class CalculationDependenciesArchTest {
             .as("les règles de notification ne doivent dépendre d'aucun modèle du budget : elles "
                     + "consomment uniquement leur Input dédié "
                     + "(doc/architecture/09-domaine-objectifs-notifications.md)");
+
+    /**
+     * Garde-fou du domaine Crédit (RF-803) : les moteurs d'analyse des prêts et de suggestions de
+     * taux ne reçoivent que {@code LoanAdviceInput} et {@code PlacementRateSuggestionInput} ; ils ne
+     * connaissent ni le budget, ni les prêts, placements et catégories d'actifs, ni le résolveur de
+     * bucket (outil d'assemblage de {@code internal.factory}, voir RF-802). Règle stricte (sans gel) :
+     * le domaine ne présente aucune violation préexistante.
+     */
+    @ArchTest
+    static final ArchRule CREDIT_ENGINES_DO_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
+            .that().areAssignableTo(LoanAdviceCalculationService.class)
+            .or().areAssignableTo(PlacementRateSuggestionService.class)
+            .should().dependOnClassesThat().belongToAnyOf(
+                    BudgetDataModel.class,
+                    LoanModel.class,
+                    PlacementModel.class,
+                    AssetCategoryModel.class,
+                    SettingsModel.class,
+                    AssetBucketResolver.class)
+            .as("les moteurs Crédit ne doivent dépendre d'aucun modèle du budget : ils consomment "
+                    + "uniquement LoanAdviceInput et PlacementRateSuggestionInput "
+                    + "(doc/architecture/10-domaine-prets-suggestions.md)");
 }

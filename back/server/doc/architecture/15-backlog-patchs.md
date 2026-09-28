@@ -582,12 +582,16 @@ spécifiques à relire avant de le démarrer.
 - **Modifications attendues** :
 - Tests unitaires sur les deux moteurs utilisant uniquement leurs Inputs dédiés.
 - Retirer le domaine Crédit de la liste des violations gelées ArchUnit.
+- **Notes d'implémentation** :
+- Prêts : `LoanAdviceCalculationServiceComponentTest` (uniquement `LoanAdviceInput`, `LoanInput`, `LiquidPlacementAlternative`, sans factory ni Spring), valeurs de référence reprises de `LoanAdviceCalculationServiceTest`. Suggestions de taux : `PlacementRateSuggestionServiceTest` ne construit déjà que `PlacementRateSuggestionInput` depuis RF-802, aucun nouveau test nécessaire.
+- Aucune violation Crédit n'était gelée (le store ne contient que `.gitkeep`) : le domaine est protégé par la règle stricte `CREDIT_ENGINES_DO_NOT_DEPEND_ON_BUDGET_MODELS`, sur le modèle des règles Fiscalité, Pointage et Notifications ; le store gelé n'est pas modifié.
+- Build Maven non exécutable dans l'environnement de rédaction : `mvn test` (dont `CalculationDependenciesArchTest`) à confirmer en local.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
 - [ ] Annulé
-- [ ] Terminé
+- [x] Terminé
 - [ ] Constaté comme mergé
 
 ### RF-900 — Overview - Contrat OverviewInput
