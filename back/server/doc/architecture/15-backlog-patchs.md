@@ -754,7 +754,7 @@ spécifiques à relire avant de le démarrer.
 - Vérifier que les contrats composites hérités (ex. `/settings`) restent des façades de composition explicites (voir `12-settings.md`), pas des DTO qui recréent un modèle global.
 - **Suivi (scindé par domaine, un fichier `openapi/domains/<domaine>.yaml` par entrée, inclus depuis `openapi.yaml` via `$ref` par chemin) :**
   - [x] Retraite (`/retraite` → `openapi/domains/retraite.yaml`)
-  - [ ] Overview
+  - [x] Overview (`/overview` → `openapi/domains/overview.yaml`)
   - [ ] Trésorerie / Budget
   - [ ] Patrimoine (placements, taux de marché, suggestions de taux)
   - [ ] Fiscalité (Impots)
@@ -764,6 +764,7 @@ spécifiques à relire avant de le démarrer.
   - [ ] Paramètres / Système (`/settings`, `/budget`, `/budget/import`, `/budget/reset` restent des façades transverses, pas un domaine propre)
 - **Notes d'implémentation** :
 - `/retraite` n'exposait déjà aucun schéma de composant propre (réponses `type: object`) : extraction sans aucun impact sur `components/schemas`, seul le bloc `paths` a bougé.
+- `/overview` : `OverviewResponseDto` et `TripleAmountDto` (usage exclusif) déplacés avec le path dans `openapi/domains/overview.yaml`, sous sa propre section `components/schemas`. `BudgetDataDto`, `CashflowYearDto` et `PatrimoineProjectionsDto` restent dans `openapi.yaml` (partagés avec `/budget`, `/tresorerie`, `/patrimoine`) : les `$ref` d'`OverviewResponseDto` vers ces trois schémas pointent désormais vers `'../../openapi.yaml#/components/schemas/...'`.
 - Vérification `/settings` (12-settings.md) : `SettingsDto` duplique aujourd'hui `pass2026`/`passGrowthRate` avec `RetirementDto`, comme documenté dans le fichier de domaine (« héritage de contrat à nettoyer lors du découpage OpenAPI »). Aucune correction ici — la façade `/settings` reste `type: object` côté contrat (pas de DTO strict à faire évoluer), le nettoyage de `SettingsDto` est un changement de contrat qui dépasse la portée additive de ce patch et devrait être un patch dédié une fois tous les domaines scindés.
 - **Statut** :
 - [ ] Non commencé

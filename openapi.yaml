@@ -14,25 +14,7 @@ paths:
   # VUE D'ENSEMBLE (OVERVIEW)
   # ---------------------------------------------------------------------------
   /overview:
-    get:
-      summary: Recupere la vue d'ensemble (KPIs, projections, jauges FIRE)
-      operationId: getOverview
-      tags:
-        - Overview
-      parameters:
-        - name: useConstantEuros
-          in: query
-          required: false
-          schema:
-            type: boolean
-            default: false
-      responses:
-        '200':
-          description: Donnees synthetiques de la vue d'ensemble
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OverviewResponseDto'
+    $ref: './openapi/domains/overview.yaml#/paths/~1overview'
 
   # ---------------------------------------------------------------------------
   # TRESORERIE (CASHFLOW)
@@ -1143,42 +1125,6 @@ paths:
 
 components:
   schemas:
-    OverviewResponseDto:
-      type: object
-      properties:
-        data:
-          $ref: '#/components/schemas/BudgetDataDto'
-        years:
-          type: array
-          items:
-            type: integer
-        cashflow:
-          type: array
-          items:
-            $ref: '#/components/schemas/CashflowYearDto'
-        patrimoine:
-          $ref: '#/components/schemas/PatrimoineProjectionsDto'
-        useConstantEuros:
-          type: boolean
-        retireYear:
-          type: integer
-        pivotBalance:
-          type: number
-        patrimoineActuel:
-          type: number
-        fluxNetActuel:
-          type: number
-        retireCharges:
-          type: number
-        totalPensions:
-          type: number
-        retirePatrimoine:
-          $ref: '#/components/schemas/TripleAmountDto'
-        fireRente:
-          $ref: '#/components/schemas/TripleAmountDto'
-        financialOnlyRente:
-          $ref: '#/components/schemas/TripleAmountDto'
-
     BudgetDataDto:
       type: object
       properties:
@@ -1880,15 +1826,6 @@ components:
           items:
             $ref: '#/components/schemas/PatrimoineYearDto'
 
-    TripleAmountDto:
-      type: object
-      properties:
-        pess:
-          type: number
-        corr:
-          type: number
-        opti:
-          type: number
 
     CategoryOptionDto:
       type: object
