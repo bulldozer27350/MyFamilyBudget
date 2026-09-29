@@ -119,7 +119,8 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : empêcher toute réintroduction de dépendance globale pendant les migrations.
 - **Travaux** : compléter les règles existantes pour les calculateurs migrés et vérifier notamment l'absence de
   dépendance vers `BudgetDataModel`, `PersistenceManager` et DTO OpenAPI dans les couches qui doivent être pures.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : Règle ArchUnit `ENGINES_DO_NOT_DEPEND_ON_PERSISTENCE_MANAGER` (s'assure que `internal.calculation`, `internal.model` et `internal.notification.rules` ne dépendent pas de `PersistenceManager`) et règle `PURE_DOMAIN_DOES_NOT_DEPEND_ON_OPENAPI_DTOS` (s'assure que les couches pures du domaine ne dépendent pas des DTO OpenAPI dans `com.moe.myfamilybudget.server.api..`) dans `CalculationDependenciesArchTest.java`.
 
 ## VT-110 — Scénario backend Retraite→Fiscalité→Trésorerie→Overview
 

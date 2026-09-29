@@ -34,6 +34,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 /**
  * Garde-fou d'architecture RF-001 (voir doc/architecture/00-principes.md, section
@@ -256,4 +257,30 @@ class CalculationDependenciesArchTest {
                     VariableOverrideModel.class)
             .as("AnalyseCalculator ne doit dépendre d'aucun modèle du budget : il consomme uniquement "
                     + "AnalyseInput (doc/architecture/08-domaine-analyse.md)");
+
+    /**
+     * Garde-fou d'architecture VT-400 : Les moteurs de calcul et couches pures du domaine ne doivent pas
+     * dépendre de {@link PersistenceManager}.
+     */
+    @ArchTest
+    static final ArchRule ENGINES_DO_NOT_DEPEND_ON_PERSISTENCE_MANAGER = noClasses()
+            .that().resideInAPackage("..internal.calculation..")
+            .or().resideInAPackage("..internal.model..")
+            .or().resideInAPackage("..internal.notification.rules..")
+            .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
+            .as("les moteurs de calcul et calculateurs purs ne doivent pas dépendre de PersistenceManager "
+                    + "(doc/architecture/00-principes.md)");
+
+    /**
+     * Garde-fou d'architecture VT-400 : Les couches pures du domaine ne doivent pas
+     * dépendre des DTO OpenAPI.
+     */
+    @ArchTest
+    static final ArchRule PURE_DOMAIN_DOES_NOT_DEPEND_ON_OPENAPI_DTOS = noClasses()
+            .that().resideInAPackage("..internal.calculation..")
+            .or().resideInAPackage("..internal.model..")
+            .or().resideInAPackage("..internal.notification.rules..")
+            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.server.api..")
+            .as("les couches pures du domaine (calculation, model, notification.rules) ne doivent pas dépendre "
+                    + "des DTO/interfaces OpenAPI (com.moe.myfamilybudget.server.api..)");
 }
