@@ -105,7 +105,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PlacementHistoryEntryDto'
+                $ref: '../../openapi.yaml#/components/schemas/PlacementHistoryEntryDto'
 
   /patrimoine/placements/{placementId}/historique/{entryId}:
     put:

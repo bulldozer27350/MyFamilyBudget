@@ -97,23 +97,23 @@ components:
       type: object
       properties:
         data:
-          $ref: '#/components/schemas/BudgetDataDto'
+          $ref: '../../openapi.yaml#/components/schemas/BudgetDataDto'
         bankImport:
-          $ref: '#/components/schemas/BankImportDto'
+          $ref: '../../openapi.yaml#/components/schemas/BankImportDto'
         charges:
           type: array
           items:
-            $ref: '#/components/schemas/ChargeDto'
+            $ref: '../../openapi.yaml#/components/schemas/ChargeDto'
         incomes:
           type: array
           items:
-            $ref: '#/components/schemas/IncomeDto'
+            $ref: '../../openapi.yaml#/components/schemas/IncomeDto'
         placements:
           type: array
           items:
-            $ref: '#/components/schemas/PlacementDto'
+            $ref: '../../openapi.yaml#/components/schemas/PlacementDto'
         settings:
-          $ref: '#/components/schemas/SettingsDto'
+          $ref: '../../openapi.yaml#/components/schemas/SettingsDto'
         kpis:
           $ref: '#/components/schemas/AnalyseKpiDto'
         landingData:
