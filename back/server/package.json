@@ -1,0 +1,11 @@
+{
+  "name": "myfamilybudget-server-buildtools",
+  "private": true,
+  "description": "Outillage de build du backend (fusion openapi.yaml + openapi/domains/*.yaml avant openapi-generator-maven-plugin). Sans rapport avec le package.json racine (frontend JS).",
+  "devDependencies": {
+    "@redocly/cli": "2.55.0"
+  },
+  "scripts": {
+    "openapi:bundle": "redocly bundle ../../openapi.yaml -o target/generated-openapi/openapi.yaml --ext yaml"
+  }
+}

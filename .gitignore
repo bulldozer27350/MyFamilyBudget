@@ -6,6 +6,10 @@ target/
 node_modules/
 dist/
 package-lock.json
+# back/server a son propre package.json (outillage de build, fusion openapi.yaml avant
+# openapi-generator-maven-plugin, voir pom.xml) decouple du toolchain JS racine (Bun) : son
+# lockfile npm est commite pour la reproductibilite de "npm ci" dans le build Maven.
+!/back/server/package-lock.json
 
 #Test results
 tests/e2e/report/*

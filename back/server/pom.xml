@@ -20,6 +20,8 @@
     <properties>
         <java.version>21</java.version>
         <openapi-generator.version>7.10.0</openapi-generator.version>
+        <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
+        <node.version>v20.18.1</node.version>
         <jackson-nullable.version>0.2.6</jackson-nullable.version>
         <swagger-annotations.version>2.2.28</swagger-annotations.version>
     </properties>
@@ -250,6 +252,64 @@
                 </executions>
             </plugin>
 
+            <!--
+                openapi.yaml eclate ses chemins vers openapi/domains/*.yaml (RF-C00), qui a leur
+                tour referencent en retour des schemas partages d'openapi.yaml via des chemins
+                relatifs ('../../openapi.yaml#/components/schemas/...'). La resolution multi-fichiers
+                interne a openapi-generator-maven-plugin (io.swagger:swagger-parser) ne deduplique
+                pas un schema atteint par deux chemins de reference differents (local depuis la
+                racine, relatif depuis un fichier externe) : elle lui attribue un suffixe numerique
+                (comportement documente de OpenAPIResolver/ExternalRefProcessor pour les collisions de
+                nom), generant deux classes Java distinctes pour un seul et meme schema (ex.
+                BudgetDataDto et BudgetDataDto1), cause d'echecs de compilation dans les mappers qui
+                utilisent l'une ou l'autre. Ce plugin installe un Node local au module (isole de tout
+                Node/npm/Bun deja present sur la machine, pas besoin de dependance globale sur le
+                poste de dev ni en CI) puis fusionne (bundle) la specification multi-fichiers en un
+                unique document sans reference externe (back/server/package.json, script
+                "openapi:bundle", io.swagger.parser n'est plus mis en cause), sur lequel
+                openapi-generator-maven-plugin est ensuite execute : un schema n'existe alors plus
+                qu'une fois, quel que soit le chemin d'origine qui y menait avant fusion.
+            -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend-maven-plugin.version}</version>
+                <configuration>
+                    <installDirectory>${project.basedir}/target</installDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-for-openapi-bundle</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <configuration>
+                            <nodeVersion>${node.version}</nodeVersion>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-install-openapi-bundle-tool</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>ci</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>bundle-openapi-spec</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>run openapi:bundle</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- OpenAPI Generator Maven Plugin -->
             <plugin>
                 <groupId>org.openapitools</groupId>
@@ -261,7 +321,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.basedir}/../../openapi.yaml</inputSpec>
+                            <inputSpec>${project.basedir}/target/generated-openapi/openapi.yaml</inputSpec>
                             <generatorName>spring</generatorName>
                             <apiPackage>com.moe.myfamilybudget.api.controller</apiPackage>
                             <modelPackage>com.moe.myfamilybudget.api.model</modelPackage>

@@ -16,6 +16,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 
 # Copie du reste du projet
 COPY openapi.yaml openapi.yaml
+COPY openapi openapi
 COPY view view
 COPY back/server back/server
 
