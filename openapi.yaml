@@ -59,32 +59,7 @@ paths:
   # IMPOTS
   # ---------------------------------------------------------------------------
   /impots:
-    get:
-      summary: Recupere le simulateur d'impots sur le revenu
-      operationId: getImpots
-      tags:
-        - Impots
-      responses:
-        '200':
-          description: Donnees du simulateur d'impots
-          content:
-            application/json:
-              schema:
-                type: object
-    put:
-      summary: Sauvegarde la configuration d'impots
-      operationId: saveImpotsConfig
-      tags:
-        - Impots
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Enregistre
+    $ref: './openapi/domains/fiscalite.yaml#/paths/~1impots'
 
   # ---------------------------------------------------------------------------
   # PARAMETRES & APPLICATION

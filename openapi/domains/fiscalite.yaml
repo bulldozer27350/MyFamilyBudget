@@ -1,0 +1,31 @@
+# Domaine Fiscalite (RF-C00, voir doc/architecture/04-domaine-fiscalite.md).
+# Inclus depuis openapi.yaml via $ref par chemin (un fichier par domaine,
+# voir doc/architecture/01-sequencement.md, etape 13).
+paths:
+  /impots:
+    get:
+      summary: Recupere le simulateur d'impots sur le revenu
+      operationId: getImpots
+      tags:
+        - Impots
+      responses:
+        '200':
+          description: Donnees du simulateur d'impots
+          content:
+            application/json:
+              schema:
+                type: object
+    put:
+      summary: Sauvegarde la configuration d'impots
+      operationId: saveImpotsConfig
+      tags:
+        - Impots
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Enregistre
