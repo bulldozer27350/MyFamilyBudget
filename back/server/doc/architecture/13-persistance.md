@@ -1,94 +1,295 @@
-# 13 — Persistance : deux paliers de risque distincts
+# 13 — Séparation de la persistance par domaine
 
 Statut : 🟡 à valider
 
+## Pourquoi ce fichier existe
+
+La séparation Maven n'a de valeur que si les frontières logiques préparées dans le code correspondent à des
+responsabilités techniques réellement séparables. La persistance est aujourd'hui le principal endroit où
+`BudgetDataModel`, `BudgetDataEntity`, `PersistenceManager` et les repositories JPA recréent une dépendance
+transverse.
+
+Ce document décrit la cible et les contraintes du chantier. L'ordonnancement détaillé, sous forme de petits
+patchs mergeables et parallélisables, est dans [`18-backlog-persistance-patchs.md`](18-backlog-persistance-patchs.md).
+
 ## Constat sur l'existant
 
-Contrairement à une hypothèse de travail antérieure, la persistance actuelle n'est pas un simple
-blob JSON unique. Seul `bankImport` est stocké en JSON texte (`BankImportEntity.jsonData`, un
-choix technique documenté et volontaire pour éviter le mécanisme PostgreSQL « Large Object »).
-Tout le reste (27 entités : `SettingsEntity`, `IncomeEntity`, `PlacementEntity`,
-`RetirementEntity`, etc.) est un modèle JPA déjà normalisé, mais avec `BudgetDataEntity` comme
-hub central relié par `@OneToMany`/`@OneToOne` à quasiment tout. C'est un vrai couplage physique à
-défaire, pas une reformulation théorique — mais c'est aussi la partie la plus risquée et la moins
-vérifiable du chantier (aucune exécution réelle possible dans l'environnement de génération de
-patch, seule une relecture manuelle ; une erreur de cascade/`orphanRemoval` ne casse pas la
-compilation, elle se manifeste à l'exécution).
+La base n'est pas un simple blob JSON. Le modèle est déjà largement normalisé en JPA : seules les données de
+`BankImportEntity` sont stockées sous forme de JSON texte. En revanche, `BudgetDataEntity` reste le **hub JPA** :
+une vingtaine de relations `@OneToOne` / `@OneToMany` relient ce root à la plupart des entités métier.
 
-Le document source classait la quasi-totalité des points de persistance comme « obligatoire »
-avant les modules Maven, sans distinguer leur coût ni leur urgence réelle par rapport à l'objectif
-initial (tests de composants + travail parallèle sans conflit). Ce fichier introduit cette
-distinction.
-
-## Palier 1 — obligatoire, faible risque : ports par domaine
-
-Objectif : qu'aucun moteur métier ne dépende de `PersistenceManager`, sans toucher au schéma ni
-aux entités JPA.
+La chaîne actuelle est encore proche de :
 
 ```text
-Controller
-   ↓
+REST / application
+      ↓
+PersistenceManager
+      ↓
+BudgetDataModel
+      ↓
+BudgetPersistenceGateway
+      ↓
+BudgetDataEntity + repositories
+```
+
+Des ports et services de commande existent déjà, mais plusieurs sont encore des façades de transition vers
+`PersistenceManager`. Cette transition est utile : elle permet d'isoler les appelants avant de modifier le
+schéma JPA.
+
+## Finalité
+
+À terme, la persistance doit permettre :
+
+- à un domaine de lire ses propres données via un port explicite ;
+- à un domaine de modifier ses propres données via des commandes orientées métier ;
+- à l'implémentation JPA de changer sans exposer `BudgetDataEntity` aux calculs ;
+- de retirer progressivement `BudgetDataEntity` comme hub relationnel ;
+- de conserver les opérations globales (import/export/reset) derrière une façade application/transverse ;
+- de rendre possible, plus tard, une extraction physique d'un domaine sans devoir réécrire tous les appels
+  métier.
+
+## Cible d'architecture
+
+```text
+                         Application / Use Cases
+                                  │
+                  ┌───────────────┴───────────────┐
+                  ↓                               ↓
+            Ports de lecture                 Commands
+                  │                               │
+                  └──────────────┬────────────────┘
+                                 ↓
+                     Persistence adapters
+                                 ↓
+                    Repositories / JPA entities
+
+  Domaine A    Domaine B    Domaine C    Banque    ...
+     │            │            │           │
+     └────────────┴────────────┴───────────┘
+                      même PostgreSQL
+                  mais ownership explicite
+```
+
+Le principe fondamental est **séparation logique avant séparation physique**.
+
+## Objectifs
+
+### O1 — Supprimer la dépendance métier → `PersistenceManager`
+
+Aucun moteur de calcul ne doit connaître `PersistenceManager`. Un service d'application peut encore l'utiliser
+pendant la transition lorsqu'il compose plusieurs ports ou exécute une opération globale.
+
+### O2 — Donner un propriétaire à chaque donnée persistée
+
+Exemples de propriétaire :
+
+| Données | Propriétaire métier cible |
+|---|---|
+| revenus / charges / lignes de trésorerie | Trésorerie |
+| placements / immobilier / catégories d'actifs | Patrimoine |
+| paramètres et projections retraite | Retraite |
+| enfants fiscaux / tranches / overrides | Fiscalité |
+| import bancaire / transactions / pointage | Banque |
+| prêts | Crédit |
+| objectifs | Objectifs |
+| notifications / abonnement push | Notifications / infrastructure applicative |
+
+`Settings` reste une façade REST/application : ses champs sont stockés chez leur propriétaire métier, il n'y a
+pas vocation à créer un nouveau « domaine Settings » monolithique.
+
+### O3 — Faire de `BudgetDataModel` un snapshot, pas un modèle d'accès aux données
+
+Le type peut survivre pour :
+
+- export JSON ;
+- import JSON ;
+- backup/restore ;
+- migrations de données ;
+- tests de caractérisation globaux.
+
+Il ne doit plus être nécessaire pour lire une seule donnée de domaine.
+
+### O4 — Retirer `BudgetDataEntity` du rôle de racine relationnelle universelle
+
+Une entité métier doit pouvoir être persistée et chargée sans navigation ORM vers toutes les autres familles.
+Les relations inter-domaines doivent progressivement être représentées par identifiants, projections ou ports,
+pas par `@ManyToOne` / `@OneToMany` traversant les frontières.
+
+### O5 — Préserver l'atomicité quand elle est métier
+
+Une opération multi-domaines telle que la mise à jour de Settings peut rester transactionnelle puisqu'on est dans
+une même application et une même base. Le découpage de code ne justifie pas, à lui seul, un découpage des
+transactions.
+
+## Deux paliers volontairement séparés
+
+### Palier 1 — frontières de persistance
+
+C'est le palier prioritaire avant Maven.
+
+```text
 Application Service
-   ↓
-Read / Write ports (par domaine)
-   ↓
-Persistence adapters (peuvent, pour l'instant, continuer à s'appuyer sur PersistenceManager)
+    ↓
+Domain Reader / Command
+    ↓
+Persistence Adapter
+    ↓
+Persistence implementation actuelle
 ```
 
-Concrètement, remplacer :
+L'adapter peut encore déléguer à `PersistenceManager` ou reconstruire temporairement un `BudgetDataModel` en interne.
+Le couplage résiduel est alors confiné dans l'adapter au lieu de contaminer tout le code.
 
-```java
-persistenceManager.getBudgetData()
-```
+### Palier 2 — séparation JPA
 
-par une composition explicite de ports par domaine :
+C'est le chantier de risque élevé.
 
-```text
-budgetReader.getBudgetLines()
-patrimoineReader.getPlacements()
-retirementReader.getRetirement()
-taxReader.getTaxRules()
-bankReader.getBankState()
-loanReader.getLoans()
-goalReader.getGoals()
-settingsReader.getXxxSettings()
-```
+Pour chaque domaine :
 
-**Point important du document source à conserver tel quel** : il n'est pas obligatoire que chacune
-de ces interfaces existe déjà sous sa forme finale — leur implémentation peut, à ce stade,
-continuer à déléguer à `PersistenceManager`/`BudgetDataModel` en interne. Ce qui compte est que
-les *responsabilités* soient déjà séparables et que le moteur métier ne voie plus que le port, pas
-l'implémentation. C'est ce palier, à lui seul, qui suffit à satisfaire l'objectif de testabilité
-et de travail parallèle — il peut donc démarrer dès que 2 ou 3 domaines métier sont stabilisés
-(voir [01-sequencement.md](01-sequencement.md)), sans attendre la fin de toutes les migrations
-métier.
+1. définir les entités qui lui appartiennent ;
+2. créer les repositories correspondants ;
+3. migrer le mapper/converter ;
+4. supprimer ses relations ORM vers `BudgetDataEntity` lorsque leur rôle est devenu inutile ;
+5. valider en PostgreSQL ;
+6. seulement ensuite supprimer l'ancien chemin de persistance.
 
-De même pour l'écriture : remplacer les mutations génériques de `PersistenceManager`
-(`updateTresorerieRow`, `savePatrimoineRow`, `updateRetirement`, ...) par des commandes groupées
-par propriétaire (`PatrimoineCommandService`, `RetirementCommandService`, `TaxCommandService`,
-...). Raison de le faire avant les modules Maven : si les modules sont créés avant cette
-clarification, `PersistenceManager` redeviendra rapidement le nouveau point de dépendance commun
-et annulera une grande partie du bénéfice des modules.
+Il ne faut **jamais** convertir les ~27 entités en une seule opération monolithique : chaque domaine doit avoir un
+patch court, une validation et un rollback clair.
 
-## Palier 2 — optionnel à ce stade, risque plus élevé : entités JPA séparées par domaine
+## Ordre de migration recommandé
 
-Objectif final (pas un préalable bloquant) : chaque domaine possède ses propres entités et
-repositories JPA, sans relation `@ManyToOne`/`@OneToMany` inter-domaines (aujourd'hui, toutes les
-entités pointent vers `BudgetDataEntity`).
+L'ordre n'est pas une hiérarchie de valeur métier. Il est choisi pour réduire les conflits et les risques.
 
-- à traiter domaine par domaine, jamais en un seul chantier ;
-- chaque domaine migré doit être testé en conditions réelles (base Postgres de production, pas
-  seulement relecture manuelle) avant de passer au domaine suivant ;
-- ne doit être entamé qu'une fois plusieurs domaines métier (palier ci-dessus + Inputs/Outputs)
-  sont stables depuis un certain temps ;
-- la séparation physique en plusieurs bases de données reste, elle, hors sujet à ce stade
-  (décision d'infrastructure ultérieure, non nécessaire pour ce chantier — voir
-  [14-checklist-maven.md](14-checklist-maven.md)).
+### P0 — Stabilisation des frontières
 
-## Ce qui ne doit pas transiter par la persistance
+- lecteurs par domaine ;
+- commandes par domaine ;
+- décision sur le rôle résiduel de `PersistenceManager` ;
+- tests de round-trip et de redémarrage.
 
-Comme rappelé dans [00-principes.md](00-principes.md), les moteurs métier ne doivent connaître ni
-`BudgetDataModel`, ni `PersistenceManager`, ni une entité JPA, ni un DTO OpenAPI, ni une structure
-de requête HTTP générique. C'est la seule règle vraiment non négociable de ce fichier ; le rythme
-auquel les entités JPA elles-mêmes sont réorganisées est, lui, négociable et doit rester
-proportionné au risque.
+Cette phase peut démarrer dès que les contrats métier correspondants sont suffisamment stables.
+
+### P1 — domaines à faible dépendance transverse
+
+- Retraite ;
+- Fiscalité ;
+- Objectifs ;
+- Banque.
+
+Ces domaines permettent d'exercer la méthode sur des sous-graphes de données relativement identifiables.
+
+### P2 — Patrimoine
+
+Dépendances vers placements, catégories d'actifs, immobilier et historique de placement. Le chantier doit rester
+strictement propriétaire de ces données et ne pas réintroduire la trésorerie via une relation ORM.
+
+### P3 — Trésorerie
+
+Elle possède beaucoup de données de base et reste une grande composante d'assemblage. Sa persistance doit être
+séparée de ses projections calculées.
+
+### P4 — Crédit / Prêts
+
+À migrer lorsque les contrats de crédit sont déjà suffisamment autonomes.
+
+### P5 — Suppression du hub
+
+Une fois les domaines migrés, éliminer progressivement :
+
+- la navigation globale de `BudgetDataEntity` ;
+- les repositories qui ne servent plus qu'à reconstruire le snapshot global ;
+- les conversions globales de `EntityModelConverter` ;
+- la responsabilité mutationnelle de `PersistenceManager`.
+
+## Ce qui reste global
+
+Certaines opérations ne sont pas raisonnablement attachables à un domaine unique :
+
+### Import/export/backup/reset global
+
+`/budget`, `/budget/import` et `/budget/reset` manipulent l'ensemble du budget. Ils peuvent conserver une façade
+transverse qui coordonne plusieurs ports de persistance.
+
+### Vue `/settings`
+
+La ressource REST reste composite. Son application service distribue les champs vers les propriétaires : Retraite,
+Fiscalité, Trésorerie, Objectifs, Simulation et EconomicAssumptions, selon la décision décrite dans
+`12-settings.md`.
+
+### Snapshot `BudgetDataModel`
+
+Il reste utile pour les formats d'échange globaux. Cela ne doit pas être confondu avec un accès transactionnel
+quotidien aux données métier.
+
+## Contraintes
+
+### C1 — Une seule base PostgreSQL pendant ce chantier
+
+Le but est de séparer les responsabilités, pas de distribuer le système. Une base physique par domaine serait une
+décision d'infrastructure ultérieure.
+
+### C2 — Pas de référence JPA inter-domaines
+
+Une relation ORM pratique qui franchit une frontière est considérée comme une dépendance de conception, même si la
+base reste unique.
+
+### C3 — Tests PostgreSQL obligatoires pour les migrations ORM significatives
+
+H2 en `create-drop` reste précieux pour la boucle rapide, mais ne valide pas suffisamment les comportements de
+transactions/dialecte/LOB observés en production.
+
+### C4 — Le cache mémoire n'est pas la source de vérité
+
+`BudgetCacheStore` doit conserver le contrat déjà recherché : la persistance réussit avant que le nouvel état ne
+soit publié en mémoire ; en cas d'échec DB, l'ancien état reste observable.
+
+### C5 — Une modification de schéma doit rester réversible
+
+Chaque patch JPA doit pouvoir être isolé et identifié. Les suppressions d'anciennes relations viennent après une
+preuve de non-régression, pas avant.
+
+## Risques et limites
+
+### R1 — Les annotations JPA ne montrent pas toute la sémantique
+
+Cascade, `orphanRemoval`, ordre de flush et contraintes SQL peuvent provoquer des erreurs uniquement à l'exécution.
+Une lecture du code n'est donc pas une validation suffisante.
+
+### R2 — `EntityModelConverter` est encore global
+
+La séparation doit progressivement créer des convertisseurs par domaine. Le laisser global trop longtemps recrée
+une dépendance cachée entre modules Maven.
+
+### R3 — Les imports/exports maintiennent une forme globale
+
+Ce n'est pas un échec de l'architecture : c'est une frontière applicative assumée. Le point important est que cette
+forme globale ne soit plus utilisée par les calculateurs ni les repositories métier.
+
+### R4 — Pas d'extraction microservice pendant cette phase
+
+Une bonne séparation doit rendre une extraction future possible, pas l'imposer maintenant. Tant que toutes les
+opérations sont dans la même application et la même base, une transaction locale multi-domaines reste souvent plus
+simple et plus fiable.
+
+## Critères de sortie avant Maven
+
+- chaque domaine migré dispose d'un owner explicite ;
+- les services applicatifs lisent via des ports, et non directement via `PersistenceManager` ;
+- les écritures métier passent par des commandes explicites ;
+- `BudgetDataModel` n'est plus nécessaire pour une opération locale à un domaine ;
+- `BudgetDataEntity` n'est plus le contrat technique d'un domaine ;
+- les migrations JPA déjà réalisées ont des tests de round-trip et de redémarrage ;
+- le comportement PostgreSQL est vérifié ;
+- `PersistenceManager` est réduit à une façade transverse ou de transition clairement bornée ;
+- les scénarios Playwright critiques restent verts avec fallback désactivé ;
+- les règles ArchUnit interdisent le retour du couplage.
+
+## Relations avec les autres documents
+
+- Principes et graphe de dépendances : [`00-principes.md`](00-principes.md)
+- Séquencement métier : [`01-sequencement.md`](01-sequencement.md)
+- Settings : [`12-settings.md`](12-settings.md)
+- Checklist avant Maven : [`14-checklist-maven.md`](14-checklist-maven.md)
+- Backlog précédent de découplage : [`15-backlog-patchs.md`](15-backlog-patchs.md)
+- Backlog spécifique persistance : [`18-backlog-persistance-patchs.md`](18-backlog-persistance-patchs.md)
+- Stratégie de validation : [`16-tests.md`](16-tests.md)

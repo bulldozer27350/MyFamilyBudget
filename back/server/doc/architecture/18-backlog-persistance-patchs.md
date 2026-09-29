@@ -1,0 +1,338 @@
+# 18 — Backlog de patchs pour la séparation de la persistance
+
+Statut : 🟡 à valider
+
+## Lecture obligatoire avant tout patch
+
+0. Le palier historique `RF-B00` / `RF-B01` de `15-backlog-patchs.md` doit être mergé et vert ;
+1. [`00-principes.md`](00-principes.md) — frontières et dépendances interdites ;
+2. [`01-sequencement.md`](01-sequencement.md) — ordre global ;
+3. [`13-persistance.md`](13-persistance.md) — cible, contraintes et paliers ;
+4. [`16-tests.md`](16-tests.md) — garanties attendues avant Maven ;
+5. le document du domaine concerné (`02` à `12`).
+
+## Règles de livraison
+
+Pour maximiser la parallélisation, les agents travaillent de préférence sur `feature/DB-xxx` et ne prennent pas de
+dépendance implicite vers un patch non listé dans la colonne « Prérequis ».
+
+- Un patch = un item de cette liste.
+- Chaque patch doit compiler et laisser les tests obligatoires verts.
+- Aucun patch JPA n'est autorisé à supprimer une relation du hub tant que le remplacement n'est pas déjà branché et
+  testé.
+- Les patchs « additifs » des domaines distincts peuvent avancer en parallèle.
+- Les patchs qui modifient `BudgetDataEntity` doivent être courts et traités comme une file de migration explicite,
+  car ce fichier est une zone de conflit commune.
+- Un patch de persistance ne doit pas embarquer un refactoring métier non nécessaire à son propre objectif.
+- Les changements JPA significatifs doivent être testés contre PostgreSQL.
+- Ne pas transformer `BankImportEntity.jsonData` en modèle relationnel par principe : le format JSON peut rester une
+  décision interne à Banque tant qu'il ne bloque pas la frontière.
+
+## État de départ assumé
+
+Le palier de ports de lecture du backlog historique est considéré comme réalisé :
+
+- `BudgetReader`, `PatrimoineReader`, `RetirementReader`, `TaxReader`, `BankReader`, `LoanReader`, `GoalReader`,
+  `SettingsReader` existent ;
+- les adapters de persistance existent ;
+- le branchement des lecteurs des services d'application est réalisé ;
+- `PersistenceManager` reste néanmoins une implémentation de transition ;
+- les command services existent, mais plusieurs ne sont encore que des wrappers autour de `PersistenceManager`.
+
+Les patchs ci-dessous sont donc des **travaux de consolidation et de retrait du couplage**, pas une création
+from-scratch de cette infrastructure.
+
+## Vue d'ensemble
+
+| ID | Titre | Prérequis | Parallélisable avec |
+|---|---|---|---|
+| DB-000 | Inventaire des owners et des zones de conflit | RF-B01 acquis | DB-010 |
+| DB-010 | Renforcer les tests round-trip des adapters | DB-000 | DB-020, DB-030, DB-040 |
+| DB-011 | Test PostgreSQL + redémarrage Spring | DB-010 | DB-020, DB-030, DB-040 |
+| DB-020 | Finaliser les commands Retraite | DB-000 | DB-021, DB-030, DB-040 |
+| DB-021 | Finaliser les commands Fiscalité | DB-000 | DB-020, DB-030, DB-040 |
+| DB-030 | Finaliser les commands Patrimoine | DB-000 | DB-020, DB-021, DB-031 |
+| DB-031 | Finaliser les commands Trésorerie | DB-000 | DB-020, DB-021, DB-030 |
+| DB-040 | Finaliser les commands Banque | DB-000 | DB-020, DB-021, DB-030, DB-041 |
+| DB-041 | Finaliser les commands Crédit/Objectifs | DB-000 | DB-020, DB-021, DB-030, DB-040 |
+| DB-050 | Retirer les dernières mutations génériques | DB-020, DB-021, DB-030, DB-031, DB-040, DB-041 | DB-060 |
+| DB-060 | Réduire `PersistenceManager` | DB-050 | DB-061 |
+| DB-061 | Finaliser l'orchestrateur Settings sans owner global | DB-060 | JPA additif |
+| DB-1000 | JPA Retraite — entités/repositories additifs | DB-060 | DB-1010, DB-1020, DB-1030, DB-1040 |
+| DB-1001 | JPA Retraite — basculer l'adapter | DB-1000 | DB-1011, DB-1021, DB-1031, DB-1041 |
+| DB-1010 | JPA Fiscalité — entités/repositories additifs | DB-060 | DB-1000, DB-1020, DB-1030, DB-1040 |
+| DB-1011 | JPA Fiscalité — basculer l'adapter | DB-1010 | DB-1001, DB-1021, DB-1031, DB-1041 |
+| DB-1020 | JPA Objectifs — entités/repositories additifs | DB-060 | DB-1000, DB-1010, DB-1030, DB-1040 |
+| DB-1021 | JPA Objectifs — basculer l'adapter | DB-1020 | DB-1001, DB-1011, DB-1031, DB-1041 |
+| DB-1030 | JPA Banque — entités/repositories additifs | DB-060 | DB-1000, DB-1010, DB-1020, DB-1040 |
+| DB-1031 | JPA Banque — basculer l'adapter | DB-1030 | DB-1001, DB-1011, DB-1021, DB-1041 |
+| DB-1040 | JPA Crédit — entités/repositories additifs | DB-060 | DB-1000, DB-1010, DB-1020, DB-1030 |
+| DB-1041 | JPA Crédit — basculer l'adapter | DB-1040 | DB-1001, DB-1011, DB-1021, DB-1031 |
+| DB-1050 | JPA Patrimoine — entités/repositories additifs | DB-060 | DB-1000, DB-1010, DB-1020, DB-1030, DB-1040 |
+| DB-1051 | JPA Patrimoine — basculer l'adapter | DB-1050 | DB-1001, DB-1011, DB-1021, DB-1031, DB-1041 |
+| DB-1060 | JPA Trésorerie — entités/repositories additifs | DB-060 | DB-1050, DB-1000, DB-1010, DB-1030, DB-1040 |
+| DB-1061 | JPA Trésorerie — basculer l'adapter | DB-1060 | DB-1051 |
+| DB-1070 | Vérifier les readers après bascule JPA | DB-1001, DB-1011, DB-1021, DB-1031, DB-1041 | DB-1051 |
+| DB-1080 | Vérifier les parcours E2E après bascule JPA | DB-1051, DB-1061, VT-220, VT-320 | DB-1070 |
+| DB-1100 | Retirer la relation hub Retraite de `BudgetDataEntity` | DB-1070 | aucun autre hub-cleanup |
+| DB-1110 | Retirer la relation hub Fiscalité | DB-1100 | — |
+| DB-1120 | Retirer la relation hub Objectifs | DB-1110 | — |
+| DB-1130 | Retirer la relation hub Banque | DB-1120 | — |
+| DB-1140 | Retirer la relation hub Crédit | DB-1130 | — |
+| DB-1150 | Retirer la relation hub Patrimoine | DB-1140 | — |
+| DB-1160 | Retirer la relation hub Trésorerie | DB-1150 | — |
+| DB-1170 | Nettoyer `EntityModelConverter` en mappers par domaine | DB-1160 | DB-1180 |
+| DB-1180 | Réduire `BudgetDataModel` au snapshot global | DB-1170, VT-500 | DB-1190 |
+| DB-1190 | Nettoyage final du bootstrap/persistence legacy | DB-1180 | DB-1200 |
+| DB-1200 | Gate persistance avant Maven | DB-011, DB-061, DB-1080, DB-1190, VT-320, VT-330, VT-340, VT-350 | aucun |
+
+---
+
+## DB-000 — Inventaire des owners et des zones de conflit
+
+- **Prérequis** : RF-B01 acquis.
+- **Objectif** : produire une carte exploitable avant les premiers patchs JPA.
+- **Travaux** : pour chaque modèle, indiquer owner, entité actuelle, repository, adapter, callers, relations vers
+  `BudgetDataEntity`, tests existants et test E2E de preuve.
+- **Livrable** : aucune modification de production ; tableau dans ce document ou note liée.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-010 — Renforcer les tests round-trip des adapters
+
+- **Prérequis** : DB-000.
+- **Objectif** : remplacer les vérifications « non-null » par des preuves write/read.
+- **Travaux** : tester les objets critiques, le reset et les cas optionnels ; conserver H2 pour la boucle rapide.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-011 — Test PostgreSQL + redémarrage Spring
+
+- **Prérequis** : DB-010.
+- **Objectif** : prouver que les mutations critiques survivent à un nouveau contexte Spring.
+- **Travaux** : mutation → GET → redémarrage → GET ; au moins une exécution PostgreSQL.
+- **Relation** : doit alimenter `VT-320` plutôt que dupliquer une suite indépendante.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-020 à DB-041 — Commands orientées owner
+
+Pour chaque domaine :
+
+- remplacer les derniers appels métier à `PersistenceManager` par le command service propriétaire ;
+- conserver les contrats REST ;
+- tester validation, succès et propagation de l'erreur ;
+- supprimer les méthodes de `PersistenceManager` uniquement quand plus aucun appelant ne les utilise.
+
+Les domaines sont volontairement séparés afin que plusieurs agents puissent réaliser DB-020, DB-021, DB-030,
+DB-031, DB-040 et DB-041 en parallèle.
+
+## DB-050 — Retirer les dernières mutations génériques
+
+- **Prérequis** : DB-020, DB-021, DB-030, DB-031, DB-040, DB-041.
+- **Objectif** : faire disparaître les contrats `listKey` / `field` / `value` des chemins métier ordinaires.
+- **Validation** : suite backend + Playwright des écrans concernés.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-060 — Réduire `PersistenceManager`
+
+- **Prérequis** : DB-050.
+- **Objectif** : conserver seulement les responsabilités réellement transverses.
+- **Travaux** : import/export/reset global, bootstrap ou orchestration qui ne possède pas de owner unique ; retirer
+  les opérations de domaine déjà transférées.
+- **Critère** : aucun calculateur métier n'a besoin de cette classe.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-061 — Finaliser Settings sans owner global
+
+- **Prérequis** : DB-060.
+- **Objectif** : finir la distribution des champs Settings vers les owners et conserver la façade REST composite.
+- **Travaux** : Retirement/Fiscality/Treasury/Goals/Simulation/EconomicAssumptions ; transaction locale unique si
+  nécessaire.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+---
+
+## Méthode commune pour DB-1000…DB-1061
+
+Chaque domaine suit deux patchs avant toute suppression de relation dans le hub.
+
+### Phase A — additive
+
+Créer les entités/repositories propres au domaine **sans supprimer ni modifier le chemin legacy**. Cette contrainte
+est volontaire : elle rend les branches de domaines distincts presque totalement indépendantes.
+
+### Phase B — bascule
+
+Faire utiliser le nouvel adapter JPA au use case concerné, ajouter les tests round-trip + restart et conserver
+encore l'ancien mapping pour permettre un rollback simple.
+
+### Phase C — suppression du hub
+
+Elle est traitée plus tard, une par une (`DB-1100` à `DB-1160`). Ainsi les patchs coûteux et conflictuels ne bloquent
+pas les agents qui travaillent sur les autres domaines.
+
+## DB-1000 — JPA Retraite — entités/repositories additifs
+
+- **Prérequis** : DB-060.
+- **Périmètre** : entités et repositories Retraite uniquement.
+- **Objectif** : créer la cible JPA autonome sans changer encore le comportement.
+- **Validation** : compilation + tests mapping/round-trip.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1001 — JPA Retraite — basculer l'adapter
+
+- **Prérequis** : DB-1000.
+- **Objectif** : faire passer le reader/command Retraite sur les nouveaux repositories.
+- **Validation** : `VT-320` adapté au domaine + tests E2E Retraite si disponibles.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1010 / DB-1011 — JPA Fiscalité
+
+- **DB-1010** : entités/repositories additifs, sans toucher au hub.
+- **DB-1011** : bascule de l'adapter, tests round-trip + restart.
+- **Parallèle** : toute la phase additive/bascule peut être développée en parallèle de Retraite et Objectifs.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1020 / DB-1021 — JPA Objectifs
+
+- **DB-1020** : modèle JPA additif.
+- **DB-1021** : bascule adapter + tests.
+- **Parallèle** : Retraite/Fiscalité/Banque/Crédit.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1030 / DB-1031 — JPA Banque
+
+- **DB-1030** : entités/repositories Banque additifs ; `BankImportEntity.jsonData` peut rester interne.
+- **DB-1031** : bascule des adapters Banque concernés, tests transaction/import/pointage.
+- **Parallèle** : Retraite/Fiscalité/Objectifs/Crédit.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1040 / DB-1041 — JPA Crédit
+
+- **DB-1040** : entités/repositories des prêts additifs.
+- **DB-1041** : bascule adapter + tests.
+- **Parallèle** : tous les domaines hors modifications du hub.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1050 / DB-1051 — JPA Patrimoine
+
+- **DB-1050** : placements, immobilier, catégories et historiques nécessaires, sans suppression du hub.
+- **DB-1051** : bascule des adapters Patrimoine.
+- **Validation** : `VT-220` obligatoire après bascule : Patrimoine → Trésorerie → Overview.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1060 / DB-1061 — JPA Trésorerie
+
+- **DB-1060** : entités/repositories Trésorerie additifs.
+- **DB-1061** : bascule adapter et tests.
+- **Validation** : `VT-110` obligatoire pour protéger le graphe Retraite → Fiscalité → Trésorerie → Overview.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1070 — Vérifier les readers après bascule JPA
+
+- **Prérequis** : DB-1001, DB-1011, DB-1021, DB-1031, DB-1041.
+- **Objectif** : vérifier qu'aucun service applicatif n'est revenu à `getBudgetData()` pour compenser une migration.
+- **Travaux** : recherche statique + ArchUnit + tests d'intégration.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1080 — Vérifier les parcours E2E après bascule JPA
+
+- **Prérequis** : DB-1051, DB-1061, `VT-220`, `VT-320`.
+- **Objectif** : prouver que le changement de persistance reste invisible fonctionnellement.
+- **Travaux** : F1/F2/F3/F4 de `16-tests.md`, fallback désactivé.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+---
+
+## DB-1100 à DB-1160 — Suppression séquentielle des relations du hub
+
+Ces patchs sont volontairement courts et séquentiels. Ils ont plus de conflit potentiel car ils modifient le même
+`BudgetDataEntity`.
+
+Pour chaque patch :
+
+- supprimer uniquement les relations du domaine concerné devenues inutiles ;
+- supprimer les cascades/orphan removal associés seulement après vérification ;
+- compiler ;
+- exécuter les tests PostgreSQL du domaine ;
+- rechercher les accès ORM au champ supprimé.
+
+L'ordre exact est : Retraite → Fiscalité → Objectifs → Banque → Crédit → Patrimoine → Trésorerie. Il ne constitue
+pas une hiérarchie métier ; il minimise les risques en commençant par les domaines déjà basculés et les sous-graphes
+les plus isolés.
+
+## DB-1170 — Nettoyer `EntityModelConverter` en mappers par domaine
+
+- **Prérequis** : DB-1160.
+- **Objectif** : retirer la dépendance technique globale après disparition du hub.
+- **Travaux** : un mapper/converter par owner ; supprimer les méthodes mortes ; laisser les conversions du snapshot
+  global dans un composant explicitement transverse.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1180 — Réduire `BudgetDataModel` au snapshot global
+
+- **Prérequis** : DB-1170, `VT-500`.
+- **Objectif** : empêcher l'utilisation de `BudgetDataModel` comme façade d'accès quotidien à la persistance.
+- **Travaux** : recherche des `new BudgetDataModel(...)`, `getBudgetData()`, `setBudgetData()` ; conserver seulement
+  les chemins import/export/backup/migration/tests globaux.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1190 — Nettoyage final du bootstrap/persistence legacy
+
+- **Prérequis** : DB-1180.
+- **Objectif** : supprimer le code de transition qui n'a plus d'appelant.
+- **Travaux** : anciens repositories, gateways legacy, méthodes inutilisées, wiring manuel restant.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## DB-1200 — Gate persistance avant Maven
+
+- **Prérequis** : DB-011, DB-061, DB-1080, DB-1190, `VT-320`, `VT-330`, `VT-340`, `VT-350`.
+- **Objectif** : autoriser la création des modules uniquement lorsque les frontières sont réellement exploitables.
+- **Contrôles** : build, PostgreSQL, restart, E2E fallback désactivé, ArchUnit, recherche des références résiduelles,
+  checklist `14-checklist-maven.md`.
+- **Livrable** : validation humaine + passage vers le futur backlog Maven.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+## Graphe de parallélisation
+
+```text
+                              DB-000
+                                 │
+                    ┌────────────┼────────────┐
+                    ↓            ↓            ↓
+                 DB-010      DB-020…041     DB-061
+                    │            │            │
+                    ↓            ↓            ↓
+                 DB-011       DB-050 ─────→ DB-060
+                                               │
+          ┌───────────────┬───────────────┬────┴──────────────┐
+          ↓               ↓               ↓                   ↓
+      Retraite        Fiscalité        Objectifs           Banque
+      1000/1001       1010/1011       1020/1021            1030/1031
+          │               │               │                   │
+          └───────────────┴───────────────┴───────────────────┤
+                                                              ↓
+                         Crédit 1040/1041 ──┐
+                                             ├──→ DB-1070
+                  Patrimoine 1050/1051 ─────┤
+                  Trésorerie 1060/1061 ──────┘
+                                             │
+                                           DB-1080
+                                             │
+                                   ┌─────────┴─────────┐
+                                   ↓                   ↓
+                                hub cleanups        autres tests
+                              1100→1110→...→1160
+                                   │
+                                  DB-1170
+                                   │
+                                  DB-1180
+                                   │
+                                  DB-1190
+                                   │
+                                  DB-1200
+                                   ↓
+                             modules Maven
+```
+
+Le gain de parallélisation recherché vient principalement de la phase additive et de la bascule par domaine. Les
+modifications du hub sont la seule zone volontairement sérialisée ; elles doivent rester courtes grâce aux deux
+phases précédentes.
