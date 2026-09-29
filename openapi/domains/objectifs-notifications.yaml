@@ -1,0 +1,180 @@
+# Domaine Objectifs / Notifications (RF-C00, voir doc/architecture/09-domaine-objectifs-notifications.md).
+# Inclus depuis openapi.yaml via $ref par chemin (un fichier par domaine,
+# voir doc/architecture/01-sequencement.md, etape 13).
+#
+# Les objectifs n'ont pas de tag OpenAPI propre (voir 09-domaine-objectifs-notifications.md) :
+# ObjectifDto et ObjectifAllocationDto restent dans openapi.yaml, portes par BudgetDataDto
+# (/budget) ; ce fichier ne couvre donc que le tag Notifications. Les six schemas ci-dessous
+# (NotificationParametresValuesDto, NotificationParametresDto, NotificationVerificationResultDto,
+# PushPublicKeyDto, PushSubscriptionKeysDto, PushSubscriptionDto) sont a usage exclusif de ce
+# domaine, sans reference depuis openapi.yaml ni un autre fichier de domaine.
+paths:
+  /notifications/parametres:
+    get:
+      summary: Parametres de notification en vigueur (valeurs et valeurs par defaut)
+      operationId: getNotificationsParametres
+      tags:
+        - Notifications
+      responses:
+        '200':
+          description: Parametres en vigueur et valeurs par defaut
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationParametresDto'
+    put:
+      summary: Enregistre les parametres de notification
+      description: |
+        Seuils exprimes en euros (valeur absolue pour le seuil de debit). Un montant negatif ou
+        invraisemblable renvoie un 400 avec un message explicite. Les heures de la plage
+        silencieuse (quietHoursStart/quietHoursEnd) sont au format HH:mm ; un format invalide
+        renvoie aussi un 400.
+      operationId: updateNotificationsParametres
+      tags:
+        - Notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationParametresValuesDto'
+      responses:
+        '200':
+          description: Parametres enregistres, avec les valeurs par defaut
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationParametresDto'
+
+  /notifications/verifier:
+    post:
+      summary: Declenche immediatement un controle de toutes les regles de notification actives
+      description: |
+        Envoie une veritable notification push pour chaque regle active dont le controle est
+        positif (pas de simulation). Ignore le delai de 24h applique aux declenchements
+        automatiques : une alerte deja envoyee recemment est renvoyee malgre tout.
+      operationId: verifyNotifications
+      tags:
+        - Notifications
+      responses:
+        '200':
+          description: Controle effectue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationVerificationResultDto'
+
+  /notifications/push/cle-publique:
+    get:
+      summary: Cle publique VAPID a utiliser par le navigateur pour s'abonner au push
+      operationId: getPushPublicKey
+      tags:
+        - Notifications
+      responses:
+        '200':
+          description: Cle publique (absente si les cles VAPID ne sont pas configurees cote serveur)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushPublicKeyDto'
+
+  /notifications/push/abonnement:
+    post:
+      summary: Enregistre un abonnement push (navigateur ayant autorise les notifications)
+      operationId: registerPushSubscription
+      tags:
+        - Notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushSubscriptionDto'
+      responses:
+        '204':
+          description: Abonnement enregistre
+    delete:
+      summary: Supprime un abonnement push (desactivation cote navigateur)
+      operationId: unregisterPushSubscription
+      tags:
+        - Notifications
+      parameters:
+        - name: endpoint
+          in: query
+          required: true
+          description: Endpoint de l'abonnement a supprimer
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Abonnement supprime (ou deja absent)
+
+components:
+  schemas:
+    NotificationParametresValuesDto:
+      type: object
+      description: Parametres modifiables de notification (montants en euros)
+      properties:
+        debitThresholdEnabled:
+          type: boolean
+          description: Active la section "debit au-dela d'un seuil"
+        debitThresholdAmount:
+          type: number
+          description: Seuil de debit (valeur absolue, euros)
+        balanceFloorEnabled:
+          type: boolean
+          description: Active la section "solde sous un seuil"
+        balanceFloorAmount:
+          type: number
+          description: Seuil plancher du solde du compte courant (euros)
+        objectifReachableEnabled:
+          type: boolean
+          description: Active la section "objectif atteignable"
+        quietHoursEnabled:
+          type: boolean
+          description: Active la plage horaire silencieuse (aucun envoi automatique pendant cette plage)
+        quietHoursStart:
+          type: string
+          description: Debut de la plage silencieuse, format HH:mm (ex. "22:00")
+        quietHoursEnd:
+          type: string
+          description: Fin de la plage silencieuse, format HH:mm (ex. "07:00"). Peut etre anterieure a quietHoursStart (plage chevauchant minuit)
+
+    NotificationParametresDto:
+      type: object
+      properties:
+        values:
+          $ref: '#/components/schemas/NotificationParametresValuesDto'
+        defaults:
+          $ref: '#/components/schemas/NotificationParametresValuesDto'
+
+    NotificationVerificationResultDto:
+      type: object
+      properties:
+        alertsSent:
+          type: integer
+          description: Nombre de notifications effectivement envoyees lors de ce controle
+
+    PushPublicKeyDto:
+      type: object
+      properties:
+        publicKey:
+          type: string
+          description: Cle publique VAPID (absente si non configuree cote serveur)
+
+    PushSubscriptionKeysDto:
+      type: object
+      properties:
+        p256dh:
+          type: string
+        auth:
+          type: string
+
+    PushSubscriptionDto:
+      type: object
+      description: Abonnement Web Push tel que fourni par le PushManager du navigateur
+      properties:
+        endpoint:
+          type: string
+        keys:
+          $ref: '#/components/schemas/PushSubscriptionKeysDto'
