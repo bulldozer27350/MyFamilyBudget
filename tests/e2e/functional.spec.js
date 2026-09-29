@@ -1,47 +1,22 @@
 'use strict';
 
 const { test, expect } = require('@playwright/test');
-const path = require('path');
 const fs   = require('fs');
 
-const API   = 'http://localhost:8080/api/v1';
-const FRONT = 'http://localhost:3000';
+// Constantes et helpers communs : voir tests/e2e/helpers (VT-000).
+const {
+  API,
+  FRONT,
+  resolveLocalOrReferenceDataset,
+  expectBackendCall,
+  waitForReactMount,
+} = require('./helpers');
 
 // Fichier de donnees de test : priorite a un jeu de donnees personnel local
 // (data/ ou racine, jamais commite, cf. .gitignore) pour des essais manuels
 // avec de vraies donnees ; a defaut (poste vierge, CI GitHub Actions), repli
 // sur le fixture synthetique commite dans tests/e2e/fixtures/.
-const JSON_DATASET = fs.existsSync(path.resolve(__dirname, '..', '..', 'data', 'budget-familial.json'))
-  ? path.resolve(__dirname, '..', '..', 'data', 'budget-familial.json')
-  : fs.existsSync(path.resolve(__dirname, '..', '..', 'budget-familial.json'))
-    ? path.resolve(__dirname, '..', '..', 'budget-familial.json')
-    : path.resolve(__dirname, 'fixtures', 'budget-familial.json');
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Attend une reponse 2xx du backend Spring Boot sur un chemin d API donne.
- * Si le fallback JS prend le relais (aucun appel reseau emis), waitForResponse
- * expire et le test echoue, ce qui est le comportement voulu.
- */
-function expectBackendCall(page, apiPath, method) {
-  return page.waitForResponse(
-    res => {
-      const url         = res.url();
-      const status      = res.status();
-      const matchPath   = url.includes(API + apiPath) || url.includes('/api/v1' + apiPath);
-      const matchMethod = method ? res.request().method() === method : true;
-      return matchPath && matchMethod && status >= 200 && status < 300;
-    },
-    { timeout: 20000 }
-  );
-}
-
-async function waitForReactMount(page) {
-  await page.waitForSelector('#root > *', { timeout: 15000 });
-}
+const JSON_DATASET = resolveLocalOrReferenceDataset();
 
 // ---------------------------------------------------------------------------
 // 1. Vue d ensemble – GET /overview

@@ -58,7 +58,10 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Travaux** : documenter le dataset canonique, centraliser les constantes d'API/frontend Playwright si cela
   réduit les duplications, définir le nettoyage d'état navigateur et le mécanisme de reset/import.
 - **Limite** : ne pas modifier le contrat métier.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `tests/e2e/helpers/` (constantes, `expectBackendCall`/`waitForReactMount`, reset/import,
+  `clearBrowserState`), `tests/e2e/socle.spec.js`, `tests/e2e/README.md` (dataset canonique et mécanisme de
+  reset/import). `functional.spec.js` ne fait plus qu'importer ces helpers.
 
 ## VT-100 — Caractérisation backend des endpoints critiques
 
