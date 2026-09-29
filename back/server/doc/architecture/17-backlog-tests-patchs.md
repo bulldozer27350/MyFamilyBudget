@@ -81,7 +81,12 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
   nettoyer `localStorage` avant les scénarios critiques, exposer un helper Playwright commun qui attend une
   réponse backend pour les lectures/écritures critiques.
 - **Contrainte** : ne pas changer la valeur par défaut production (`false`).
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : override de test dans `view/config.js` (`sessionStorage["mfb.test.disableJsFallback"] = "true"`
+  force `DISABLE_JS_FALLBACK=true` ; valeur par défaut inchangée à `false`), `tests/e2e/helpers/browser.js`
+  (`disableJsFallback`, `expectFreshBrowserState`, `gotoAndExpectBackend`, `actAndExpectBackend`,
+  `readJsFallbackFlag`), constante `NO_FALLBACK_STORAGE_KEY`, `tests/e2e/no-fallback.spec.js`,
+  section dédiée dans `tests/e2e/README.md`.
 
 ## VT-300 — Tests de mapping ciblés
 

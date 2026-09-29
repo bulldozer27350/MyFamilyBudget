@@ -22,3 +22,16 @@ window.API_BASE_URL = window.location.pathname.indexOf("/myfamilybudget") === 0
 // onglets concernes (Vue d'ensemble, Tresorerie, Patrimoine, Parametres) resteront
 // alors bloques sur "Chargement...".
 window.DISABLE_JS_FALLBACK = false;
+
+// Override reserve aux tests (VT-200, cf. back/server/doc/architecture/16-tests.md, O4) :
+// un contexte Playwright pose sessionStorage["mfb.test.disableJsFallback"] = "true" AVANT le
+// chargement des scripts (page.addInitScript) pour forcer DISABLE_JS_FALLBACK a true, sans
+// jamais modifier la valeur ci-dessus. Sans cette cle, le comportement reste celui de la
+// production (false). sessionStorage etant propre a l onglet, rien n est persiste.
+try {
+  if (window.sessionStorage.getItem("mfb.test.disableJsFallback") === "true") {
+    window.DISABLE_JS_FALLBACK = true;
+  }
+} catch (e) {
+  // sessionStorage inaccessible : on conserve la valeur par defaut.
+}

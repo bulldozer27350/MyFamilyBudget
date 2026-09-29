@@ -34,6 +34,10 @@ function resolveLocalOrReferenceDataset() {
   return REFERENCE_DATASET;
 }
 
+// Cle sessionStorage lue par view/config.js pour forcer DISABLE_JS_FALLBACK=true dans un
+// contexte de test (VT-200). La valeur de production reste false.
+const NO_FALLBACK_STORAGE_KEY = 'mfb.test.disableJsFallback';
+
 // Cles localStorage utilisees par le front (view/js/models.js, data-store.js,
 // sync-status.js, app-layout.js, rate-suggestion.js). Ce sont les etats locaux
 // susceptibles de masquer une regression backend : voir clearBrowserState().
@@ -51,5 +55,6 @@ module.exports = {
   ROOT,
   REFERENCE_DATASET,
   BROWSER_STORAGE_KEYS,
+  NO_FALLBACK_STORAGE_KEY,
   resolveLocalOrReferenceDataset,
 };

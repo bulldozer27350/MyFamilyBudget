@@ -6,5 +6,6 @@ module.exports = Object.assign(
   {},
   require('./constants'),
   require('./backend'),
+  require('./browser'),
   require('./state')
 );

@@ -23,6 +23,8 @@ garde son `baseURL`).
 | `helpers/constants.js` | `API`, `FRONT`, `REFERENCE_DATASET`, `BROWSER_STORAGE_KEYS`. |
 | `helpers/backend.js` | `expectBackendCall`, `waitForReactMount`. |
 | `helpers/state.js` | `resetBackendState`, `importDataset`, `resetToReferenceState`, `clearBrowserState`. |
+| `helpers/browser.js` | `disableJsFallback`, `expectFreshBrowserState`, `gotoAndExpectBackend`, `actAndExpectBackend`, `readJsFallbackFlag` (VT-200). |
+| `no-fallback.spec.js` | Vérifie le mode sans fallback JS (VT-200). |
 | `helpers/index.js` | Point d'entrée : `require('./helpers')`. |
 | `fixtures/budget-familial.json` | Dataset canonique de référence. |
 
@@ -82,4 +84,26 @@ sont vides au départ. `clearBrowserState(page)` n'est nécessaire que si la pag
 `sessionStorage.clear()`.
 
 Il ne remplace pas l'override `DISABLE_JS_FALLBACK` installé avant le chargement des scripts :
-ce mécanisme relève de VT-200 (la valeur de production reste `false`).
+ce mécanisme est fourni par VT-200 (voir ci-dessous ; la valeur de production reste `false`).
+
+## Mode sans fallback JS (VT-200)
+
+`view/config.js` lit `sessionStorage["mfb.test.disableJsFallback"]` : si la valeur est `"true"`,
+`window.DISABLE_JS_FALLBACK` passe à `true`. Sans cette clé, la valeur de production (`false`) est
+inchangée. L'override doit être posé **avant** le chargement des scripts, ce que fait `disableJsFallback` :
+
+```js
+const { disableJsFallback, gotoAndExpectBackend, expectFreshBrowserState } = require('./helpers');
+
+test('scénario critique', async ({ page, request }) => {
+  await resetToReferenceState(request);
+  await disableJsFallback(page);            // avant le premier page.goto()
+  const res = await gotoAndExpectBackend(page, '/overview.html', '/overview');
+  expect(res.status()).toBe(200);
+  await expectFreshBrowserState(page);      // localStorage vide : aucun état local historique
+});
+```
+
+- Contexte vierge : Playwright fournit un contexte neuf par test ; `expectFreshBrowserState` le prouve.
+- `actAndExpectBackend(page, apiPath, method, action)` arme l'attente avant l'action (écritures critiques).
+- Un appel backend en échec fait remonter `[DISABLE_JS_FALLBACK]` dans la console au lieu d'un repli local.
