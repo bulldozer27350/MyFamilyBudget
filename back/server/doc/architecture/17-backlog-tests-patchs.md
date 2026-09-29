@@ -71,7 +71,18 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
   Overview et Analyse à partir du dataset de référence.
 - **Livrable** : tests backend stables, exécutables sans navigateur.
 - **Ne pas faire** : refactorer les calculateurs.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `CriticalEndpointsCharacterizationTest` (`@SpringBootTest` + `MockMvc`, sans navigateur, dataset
+  `mock-budget.json` identique à `tests/e2e/fixtures/budget-familial.json`), complémentaire de
+  `BusinessLogicIntegrationTest` : Retraite (contrat JSON complet de la projection, dont la clé historique
+  `tauxAppliqué`), Fiscalité (barème par défaut, parts, impôt et taux PAS 2026-2028, cohérence avec la
+  trésorerie), Trésorerie (horizon 2026-2075, cashflow 2027/2028, invariant du cumul), Patrimoine (PEA
+  2027/2028/2054 et totaux), Overview (cohérence croisée avec Retraite, Trésorerie et Patrimoine), Analyse
+  (état sans import bancaire). Aucune assertion ne dépend de la date du jour (`taxPreview` est contrôlé
+  relativement à l'année courante). Prêts : déjà caractérisés par `testAnalysePrets_*` (dataset sans prêt),
+  non dupliqués. Valeurs attendues capturées à partir des moteurs sur HEAD `5954468`. Exécution Maven à
+  confirmer en local (`mvn test -Dtest=CriticalEndpointsCharacterizationTest`) : non exécutable dans
+  l'environnement de rédaction.
 
 ## VT-200 — Mode Playwright sans fallback + contexte vierge
 
