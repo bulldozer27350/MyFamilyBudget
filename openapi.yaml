@@ -35,189 +35,23 @@ paths:
   # PATRIMOINE
   # ---------------------------------------------------------------------------
   /patrimoine:
-    get:
-      summary: Recupere les donnees de patrimoine (placements, credits, immo)
-      operationId: getPatrimoine
-      tags:
-        - Patrimoine
-      parameters:
-        - name: useConstantEuros
-          in: query
-          required: false
-          schema:
-            type: boolean
-      responses:
-        '200':
-          description: Donnees de patrimoine
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PatrimoineResponseDto'
+    $ref: './openapi/domains/patrimoine.yaml#/paths/~1patrimoine'
 
   /patrimoine/{listKey}:
-    post:
-      summary: Sauvegarde/Cree une ligne de patrimoine
-      operationId: savePatrimoineLigne
-      tags:
-        - Patrimoine
-      parameters:
-        - name: listKey
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: [placements, transfers, credits, loans, realEstate, objectifs]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Ligne enregistree
+    $ref: './openapi/domains/patrimoine.yaml#/paths/~1patrimoine~1{listKey}'
 
   /patrimoine/{listKey}/{id}:
-    delete:
-      summary: Supprime une ligne de patrimoine
-      operationId: deletePatrimoineLigne
-      tags:
-        - Patrimoine
-      parameters:
-        - name: listKey
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '204':
-          description: Supprime
+    $ref: './openapi/domains/patrimoine.yaml#/paths/~1patrimoine~1{listKey}~1{id}'
 
   /patrimoine/placements/{placementId}/historique:
-    post:
-      summary: Ajoute une valeur reelle constatee a l'historique d'un placement
-      operationId: addPlacementHistoriquePoint
-      tags:
-        - Patrimoine
-      parameters:
-        - name: placementId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [date, value]
-              properties:
-                date:
-                  type: string
-                  format: date
-                value:
-                  type: number
-                notes:
-                  type: string
-      responses:
-        '200':
-          description: Point ajoute
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlacementHistoryEntryDto'
+    $ref: './openapi/domains/patrimoine.yaml#/paths/~1patrimoine~1placements~1{placementId}~1historique'
 
   /patrimoine/placements/{placementId}/historique/{entryId}:
-    put:
-      summary: Met a jour une valeur reelle constatee de l'historique d'un placement
-      operationId: updatePlacementHistoriquePoint
-      tags:
-        - Patrimoine
-      parameters:
-        - name: placementId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: entryId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                date:
-                  type: string
-                  format: date
-                value:
-                  type: number
-                notes:
-                  type: string
-      responses:
-        '200':
-          description: Point mis a jour
-    delete:
-      summary: Supprime une valeur reelle constatee de l'historique d'un placement
-      operationId: deletePlacementHistoriquePoint
-      tags:
-        - Patrimoine
-      parameters:
-        - name: placementId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: entryId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '204':
-          description: Point supprime
+    $ref: './openapi/domains/patrimoine.yaml#/paths/~1patrimoine~1placements~1{placementId}~1historique~1{entryId}'
 
   /patrimoine/placements/{placementId}/evolution:
-    get:
-      summary: >
-        Chronologie d'un placement pour la fenetre dediee "Historique" : courbe reelle
-        (valeurs saisies) jusqu'au dernier releve connu, puis 3 projections mensuelles
-        (pessimiste/correcte/optimiste) qui repartent de ce dernier releve.
-      operationId: getPlacementEvolution
-      tags:
-        - Patrimoine
-      parameters:
-        - name: placementId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: useConstantEuros
-          in: query
-          required: false
-          schema:
-            type: boolean
-      responses:
-        '200':
-          description: Chronologie du placement
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlacementEvolutionDto'
+    $ref: './openapi/domains/patrimoine.yaml#/paths/~1patrimoine~1placements~1{placementId}~1evolution'
 
-  # ---------------------------------------------------------------------------
-  # RETRAITE
-  # ---------------------------------------------------------------------------
   /retraite:
     $ref: './openapi/domains/retraite.yaml#/paths/~1retraite'
 
@@ -965,64 +799,18 @@ paths:
           description: Abonnement supprime (ou deja absent)
 
   /patrimoine/suggestions-taux:
-    get:
-      summary: Suggestions de taux de rendement (pessimiste / correct / optimiste) pour les placements
-      description: |
-        Propose, pour les livrets reglementes (Livret A, LDDS, LEP), le taux en vigueur comme taux
-        correct et un ecart de convention (amplitude) pour les scenarios pessimiste et optimiste ;
-        un simple taux de repere pour les fonds en euros et les obligations ; rien pour les autres.
-        Aucune valeur n'est appliquee automatiquement.
-      operationId: getSuggestionsTaux
-      tags:
-        - SuggestionsTaux
-      parameters:
-        - name: amplitude
-          in: query
-          required: false
-          description: Ecart entre le taux correct et les taux pessimiste/optimiste, en fraction (defaut 0.01, de 0 a 0.05)
-          schema:
-            type: number
-      responses:
-        '200':
-          description: Une entree par placement
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuggestionsTauxDto'
+    $ref: './openapi/domains/patrimoine.yaml#/paths/~1patrimoine~1suggestions-taux'
+
 
   # ---------------------------------------------------------------------------
   # TAUX DE MARCHE (aide a la saisie des taux)
   # ---------------------------------------------------------------------------
   /taux-marche:
-    get:
-      summary: Recupere le dernier instantane des taux publics (epargne reglementee) sans appel reseau
-      operationId: getTauxMarche
-      tags:
-        - TauxMarche
-      responses:
-        '200':
-          description: Dernier instantane connu, avec son statut de fraicheur
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TauxMarcheDto'
+    $ref: './openapi/domains/patrimoine.yaml#/paths/~1taux-marche'
 
   /taux-marche/refresh:
-    post:
-      summary: Interroge les sources publiques, met a jour l'instantane puis le renvoie
-      description: |
-        En cas d'echec d'une source, le dernier instantane connu est conserve et l'erreur est
-        indiquee dans lastRefreshError (la reponse reste un 200).
-      operationId: refreshTauxMarche
-      tags:
-        - TauxMarche
-      responses:
-        '200':
-          description: Instantane apres tentative de rafraichissement
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TauxMarcheDto'
+    $ref: './openapi/domains/patrimoine.yaml#/paths/~1taux-marche~1refresh'
+
 
 components:
   schemas:
@@ -1229,41 +1017,6 @@ components:
           type: number
         notes:
           type: string
-
-    PlacementEvolutionPointDto:
-      type: object
-      properties:
-        timestamp:
-          type: integer
-          format: int64
-        dateISO:
-          type: string
-        label:
-          type: string
-        real:
-          type: number
-        pess:
-          type: number
-        corr:
-          type: number
-        opti:
-          type: number
-
-    PlacementEvolutionDto:
-      type: object
-      properties:
-        placementId:
-          type: string
-        anchorTimestamp:
-          type: integer
-          format: int64
-        todayTimestamp:
-          type: integer
-          format: int64
-        points:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlacementEvolutionPointDto'
 
     LoanDto:
       type: object
@@ -1767,36 +1520,6 @@ components:
           type: object
           nullable: true
 
-    PatrimoineResponseDto:
-      type: object
-      properties:
-        placements:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlacementDto'
-        transfers:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransferDto'
-        loans:
-          type: array
-          items:
-            $ref: '#/components/schemas/LoanDto'
-        realEstate:
-          type: array
-          items:
-            $ref: '#/components/schemas/RealEstateDto'
-        patrimoine:
-          $ref: '#/components/schemas/PatrimoineProjectionsDto'
-        assetCategories:
-          type: array
-          items:
-            $ref: '#/components/schemas/AssetCategoryDto'
-        bankCategories:
-          type: array
-          items:
-            $ref: '#/components/schemas/BankImportCategoryDto'
-
     AssetCategoryDto:
       type: object
       properties:
@@ -1972,49 +1695,6 @@ components:
         color:
           type: string
           description: Code couleur pour l'affichage
-
-    TauxMarcheDto:
-      type: object
-      description: Instantane des taux publics utilises comme suggestions de saisie
-      properties:
-        fetchedAt:
-          type: string
-          description: Instant (ISO-8601) du dernier rafraichissement reussi, absent s'il n'y en a jamais eu
-        lastRefreshError:
-          type: string
-          description: Message de la derniere tentative de rafraichissement echouee, absent sinon
-        reglementes:
-          $ref: '#/components/schemas/TauxReglementesDto'
-        creditImmobilier:
-          $ref: '#/components/schemas/TauxCreditImmobilierDto'
-        courbeTaux:
-          $ref: '#/components/schemas/CourbeTauxDto'
-
-    TauxReglementesDto:
-      type: object
-      description: Taux de l'epargne reglementee (fractions, ex. 0.015 pour 1,5 %)
-      properties:
-        source:
-          type: string
-          description: Source des donnees
-        asOf:
-          type: string
-          description: Mois de la donnee publiee par la source (YYYY-MM)
-        livretA:
-          type: number
-        ldds:
-          type: number
-        lep:
-          type: number
-        status:
-          type: string
-          description: Fraicheur de la donnee (FRESH, STALE ou UNAVAILABLE)
-        lastRevisionDate:
-          type: string
-          description: Date (YYYY-MM-DD) de la derniere revision legale des taux (1er fevrier ou 1er aout)
-        message:
-          type: string
-          description: Message pret a afficher expliquant la fiabilite de la valeur
 
     AnalysePretsDto:
       type: object
@@ -2234,104 +1914,3 @@ components:
           type: string
         keys:
           $ref: '#/components/schemas/PushSubscriptionKeysDto'
-
-    TauxCreditImmobilierDto:
-      type: object
-      description: Taux moyen des nouveaux credits a l'habitat hors renegociations (fraction)
-      properties:
-        source:
-          type: string
-        asOf:
-          type: string
-          description: Mois de la donnee (YYYY-MM)
-        rate:
-          type: number
-        status:
-          type: string
-          description: FRESH, STALE, UNAVAILABLE ou NOT_CONFIGURED (cle d'API Banque de France absente)
-        message:
-          type: string
-          description: Message pret a afficher expliquant la fiabilite de la valeur
-
-    CourbeTauxDto:
-      type: object
-      description: Courbe des taux des emprunts d'Etat de la zone euro AAA, en fractions et en composition continue
-      properties:
-        source:
-          type: string
-        asOf:
-          type: string
-          description: Jour de cotation (YYYY-MM-DD)
-        spot2y:
-          type: number
-        spot10y:
-          type: number
-        forward1y:
-          type: number
-          description: Taux forward instantane dans 1 an (anticipation implicite du marche)
-        forward2y:
-          type: number
-        forward5y:
-          type: number
-        forward10y:
-          type: number
-        status:
-          type: string
-          description: FRESH, STALE ou UNAVAILABLE
-        message:
-          type: string
-
-    SuggestionsTauxDto:
-      type: object
-      description: Suggestions de taux de rendement par placement (fractions)
-      properties:
-        amplitude:
-          type: number
-          description: Ecart pessimiste/optimiste utilise
-        suggestions:
-          type: array
-          items:
-            $ref: '#/components/schemas/SuggestionTauxPlacementDto'
-        notes:
-          type: array
-          description: Limites de la methode, a afficher avec les suggestions
-          items:
-            type: string
-
-    SuggestionTauxPlacementDto:
-      type: object
-      properties:
-        placementId:
-          type: string
-        label:
-          type: string
-        bucket:
-          type: string
-          description: Classe d'actif du placement (cash, fondsEuros, actions, obligations, immobilier, epargneSalariale), absente si categorie inconnue
-        kind:
-          type: string
-          description: SUGGESTION (trois taux applicables), REFERENCE (taux de repere seul) ou NONE (aucune source publique)
-        benchmark:
-          type: string
-          description: Reference utilisee (ex. Livret A)
-        suggestedPess:
-          type: number
-        suggestedCorr:
-          type: number
-        suggestedOpti:
-          type: number
-        referenceRate:
-          type: number
-          description: Taux de repere en taux annuel effectif (kind REFERENCE)
-        currentPess:
-          type: number
-        currentCorr:
-          type: number
-        currentOpti:
-          type: number
-        basis:
-          type: string
-          description: Explication de la source de la valeur, prete a afficher
-        caveat:
-          type: string
-          description: Reserve a afficher avec la valeur (donnee ancienne...), absente sinon

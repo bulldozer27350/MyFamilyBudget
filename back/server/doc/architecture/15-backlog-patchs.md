@@ -756,7 +756,7 @@ spécifiques à relire avant de le démarrer.
   - [x] Retraite (`/retraite` → `openapi/domains/retraite.yaml`)
   - [x] Overview (`/overview` → `openapi/domains/overview.yaml`)
   - [x] Trésorerie (`/tresorerie`, `/tresorerie/{listKey}`, `/tresorerie/{listKey}/{id}`, `/tresorerie/adjust`)
-  - [ ] Patrimoine (placements, taux de marché, suggestions de taux)
+  - [x] Patrimoine (placements, taux de marché, suggestions de taux)
   - [ ] Fiscalité (Impots)
   - [ ] Analyse / Analyse Prêts
   - [ ] Banque / Import (bank-import, bank, pending-operations, pointage, enable-banking)
@@ -767,6 +767,7 @@ spécifiques à relire avant de le démarrer.
 - `/overview` : `OverviewResponseDto` et `TripleAmountDto` (usage exclusif) déplacés avec le path dans `openapi/domains/overview.yaml`, sous sa propre section `components/schemas`. `BudgetDataDto`, `CashflowYearDto` et `PatrimoineProjectionsDto` restent dans `openapi.yaml` (partagés avec `/budget`, `/tresorerie`, `/patrimoine`) : les `$ref` d'`OverviewResponseDto` vers ces trois schémas pointent désormais vers `'../../openapi.yaml#/components/schemas/...'`.
 - `/tresorerie*` : `CategoryOptionDto`, `TresorerieSuggestionDto`, `VariablePreviewCellDto`, `VariablePreviewDto`, `UpdateTresorerieLigneRequestDto`, `TresorerieAjustementRequestDto` et `TresorerieResponseDto` (usage exclusif) déplacés dans `openapi/domains/tresorerie.yaml`. `IncomeDto`, `ChargeDto`, `OneOffExpenseDto`, `VariableIncomeDto`, `VariableOverrideDto` et `CashflowYearDto` restent partagés dans `openapi.yaml` (avec `/budget` et `/overview`) et sont référencés en `'../../openapi.yaml#/components/schemas/...'`. `/budget`, `/budget/import`, `/budget/reset` restent dans le lot Paramètres/Système (tag `Systeme`, `BudgetDataDto` transverse), pas dans ce lot Trésorerie malgré le libellé initial de la case à cocher — corrigé ci-dessus.
 - Toute extraction est validée par reparsing YAML (PyYAML) : comparaison de chaque path et de chaque schéma déplacé avec le contenu d'origine (`git show HEAD:openapi.yaml`), refs externes neutralisées avant comparaison.
+- Patrimoine : `PlacementDto`, `TransferDto`, `LoanDto`, `RealEstateDto`, `AssetCategoryDto`, `PatrimoineProjectionsDto` (et `PlacementHistoryEntryDto`, porté par `PlacementDto`) restent partagés dans `openapi.yaml` (avec `/budget`, `/overview`, `/analyse`). Neuf schémas exclusifs déplacés : `PatrimoineResponseDto`, `PlacementEvolutionDto`, `PlacementEvolutionPointDto`, `SuggestionsTauxDto`, `SuggestionTauxPlacementDto`, `TauxMarcheDto`, `TauxReglementesDto`, `TauxCreditImmobilierDto`, `CourbeTauxDto`.
 - Vérification `/settings` (12-settings.md) : `SettingsDto` duplique aujourd'hui `pass2026`/`passGrowthRate` avec `RetirementDto`, comme documenté dans le fichier de domaine (« héritage de contrat à nettoyer lors du découpage OpenAPI »). Aucune correction ici — la façade `/settings` reste `type: object` côté contrat (pas de DTO strict à faire évoluer), le nettoyage de `SettingsDto` est un changement de contrat qui dépasse la portée additive de ce patch et devrait être un patch dédié une fois tous les domaines scindés.
 - **Statut** :
 - [ ] Non commencé
