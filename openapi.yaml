@@ -20,115 +20,16 @@ paths:
   # TRESORERIE (CASHFLOW)
   # ---------------------------------------------------------------------------
   /tresorerie:
-    get:
-      summary: Recupere les donnees de tresorerie (revenus, charges, depenses, primes)
-      operationId: getTresorerie
-      tags:
-        - Tresorerie
-      parameters:
-        - name: useConstantEuros
-          in: query
-          required: false
-          schema:
-            type: boolean
-            default: false
-      responses:
-        '200':
-          description: Donnees de tresorerie
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TresorerieResponseDto'
+    $ref: './openapi/domains/tresorerie.yaml#/paths/~1tresorerie'
 
   /tresorerie/{listKey}:
-    post:
-      summary: Ajoute une nouvelle ligne dans une section de tresorerie
-      operationId: addTresorerieLigne
-      tags:
-        - Tresorerie
-      parameters:
-        - name: listKey
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: [incomes, charges, oneoff, variableIncomes, variableOverrides]
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '201':
-          description: Ligne ajoutee avec succes
-          content:
-            application/json:
-              schema:
-                type: object
+    $ref: './openapi/domains/tresorerie.yaml#/paths/~1tresorerie~1{listKey}'
 
   /tresorerie/{listKey}/{id}:
-    put:
-      summary: Met à jour une ligne de tresorerie
-      operationId: updateTresorerieLigne
-      tags:
-        - Tresorerie
-      parameters:
-        - name: listKey
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: [incomes, charges, oneoff, variableIncomes, variableOverrides, placements]
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateTresorerieLigneRequestDto'
-      responses:
-        '200':
-          description: Ligne mise à jour
-    delete:
-      summary: Supprime une ligne de tresorerie
-      operationId: removeTresorerieLigne
-      tags:
-        - Tresorerie
-      parameters:
-        - name: listKey
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '204':
-          description: Ligne supprimee
+    $ref: './openapi/domains/tresorerie.yaml#/paths/~1tresorerie~1{listKey}~1{id}'
 
   /tresorerie/adjust:
-    post:
-      summary: Applique une suggestion d'ajustement budgetaire
-      operationId: applyTresorerieAjustement
-      tags:
-        - Tresorerie
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TresorerieAjustementRequestDto'
-      responses:
-        '200':
-          description: Ajustement applique
+    $ref: './openapi/domains/tresorerie.yaml#/paths/~1tresorerie~1adjust'
 
   # ---------------------------------------------------------------------------
   # PATRIMOINE
@@ -1827,68 +1728,6 @@ components:
             $ref: '#/components/schemas/PatrimoineYearDto'
 
 
-    CategoryOptionDto:
-      type: object
-      properties:
-        value:
-          type: string
-        label:
-          type: string
-
-    TresorerieSuggestionDto:
-      type: object
-      properties:
-        id:
-          type: string
-        label:
-          type: string
-        kind:
-          type: string
-        budgeted:
-          type: number
-        avg3m:
-          type: number
-        avg12m:
-          type: number
-        ecart:
-          type: number
-        ecartPct:
-          type: number
-        months:
-          type: integer
-        suggested:
-          type: number
-
-    VariablePreviewCellDto:
-      type: object
-      properties:
-        year:
-          type: integer
-        amount:
-          type: number
-        isReal:
-          type: boolean
-
-    VariablePreviewDto:
-      type: object
-      properties:
-        label:
-          type: string
-        cells:
-          type: array
-          items:
-            $ref: '#/components/schemas/VariablePreviewCellDto'
-
-    UpdateTresorerieLigneRequestDto:
-      type: object
-      required: [field]
-      properties:
-        field:
-          type: string
-        value:
-          nullable: true
-          description: Nouvelle valeur du champ (chaine, nombre, booleen...)
-
     UpdateBankImportLigneRequestDto:
       type: object
       required: [field]
@@ -1927,75 +1766,6 @@ components:
         mapping:
           type: object
           nullable: true
-
-    TresorerieAjustementRequestDto:
-      type: object
-      required: [lineId, kind, newMonthly]
-      properties:
-        lineId:
-          type: string
-        kind:
-          type: string
-        newMonthly:
-          type: number
-
-    TresorerieResponseDto:
-      type: object
-      properties:
-        incomes:
-          type: array
-          items:
-            $ref: '#/components/schemas/IncomeDto'
-        charges:
-          type: array
-          items:
-            $ref: '#/components/schemas/ChargeDto'
-        oneoff:
-          type: array
-          items:
-            $ref: '#/components/schemas/OneOffExpenseDto'
-        variableIncomes:
-          type: array
-          items:
-            $ref: '#/components/schemas/VariableIncomeDto'
-        variableOverrides:
-          type: array
-          items:
-            $ref: '#/components/schemas/VariableOverrideDto'
-        incomeLabels:
-          type: array
-          items:
-            type: string
-        variableIncomeLabels:
-          type: array
-          items:
-            type: string
-        categoryOptions:
-          type: array
-          items:
-            $ref: '#/components/schemas/CategoryOptionDto'
-        suggestions:
-          type: array
-          items:
-            $ref: '#/components/schemas/TresorerieSuggestionDto'
-        retireYear:
-          type: integer
-        years:
-          type: array
-          items:
-            type: integer
-        cashflow:
-          type: array
-          items:
-            $ref: '#/components/schemas/CashflowYearDto'
-        variablePreview:
-          type: array
-          items:
-            $ref: '#/components/schemas/VariablePreviewDto'
-        previewYears:
-          type: array
-          items:
-            type: integer
 
     PatrimoineResponseDto:
       type: object
