@@ -95,7 +95,12 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Travaux** : tests unitaires ciblés pour les conversions DTO ↔ modèles domaine et modèles ↔ API sur les
   contrats déjà en mouvement.
 - **Critère** : tests rapides, sans Spring lorsque possible.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `SettingsMapperTest` (contrat `GET /settings`, réinjection des seuils Objectifs RF-700, catégories
+  d'actifs, valeurs par défaut) et `NotificationsMapperTest` (modèle ↔ DTO, valeurs par défaut, corps absent),
+  sans Spring. Les mappers `Analyse Prêts`, `Suggestions taux`, `Taux marché` et `EnableBanking` étaient déjà
+  couverts ; restent sans test dédié : `Overview`, `Analyse`, `Tresorerie`, `Patrimoine`, `Retraite`, `Tax`,
+  `Pointage`, `StatementBankImport` (à traiter au fil des migrations qui les déplacent).
 
 ## VT-400 — Renforcement ArchUnit et règles anti-régression
 
