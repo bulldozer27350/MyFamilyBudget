@@ -759,7 +759,7 @@ spécifiques à relire avant de le démarrer.
   - [x] Patrimoine (placements, taux de marché, suggestions de taux)
   - [x] Fiscalité (Impots)
   - [x] Analyse / Analyse Prêts
-  - [ ] Banque / Import (bank-import, bank, pending-operations, pointage, enable-banking)
+  - [x] Banque / Import (bank-import, bank, pending-operations, pointage, enable-banking → `openapi/domains/banque-import.yaml`)
   - [ ] Objectifs / Notifications
   - [ ] Paramètres / Système (`/settings`, `/budget`, `/budget/import`, `/budget/reset` restent des façades transverses, pas un domaine propre)
 - **Notes d'implémentation** :
@@ -770,6 +770,7 @@ spécifiques à relire avant de le démarrer.
 - Patrimoine : `PlacementDto`, `TransferDto`, `LoanDto`, `RealEstateDto`, `AssetCategoryDto`, `PatrimoineProjectionsDto` (et `PlacementHistoryEntryDto`, porté par `PlacementDto`) restent partagés dans `openapi.yaml` (avec `/budget`, `/overview`, `/analyse`). Neuf schémas exclusifs déplacés : `PatrimoineResponseDto`, `PlacementEvolutionDto`, `PlacementEvolutionPointDto`, `SuggestionsTauxDto`, `SuggestionTauxPlacementDto`, `TauxMarcheDto`, `TauxReglementesDto`, `TauxCreditImmobilierDto`, `CourbeTauxDto`.
 - Fiscalité : `/impots` n'exposait deja aucun schema de composant propre (reponses `type: object`, comme `/retraite`) : extraction sans impact sur `components/schemas`, seul le path a bouge.
 - Analyse / Analyse Prêts : `AnalyseResponseDto`, `AnalysePretsDto`, `AnalysePretsParametresDto`, `AnalysePretsParametresValuesDto` et leurs schémas exclusifs (`AnalyseKpiDto`, `AnalyseLandingRowDto`, `AnalyseDriftRowDto`, `AnalyseMonthlyCompareDto`, `AnalyseCategorySummaryDto`, `AnalysePretsHypothesesDto`, `AnalysePretDto`, `PretRemboursementDto`, `PretRenegociationDto`) déplacés. `BudgetDataDto`, `BankImportDto`, `ChargeDto`, `IncomeDto`, `PlacementDto`, `SettingsDto` restent partagés dans `openapi.yaml`.
+- Banque / Import : couvre `Import Bancaire`, `Enable Banking`, `Operations en cours` et `Pointage`. `BankTransactionSplitDto` reste dans `openapi.yaml` : partagé entre ce domaine (`PUT /bank/transactions/{txId}/splits`) et le schéma composite `BudgetDataDto` → `BankImportDto` → `BankTransactionDto`/`PendingOperationDto` (façade de composition explicite, voir `12-settings.md`) ; le fragment de domaine y renvoie par `$ref` relatif plutôt que de le dupliquer. Trois schémas de requête exclusifs déplacés : `UpdateBankImportLigneRequestDto`, `SetBankTransactionCategoryRequestDto`, `ImportBankTransactionsRequestDto`. `/retraite` et `/impots` n'exposaient déjà aucun schéma propre, contrairement à ce lot qui en a trois : seul un chevauchement (`BankTransactionSplitDto`) était à traiter.
 - Vérification `/settings` (12-settings.md) : `SettingsDto` duplique aujourd'hui `pass2026`/`passGrowthRate` avec `RetirementDto`, comme documenté dans le fichier de domaine (« héritage de contrat à nettoyer lors du découpage OpenAPI »). Aucune correction ici — la façade `/settings` reste `type: object` côté contrat (pas de DTO strict à faire évoluer), le nettoyage de `SettingsDto` est un changement de contrat qui dépasse la portée additive de ce patch et devrait être un patch dédié une fois tous les domaines scindés.
 - **Statut** :
 - [ ] Non commencé

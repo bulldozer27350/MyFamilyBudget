@@ -144,453 +144,65 @@ paths:
   # IMPORT BANCAIRE & RAPPROCHEMENT
   # ---------------------------------------------------------------------------
   /bank-import:
-    get:
-      summary: Recupere l'etat de l'import bancaire (CSV, regles, transactions)
-      operationId: getBankImport
-      tags:
-        - Import Bancaire
-      responses:
-        '200':
-          description: Donnees d'import bancaire
-          content:
-            application/json:
-              schema:
-                type: object
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import'
 
   /bank-import/mapping:
-    put:
-      summary: Met à jour la correspondance des colonnes CSV
-      operationId: updateBankImportMapping
-      tags:
-        - Import Bancaire
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Mapping mis à jour
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1mapping'
 
   /bank-import/csv:
-    post:
-      summary: Receptionne et traite un fichier CSV bancaire
-      operationId: importBankCSV
-      tags:
-        - Import Bancaire
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-      responses:
-        '200':
-          description: Traitement du CSV effectue
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1csv'
 
-  # ---------------------------------------------------------------------------
-  # SYNCHRONISATION ENABLE BANKING (DSP2)
-  # ---------------------------------------------------------------------------
   /bank-import/enable-banking/sync:
-    post:
-      summary: >
-        Declenche une synchronisation manuelle des comptes Enable Banking (DSP2) : recupere les
-        transactions recentes de chaque compte configure et les importe (memes regles de
-        deduplication et de categorisation que l'import CSV).
-      operationId: syncEnableBanking
-      tags:
-        - Enable Banking
-      responses:
-        '200':
-          description: Resume de la synchronisation (par compte)
-          content:
-            application/json:
-              schema:
-                type: object
-        '503':
-          description: >
-            Synchronisation non configuree (application_id ou certificat prive Enable Banking
-            manquant) : le corps de la reponse contient un champ "error" a afficher a
-            l'utilisateur.
-          content:
-            application/json:
-              schema:
-                type: object
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1enable-banking~1sync'
 
   /bank/convert-excel:
-    post:
-      summary: Convertit un fichier Excel (.xls ou .xlsx) en texte CSV
-      operationId: convertExcelToCsv
-      tags:
-        - Import Bancaire
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-                  description: Fichier Excel (.xls ou .xlsx) à convertir
-      responses:
-        '200':
-          description: Contenu CSV résultant de la conversion
-          content:
-            text/plain:
-              schema:
-                type: string
-        '400':
-          description: Format de fichier non supporté ou nombre de lignes dépassé
-          content:
-            text/plain:
-              schema:
-                type: string
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank~1convert-excel'
 
   /bank/transactions/{txId}/splits:
-    put:
-      summary: Met à jour la ventilation (splits) d'une transaction bancaire
-      operationId: updateBankTransactionSplits
-      tags:
-        - Import Bancaire
-      parameters:
-        - name: txId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/BankTransactionSplitDto'
-      responses:
-        '200':
-          description: Ventilation mise à jour avec succès
-        '400':
-          description: Somme des splits non valide
-        '404':
-          description: Transaction non trouvée
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank~1transactions~1{txId}~1splits'
 
   /bank-import/{listKey}:
-    post:
-      summary: Ajoute une entree dans une section d'import bancaire (categorie ou regle)
-      operationId: addBankImportLigne
-      tags:
-        - Import Bancaire
-      parameters:
-        - name: listKey
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: [categories, rules]
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '201':
-          description: Entree ajoutee avec succes
-          content:
-            application/json:
-              schema:
-                type: object
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1{listKey}'
 
   /bank-import/{listKey}/{id}:
-    put:
-      summary: Met a jour un champ d'une entree d'import bancaire
-      operationId: updateBankImportLigne
-      tags:
-        - Import Bancaire
-      parameters:
-        - name: listKey
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: [categories, rules]
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateBankImportLigneRequestDto'
-      responses:
-        '200':
-          description: Entree mise a jour
-        '404':
-          description: Entree non trouvee
-    delete:
-      summary: Supprime une entree d'import bancaire
-      operationId: removeBankImportLigne
-      tags:
-        - Import Bancaire
-      parameters:
-        - name: listKey
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: [categories, rules]
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '204':
-          description: Entree supprimee
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1{listKey}~1{id}'
 
   /bank-import/transactions/{txId}/category:
-    put:
-      summary: Met a jour la categorie d'une transaction et cree optionnellement une regle
-      operationId: setBankImportTransactionCategory
-      tags:
-        - Import Bancaire
-      parameters:
-        - name: txId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SetBankTransactionCategoryRequestDto'
-      responses:
-        '200':
-          description: Categorie de transaction mise a jour
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1transactions~1{txId}~1category'
 
   /bank-import/rules/recalculate:
-    post:
-      summary: Reapplique les regles aux transactions non categorisees
-      operationId: recalculateBankImportRules
-      tags:
-        - Import Bancaire
-      responses:
-        '200':
-          description: Regles reappliquees
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1rules~1recalculate'
 
   /bank-import/import:
-    post:
-      summary: Importe des transactions bancaires a partir de lignes CSV pre-parsees et roles de colonnes
-      operationId: importBankTransactions
-      tags:
-        - Import Bancaire
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ImportBankTransactionsRequestDto'
-      responses:
-        '200':
-          description: Resume de l'import bancaire
-          content:
-            application/json:
-              schema:
-                type: object
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1import'
 
   /bank-import/transactions/force:
-    post:
-      summary: Force l'import d'une transaction marquee comme doublon
-      operationId: forceImportBankTransaction
-      tags:
-        - Import Bancaire
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Transaction importee avec succes
-          content:
-            application/json:
-              schema:
-                type: object
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1transactions~1force'
 
-  # ---------------------------------------------------------------------------
-  # OPERATIONS EN COURS (PENDING)
-  # ---------------------------------------------------------------------------
   /pending-operations:
-    get:
-      summary: Recupere les operations en cours à rapprocher
-      operationId: getPendingOperations
-      tags:
-        - Operations en cours
-      responses:
-        '200':
-          description: Liste des operations en cours
-          content:
-            application/json:
-              schema:
-                type: object
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1pending-operations'
 
   /pending-operations/reconcile:
-    post:
-      summary: Effectue le rapprochement automatique des operations en cours avec le releve bancaire
-      operationId: reconcilePendingOperations
-      tags:
-        - Operations en cours
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: >
-            Resultat du rapprochement automatique. Les paires dont la categorisation differe entre
-            l'operation en attente et la transaction bancaire (categoryId ou splits) ne sont PAS
-            rapprochees automatiquement et sont comptabilisees dans needsReviewCount ; elles doivent
-            etre traitees manuellement, ou l'operateur sera invite a arbitrer.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  matchCount:
-                    type: integer
-                    description: Nombre d'operations en attente effectivement rapprochees.
-                  needsReviewCount:
-                    type: integer
-                    description: >
-                      Nombre de paires candidates trouvees mais non rapprochees automatiquement car
-                      les categorisations different entre l'operation en attente et la transaction.
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1pending-operations~1reconcile'
 
   /pending-operations/ignore:
-    post:
-      summary: Ignore une operation en cours
-      operationId: ignorePendingOperation
-      tags:
-        - Operations en cours
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Ignoree
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1pending-operations~1ignore'
 
   /pending-operations/import-cb:
-    post:
-      summary: Importe des operations CB differees depuis un releve CSV
-      operationId: importPendingCB
-      tags:
-        - Operations en cours
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Resume de l'import des operations CB
-          content:
-            application/json:
-              schema:
-                type: object
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1pending-operations~1import-cb'
 
   /pending-operations/merge:
-    post:
-      summary: Fusionne une operation manuelle avec une operation du releve
-      operationId: mergePendingOperation
-      tags:
-        - Operations en cours
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Operation fusionnee
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1pending-operations~1merge'
 
   /pending-operations/force:
-    post:
-      summary: Force l'import d'une operation ignoree ou candidate
-      operationId: forceImportPendingOperation
-      tags:
-        - Operations en cours
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Operation importee de force
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1pending-operations~1force'
 
-  # ---------------------------------------------------------------------------
-  # POINTAGE (MATCHING)
-  # ---------------------------------------------------------------------------
   /pointage:
-    get:
-      summary: Recupere l'etat des liaisons du pointage mensuel
-      operationId: getPointage
-      tags:
-        - Pointage
-      responses:
-        '200':
-          description: Donnees de pointage
-          content:
-            application/json:
-              schema:
-                type: object
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1pointage'
 
   /pointage/matchings/{monthISO}:
-    put:
-      summary: Enregistre le pointage d'un mois specifique
-      operationId: savePointageMatching
-      tags:
-        - Pointage
-      parameters:
-        - name: monthISO
-          in: path
-          required: true
-          schema:
-            type: string
-            example: "2026-05"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Pointage mis à jour
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1pointage~1matchings~1{monthISO}'
 
-  # ---------------------------------------------------------------------------
-  # ANALYSE
-  # ---------------------------------------------------------------------------
   /analyse:
     $ref: './openapi/domains/analyse.yaml#/paths/~1analyse'
 
@@ -1382,45 +994,6 @@ components:
           items:
             $ref: '#/components/schemas/PatrimoineYearDto'
 
-
-    UpdateBankImportLigneRequestDto:
-      type: object
-      required: [field]
-      properties:
-        field:
-          type: string
-        value:
-          nullable: true
-          description: Nouvelle valeur du champ (chaine, nombre, booleen...)
-
-    SetBankTransactionCategoryRequestDto:
-      type: object
-      required: [categoryId]
-      properties:
-        categoryId:
-          type: string
-        ruleKeyword:
-          type: string
-          nullable: true
-          description: Mot-clé pour créer ou mettre à jour une règle de catégorisation (optionnel)
-
-    ImportBankTransactionsRequestDto:
-      type: object
-      required: [rawRows, colRoles]
-      properties:
-        rawRows:
-          type: array
-          items:
-            type: array
-            items:
-              type: string
-        colRoles:
-          type: array
-          items:
-            type: string
-        mapping:
-          type: object
-          nullable: true
 
     AssetCategoryDto:
       type: object
