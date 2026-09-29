@@ -1,0 +1,407 @@
+# Domaine Analyse / Analyse Prets (RF-C00, voir doc/architecture/08-domaine-analyse.md
+# et doc/architecture/10-domaine-prets-suggestions.md).
+# Inclus depuis openapi.yaml via $ref par chemin (un fichier par domaine,
+# voir doc/architecture/01-sequencement.md, etape 13).
+#
+# BudgetDataDto, BankImportDto, ChargeDto, IncomeDto, PlacementDto et SettingsDto
+# restent dans openapi.yaml : partages avec /budget, /overview, /tresorerie et /patrimoine.
+paths:
+  /analyse:
+    get:
+      summary: Recupere le comparatif Reel vs Previsionnel et derives
+      operationId: getAnalyse
+      tags:
+        - Analyse
+      parameters:
+        - name: monthsBack
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 12
+            description: Nombre de mois à analyser (3, 6, 12, 0 pour toute la période)
+      responses:
+        '200':
+          description: Donnees d'analyse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyseResponseDto'
+
+
+  /analyse/prets:
+    get:
+      summary: Analyse des prets en cours - rembourser plus vite ou renegocier
+      description: |
+        Compare chaque pret a un placement sans risque (remboursement anticipe) et, si un taux de
+        marche est fourni, estime l'economie nette d'une renegociation. Estimation pour des prets
+        immobiliers ; les hypotheses appliquees sont renvoyees dans la reponse.
+      operationId: getAnalysePrets
+      tags:
+        - AnalysePrets
+      parameters:
+        - name: marketRate
+          in: query
+          required: false
+          description: Taux d'un credit immobilier neuf sur le marche, en fraction (ex. 0.032 pour 3,2 %). Sans lui, la renegociation n'est pas evaluee.
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Analyse pret par pret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysePretsDto'
+
+
+  /analyse/prets/parametres:
+    get:
+      summary: Hypotheses de l'analyse des prets (valeurs en vigueur et valeurs par defaut)
+      operationId: getAnalysePretsParametres
+      tags:
+        - AnalysePrets
+      responses:
+        '200':
+          description: Hypotheses en vigueur et valeurs par defaut
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysePretsParametresDto'
+    put:
+      summary: Enregistre les hypotheses de l'analyse des prets
+      description: |
+        Toutes les valeurs sont obligatoires sauf marketRate (absent = pas de taux de marche saisi).
+        Une valeur hors plage renvoie un 400 avec un message explicite.
+      operationId: updateAnalysePretsParametres
+      tags:
+        - AnalysePrets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalysePretsParametresValuesDto'
+      responses:
+        '200':
+          description: Hypotheses enregistrees, avec les valeurs par defaut
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysePretsParametresDto'
+
+
+components:
+  schemas:
+    AnalyseResponseDto:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/BudgetDataDto'
+        bankImport:
+          $ref: '#/components/schemas/BankImportDto'
+        charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChargeDto'
+        incomes:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncomeDto'
+        placements:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlacementDto'
+        settings:
+          $ref: '#/components/schemas/SettingsDto'
+        kpis:
+          $ref: '#/components/schemas/AnalyseKpiDto'
+        landingData:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyseLandingRowDto'
+        driftRows:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyseDriftRowDto'
+        monthlyCompareData:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyseMonthlyCompareDto'
+        categorySummaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyseCategorySummaryDto'
+        currentMonthISO:
+          type: string
+          description: Mois courant au format ISO (YYYY-MM)
+        currentMonthLabel:
+          type: string
+          description: Libellé du mois courant en français
+
+    AnalyseKpiDto:
+      type: object
+      properties:
+        totalExpenses:
+          type: number
+          description: Total des dépenses sur la période
+        totalIncome:
+          type: number
+          description: Total des revenus sur la période
+        nbMonths:
+          type: integer
+          description: Nombre de mois analysés
+        uncategorizedCount:
+          type: integer
+          description: Nombre de transactions non catégorisées
+        compressibleTotal:
+          type: number
+          description: Total des dépenses compressibles
+
+    AnalyseLandingRowDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        kind:
+          type: string
+          enum: [charge, revenu, placement]
+        budgeted:
+          type: number
+          description: Montant budgeté
+        reel:
+          type: number
+          description: Montant réel constaté
+        pct:
+          type: number
+          description: Pourcentage de réalisation (réel / budgeté * 100)
+        status:
+          type: string
+          enum: [match, pending, economy, over]
+          description: Statut de la ligne
+        pendingContrib:
+          type: number
+          description: Part du montant réel provenant d'opérations en attente (pending, non rapprochées)
+        hasPendingContrib:
+          type: boolean
+          description: Indique si le montant réel inclut une contribution d'opérations en attente
+
+    AnalyseDriftRowDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        kind:
+          type: string
+          enum: [charge, revenu, placement]
+        budgeted:
+          type: number
+          description: Montant budgeté
+        avg3m:
+          type: number
+          nullable: true
+          description: Moyenne réelle sur 3 mois
+        avg12m:
+          type: number
+          nullable: true
+          description: Moyenne réelle sur 12 mois
+        ecart:
+          type: number
+          nullable: true
+          description: Écart entre moyenne 3 mois et budgeté
+        ecartPct:
+          type: number
+          nullable: true
+          description: Écart en pourcentage
+        status:
+          type: string
+          enum: [match, pending, economy, over]
+          description: Statut de la dérive
+        months:
+          type: integer
+          description: Nombre de mois de données disponibles
+
+    AnalyseMonthlyCompareDto:
+      type: object
+      properties:
+        monthISO:
+          type: string
+          description: Mois au format ISO (YYYY-MM)
+        label:
+          type: string
+          description: Libellé du mois en format court
+        budgeted:
+          type: number
+          description: Total budgeté pour le mois
+        reel:
+          type: number
+          description: Total réel constaté pour le mois
+        hasPointing:
+          type: boolean
+          description: Indique si le mois a des pointages
+
+    AnalyseCategorySummaryDto:
+      type: object
+      properties:
+        label:
+          type: string
+        amount:
+          type: number
+        color:
+          type: string
+          description: Code couleur pour l'affichage
+
+    AnalysePretsDto:
+      type: object
+      description: Analyse des prets en cours (taux en fractions, montants en euros)
+      properties:
+        marketRateUsed:
+          type: number
+          description: Taux de marche retenu pour la renegociation, absent si non renseigne ou ignore
+        marketRateSource:
+          type: string
+          description: Origine du taux de marche retenu (parametre de requete, saisie manuelle ou Banque de France)
+        assumptions:
+          $ref: '#/components/schemas/AnalysePretsHypothesesDto'
+        loans:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalysePretDto'
+        notes:
+          type: array
+          description: Limites generales de l'estimation, a afficher avec les resultats
+          items:
+            type: string
+
+    AnalysePretsHypothesesDto:
+      type: object
+      description: Hypotheses appliquees a l'analyse
+      properties:
+        loanType:
+          type: string
+        repayMarginRate:
+          type: number
+          description: Ecart sous lequel cout du pret et rendement de l'epargne sont juges equivalents
+        renegotiationMinGapRate:
+          type: number
+          description: Ecart minimal taux du pret / taux de marche pour envisager une renegociation
+        renegotiationMinCrd:
+          type: number
+        renegotiationMinRemainingMonths:
+          type: integer
+        renegotiationFixedCosts:
+          type: number
+          description: Frais de dossier, garantie et mainlevee estimes, hors indemnite de remboursement anticipe
+        flatTaxRate:
+          type: number
+          description: Fiscalite appliquee aux rendements des placements liquides hors livrets
+
+    AnalysePretDto:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        crd:
+          type: number
+          description: Capital restant du projete a aujourd'hui
+        rate:
+          type: number
+        monthly:
+          type: number
+        insurance:
+          type: number
+        remainingMonths:
+          type: integer
+          description: Duree restante, absente si indeterminee
+        remainingInterest:
+          type: number
+          description: Interets restants au taux actuel, absents si la duree est indeterminee
+        earlyRepaymentIndemnity:
+          type: number
+          description: Estimation de l'indemnite de remboursement anticipe (plafond legal immobilier)
+        repayment:
+          $ref: '#/components/schemas/PretRemboursementDto'
+        renegotiation:
+          $ref: '#/components/schemas/PretRenegociationDto'
+
+    PretRemboursementDto:
+      type: object
+      properties:
+        verdict:
+          type: string
+          description: REMBOURSER, NEUTRE, CONSERVER ou INCONNU
+        loanEffectiveCost:
+          type: number
+        alternativeNetYield:
+          type: number
+        alternativeLabel:
+          type: string
+        annualSaving:
+          type: number
+        indemnityPaybackMonths:
+          type: integer
+        reason:
+          type: string
+
+    PretRenegociationDto:
+      type: object
+      properties:
+        verdict:
+          type: string
+          description: RENEGOCIER, NON_RENTABLE, TAUX_PROCHE_MARCHE, NON_ELIGIBLE ou INCONNU
+        gapRate:
+          type: number
+        newMonthly:
+          type: number
+        monthlyGain:
+          type: number
+        grossSaving:
+          type: number
+        costs:
+          type: number
+        netSaving:
+          type: number
+        paybackMonths:
+          type: integer
+        reason:
+          type: string
+
+    AnalysePretsParametresValuesDto:
+      type: object
+      description: Hypotheses modifiables de l'analyse des prets (taux en fractions, montants en euros)
+      properties:
+        marketRate:
+          type: number
+          description: Taux d'un credit immobilier neuf saisi a la main, absent si non renseigne
+        repayMarginRate:
+          type: number
+          description: Ecart (0 a 0.05) sous lequel cout du pret et rendement de l'epargne sont juges equivalents
+        renegotiationMinGapRate:
+          type: number
+          description: Ecart minimal (0 a 0.05) taux du pret / taux de marche pour envisager une renegociation
+        renegotiationMinCrd:
+          type: number
+          description: Capital restant du minimal pour envisager une renegociation
+        renegotiationMinRemainingMonths:
+          type: integer
+          description: Duree restante minimale (0 a 600 mois) pour envisager une renegociation
+        renegotiationFixedCosts:
+          type: number
+          description: Frais de dossier, garantie et mainlevee estimes, hors indemnite de remboursement anticipe
+        flatTaxRate:
+          type: number
+          description: Fiscalite (0 a 1) appliquee aux rendements des placements liquides hors livrets
+
+    AnalysePretsParametresDto:
+      type: object
+      properties:
+        values:
+          $ref: '#/components/schemas/AnalysePretsParametresValuesDto'
+        defaults:
+          $ref: '#/components/schemas/AnalysePretsParametresValuesDto'

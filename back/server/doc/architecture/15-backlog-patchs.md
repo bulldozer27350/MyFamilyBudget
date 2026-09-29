@@ -758,7 +758,7 @@ spécifiques à relire avant de le démarrer.
   - [x] Trésorerie (`/tresorerie`, `/tresorerie/{listKey}`, `/tresorerie/{listKey}/{id}`, `/tresorerie/adjust`)
   - [x] Patrimoine (placements, taux de marché, suggestions de taux)
   - [x] Fiscalité (Impots)
-  - [ ] Analyse / Analyse Prêts
+  - [x] Analyse / Analyse Prêts
   - [ ] Banque / Import (bank-import, bank, pending-operations, pointage, enable-banking)
   - [ ] Objectifs / Notifications
   - [ ] Paramètres / Système (`/settings`, `/budget`, `/budget/import`, `/budget/reset` restent des façades transverses, pas un domaine propre)
@@ -769,6 +769,7 @@ spécifiques à relire avant de le démarrer.
 - Toute extraction est validée par reparsing YAML (PyYAML) : comparaison de chaque path et de chaque schéma déplacé avec le contenu d'origine (`git show HEAD:openapi.yaml`), refs externes neutralisées avant comparaison.
 - Patrimoine : `PlacementDto`, `TransferDto`, `LoanDto`, `RealEstateDto`, `AssetCategoryDto`, `PatrimoineProjectionsDto` (et `PlacementHistoryEntryDto`, porté par `PlacementDto`) restent partagés dans `openapi.yaml` (avec `/budget`, `/overview`, `/analyse`). Neuf schémas exclusifs déplacés : `PatrimoineResponseDto`, `PlacementEvolutionDto`, `PlacementEvolutionPointDto`, `SuggestionsTauxDto`, `SuggestionTauxPlacementDto`, `TauxMarcheDto`, `TauxReglementesDto`, `TauxCreditImmobilierDto`, `CourbeTauxDto`.
 - Fiscalité : `/impots` n'exposait deja aucun schema de composant propre (reponses `type: object`, comme `/retraite`) : extraction sans impact sur `components/schemas`, seul le path a bouge.
+- Analyse / Analyse Prêts : `AnalyseResponseDto`, `AnalysePretsDto`, `AnalysePretsParametresDto`, `AnalysePretsParametresValuesDto` et leurs schémas exclusifs (`AnalyseKpiDto`, `AnalyseLandingRowDto`, `AnalyseDriftRowDto`, `AnalyseMonthlyCompareDto`, `AnalyseCategorySummaryDto`, `AnalysePretsHypothesesDto`, `AnalysePretDto`, `PretRemboursementDto`, `PretRenegociationDto`) déplacés. `BudgetDataDto`, `BankImportDto`, `ChargeDto`, `IncomeDto`, `PlacementDto`, `SettingsDto` restent partagés dans `openapi.yaml`.
 - Vérification `/settings` (12-settings.md) : `SettingsDto` duplique aujourd'hui `pass2026`/`passGrowthRate` avec `RetirementDto`, comme documenté dans le fichier de domaine (« héritage de contrat à nettoyer lors du découpage OpenAPI »). Aucune correction ici — la façade `/settings` reste `type: object` côté contrat (pas de DTO strict à faire évoluer), le nettoyage de `SettingsDto` est un changement de contrat qui dépasse la portée additive de ce patch et devrait être un patch dédié une fois tous les domaines scindés.
 - **Statut** :
 - [ ] Non commencé
