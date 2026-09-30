@@ -260,7 +260,19 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : démontrer que la donnée n'existe pas seulement en mémoire.
 - **Travaux** : mutation, GET, redémarrage du contexte Spring, GET de contrôle.
 - **Contrainte** : exécuter au moins une variante PostgreSQL pour les migrations JPA significatives.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `back/server/src/test/java/com/moe/myfamilybudget/server/internal/integration/RestartPersistenceTest.java`.
+  Deux contextes Spring successifs (HTTP réel, port libre) sur la même base : import d'un dataset avec import bancaire
+  ventilé, mutations Trésorerie (charge, revenu créé puis renommé), Patrimoine (solde), Paramètres + Objectifs, lecture,
+  arrêt du contexte, nouveau contexte, mêmes assertions (étapes A, B et D de `16-tests.md`).
+- **Dépendance PostgreSQL (signalée)** : variante `postgres_dataSurvivesSpringRestart`, exécutée seulement si
+  `MFB_TEST_POSTGRES_URL` est définie (sinon ignorée). Elle écrase le contenu de la base ciblée. Aucune dépendance Maven
+  ajoutée. Le workflow `ci-cd.yml` (job `build-and-test`) déclare un service `postgres:16-alpine` et les trois variables
+  `MFB_TEST_POSTGRES_*` pour l'étape `mvn test`.
+- **Exécution locale** : H2 seul : `mvn -Dtest=RestartPersistenceTest test`. Avec PostgreSQL : `docker compose up -d db`, puis
+  en PowerShell `$env:MFB_TEST_POSTGRES_URL="jdbc:postgresql://localhost:5432/myfamilybudget"` et la même commande Maven.
+- **Validation** : non exécuté à la rédaction (Maven et les dépendances Spring n'étaient pas disponibles). À lancer sous
+  Maven avant de s'appuyer sur ce patch.
 
 ## VT-330 — Test d'échec d'écriture : mémoire non modifiée
 

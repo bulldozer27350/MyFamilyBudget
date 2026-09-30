@@ -27,6 +27,22 @@ jobs:
   build-and-test:
     name: Build & tests (backend + JS + e2e)
     runs-on: ubuntu-latest
+    # PostgreSQL pour la variante PostgreSQL de RestartPersistenceTest (VT-320).
+    # Les autres tests backend restent sur H2.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: myfamilybudget
+          POSTGRES_USER: myfamilybudget
+          POSTGRES_PASSWORD: myfamilybudget
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U myfamilybudget -d myfamilybudget"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -47,6 +63,10 @@ jobs:
         run: bun install
 
       - name: Backend unit tests (mvn test)
+        env:
+          MFB_TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/myfamilybudget
+          MFB_TEST_POSTGRES_USER: myfamilybudget
+          MFB_TEST_POSTGRES_PASSWORD: myfamilybudget
         run: mvn -f back/server/pom.xml -B test
 
       - name: JS smoke test (test-all-apis.js)
