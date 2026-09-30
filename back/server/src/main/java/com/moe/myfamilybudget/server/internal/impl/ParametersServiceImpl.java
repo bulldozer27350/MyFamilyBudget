@@ -75,6 +75,7 @@ public class ParametersServiceImpl implements ParametresApi {
     @Override
     @Transactional
     public ResponseEntity<Void> saveSettings(Object body) {
+        taxCommandService.lockBudgetForCurrentTransaction();
         if (body instanceof Map<?, ?> map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> typedMap = (Map<String, Object>) map;

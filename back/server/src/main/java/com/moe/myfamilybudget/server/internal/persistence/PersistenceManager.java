@@ -152,6 +152,16 @@ public class PersistenceManager {
     }
 
     /**
+     * VT-350b : prend, pour toute la durée de la transaction en cours, le verrou de mutation du
+     * budget. À appeler en premier par une façade {@code @Transactional} qui écrit dans plusieurs
+     * domaines, avant sa première écriture (voir {@link BudgetCacheStore#lockForCurrentTransaction}).
+     * Sans transaction active, ne fait rien.
+     */
+    public void lockForCurrentTransaction() {
+        cacheStore.lockForCurrentTransaction();
+    }
+
+    /**
      * Remplace l'intégralité du modèle de données (utilisé lors de l'import JSON). Délègue à
      * {@link BudgetCacheStore#setBudgetData}.
      */

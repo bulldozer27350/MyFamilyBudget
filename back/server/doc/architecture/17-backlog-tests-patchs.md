@@ -323,7 +323,8 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Travaux** : deux appels simultanés, vérifier invariants, absence de corruption et résultat final déterministe
   ou explicitement documenté.
 - **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
-- **Livré** : deux classes de test, aucun code de production modifié. `BudgetCacheStoreConcurrencyTest` (unitaire, passerelle
+- **Livré** : deux classes de test (le premier jet ne modifiait aucun code de production ; voir le correctif VT-350b
+  ci-dessous). `BudgetCacheStoreConcurrencyTest` (unitaire, passerelle
   mockée, sans Spring ni base) et `ConcurrentMutationsApiTest` (HTTP + Spring + H2 dédiée `vt350`, mémoire et base relues
   séparément). Les appels partent au même instant (verrou de départ) et chaque test est borné par un `@Timeout`, ce qui
   transforme un blocage éventuel en échec.
@@ -339,6 +340,25 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
   - un lecteur ne voit jamais un état à moitié construit (instantanés immuables, liste toujours croissante).
   Exécution à confirmer en CI (compilation non vérifiée localement). Les scénarios HTTP dépendent du verrouillage de
   lignes H2 entre transactions : un échec de ces tests serait un constat à traiter, pas un test à assouplir.
+- **Correctif VT-350b (CI #166)** : `ConcurrentMutationsApiTest` a révélé un défaut réel, pas un défaut de test. Le verrou
+  `mutationLock` de `BudgetCacheStore` n'était tenu que pendant `applyAndPersist`, alors que la transaction
+  (`PersistenceManager` est `@Transactional`) se termine après : une seconde mutation relisait la base, chargeait
+  `BankImportEntity#2` puis tentait de la supprimer alors que la première venait de la remplacer en validant =>
+  `ObjectOptimisticLockingFailureException` (`StaleObjectStateException`) => HTTP 500. Correction :
+  - `mutationLock` devient un `ReentrantLock` conservé jusqu'à la fin de la transaction (`afterCompletion`, après commit ou
+    rollback) quand une transaction est active ; sans transaction (tests unitaires), il est relâché au retour de l'appel.
+    La restauration de la mémoire en cas de rollback (VT-340) est faite avant la libération du verrou, la mutation suivante
+    repart donc toujours d'un état validé ;
+  - `lockForCurrentTransaction()` (`BudgetCacheStore` -> `PersistenceManager`, `TaxCommandService.lockBudgetForCurrentTransaction`)
+    est appelé en premier par `SystemeServiceImpl.importJSON` / `resetData` et `ParametersServiceImpl.saveSettings` : le verrou
+    du budget est toujours pris avant les verrous de lignes de la base (Objectifs), sinon une façade qui écrit d'abord
+    Objectifs et une autre qui tient le verrou du budget pouvaient s'interbloquer ;
+  - aucune exception n'est interceptée ni convertie : les tests VT-350 restent inchangés dans leurs attentes ;
+  - tests ajoutés dans `BudgetCacheStoreConcurrencyTest` : verrou conservé jusqu'à la fin de la transaction, mutation suivante
+    repartant de l'état restauré après rollback, `lockForCurrentTransaction` avec et sans transaction.
+  Conséquence à connaître : les mutations sont désormais sérialisées de bout en bout (verrou + transaction), et une requête en
+  attente du verrou garde sa connexion du pool ; avec plus d'écritures simultanées que de connexions, elles font la file.
+  Exécution à confirmer en CI (compilation non vérifiée localement).
 
 ## VT-500 — Suite E2E de référence finale
 

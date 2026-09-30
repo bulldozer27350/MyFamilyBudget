@@ -91,6 +91,7 @@ public class SystemeServiceImpl implements SystemeApi {
     @Transactional
     public ResponseEntity<BudgetDataDto> importJSON(BudgetDataDto body) {
         if (body != null) {
+            persistenceManager.lockForCurrentTransaction();
             BudgetDataModel model = overviewMapper.toInternalModel(body);
             persistenceManager.setBudgetData(model);
             objectifsSettingsService.save(overviewMapper.toObjectifsParameters(body));
@@ -102,6 +103,7 @@ public class SystemeServiceImpl implements SystemeApi {
     @Override
     @Transactional
     public ResponseEntity<BudgetDataDto> resetData() {
+        persistenceManager.lockForCurrentTransaction();
         BudgetDataModel reset = persistenceManager.resetData();
         objectifsSettingsService.reset();
         return ResponseEntity.ok(overviewMapper.toBudgetDataDto(reset, objectifsSettingsService.current()));

@@ -28,6 +28,15 @@ public class TaxCommandService {
         persistenceManager.updateTaxConfig(children, brackets, rateOverrides, actualOverrides);
     }
 
+    /**
+     * VT-350b : à appeler en premier par une façade transactionnelle multi-domaines (paramètres),
+     * avant toute écriture Objectifs, pour que le verrou du budget soit toujours pris avant les
+     * verrous de lignes de la base (pas d'interblocage entre deux façades).
+     */
+    public void lockBudgetForCurrentTransaction() {
+        persistenceManager.lockForCurrentTransaction();
+    }
+
     public void updateTaxSettings(String field, Object value) {
         persistenceManager.updateTaxSettings(field, value);
     }

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -24,6 +25,8 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.mockito.ArgumentCaptor;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
@@ -42,6 +45,8 @@ import com.moe.myfamilybudget.server.internal.model.IncomeModel;
  *       identique a la derniere sauvegarde envoyee a la base ;</li>
  *   <li>import / reinitialisation contre mutation : le resultat est toujours l'un des deux ordres sequentiels
  *       possibles, jamais un melange ;</li>
+ *   <li>avec une transaction active, le verrou est conserve jusqu'a sa fin (commit ou rollback) : une seconde
+ *       mutation ne demarre pas tant que la premiere n'est pas validee (VT-350b) ;
  *   <li>une sauvegarde en echec ne bloque pas les autres et ne laisse rien en memoire ;</li>
  *   <li>un lecteur ne voit jamais un etat a moitie construit.</li>
  * </ul>
@@ -267,6 +272,158 @@ class BudgetCacheStoreConcurrencyTest {
         assertThat(finalState).isSameAs(saved.getAllValues().get(1));
     }
 
+    @Test
+    @DisplayName("Transaction : le verrou est conserve jusqu'a la fin de la transaction, pas seulement pendant l'appel")
+    void lockIsHeldUntilTransactionCompletion() throws Exception {
+        CountDownLatch firstMutated = new CountDownLatch(1);
+        CountDownLatch releaseFirst = new CountDownLatch(1);
+        AtomicBoolean secondEntered = new AtomicBoolean(false);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = pool.submit(() -> {
+                TransactionSynchronizationManager.initSynchronization();
+                try {
+                    store.applyAndPersist(b -> b.withIncomes(append(b.getEffectiveIncomes(), income("inc_a", 1))));
+                    firstMutated.countDown();
+                    releaseFirst.await();
+                    complete(TransactionSynchronization.STATUS_COMMITTED);
+                } finally {
+                    clearSynchronization();
+                }
+                return null;
+            });
+            assertThat(firstMutated.await(10, TimeUnit.SECONDS)).isTrue();
+
+            Future<?> second = pool.submit(() -> {
+                TransactionSynchronizationManager.initSynchronization();
+                try {
+                    store.applyAndPersist(b -> {
+                        secondEntered.set(true);
+                        return b.withIncomes(append(b.getEffectiveIncomes(), income("inc_b", 1)));
+                    });
+                    complete(TransactionSynchronization.STATUS_COMMITTED);
+                } finally {
+                    clearSynchronization();
+                }
+                return null;
+            });
+
+            Thread.sleep(300);
+            // La premiere mutation est faite mais sa transaction n'est pas terminee : la seconde attend.
+            assertThat(secondEntered.get()).isFalse();
+
+            releaseFirst.countDown();
+            first.get(10, TimeUnit.SECONDS);
+            second.get(10, TimeUnit.SECONDS);
+
+            assertThat(secondEntered.get()).isTrue();
+            assertThat(ids(store.getBudgetData())).containsExactly("inc_a", "inc_b");
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("Transaction annulee : la mutation suivante repart de l'etat d'avant, jamais de l'etat annule")
+    void nextMutationStartsFromRestoredStateAfterRollback() throws Exception {
+        CountDownLatch firstMutated = new CountDownLatch(1);
+        CountDownLatch releaseFirst = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = pool.submit(() -> {
+                TransactionSynchronizationManager.initSynchronization();
+                try {
+                    store.applyAndPersist(b -> b.withIncomes(append(b.getEffectiveIncomes(), income("inc_a", 1))));
+                    firstMutated.countDown();
+                    releaseFirst.await();
+                    complete(TransactionSynchronization.STATUS_ROLLED_BACK);
+                } finally {
+                    clearSynchronization();
+                }
+                return null;
+            });
+            assertThat(firstMutated.await(10, TimeUnit.SECONDS)).isTrue();
+
+            Future<?> second = pool.submit(() -> {
+                TransactionSynchronizationManager.initSynchronization();
+                try {
+                    store.applyAndPersist(b -> b.withIncomes(append(b.getEffectiveIncomes(), income("inc_b", 1))));
+                    complete(TransactionSynchronization.STATUS_COMMITTED);
+                } finally {
+                    clearSynchronization();
+                }
+                return null;
+            });
+
+            Thread.sleep(300);
+            releaseFirst.countDown();
+            first.get(10, TimeUnit.SECONDS);
+            second.get(10, TimeUnit.SECONDS);
+
+            assertThat(ids(store.getBudgetData())).containsExactly("inc_b");
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("lockForCurrentTransaction : sans transaction, ne bloque rien et ne laisse aucun verrou")
+    void lockForCurrentTransactionWithoutTransactionIsANoOp() throws Exception {
+        store.lockForCurrentTransaction();
+
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try {
+            BudgetDataModel updated = pool.submit(() ->
+                    store.applyAndPersist(b -> b.withIncomes(append(b.getEffectiveIncomes(), income("inc_a", 1)))))
+                    .get(10, TimeUnit.SECONDS);
+            assertThat(ids(updated)).containsExactly("inc_a");
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("lockForCurrentTransaction : le verrou est pris avant toute mutation et rendu a la fin de la transaction")
+    void lockForCurrentTransactionHoldsLockUntilCompletion() throws Exception {
+        CountDownLatch locked = new CountDownLatch(1);
+        CountDownLatch releaseFirst = new CountDownLatch(1);
+        AtomicBoolean secondEntered = new AtomicBoolean(false);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = pool.submit(() -> {
+                TransactionSynchronizationManager.initSynchronization();
+                try {
+                    store.lockForCurrentTransaction();
+                    locked.countDown();
+                    releaseFirst.await();
+                    complete(TransactionSynchronization.STATUS_COMMITTED);
+                } finally {
+                    clearSynchronization();
+                }
+                return null;
+            });
+            assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
+
+            Future<?> second = pool.submit(() -> {
+                store.applyAndPersist(b -> {
+                    secondEntered.set(true);
+                    return b;
+                });
+                return null;
+            });
+
+            Thread.sleep(300);
+            assertThat(secondEntered.get()).isFalse();
+
+            releaseFirst.countDown();
+            first.get(10, TimeUnit.SECONDS);
+            second.get(10, TimeUnit.SECONDS);
+            assertThat(secondEntered.get()).isTrue();
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
     /**
      * Lance toutes les taches au meme instant et retourne les exceptions levees. Echoue si une tache ne se
      * termine pas dans le delai (blocage).
@@ -295,6 +452,18 @@ class BudgetCacheStoreConcurrencyTest {
             return failures;
         } finally {
             pool.shutdownNow();
+        }
+    }
+
+    private static void complete(int status) {
+        for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+            synchronization.afterCompletion(status);
+        }
+    }
+
+    private static void clearSynchronization() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
         }
     }
 

@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -45,15 +47,21 @@ class BudgetCacheStore {
 
     private final AtomicReference<BudgetDataModel> currentBudget = new AtomicReference<>();
 
-    // Verrou dédié à applyAndPersist(): protège la séquence lecture -> mutation -> écriture
-    // ci-dessous contre les pertes de mise à jour en cas de requêtes concurrentes (deux appels
-    // simultanés partant tous les deux du même état "current" et écrasant l'un le résultat de
-    // l'autre). AtomicReference garantit uniquement l'atomicité d'une affectation individuelle,
-    // pas celle de la séquence complète.
-    private final Object mutationLock = new Object();
+    // Verrou dédié aux mutations : protège la séquence lecture -> mutation -> écriture contre les pertes
+    // de mise à jour en cas de requêtes concurrentes (deux appels simultanés partant tous les deux du
+    // même état "current" et écrasant l'un le résultat de l'autre). AtomicReference garantit uniquement
+    // l'atomicité d'une affectation individuelle, pas celle de la séquence complète.
+    //
+    // VT-350b : quand une transaction est active, le verrou est conservé jusqu'à la FIN de cette
+    // transaction (commit ou rollback), pas seulement pendant l'appel. Relâché plus tôt, une seconde
+    // mutation lisait la base (et chargeait des entités JPA comme BankImportEntity) pendant que la
+    // première n'était pas encore validée, puis tentait de supprimer des lignes déjà remplacées :
+    // StaleObjectStateException -> HTTP 500. ReentrantLock (et non synchronized) car il est relâché
+    // depuis afterCompletion, hors du bloc qui l'a pris.
+    private final ReentrantLock mutationLock = new ReentrantLock();
 
-    // Clé de la ressource liée à la transaction en cours : conserve l'état mémoire d'AVANT la première
-    // mutation de cette transaction (voir restoreMemoryOnRollback).
+    // Clé de la ressource liée à la transaction en cours : présente tant que cette transaction détient
+    // le verrou ; porte l'état mémoire d'AVANT sa première mutation (voir enlistInCurrentTransaction).
     private final Object rollbackSnapshotKey = new Object();
 
     private record RollbackSnapshot(BudgetDataModel previous) {
@@ -136,7 +144,7 @@ class BudgetCacheStore {
      * @return le nouvel état, déjà persisté et déjà visible depuis getBudgetData()
      */
     BudgetDataModel applyAndPersist(UnaryOperator<BudgetDataModel> mutation) {
-        synchronized (mutationLock) {
+        return underMutationLock(() -> {
             BudgetDataModel base = currentBudget.get();
             if (base == null) {
                 base = createDefaultBudgetData();
@@ -147,10 +155,9 @@ class BudgetCacheStore {
             // exception sans jamais avoir touché à la mémoire.
             gateway.save(updated);
 
-            restoreMemoryOnRollback();
             currentBudget.set(updated);
             return updated;
-        }
+        });
     }
 
     /**
@@ -170,7 +177,10 @@ class BudgetCacheStore {
         if (model != null) {
             return model;
         }
-        synchronized (mutationLock) {
+        // Verrou pris pour la seule durée de ce chargement (pas conservé jusqu'à la fin d'une
+        // éventuelle transaction englobante : ce n'est pas une mutation de l'état courant).
+        mutationLock.lock();
+        try {
             // Un autre thread a pu déjà effectuer le chargement/création pendant qu'on attendait
             // le verrou : on revérifie avant de refaire le travail.
             model = currentBudget.get();
@@ -186,79 +196,122 @@ class BudgetCacheStore {
             }
             currentBudget.set(model);
             return model;
+        } finally {
+            mutationLock.unlock();
         }
     }
 
     /**
      * Remplace l'intégralité du modèle de données (utilisé lors de l'import JSON).
      *
-     * Synchronisé sur {@link #mutationLock} (point 5 de l'audit) : sans ce verrou, un import
+     * Sous {@link #mutationLock} (point 5 de l'audit) : sans ce verrou, un import
      * concurrent d'une mutation passant par {@link #applyAndPersist} pourrait avoir lu l'ancien
      * état juste avant cet appel et écraser ensuite en base, avec son propre {@code gateway.save},
      * le résultat de cet import — perte silencieuse de l'import.
      */
     void setBudgetData(BudgetDataModel data) {
-        synchronized (mutationLock) {
-            if (data != null) {
-                gateway.save(data);
-                restoreMemoryOnRollback();
-                currentBudget.set(data);
-            } else {
-                BudgetDataModel defaultData = createDefaultBudgetData();
-                gateway.save(defaultData);
-                restoreMemoryOnRollback();
-                currentBudget.set(defaultData);
-            }
-        }
+        underMutationLock(() -> {
+            BudgetDataModel toStore = data != null ? data : createDefaultBudgetData();
+            gateway.save(toStore);
+            currentBudget.set(toStore);
+            return null;
+        });
     }
 
     /**
      * Réinitialise les données aux valeurs par défaut.
      *
-     * Synchronisé sur {@link #mutationLock} (point 5 de l'audit), pour la même raison que
+     * Sous {@link #mutationLock} (point 5 de l'audit), pour la même raison que
      * {@link #setBudgetData}: sans le verrou, une mutation concurrente en cours via
      * {@link #applyAndPersist} pourrait persister son propre résultat juste après ce
      * {@code deleteAll()}, ressuscitant les données que resetData() venait d'effacer.
      */
     BudgetDataModel resetData() {
-        synchronized (mutationLock) {
+        return underMutationLock(() -> {
             // Clear existing data
             gateway.deleteAll();
 
             BudgetDataModel defaultData = createDefaultBudgetData();
             gateway.save(defaultData);
-            restoreMemoryOnRollback();
             currentBudget.set(defaultData);
             return defaultData;
+        });
+    }
+
+    /**
+     * Prend dès maintenant, pour toute la durée de la transaction en cours, le verrou que prendrait
+     * la première mutation (VT-350b). À appeler en PREMIER dans une façade {@code @Transactional}
+     * multi-domaines, avant toute écriture dans un autre domaine : le verrou de mutation passe ainsi
+     * toujours avant les verrous de lignes de la base, ce qui écarte l'interblocage entre une
+     * transaction qui tiendrait déjà une ligne (ex. paramètres Objectifs) et attendrait le verrou, et
+     * une autre qui tiendrait le verrou et attendrait cette ligne. Sans transaction active, ne fait rien.
+     */
+    void lockForCurrentTransaction() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            enlistInCurrentTransaction();
         }
     }
 
     /**
-     * Garde la mémoire cohérente avec la base quand la transaction qui englobe une mutation est
-     * annulée (VT-340). Les mutations ci-dessus écrivent en base puis en mémoire ; si un appel
-     * ultérieur de la MÊME transaction échoue (autre domaine, échec du commit...), la base est
-     * annulée mais la mémoire serait restée sur le nouvel état. On mémorise donc, à la première
-     * mutation de la transaction, l'état mémoire d'avant, et on le rétablit si la transaction ne se
-     * termine pas par un commit. Sans transaction active (tests unitaires sur repositories mockés),
-     * ne fait rien. À appeler sous {@code mutationLock}, juste avant {@code currentBudget.set(...)}.
+     * Exécute une mutation sous {@link #mutationLock}.
+     *
+     * <p>Avec une transaction active (cas de production : {@code PersistenceManager} est
+     * {@code @Transactional}), le verrou est conservé jusqu'à la fin de la transaction : voir
+     * {@link #enlistInCurrentTransaction}. Sans transaction (tests unitaires sur repositories
+     * mockés), il est relâché dès le retour de {@code action}.
      */
-    private void restoreMemoryOnRollback() {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()
-                || TransactionSynchronizationManager.hasResource(rollbackSnapshotKey)) {
-            return;
+    private <T> T underMutationLock(Supplier<T> action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            enlistInCurrentTransaction();
+            return action.get();
         }
-        TransactionSynchronizationManager.bindResource(rollbackSnapshotKey, new RollbackSnapshot(currentBudget.get()));
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                Object snapshot = TransactionSynchronizationManager.unbindResourceIfPossible(rollbackSnapshotKey);
-                if (snapshot instanceof RollbackSnapshot restore && status != STATUS_COMMITTED) {
-                    synchronized (mutationLock) {
-                        currentBudget.set(restore.previous());
+        mutationLock.lock();
+        try {
+            return action.get();
+        } finally {
+            mutationLock.unlock();
+        }
+    }
+
+    /**
+     * Rattache la transaction en cours au verrou de mutation, une seule fois par transaction
+     * (VT-350b, étend VT-340).
+     *
+     * <p>Verrou : pris ici et relâché dans {@code afterCompletion}, donc après le commit ou le
+     * rollback. La mutation suivante part ainsi toujours d'un état en base validé et d'un contexte
+     * JPA neuf ; elle ne peut plus charger des entités qu'une transaction concurrente est sur le
+     * point de supprimer ou de remplacer (StaleObjectStateException).
+     *
+     * <p>Mémoire : on mémorise l'état d'avant la première mutation de la transaction et on le
+     * rétablit si elle ne se termine pas par un commit (VT-340). Si un appel ultérieur de la MÊME
+     * transaction échoue (autre domaine, échec du commit...), la base est annulée mais la mémoire
+     * serait restée sur le nouvel état. La restauration a lieu avant la libération du verrou.
+     */
+    private void enlistInCurrentTransaction() {
+        if (TransactionSynchronizationManager.hasResource(rollbackSnapshotKey)) {
+            return; // cette transaction détient déjà le verrou (ré-entrance)
+        }
+        mutationLock.lock();
+        try {
+            TransactionSynchronizationManager.bindResource(rollbackSnapshotKey, new RollbackSnapshot(currentBudget.get()));
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    try {
+                        Object snapshot = TransactionSynchronizationManager.unbindResourceIfPossible(rollbackSnapshotKey);
+                        if (snapshot instanceof RollbackSnapshot restore && status != STATUS_COMMITTED) {
+                            currentBudget.set(restore.previous());
+                        }
+                    } finally {
+                        mutationLock.unlock();
                     }
                 }
-            }
-        });
+            });
+        } catch (RuntimeException | Error e) {
+            TransactionSynchronizationManager.unbindResourceIfPossible(rollbackSnapshotKey);
+            mutationLock.unlock();
+            throw e;
+        }
     }
 
     /**
