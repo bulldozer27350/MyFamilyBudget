@@ -28,6 +28,7 @@ garde son `baseURL`).
 | `read-reload.spec.js` | Lecture + reload sans fallback pour Overview, Trésorerie, Patrimoine, Paramètres et Analyse (VT-210). |
 | `mutation-patrimoine.spec.js` | Mutation d'un placement depuis Patrimoine, relue par Trésorerie et Overview, puis après reload (VT-220). |
 | `settings-multi-domain.spec.js` | Paramètres de trois propriétaires (Retraite, Trésorerie, Objectifs) relus après reload (VT-230). |
+| `backend-down.spec.js` | Test négatif : backend coupé, fallback JS désactivé, lecture et écriture échouent explicitement (VT-240). |
 | `helpers/index.js` | Point d'entrée : `require('./helpers')`. |
 | `fixtures/budget-familial.json` | Dataset canonique de référence. |
 
@@ -151,3 +152,13 @@ Tous les scénarios remettent le backend à l'état de référence (`POST /budge
 `bank_import` lors du reset, budget par défaut relu à la place du dataset importé). `fullyParallel: false` seul ne
 suffit pas, il n'empêche pas le parallélisme entre fichiers. Ne pas relever `workers` sans isoler l'état
 (base ou instance backend par worker).
+
+## Backend indisponible (VT-240)
+
+`backend-down.spec.js` est un test **négatif et diagnostique** : `disableJsFallback` puis coupure réseau de
+l'API côté navigateur (`page.route('**/api/v1/**', route => route.abort())`). Le Spring Boot partagé n'est pas
+arrêté, les autres scénarios restent indépendants. Lecture : Overview, Trésorerie et Patrimoine restent sur
+« Chargement… », aucune donnée du dataset n'apparaît, `[DISABLE_JS_FALLBACK]` est journalisé, aucune réponse 2xx.
+Paramètres affiche ses valeurs par défaut (voir constat dans le backlog) mais aucune valeur du dataset.
+Écriture : `PUT /settings` échoue (`requestfailed`), la mutation est placée dans la file de synchronisation
+(`budgetapp.syncQueue.v1`) et la valeur saisie n'est pas présentée comme enregistrée après reload.

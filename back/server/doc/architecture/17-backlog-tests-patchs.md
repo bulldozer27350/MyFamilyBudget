@@ -223,7 +223,18 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Travaux** : couper le backend, charger une vue critique, déclencher une lecture et une écriture, vérifier
   l'échec explicite.
 - **Limite** : test négatif ; ne doit pas rendre le fallback indisponible par défaut.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `tests/e2e/backend-down.spec.js` (fichier dédié, valeur de production du fallback inchangée). Panne
+  simulée côté navigateur (`page.route` + `abort`), le backend Spring partagé n'est pas arrêté. Lecture : Overview,
+  Trésorerie et Patrimoine restent sur « Chargement… », aucune donnée du dataset affichée, `[DISABLE_JS_FALLBACK]`
+  journalisé, aucune réponse 2xx ; Paramètres : erreur de chargement journalisée et aucune valeur du dataset.
+  Écriture (Paramètres) : `PUT /settings` échoue (`requestfailed`), erreur console explicite, mutation présente dans
+  `budgetapp.syncQueue.v1`, aucune réponse 2xx, et après reload la valeur saisie n'est pas affichée comme
+  enregistrée. Constats hors périmètre, non corrigés : (1) `SettingsView` sort de « Chargement » après un échec et
+  affiche ses valeurs par défaut (`birthYear` 1985…) sans message d'erreur visible ; (2) les écritures de
+  `api.js` ne respectent pas `DISABLE_JS_FALLBACK` : elles échouent en console puis mettent la mutation en file
+  au lieu de rejeter la promesse, et mettent à jour le `BudgetStore` local. Section ajoutée dans
+  `tests/e2e/README.md`. Exécution à confirmer en CI (Playwright non exécuté localement).
 
 ## VT-310 — Renforcer `PersistenceAdaptersTest`
 
