@@ -244,7 +244,15 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Prérequis** : VT-310
 - **Objectif** : éviter une Settings ou importation partiellement appliquée.
 - **Travaux** : mutation valide multi-propriétaires ; mutation invalide au milieu ; vérifier rollback complet.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [x] En attente / [ ] Annulé / [ ] Terminé
+- **Blocage (décision requise)** : aucune des mutations multi-domaines n'est atomique aujourd'hui. `SystemeServiceImpl.importJSON`
+  enchaîne `persistenceManager.setBudgetData(...)` puis `objectifsSettingsService.save(...)`, `resetData` enchaîne
+  `persistenceManager.resetData()` puis `objectifsSettingsService.reset()`, et `ParametersServiceImpl.saveSettings`
+  (clé `settings`) applique les champs un par un (Objectifs, puis `PersistenceManager`) ; aucun `@Transactional` n'englobe ces
+  appels. Un test de rollback complet échouerait donc sur l'existant, et corriger le code dépasse un patch de tests
+  (« pas de refactoring métier opportuniste »). À trancher : (a) rendre ces façades transactionnelles (ou réordonner les écritures) dans un
+  patch dédié, puis écrire ce test tel que décrit ; ou (b) caractériser le comportement actuel (écriture partielle assumée)
+  et documenter l'écart avec l'objectif O5 de `13-persistance.md`.
 
 ## VT-350 — Test de concurrence sur mutations critiques
 
