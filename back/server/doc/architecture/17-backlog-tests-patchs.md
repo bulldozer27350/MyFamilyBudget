@@ -146,7 +146,17 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : figer la cohérence entre import bancaire, pointage et analyse.
 - **Travaux** : dataset avec transactions, catégories, matchings et opérations engagées ; assertions sur
   montants et catégories.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `BankPointageAnalyseScenarioTest` (`@SpringBootTest` + `MockMvc`) : dataset construit relativement
+  au mois courant (M0) et au précédent (M1), avec catégories (dont compressibles), transactions (dont une
+  ventilée en deux catégories, référencée par `tx_9#s1` dans le pointage), transaction non catégorisée,
+  pointages sur deux mois et opération en cours. Lignes budgétaires à montants constants (début ancien,
+  croissance et inflation nulles) pour rester indépendant de la date. Couvre : `GET /pointage` (données
+  importées restituées), KPI et `categorySummaries` d'Analyse (ventilations réparties, tri, couleurs),
+  `landingData` du mois courant (réel pointé + opération en cours, statuts), `monthlyCompareData`,
+  `driftRows` (moyennes 3/12 mois, écart, statut, absence de moyenne sans pointage), propagation d'un
+  `PUT /pointage/matchings/{mois}` vers `/pointage` et `/analyse`, fenêtre `monthsBack`.
+  Valeurs attendues calculées à la main d'après `AnalyseCalculator` (HEAD `3d77990`) ; à confirmer en CI.
 
 ## VT-210 — Scénarios frontend lecture + reload
 
