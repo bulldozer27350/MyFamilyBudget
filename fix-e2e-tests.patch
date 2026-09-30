@@ -1,0 +1,12 @@
+diff --git a/playwright.config.js b/playwright.config.js
+index 62e1435..bf869d2 100644
+--- a/playwright.config.js
++++ b/playwright.config.js
+@@ -6,6 +6,7 @@ module.exports = defineConfig({
+   timeout: 60_000,
+   expect: { timeout: 15_000 },
+   fullyParallel: false,
++  workers: 1,
+   retries: 0,
+   reporter: [['list'], ['html', { open: 'never', outputFolder: 'tests/e2e/report' }]],
+   use: {
