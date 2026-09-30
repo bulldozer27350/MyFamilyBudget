@@ -196,7 +196,18 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Prérequis** : VT-100
 - **Objectif** : passer de simples vérifications non-null à des assertions de round-trip.
 - **Travaux** : write → read, objets critiques et cas reset/import.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `PersistenceAdaptersTest` réécrit en trois blocs, sans plus aucun simple `isNotNull()` :
+  état par défaut après `init()` (valeurs par défaut des paramètres, de la retraite et du barème en 5 tranches) ;
+  round-trip après import complet (`setBudgetData` avec chaque domaine renseigné, relu par les huit adaptateurs :
+  revenus, charges, dépenses ponctuelles, variables, placements avec historique, immobilier, catégories d'actifs,
+  virements, retraite avec personne, impôts, import bancaire, prêts, objectifs avec allocations, paramètres ;
+  un second import remplace le premier) ; round-trip après mutation ciblée (`updateRetirement`,
+  `updateTaxConfig` y compris listes nulles, `resetDefaultTaxBrackets`, `addAssetCategory` /
+  `removeAssetCategory`, `updateBankImport` y compris `null`, lecture « vivante » d'un même adaptateur) ; cas
+  reset / import nul (`resetData`, `setBudgetData(null)`, barème vide relu comme barème par défaut, import après
+  reset). Repositories mockés (`PersistenceManagerTestFactory`) : la persistance JPA réelle relève de VT-320.
+  Constructeurs et accesseurs des modèles vérifiés par compilation sur HEAD `64484f6` ; exécution à confirmer en CI.
 
 ## VT-320 — Test de persistance après redémarrage Spring
 
