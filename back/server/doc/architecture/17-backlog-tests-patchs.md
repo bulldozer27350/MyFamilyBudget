@@ -129,7 +129,16 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Travaux** : import fixture, appels `retraite`, `impots`, `tresorerie`, `overview`, assertions croisées sur
   année de retraite, pension, impôts, cash-flow et KPI.
 - **Parallèle** : peut être développé en parallèle de VT-120 et VT-210.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `RetirementToOverviewScenarioTest` (`@SpringBootTest` + `MockMvc`, dataset `mock-budget.json`),
+  complémentaire de `CriticalEndpointsCharacterizationTest` : chaque assertion relie au moins deux endpoints.
+  Année de retraite identique dans `/retraite`, `/tresorerie` et `/overview` ; une seule projection retraite
+  (pension de `/retraite` = `totalPensions` et revenu du cashflow `/overview`, constant jusqu'à l'horizon) ;
+  impôts cohérents entre `/impots`, `/tresorerie` et `/overview` avant la retraite, pension imposée ensuite ;
+  identité `net = revenus + variables − épargne − charges − exceptionnels − impôts` sur les deux cashflows ;
+  écart `/overview` / `/tresorerie` limité aux pensions après la retraite (comportement actuel de
+  `/tresorerie` : aucun revenu, solde figé, caractérisé tel quel) ; KPI (`fluxNetActuel`, `retirePatrimoine` =
+  placements + immobilier réévalué, règle des 4 % = patrimoine / 300). Valeurs capturées sur HEAD `7f56a53`.
 
 ## VT-120 — Scénario backend Banque→Pointage→Analyse
 
