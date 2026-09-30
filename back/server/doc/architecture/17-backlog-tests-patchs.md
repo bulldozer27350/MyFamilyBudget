@@ -225,7 +225,19 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : protéger l'ordre actuel voulu `DB → mémoire` dans `BudgetCacheStore.applyAndPersist`.
 - **Travaux** : provoquer une erreur de persistance, vérifier que l'ancien état mémoire reste visible et que
   la nouvelle valeur n'est pas servie artificiellement.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `WriteFailureKeepsMemoryTest` (repositories mockés, sans Spring ni base) : deux points de
+  défaillance simulés — écriture de l'entité principale (`budgetDataRepository.save`) et écriture des lignes
+  enfants (`incomeRepository.save`, base déjà partiellement modifiée). Pour chaque mutation de `PersistenceManager`
+  (`addTresorerieRow`, `updateTresorerieRow`, `removeTresorerieRow`, `savePatrimoineRow`, `deletePatrimoineRow`,
+  `updateRetirement`, `updateTaxConfig`, `updateTaxSettings`, `addAssetCategory`, `updateBankImport`,
+  `setBudgetData`, et `resetData` / `setBudgetData(null)` pour l'entité principale) : l'exception d'origine remonte
+  telle quelle, `getBudgetData()` renvoie toujours la même instance, les huit ports de lecture restituent l'ancien
+  état et aucun `BudgetMutatedEvent` n'est publié. Test de reprise : une fois la base revenue, la même mutation
+  aboutit et n'est visible qu'à ce moment-là. Constat hors périmètre, non modifié :
+  `BudgetPersistenceGateway.saveBankImport` intercepte les exceptions (journalisées) ; une panne limitée à
+  l'écriture du blob d'import bancaire ne remonte donc pas et la mémoire est tout de même mise à jour.
+  Exécution à confirmer en CI (compilation non vérifiée localement).
 
 ## VT-340 — Test d'atomicité des mutations multi-domaines
 
