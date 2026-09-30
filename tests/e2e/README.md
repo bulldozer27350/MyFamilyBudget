@@ -142,3 +142,12 @@ et l'écran Paramètres avant et après `page.reload()`.
 Le test importe une copie temporaire du dataset canonique avec `sweepEnabled: false` : tant que
 `BudgetMutationService.updateTaxSettings` lève une `NullPointerException` sur `sweepEnabled` absent (constat
 VT-340), toute modification de paramètre échoue sur le dataset partagé, qui reste inchangé.
+
+## Exécution sérialisée (VT-210b)
+
+Tous les scénarios remettent le backend à l'état de référence (`POST /budget/reset` puis `/budget/import`) sur
+**le même Spring Boot et la même base**. `playwright.config.js` fixe donc `workers: 1` : deux fichiers
+`*.spec.js` exécutés en parallèle se corrompaient mutuellement (`StaleObjectStateException` sur
+`bank_import` lors du reset, budget par défaut relu à la place du dataset importé). `fullyParallel: false` seul ne
+suffit pas, il n'empêche pas le parallélisme entre fichiers. Ne pas relever `workers` sans isoler l'état
+(base ou instance backend par worker).

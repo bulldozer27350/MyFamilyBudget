@@ -176,6 +176,12 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
   (réimport d'une copie du dataset) et relu après reload. Analyse : état sans import bancaire (`kpis`, message
   « Aucune transaction importée »). Valeurs attendues lues dans `fixtures/budget-familial.json`. Section ajoutée
   dans `tests/e2e/README.md`. Exécution à confirmer en CI (Playwright non exécuté localement).
+  Correctif VT-210b (CI #160) : `playwright.config.js` fixe `workers: 1`. Les scénarios partagent un même backend et
+  une même base (`reset → import`) et s'exécutaient en parallèle entre fichiers, d'où un HTTP 500 sur
+  `POST /budget/reset` (`StaleObjectStateException` sur `BankImportEntity`, sauvegarde par suppression puis
+  réinsertion) et un budget par défaut (`birthYear` 1985) relu à la place du dataset. L'exception n'est pas
+  masquée : elle est évitée en supprimant la concurrence. Une isolation par worker reste à faire avant de
+  relever `workers`.
 
 ## VT-220 — Scénario frontend mutation patrimoine→trésorerie→overview
 
