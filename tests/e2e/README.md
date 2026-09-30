@@ -26,6 +26,7 @@ garde son `baseURL`).
 | `helpers/browser.js` | `disableJsFallback`, `expectFreshBrowserState`, `gotoAndExpectBackend`, `actAndExpectBackend`, `readJsFallbackFlag` (VT-200). |
 | `no-fallback.spec.js` | Vérifie le mode sans fallback JS (VT-200). |
 | `read-reload.spec.js` | Lecture + reload sans fallback pour Overview, Trésorerie, Patrimoine, Paramètres et Analyse (VT-210). |
+| `mutation-patrimoine.spec.js` | Mutation d'un placement depuis Patrimoine, relue par Trésorerie et Overview, puis après reload (VT-220). |
 | `helpers/index.js` | Point d'entrée : `require('./helpers')`. |
 | `fixtures/budget-familial.json` | Dataset canonique de référence. |
 
@@ -120,3 +121,12 @@ nouvelle lecture backend exigée → mêmes assertions. Les valeurs attendues pr
 Le test Paramètres modifie en plus le dataset côté serveur (`startBalance`, via `importDataset` sur une copie
 temporaire) entre les deux chargements : la nouvelle valeur ne peut apparaître après reload que si l'écran
 relit le backend.
+
+## Mutation Patrimoine → Trésorerie → Overview (VT-220)
+
+`mutation-patrimoine.spec.js` déclenche une écriture depuis l'écran Patrimoine (tiroir d'un placement) et exige la
+réponse 2xx de `POST /patrimoine/placements`. L'effet est ensuite relu **uniquement dans des réponses HTTP du
+backend** : `GET /patrimoine`, puis l'épargne 2027 du `cashflow` de `GET /tresorerie` et de `GET /overview`
+(PEA de référence : 200 €/mois, soit 2 400 € en année pleine), directement puis lue par les pages elles-mêmes
+avant et après `page.reload()`. Deux cas : modification du versement mensuel du PEA (200 → 300) et création d'un
+placement (50 €/mois dès 2026-01-01). L'IHM ne sert qu'à déclencher la mutation et à rouvrir le tiroir.

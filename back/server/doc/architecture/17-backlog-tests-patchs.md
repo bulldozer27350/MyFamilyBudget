@@ -183,7 +183,15 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : valider une mutation dont l'effet traverse plusieurs domaines.
 - **Travaux** : créer/modifier un placement, relire Patrimoine, Trésorerie et Overview, puis reload.
 - **Critère** : aucune assertion ne doit dépendre d'un état JS non relu du serveur.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `tests/e2e/mutation-patrimoine.spec.js` (fichier dédié, fallback JS désactivé, contexte vierge).
+  Deux scénarios : modification du versement mensuel du PEA (200 → 300 €) et création d'un placement
+  (50 €/mois dès 2026-01-01), chacun déclenché depuis le tiroir Patrimoine avec `POST /patrimoine/placements`
+  2xx exigé. Effet relu uniquement dans des réponses backend : `GET /patrimoine` (placement et versement),
+  épargne 2027 du `cashflow` de `/tresorerie` et de `/overview` (2 400 € avant ; 3 600 € puis 3 000 € après),
+  directement, puis lue par les pages Trésorerie et Overview au chargement et après `page.reload()` ; le tiroir
+  rouvert après reload affiche la valeur persistée. Aucune valeur dépendante de la date du jour (année pleine).
+  Section ajoutée dans `tests/e2e/README.md`. Exécution à confirmer en CI (Playwright non exécuté localement).
 
 ## VT-230 — Scénario frontend paramètres multi-domaines
 
