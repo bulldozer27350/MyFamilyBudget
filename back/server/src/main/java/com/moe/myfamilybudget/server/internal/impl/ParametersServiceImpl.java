@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.ParametresApi;
@@ -25,6 +26,9 @@ import com.moe.myfamilybudget.server.internal.port.SettingsReader;
  * {@code PersistenceManager}. {@code getSettings()} lit via {@link SettingsReader},
  * {@link PatrimoineReader} (catégories d'actifs) et {@link BankReader} ; {@code saveSettings()}
  * ne lit rien et délègue déjà entièrement aux services de commande par domaine.
+ *
+ * <p>VT-340 : {@code saveSettings} est {@code @Transactional} — une mise à jour touchant plusieurs
+ * propriétaires (Objectifs, Fiscalité/Paramètres) est appliquée en entier ou pas du tout.
  */
 @Service
 @RestController
@@ -69,6 +73,7 @@ public class ParametersServiceImpl implements ParametresApi {
     }
 
     @Override
+    @Transactional
     public ResponseEntity<Void> saveSettings(Object body) {
         if (body instanceof Map<?, ?> map) {
             @SuppressWarnings("unchecked")

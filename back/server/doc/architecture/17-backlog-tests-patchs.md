@@ -244,15 +244,19 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Prérequis** : VT-310
 - **Objectif** : éviter une Settings ou importation partiellement appliquée.
 - **Travaux** : mutation valide multi-propriétaires ; mutation invalide au milieu ; vérifier rollback complet.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [x] En attente / [ ] Annulé / [ ] Terminé
-- **Blocage (décision requise)** : aucune des mutations multi-domaines n'est atomique aujourd'hui. `SystemeServiceImpl.importJSON`
-  enchaîne `persistenceManager.setBudgetData(...)` puis `objectifsSettingsService.save(...)`, `resetData` enchaîne
-  `persistenceManager.resetData()` puis `objectifsSettingsService.reset()`, et `ParametersServiceImpl.saveSettings`
-  (clé `settings`) applique les champs un par un (Objectifs, puis `PersistenceManager`) ; aucun `@Transactional` n'englobe ces
-  appels. Un test de rollback complet échouerait donc sur l'existant, et corriger le code dépasse un patch de tests
-  (« pas de refactoring métier opportuniste »). À trancher : (a) rendre ces façades transactionnelles (ou réordonner les écritures) dans un
-  patch dédié, puis écrire ce test tel que décrit ; ou (b) caractériser le comportement actuel (écriture partielle assumée)
-  et documenter l'écart avec l'objectif O5 de `13-persistance.md`.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Décision** : option (a) retenue — les façades multi-domaines deviennent transactionnelles (patch de code inclus, le test
+  ne pouvant pas passer sur l'existant).
+- **Livré** : `@Transactional` sur `SystemeServiceImpl.importJSON` / `resetData` et `ParametersServiceImpl.saveSettings`
+  (écritures budget puis Objectifs dans une seule transaction). `BudgetCacheStore` mémorise, à la première mutation d'une
+  transaction, l'état mémoire d'avant et le rétablit si la transaction ne se termine pas par un commit (le cache était
+  sinon en avance sur une base annulée) ; sans transaction active, comportement inchangé. Tests :
+  `BudgetCacheStoreRollbackTest` (unitaire : rollback de plusieurs mutations, commit, `setBudgetData` / `resetData`, sauvegarde
+  en échec) et `MultiDomainAtomicityTest` (`@SpringBootTest`, base H2 dédiée, store Objectifs espionné en échec) : import,
+  réinitialisation et `PUT /settings` (champ Fiscalité appliqué puis champ Objectifs en échec) laissent inchangés le cache, la base
+  relue directement et les paramètres Objectifs ; la même mise à jour aboutit en entier sans échec. Point de vigilance pour
+  VT-350 : une transaction multi-étapes garde désormais ses verrous base entre deux écritures alors que `mutationLock` est pris
+  écriture par écriture ; à observer dans le test de concurrence. Exécution à confirmer en CI (compilation non vérifiée localement).
 
 ## VT-350 — Test de concurrence sur mutations critiques
 

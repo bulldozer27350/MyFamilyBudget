@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
@@ -49,6 +51,13 @@ class BudgetCacheStore {
     // l'autre). AtomicReference garantit uniquement l'atomicité d'une affectation individuelle,
     // pas celle de la séquence complète.
     private final Object mutationLock = new Object();
+
+    // Clé de la ressource liée à la transaction en cours : conserve l'état mémoire d'AVANT la première
+    // mutation de cette transaction (voir restoreMemoryOnRollback).
+    private final Object rollbackSnapshotKey = new Object();
+
+    private record RollbackSnapshot(BudgetDataModel previous) {
+    }
 
     BudgetCacheStore(BudgetPersistenceGateway gateway, TransactionTemplate transactionTemplate) {
         this.gateway = gateway;
@@ -138,6 +147,7 @@ class BudgetCacheStore {
             // exception sans jamais avoir touché à la mémoire.
             gateway.save(updated);
 
+            restoreMemoryOnRollback();
             currentBudget.set(updated);
             return updated;
         }
@@ -191,10 +201,12 @@ class BudgetCacheStore {
         synchronized (mutationLock) {
             if (data != null) {
                 gateway.save(data);
+                restoreMemoryOnRollback();
                 currentBudget.set(data);
             } else {
                 BudgetDataModel defaultData = createDefaultBudgetData();
                 gateway.save(defaultData);
+                restoreMemoryOnRollback();
                 currentBudget.set(defaultData);
             }
         }
@@ -215,9 +227,38 @@ class BudgetCacheStore {
 
             BudgetDataModel defaultData = createDefaultBudgetData();
             gateway.save(defaultData);
+            restoreMemoryOnRollback();
             currentBudget.set(defaultData);
             return defaultData;
         }
+    }
+
+    /**
+     * Garde la mémoire cohérente avec la base quand la transaction qui englobe une mutation est
+     * annulée (VT-340). Les mutations ci-dessus écrivent en base puis en mémoire ; si un appel
+     * ultérieur de la MÊME transaction échoue (autre domaine, échec du commit...), la base est
+     * annulée mais la mémoire serait restée sur le nouvel état. On mémorise donc, à la première
+     * mutation de la transaction, l'état mémoire d'avant, et on le rétablit si la transaction ne se
+     * termine pas par un commit. Sans transaction active (tests unitaires sur repositories mockés),
+     * ne fait rien. À appeler sous {@code mutationLock}, juste avant {@code currentBudget.set(...)}.
+     */
+    private void restoreMemoryOnRollback() {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()
+                || TransactionSynchronizationManager.hasResource(rollbackSnapshotKey)) {
+            return;
+        }
+        TransactionSynchronizationManager.bindResource(rollbackSnapshotKey, new RollbackSnapshot(currentBudget.get()));
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                Object snapshot = TransactionSynchronizationManager.unbindResourceIfPossible(rollbackSnapshotKey);
+                if (snapshot instanceof RollbackSnapshot restore && status != STATUS_COMMITTED) {
+                    synchronized (mutationLock) {
+                        currentBudget.set(restore.previous());
+                    }
+                }
+            }
+        });
     }
 
     /**
