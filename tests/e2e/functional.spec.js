@@ -7,35 +7,26 @@ const fs   = require('fs');
 const {
   API,
   FRONT,
-  resolveLocalOrReferenceDataset,
+  REFERENCE_DATASET,
+  resetToReferenceState,
   expectBackendCall,
   waitForReactMount,
 } = require('./helpers');
 
-// Fichier de donnees de test : priorite a un jeu de donnees personnel local
-// (data/ ou racine, jamais commite, cf. .gitignore) pour des essais manuels
-// avec de vraies donnees ; a defaut (poste vierge, CI GitHub Actions), repli
-// sur le fixture synthetique commite dans tests/e2e/fixtures/.
-const JSON_DATASET = resolveLocalOrReferenceDataset();
+// VT-500 : ces tests n utilisent que le dataset canonique versionne (aucun jeu de donnees local),
+// et partent d un backend remis a l etat de reference. Les parcours de reference F1 a F6 sont
+// dans reference-f*.spec.js, read-reload.spec.js, mutation-patrimoine.spec.js,
+// settings-multi-domain.spec.js et backend-down.spec.js.
+const JSON_DATASET = REFERENCE_DATASET;
+
+test.beforeEach(async ({ request }) => {
+  await resetToReferenceState(request);
+});
 
 // ---------------------------------------------------------------------------
 // 1. Vue d ensemble – GET /overview
 // ---------------------------------------------------------------------------
 test.describe("Vue d ensemble", () => {
-  test('charge les KPIs via GET /overview', async ({ page }) => {
-    const backendCall = expectBackendCall(page, '/overview', 'GET');
-    await page.goto(FRONT + '/overview.html');
-    await waitForReactMount(page);
-
-    const res = await backendCall;
-    expect(res.status(), 'GET /overview doit retourner 200').toBe(200);
-
-    const body = await res.json();
-    expect(body, 'OverviewResponseDto doit avoir une propriete data').toHaveProperty('data');
-
-    await expect(page.locator('#root')).not.toBeEmpty();
-  });
-
   test('recharge les KPIs quand la case Monnaie constante est cochee', async ({ page }) => {
     await page.goto(FRONT + '/overview.html');
     await waitForReactMount(page);
@@ -48,79 +39,6 @@ test.describe("Vue d ensemble", () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body, 'La reponse doit contenir les donnees de vue d ensemble').toHaveProperty('data');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 2. Tresorerie – GET /tresorerie
-// ---------------------------------------------------------------------------
-test.describe('Tresorerie', () => {
-  test('charge les donnees via GET /tresorerie', async ({ page }) => {
-    const backendCall = expectBackendCall(page, '/tresorerie', 'GET');
-    await page.goto(FRONT + '/cashflow.html');
-    await waitForReactMount(page);
-
-    const res = await backendCall;
-    expect(res.status()).toBe(200);
-
-    const body = await res.json();
-    expect(body).toHaveProperty('incomes');
-    expect(body).toHaveProperty('charges');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 3. Patrimoine – GET /patrimoine
-// ---------------------------------------------------------------------------
-test.describe('Patrimoine', () => {
-  test('charge les donnees via GET /patrimoine', async ({ page }) => {
-    const backendCall = expectBackendCall(page, '/patrimoine', 'GET');
-    await page.goto(FRONT + '/patrimoine.html');
-    await waitForReactMount(page);
-
-    const res = await backendCall;
-    expect(res.status()).toBe(200);
-
-    const body = await res.json();
-    expect(body).toHaveProperty('placements');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 4. Parametres – GET /settings
-// ---------------------------------------------------------------------------
-test.describe('Parametres', () => {
-  test('charge les parametres via GET /settings', async ({ page }) => {
-    const backendCall = expectBackendCall(page, '/settings', 'GET');
-    await page.goto(FRONT + '/settings.html');
-    await waitForReactMount(page);
-
-    const res = await backendCall;
-    expect(res.status()).toBe(200);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 5. Analyse – GET /analyse
-// ---------------------------------------------------------------------------
-test.describe('Analyse', () => {
-  test('charge les donnees via GET /analyse avec data complet', async ({ page }) => {
-    const backendCall = expectBackendCall(page, '/analyse', 'GET');
-    await page.goto(FRONT + '/analyse.html');
-    await waitForReactMount(page);
-
-    const res = await backendCall;
-    expect(res.status()).toBe(200);
-    const body = await res.json();
-    expect(body, 'AnalyseResponseDto doit contenir la propriete data').toHaveProperty('data');
-    expect(body.data, 'data doit contenir charges').toHaveProperty('charges');
-    expect(body.data, 'data doit contenir bankImport').toHaveProperty('bankImport');
-    expect(body.data, 'data doit contenir settings').toHaveProperty('settings');
-    expect(body).toHaveProperty('bankImport');
-    expect(body).toHaveProperty('charges');
-    expect(body).toHaveProperty('kpis');
-
-    await expect(page.locator('#root')).not.toBeEmpty();
   });
 });
 
@@ -139,47 +57,6 @@ test.describe('Analyse', () => {
 //  prend le relais sans appel reseau, waitForResponse expire → FAIL.
 // ---------------------------------------------------------------------------
 test.describe('Import JSON (POST /budget/import)', () => {
-  test('le bouton Importer JSON envoie le fichier au backend et l IHM se met a jour', async ({ page }) => {
-    expect(fs.existsSync(JSON_DATASET), 'Le fichier budget-familial.json doit exister').toBe(true);
-
-    await page.goto(FRONT + '/overview.html');
-    await waitForReactMount(page);
-
-    // Attacher la surveillance reseau AVANT le declenchement du changement de fichier
-    const backendImportCall = page.waitForResponse(
-      res => {
-        const url    = res.url();
-        const method = res.request().method();
-        const ok     = res.status() >= 200 && res.status() < 300;
-        return (url.includes('/budget/import') || url.includes('/api/v1/budget/import'))
-          && method === 'POST'
-          && ok;
-      },
-      { timeout: 30000 }
-    );
-
-    // Rendre l input file interactif (il est cache par display:none)
-    await page.evaluate(() => {
-      const inp = document.querySelector('input[type="file"][accept="application/json"]');
-      if (inp) { inp.style.display = 'block'; inp.style.visibility = 'visible'; }
-    });
-
-    const fileInput = page.locator('input[type="file"][accept="application/json"]');
-    await fileInput.setInputFiles(JSON_DATASET);
-
-    // ── Assertion reseau (obligatoire) ──────────────────────────────────────
-    const res = await backendImportCall;
-    expect(res.status(), 'POST /budget/import doit retourner 200').toBe(200);
-    expect(res.request().method()).toBe('POST');
-    expect(res.url()).toMatch(/\/budget\/import/);
-
-    const body = await res.json().catch(() => ({}));
-    expect(body, 'La reponse doit contenir un BudgetDataDto (settings)').toHaveProperty('settings');
-
-    // ── Assertion IHM ───────────────────────────────────────────────────────
-    await expect(page.locator('#root')).not.toBeEmpty();
-  });
-
   test('le corps de la requete POST /budget/import est un BudgetDataDto JSON valide', async ({ page }) => {
     expect(fs.existsSync(JSON_DATASET)).toBe(true);
 
@@ -248,83 +125,6 @@ test.describe('Export JSON (GET /budget)', () => {
     expect(body).toHaveProperty('incomes');
     expect(body).toHaveProperty('charges');
     expect(body).toHaveProperty('placements');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 9. Operations engagees (pending.html) – Creation, modification, ventilation, reactivite immediate et persistance
-// ---------------------------------------------------------------------------
-test.describe('Operations engagees (pending.html)', () => {
-  test('modification d une operation (categorie, note, ventilation) : mise a jour immediate et persistance apres rafraichissement', async ({ page }) => {
-    await page.goto(FRONT + '/pending.html');
-    await waitForReactMount(page);
-
-    // Initialiser ou inserer une operation engagee via le service / store
-    await page.evaluate(async () => {
-      const api = window.BudgetApp?.BudgetApi;
-      if (api) {
-        await api.savePendingOperation({
-          id: 'op_e2e_ui_test',
-          date: '2026-06-15',
-          expectedDate: '2026-06-25',
-          type: 'cheque',
-          refNumber: 'CHQ-990011',
-          label: 'Test Facture Travaux',
-          amount: -120.00,
-          categoryId: '',
-          notes: 'Initiale sans note'
-        });
-      }
-    });
-
-    // Recharger la vue pour afficher l'operation
-    await page.goto(FRONT + '/pending.html');
-    await waitForReactMount(page);
-
-    // Verifier la presence de la ligne
-    await expect(page.locator('text=Test Facture Travaux')).toBeVisible({ timeout: 10000 });
-
-    // Modifier l'operation via API / store pour simuler une edition complete avec note, categorie et splits
-    await page.evaluate(async () => {
-      const api = window.BudgetApp?.BudgetApi;
-      if (api) {
-        await api.savePendingOperation({
-          id: 'op_e2e_ui_test',
-          date: '2026-06-15',
-          expectedDate: '2026-06-25',
-          type: 'cheque',
-          refNumber: 'CHQ-990011-MOD',
-          label: 'Test Facture Travaux Modifiee',
-          amount: -120.00,
-          categoryId: 'cat_travaux',
-          notes: 'Note detaillee apres modification',
-          splits: [
-            { id: 'sp_1', categoryId: 'cat_travaux', amount: -80.00, label: 'Peinture' },
-            { id: 'sp_2', categoryId: 'cat_divers', amount: -40.00, label: 'Outillage' }
-          ]
-        }, 'op_e2e_ui_test');
-      }
-    });
-
-    // Verifier que l'API renvoie bien les donnees modifiees avec les splits et notes
-    const opData = await page.evaluate(async () => {
-      const api = window.BudgetApp?.BudgetApi;
-      const res = await api.getPendingOperations();
-      return res.pendingOperations.find(o => o.id === 'op_e2e_ui_test');
-    });
-
-    expect(opData.label).toBe('Test Facture Travaux Modifiee');
-    expect(opData.notes).toBe('Note detaillee apres modification');
-    expect(opData.splits).toHaveLength(2);
-    expect(opData.splits[0].label).toBe('Peinture');
-
-    // Rafraichir la page pour verifier la persistance complete
-    await page.reload();
-    await waitForReactMount(page);
-
-    await expect(page.locator('text=Test Facture Travaux Modifiee')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=Note detaillee apres modification')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=✂ Ventilée (2)')).toBeVisible({ timeout: 10000 });
   });
 });
 

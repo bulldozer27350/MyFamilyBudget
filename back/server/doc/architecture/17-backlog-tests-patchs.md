@@ -366,7 +366,13 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : disposer d'un petit nombre de parcours représentatifs avant Maven.
 - **Travaux** : F1 à F6 de `16-tests.md`, nettoyage des scénarios redondants et stabilisation des fixtures.
 - **Critère** : exécution répétable, sans dépendance à une donnée locale.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : F1, F3 et F4 ajoutés (`reference-f1-import-overview.spec.js`, `reference-f3-bank-pointage-analyse.spec.js`,
+  `reference-f4-pending-persistence.spec.js`) ; F2, F5 et F6 étaient déjà couverts par VT-220, VT-230 et VT-240.
+  Helper `helpers/bank-scenario.js` (dataset bancaire généré relativement au mois courant, mêmes montants que
+  VT-120). Nettoyage de `functional.spec.js` : doublons de VT-210, import UI (→ F1) et opération engagée (→ F4)
+  retirés, reset au dataset de référence avant chaque test, suppression de la dépendance à un jeu de données local.
+  Table des parcours dans `tests/e2e/README.md`. Écrits sans exécution Playwright : à confirmer en CI.
 
 ## VT-600 — Gate de validation avant Maven
 

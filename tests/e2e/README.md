@@ -18,7 +18,7 @@ garde son `baseURL`).
 
 | Fichier | Rôle |
 |---|---|
-| `functional.spec.js` | Tests fonctionnels historiques. À ne modifier que pour un besoin de helper commun. |
+| `functional.spec.js` | Contrats HTTP historiques (monnaie constante, corps de l'import, reset, export, smoke API). Part du dataset canonique, sans donnée locale (VT-500). |
 | `socle.spec.js` | Vérifie le socle commun (reset/import, nettoyage navigateur). Aucun test métier. |
 | `helpers/constants.js` | `API`, `FRONT`, `REFERENCE_DATASET`, `BROWSER_STORAGE_KEYS`. |
 | `helpers/backend.js` | `expectBackendCall`, `waitForReactMount`. |
@@ -29,6 +29,10 @@ garde son `baseURL`).
 | `mutation-patrimoine.spec.js` | Mutation d'un placement depuis Patrimoine, relue par Trésorerie et Overview, puis après reload (VT-220). |
 | `settings-multi-domain.spec.js` | Paramètres de trois propriétaires (Retraite, Trésorerie, Objectifs) relus après reload (VT-230). |
 | `backend-down.spec.js` | Test négatif : backend coupé, fallback JS désactivé, lecture et écriture échouent explicitement (VT-240). |
+| `helpers/bank-scenario.js` | `currentMonths`, `buildBankScenario`, `importBankScenario` : dataset bancaire généré relativement au mois courant (VT-500). |
+| `reference-f1-import-overview.spec.js` | F1 : import par l'IHM → Overview → modification → Overview après reload (VT-500). |
+| `reference-f3-bank-pointage-analyse.spec.js` | F3 : Banque → Pointage → Analyse, pointage modifié et propagé (VT-500). |
+| `reference-f4-pending-persistence.spec.js` | F4 : opération engagée créée, modifiée, relue côté backend après reload (VT-500). |
 | `helpers/index.js` | Point d'entrée : `require('./helpers')`. |
 | `fixtures/budget-familial.json` | Dataset canonique de référence. |
 
@@ -41,8 +45,8 @@ Un helper commun n'est ajouté que s'il réduit réellement les conflits entre p
 `fixtures/budget-familial.json` est le **seul** dataset autorisé pour les scénarios de référence :
 il est versionné, synthétique et indépendant de toute donnée locale (contrainte C3).
 `REFERENCE_DATASET` pointe toujours dessus. `resolveLocalOrReferenceDataset()` (préférence pour
-`data/budget-familial.json` ou `budget-familial.json` à la racine, non versionnés) ne subsiste que pour
-`functional.spec.js` et ne doit pas être utilisé dans un scénario de référence.
+`data/budget-familial.json` ou `budget-familial.json` à la racine, non versionnés) n'est plus utilisée par aucun
+scénario (VT-500) et ne doit pas l'être dans un scénario de référence.
 
 Contenu (un élément par liste, valeurs stables) :
 
@@ -162,3 +166,24 @@ arrêté, les autres scénarios restent indépendants. Lecture : Overview, Trés
 Paramètres affiche ses valeurs par défaut (voir constat dans le backlog) mais aucune valeur du dataset.
 Écriture : `PUT /settings` échoue (`requestfailed`), la mutation est placée dans la file de synchronisation
 (`budgetapp.syncQueue.v1`) et la valeur saisie n'est pas présentée comme enregistrée après reload.
+
+## Suite de référence finale (VT-500)
+
+| Parcours | Fichier |
+|---|---|
+| F1 Import → Overview → modification → Overview | `reference-f1-import-overview.spec.js` |
+| F2 Mutation patrimoine → Trésorerie → Overview | `mutation-patrimoine.spec.js` (VT-220) |
+| F3 Banque → Pointage → Analyse | `reference-f3-bank-pointage-analyse.spec.js` |
+| F4 Opération engagée → modification → reload | `reference-f4-pending-persistence.spec.js` |
+| F5 Paramètres multi-domaines | `settings-multi-domain.spec.js` (VT-230) |
+| F6 Diagnostic sans backend | `backend-down.spec.js` (VT-240) |
+
+`read-reload.spec.js` (VT-210) complète la suite par la lecture + reload de chaque écran. Tous ces scénarios
+remettent le backend à l'état de référence, désactivent le fallback JS, démarrent d'un contexte vierge et
+n'utilisent que `fixtures/budget-familial.json` ou un dataset généré par les helpers : aucune donnée locale.
+F3 génère son dataset relativement au mois courant (`helpers/bank-scenario.js`), donc rejouable à toute date.
+F4 prouve la persistance par `GET /pending-operations` après avoir vidé `localStorage` avant le reload.
+
+Nettoyage : `functional.spec.js` ne conserve que les contrats HTTP non couverts ailleurs ; ses tests de chargement
+des écrans (doublons de VT-210), l'import par l'IHM (F1) et le test d'opération engagée (F4) ont été retirés, et il
+repart désormais du dataset de référence (`resetToReferenceState`) au lieu d'un éventuel jeu de données local.
