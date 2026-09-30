@@ -37,6 +37,6 @@ public class JpaObjectifsSettingsStore implements ObjectifsSettingsStore {
 
     @Override
     public void clear() {
-        repository.deleteById(SETTINGS_ID);
+        repository.findById(SETTINGS_ID).ifPresent(repository::delete);
     }
 }

@@ -80,9 +80,9 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
   2027/2028/2054 et totaux), Overview (cohérence croisée avec Retraite, Trésorerie et Patrimoine), Analyse
   (état sans import bancaire). Aucune assertion ne dépend de la date du jour (`taxPreview` est contrôlé
   relativement à l'année courante). Prêts : déjà caractérisés par `testAnalysePrets_*` (dataset sans prêt),
-  non dupliqués. Valeurs attendues capturées à partir des moteurs sur HEAD `5954468`. Exécution Maven à
-  confirmer en local (`mvn test -Dtest=CriticalEndpointsCharacterizationTest`) : non exécutable dans
-  l'environnement de rédaction.
+  non dupliqués. Valeurs attendues capturées à partir des moteurs sur HEAD `5954468`. Exécuté en CI (correctif VT-100b : dernière
+  tranche du barème sans clé `upTo` ; après la retraite, le cashflow de `/overview` inclut les pensions
+  alors que celui de `/tresorerie` reste à 0, comportement caractérisé tel quel).
 
 ## VT-200 — Mode Playwright sans fallback + contexte vierge
 
@@ -129,7 +129,16 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Travaux** : import fixture, appels `retraite`, `impots`, `tresorerie`, `overview`, assertions croisées sur
   année de retraite, pension, impôts, cash-flow et KPI.
 - **Parallèle** : peut être développé en parallèle de VT-120 et VT-210.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `RetirementToOverviewScenarioTest` (`@SpringBootTest` + `MockMvc`, dataset `mock-budget.json`),
+  complémentaire de `CriticalEndpointsCharacterizationTest` : chaque assertion relie au moins deux endpoints.
+  Année de retraite identique dans `/retraite`, `/tresorerie` et `/overview` ; une seule projection retraite
+  (pension de `/retraite` = `totalPensions` et revenu du cashflow `/overview`, constant jusqu'à l'horizon) ;
+  impôts cohérents entre `/impots`, `/tresorerie` et `/overview` avant la retraite, pension imposée ensuite ;
+  identité `net = revenus + variables − épargne − charges − exceptionnels − impôts` sur les deux cashflows ;
+  écart `/overview` / `/tresorerie` limité aux pensions après la retraite (comportement actuel de
+  `/tresorerie` : aucun revenu, solde figé, caractérisé tel quel) ; KPI (`fluxNetActuel`, `retirePatrimoine` =
+  placements + immobilier réévalué, règle des 4 % = patrimoine / 300). Valeurs capturées sur HEAD `7f56a53`.
 
 ## VT-120 — Scénario backend Banque→Pointage→Analyse
 
@@ -137,7 +146,19 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : figer la cohérence entre import bancaire, pointage et analyse.
 - **Travaux** : dataset avec transactions, catégories, matchings et opérations engagées ; assertions sur
   montants et catégories.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `BankPointageAnalyseScenarioTest` (`@SpringBootTest` + `MockMvc`) : dataset construit relativement
+  au mois courant (M0) et au précédent (M1), avec catégories (dont compressibles), transactions (dont une
+  ventilée en deux catégories, référencée par `tx_9#s1` dans le pointage), transaction non catégorisée,
+  pointages sur deux mois et opération en cours. Lignes budgétaires à montants constants (début ancien,
+  croissance et inflation nulles) pour rester indépendant de la date. Couvre : `GET /pointage` (données
+  importées restituées), KPI et `categorySummaries` d'Analyse (ventilations réparties, tri, couleurs),
+  `landingData` du mois courant (réel pointé + opération en cours, statuts), `monthlyCompareData`,
+  `driftRows` (moyennes 3/12 mois, écart, statut, absence de moyenne sans pointage), propagation d'un
+  `PUT /pointage/matchings/{mois}` vers `/pointage` et `/analyse`, fenêtre `monthsBack`.
+  Valeurs attendues calculées à la main d'après `AnalyseCalculator` (HEAD `3d77990`) ; à confirmer en CI.
+  Correctif VT-120b : les catégories du dataset utilisent `kind` = `Dépense` (valeur de l'enum OpenAPI
+  `BankImportCategoryDto`) ; `Depense` sans accent provoquait un HTTP 500 sur `POST /budget/import`.
 
 ## VT-210 — Scénarios frontend lecture + reload
 
@@ -145,7 +166,16 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : vérifier que les écrans consomment réellement le backend.
 - **Travaux** : durcir les tests existants Overview, Trésorerie, Patrimoine, Settings et Analyse avec
   `expectBackendCall`, contexte vierge et assertions métier minimales.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `tests/e2e/read-reload.spec.js` (fichier dédié, `functional.spec.js` inchangé), un test par écran
+  avec fallback JS désactivé (`disableJsFallback`), contexte vierge (`expectFreshBrowserState`) et lecture backend
+  2xx exigée (`gotoAndExpectBackend`), puis `page.reload()` avec nouvelle lecture backend exigée et mêmes
+  assertions. Overview : KPIs (patrimoine placé, flux net, solde réel au pivot, année de retraite = naissance +
+  âge de départ issus du dataset). Trésorerie : réponse et champs « Salaire » / « Loyer ». Patrimoine : placement
+  « PEA ». Paramètres : quatre champs généraux égaux au dataset, puis `startBalance` modifié côté serveur
+  (réimport d'une copie du dataset) et relu après reload. Analyse : état sans import bancaire (`kpis`, message
+  « Aucune transaction importée »). Valeurs attendues lues dans `fixtures/budget-familial.json`. Section ajoutée
+  dans `tests/e2e/README.md`. Exécution à confirmer en CI (Playwright non exécuté localement).
 
 ## VT-220 — Scénario frontend mutation patrimoine→trésorerie→overview
 
@@ -153,7 +183,15 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : valider une mutation dont l'effet traverse plusieurs domaines.
 - **Travaux** : créer/modifier un placement, relire Patrimoine, Trésorerie et Overview, puis reload.
 - **Critère** : aucune assertion ne doit dépendre d'un état JS non relu du serveur.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `tests/e2e/mutation-patrimoine.spec.js` (fichier dédié, fallback JS désactivé, contexte vierge).
+  Deux scénarios : modification du versement mensuel du PEA (200 → 300 €) et création d'un placement
+  (50 €/mois dès 2026-01-01), chacun déclenché depuis le tiroir Patrimoine avec `POST /patrimoine/placements`
+  2xx exigé. Effet relu uniquement dans des réponses backend : `GET /patrimoine` (placement et versement),
+  épargne 2027 du `cashflow` de `/tresorerie` et de `/overview` (2 400 € avant ; 3 600 € puis 3 000 € après),
+  directement, puis lue par les pages Trésorerie et Overview au chargement et après `page.reload()` ; le tiroir
+  rouvert après reload affiche la valeur persistée. Aucune valeur dépendante de la date du jour (année pleine).
+  Section ajoutée dans `tests/e2e/README.md`. Exécution à confirmer en CI (Playwright non exécuté localement).
 
 ## VT-230 — Scénario frontend paramètres multi-domaines
 
@@ -177,7 +215,18 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Prérequis** : VT-100
 - **Objectif** : passer de simples vérifications non-null à des assertions de round-trip.
 - **Travaux** : write → read, objets critiques et cas reset/import.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `PersistenceAdaptersTest` réécrit en trois blocs, sans plus aucun simple `isNotNull()` :
+  état par défaut après `init()` (valeurs par défaut des paramètres, de la retraite et du barème en 5 tranches) ;
+  round-trip après import complet (`setBudgetData` avec chaque domaine renseigné, relu par les huit adaptateurs :
+  revenus, charges, dépenses ponctuelles, variables, placements avec historique, immobilier, catégories d'actifs,
+  virements, retraite avec personne, impôts, import bancaire, prêts, objectifs avec allocations, paramètres ;
+  un second import remplace le premier) ; round-trip après mutation ciblée (`updateRetirement`,
+  `updateTaxConfig` y compris listes nulles, `resetDefaultTaxBrackets`, `addAssetCategory` /
+  `removeAssetCategory`, `updateBankImport` y compris `null`, lecture « vivante » d'un même adaptateur) ; cas
+  reset / import nul (`resetData`, `setBudgetData(null)`, barème vide relu comme barème par défaut, import après
+  reset). Repositories mockés (`PersistenceManagerTestFactory`) : la persistance JPA réelle relève de VT-320.
+  Constructeurs et accesseurs des modèles vérifiés par compilation sur HEAD `64484f6` ; exécution à confirmer en CI.
 
 ## VT-320 — Test de persistance après redémarrage Spring
 
@@ -193,14 +242,41 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : protéger l'ordre actuel voulu `DB → mémoire` dans `BudgetCacheStore.applyAndPersist`.
 - **Travaux** : provoquer une erreur de persistance, vérifier que l'ancien état mémoire reste visible et que
   la nouvelle valeur n'est pas servie artificiellement.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `WriteFailureKeepsMemoryTest` (repositories mockés, sans Spring ni base) : deux points de
+  défaillance simulés — écriture de l'entité principale (`budgetDataRepository.save`) et écriture des lignes
+  enfants (`incomeRepository.save`, base déjà partiellement modifiée). Pour chaque mutation de `PersistenceManager`
+  (`addTresorerieRow`, `updateTresorerieRow`, `removeTresorerieRow`, `savePatrimoineRow`, `deletePatrimoineRow`,
+  `updateRetirement`, `updateTaxConfig`, `updateTaxSettings`, `addAssetCategory`, `updateBankImport`,
+  `setBudgetData`, et `resetData` / `setBudgetData(null)` pour l'entité principale) : l'exception d'origine remonte
+  telle quelle, `getBudgetData()` renvoie toujours la même instance, les huit ports de lecture restituent l'ancien
+  état et aucun `BudgetMutatedEvent` n'est publié. Test de reprise : une fois la base revenue, la même mutation
+  aboutit et n'est visible qu'à ce moment-là. Constat hors périmètre, non modifié :
+  `BudgetPersistenceGateway.saveBankImport` intercepte les exceptions (journalisées) ; une panne limitée à
+  l'écriture du blob d'import bancaire ne remonte donc pas et la mémoire est tout de même mise à jour.
+  Exécution à confirmer en CI (compilation non vérifiée localement).
 
 ## VT-340 — Test d'atomicité des mutations multi-domaines
 
 - **Prérequis** : VT-310
 - **Objectif** : éviter une Settings ou importation partiellement appliquée.
 - **Travaux** : mutation valide multi-propriétaires ; mutation invalide au milieu ; vérifier rollback complet.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Décision** : option (a) retenue — les façades multi-domaines deviennent transactionnelles (patch de code inclus, le test
+  ne pouvant pas passer sur l'existant).
+- **Livré** : `@Transactional` sur `SystemeServiceImpl.importJSON` / `resetData` et `ParametersServiceImpl.saveSettings`
+  (écritures budget puis Objectifs dans une seule transaction). `BudgetCacheStore` mémorise, à la première mutation d'une
+  transaction, l'état mémoire d'avant et le rétablit si la transaction ne se termine pas par un commit (le cache était
+  sinon en avance sur une base annulée) ; sans transaction active, comportement inchangé. Tests :
+  `BudgetCacheStoreRollbackTest` (unitaire : rollback de plusieurs mutations, commit, `setBudgetData` / `resetData`, sauvegarde
+  en échec) et `MultiDomainAtomicityTest` (`@SpringBootTest`, base H2 dédiée, store Objectifs espionné en échec) : import,
+  réinitialisation et `PUT /settings` (champ Fiscalité appliqué puis champ Objectifs en échec) laissent inchangés le cache, la base
+  relue directement et les paramètres Objectifs ; la même mise à jour aboutit en entier sans échec. Point de vigilance pour
+  VT-350 : une transaction multi-étapes garde désormais ses verrous base entre deux écritures alors que `mutationLock` est pris
+  écriture par écriture ; à observer dans le test de concurrence. Constat hors périmètre, non corrigé :
+  `BudgetMutationService.updateTaxSettings` lève une `NullPointerException` (déballage de `sweepEnabled` nul) dès qu'on modifie
+  un champ quelconque des paramètres alors que `sweepEnabled` est absent des données importées (cas de `mock-budget.json`) ;
+  `MultiDomainAtomicityTest` renseigne donc `sweepEnabled: false` dans son propre dataset, sans toucher au fichier partagé. Exécution à confirmer en CI (compilation non vérifiée localement).
 
 ## VT-350 — Test de concurrence sur mutations critiques
 

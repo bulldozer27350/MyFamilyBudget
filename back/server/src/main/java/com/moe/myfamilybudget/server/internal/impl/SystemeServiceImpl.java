@@ -1,6 +1,7 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.SystemeApi;
@@ -25,6 +26,10 @@ import com.moe.myfamilybudget.server.internal.port.TaxReader;
  * du budget). L'import et la réinitialisation restent, eux, hors périmètre de ce patch : ce sont
  * des mutations transverses à tous les domaines, qu'aucun {@code CommandService} de domaine
  * (RF-A00) ne couvre — {@link PersistenceManager} reste ici le point d'écriture global assumé.
+ *
+ * <p>VT-340 : {@code importJSON} et {@code resetData} écrivent dans deux domaines (budget, puis
+ * paramètres Objectifs) ; elles sont donc {@code @Transactional} pour que l'échec de la seconde écriture
+ * annule la première (base et cache mémoire).
  */
 @RestController
 public class SystemeServiceImpl implements SystemeApi {
@@ -83,6 +88,7 @@ public class SystemeServiceImpl implements SystemeApi {
     }
 
     @Override
+    @Transactional
     public ResponseEntity<BudgetDataDto> importJSON(BudgetDataDto body) {
         if (body != null) {
             BudgetDataModel model = overviewMapper.toInternalModel(body);
@@ -94,6 +100,7 @@ public class SystemeServiceImpl implements SystemeApi {
     }
 
     @Override
+    @Transactional
     public ResponseEntity<BudgetDataDto> resetData() {
         BudgetDataModel reset = persistenceManager.resetData();
         objectifsSettingsService.reset();
