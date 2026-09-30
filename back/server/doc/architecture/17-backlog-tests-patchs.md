@@ -166,7 +166,16 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : vérifier que les écrans consomment réellement le backend.
 - **Travaux** : durcir les tests existants Overview, Trésorerie, Patrimoine, Settings et Analyse avec
   `expectBackendCall`, contexte vierge et assertions métier minimales.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `tests/e2e/read-reload.spec.js` (fichier dédié, `functional.spec.js` inchangé), un test par écran
+  avec fallback JS désactivé (`disableJsFallback`), contexte vierge (`expectFreshBrowserState`) et lecture backend
+  2xx exigée (`gotoAndExpectBackend`), puis `page.reload()` avec nouvelle lecture backend exigée et mêmes
+  assertions. Overview : KPIs (patrimoine placé, flux net, solde réel au pivot, année de retraite = naissance +
+  âge de départ issus du dataset). Trésorerie : réponse et champs « Salaire » / « Loyer ». Patrimoine : placement
+  « PEA ». Paramètres : quatre champs généraux égaux au dataset, puis `startBalance` modifié côté serveur
+  (réimport d'une copie du dataset) et relu après reload. Analyse : état sans import bancaire (`kpis`, message
+  « Aucune transaction importée »). Valeurs attendues lues dans `fixtures/budget-familial.json`. Section ajoutée
+  dans `tests/e2e/README.md`. Exécution à confirmer en CI (Playwright non exécuté localement).
 
 ## VT-220 — Scénario frontend mutation patrimoine→trésorerie→overview
 

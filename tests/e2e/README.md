@@ -25,6 +25,7 @@ garde son `baseURL`).
 | `helpers/state.js` | `resetBackendState`, `importDataset`, `resetToReferenceState`, `clearBrowserState`. |
 | `helpers/browser.js` | `disableJsFallback`, `expectFreshBrowserState`, `gotoAndExpectBackend`, `actAndExpectBackend`, `readJsFallbackFlag` (VT-200). |
 | `no-fallback.spec.js` | Vérifie le mode sans fallback JS (VT-200). |
+| `read-reload.spec.js` | Lecture + reload sans fallback pour Overview, Trésorerie, Patrimoine, Paramètres et Analyse (VT-210). |
 | `helpers/index.js` | Point d'entrée : `require('./helpers')`. |
 | `fixtures/budget-familial.json` | Dataset canonique de référence. |
 
@@ -107,3 +108,15 @@ test('scénario critique', async ({ page, request }) => {
 - Contexte vierge : Playwright fournit un contexte neuf par test ; `expectFreshBrowserState` le prouve.
 - `actAndExpectBackend(page, apiPath, method, action)` arme l'attente avant l'action (écritures critiques).
 - Un appel backend en échec fait remonter `[DISABLE_JS_FALLBACK]` dans la console au lieu d'un repli local.
+
+## Lecture + reload (VT-210)
+
+`read-reload.spec.js` applique le même schéma à Overview, Trésorerie, Patrimoine, Paramètres et Analyse :
+`resetToReferenceState` → `disableJsFallback` → `gotoAndExpectBackend` (lecture 2xx exigée) →
+`expectFreshBrowserState` → assertions métier minimales sur la réponse et sur l'écran → `page.reload()` avec
+nouvelle lecture backend exigée → mêmes assertions. Les valeurs attendues proviennent du dataset canonique
+(`REFERENCE_DATASET`), jamais d'une donnée locale.
+
+Le test Paramètres modifie en plus le dataset côté serveur (`startBalance`, via `importDataset` sur une copie
+temporaire) entre les deux chargements : la nouvelle valeur ne peut apparaître après reload que si l'écran
+relit le backend.
