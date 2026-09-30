@@ -322,7 +322,23 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : documenter le comportement quand deux écritures concurrentes visent la même ressource.
 - **Travaux** : deux appels simultanés, vérifier invariants, absence de corruption et résultat final déterministe
   ou explicitement documenté.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : deux classes de test, aucun code de production modifié. `BudgetCacheStoreConcurrencyTest` (unitaire, passerelle
+  mockée, sans Spring ni base) et `ConcurrentMutationsApiTest` (HTTP + Spring + H2 dédiée `vt350`, mémoire et base relues
+  séparément). Les appels partent au même instant (verrou de départ) et chaque test est borné par un `@Timeout`, ce qui
+  transforme un blocage éventuel en échec.
+- **Comportement documenté** :
+  - les mutations sont sérialisées par `mutationLock` : aucune mise à jour n'est perdue, y compris en
+    lecture-modification-écriture sur la même ligne (200 incrémentations concurrentes => +200 exactement) ;
+  - deux écritures absolues sur le même champ : la dernière sauvegardée gagne, l'ordre n'est pas déterministe, la valeur
+    finale est l'une des deux et la mémoire est toujours identique à la dernière sauvegarde envoyée à la base ;
+  - champs ou lignes différents : les deux modifications sont conservées ; créations concurrentes : identifiants distincts ;
+  - import ou réinitialisation contre mutation : le résultat est toujours l'un des deux ordres séquentiels ;
+  - modifier une ligne que l'autre appel supprime est un no-op silencieux (200), la ligne reste supprimée ;
+  - une sauvegarde en échec ne bloque pas les autres, ne laisse rien en mémoire et libère le verrou ;
+  - un lecteur ne voit jamais un état à moitié construit (instantanés immuables, liste toujours croissante).
+  Exécution à confirmer en CI (compilation non vérifiée localement). Les scénarios HTTP dépendent du verrouillage de
+  lignes H2 entre transactions : un échec de ces tests serait un constat à traiter, pas un test à assouplir.
 
 ## VT-500 — Suite E2E de référence finale
 
