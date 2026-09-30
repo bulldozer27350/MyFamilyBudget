@@ -41,7 +41,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *   <li>Fiscalite : bareme par defaut, parts, impot, taux PAS, coherence avec la tresorerie ;</li>
  *   <li>Tresorerie : cashflow 2027/2028 et horizon de simulation ;</li>
  *   <li>Patrimoine : projection PEA 2027/2028 et totaux ;</li>
- *   <li>Overview : coherence croisee avec Retraite et Tresorerie ;</li>
+ *   <li>Overview : coherence croisee avec Retraite, Tresorerie et Patrimoine ;</li>
  *   <li>Analyse : etat sans import bancaire.</li>
  * </ul>
  * Aucun navigateur ; aucune assertion ne depend de la date du jour (voir taxPreview).
@@ -151,7 +151,8 @@ class CriticalEndpointsCharacterizationTest {
                 if (i < 4) {
                     assertThat(brackets.get(i).path("upTo").asDouble()).isCloseTo(upTo[i], within(EUR));
                 } else {
-                    assertThat(brackets.get(i).path("upTo").isNull()).isTrue();
+                    // Derniere tranche : "upTo" est absent du JSON (et non null).
+                    assertThat(brackets.get(i).has("upTo")).isFalse();
                 }
             }
             assertThat(getJson("/api/v1/impots").path("taxChildren")).isEmpty();
@@ -343,21 +344,51 @@ class CriticalEndpointsCharacterizationTest {
         }
 
         @Test
-        @DisplayName("cashflow de /overview = cashflow de /tresorerie, annee par annee")
-        void cashflowMatchesTreasury() throws Exception {
-            JsonNode overview = getJson("/api/v1/overview").path("cashflow");
+        @DisplayName("cashflow de /overview = cashflow de /tresorerie tant que la personne travaille")
+        void cashflowMatchesTreasuryBeforeRetirement() throws Exception {
+            JsonNode overviewRoot = getJson("/api/v1/overview");
+            int retireYear = overviewRoot.path("retireYear").asInt();
+            JsonNode overview = overviewRoot.path("cashflow");
             JsonNode treasury = getJson("/api/v1/tresorerie").path("cashflow");
             assertThat(overview).hasSameSizeAs(treasury);
             for (JsonNode t : treasury) {
-                JsonNode o = findYear(overview, t.path("year").asInt());
-                assertThat(o).as("overview.cashflow %d", t.path("year").asInt()).isNotNull();
+                int year = t.path("year").asInt();
+                assertThat(overview.get(year - 2026).path("year").asInt()).isEqualTo(year);
+                if (year >= retireYear) {
+                    continue;
+                }
+                JsonNode o = findYear(overview, year);
                 for (String field : new String[] {"income", "variableIncome", "savings", "charges",
                         "oneoff", "impots", "net", "balance"}) {
                     assertThat(o.path(field).asDouble())
-                            .as("%s %d", field, t.path("year").asInt())
+                            .as("%s %d", field, year)
                             .isCloseTo(t.path(field).asDouble(), within(EUR));
                 }
             }
+        }
+
+        @Test
+        @DisplayName("des l'annee de retraite, /overview ajoute les pensions au cashflow, pas /tresorerie")
+        void cashflowDivergesFromTreasuryAtRetirement() throws Exception {
+            JsonNode overviewRoot = getJson("/api/v1/overview");
+            int retireYear = overviewRoot.path("retireYear").asInt();
+            assertThat(retireYear).isEqualTo(2054);
+            double annualPension = getJson("/api/v1/retraite")
+                    .path("retirement").path("people").get(0)
+                    .path("projection").path("pensionTotaleAnnuelle").asDouble();
+
+            JsonNode o = findYear(overviewRoot.path("cashflow"), retireYear);
+            assertThat(o.path("income").asDouble()).isCloseTo(annualPension, within(EUR));
+            assertThat(o.path("income").asDouble()).isCloseTo(78978.19, within(EUR));
+            assertThat(o.path("variableIncome").asDouble()).isCloseTo(0.0, within(EUR));
+            assertThat(o.path("charges").asDouble()).isCloseTo(0.0, within(EUR));
+            assertThat(o.path("impots").asDouble()).isCloseTo(10265.92, within(EUR));
+            assertThat(o.path("net").asDouble()).isCloseTo(68712.27, within(EUR));
+
+            JsonNode t = findYear(getJson("/api/v1/tresorerie").path("cashflow"), retireYear);
+            assertThat(t.path("income").asDouble()).isCloseTo(0.0, within(EUR));
+            assertThat(t.path("impots").asDouble()).isCloseTo(0.0, within(EUR));
+            assertThat(t.path("balance").asDouble()).isCloseTo(725821.82, within(EUR));
         }
 
         @Test

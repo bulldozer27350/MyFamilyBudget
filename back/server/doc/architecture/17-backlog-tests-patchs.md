@@ -80,9 +80,9 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
   2027/2028/2054 et totaux), Overview (cohérence croisée avec Retraite, Trésorerie et Patrimoine), Analyse
   (état sans import bancaire). Aucune assertion ne dépend de la date du jour (`taxPreview` est contrôlé
   relativement à l'année courante). Prêts : déjà caractérisés par `testAnalysePrets_*` (dataset sans prêt),
-  non dupliqués. Valeurs attendues capturées à partir des moteurs sur HEAD `5954468`. Exécution Maven à
-  confirmer en local (`mvn test -Dtest=CriticalEndpointsCharacterizationTest`) : non exécutable dans
-  l'environnement de rédaction.
+  non dupliqués. Valeurs attendues capturées à partir des moteurs sur HEAD `5954468`. Exécuté en CI (correctif VT-100b : dernière
+  tranche du barème sans clé `upTo` ; après la retraite, le cashflow de `/overview` inclut les pensions
+  alors que celui de `/tresorerie` reste à 0, comportement caractérisé tel quel).
 
 ## VT-200 — Mode Playwright sans fallback + contexte vierge
 
