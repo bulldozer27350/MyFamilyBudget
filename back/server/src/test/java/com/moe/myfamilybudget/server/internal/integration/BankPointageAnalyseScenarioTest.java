@@ -403,9 +403,9 @@ class BankPointageAnalyseScenarioTest {
                   "variableIncomes": [], "variableOverrides": [], "assetCategories": [],
                   "bankImport": {
                     "categories": [
-                      { "id": "cat_loyer", "label": "Logement", "kind": "Depense", "compressible": "Non" },
-                      { "id": "cat_courses", "label": "Alimentation", "kind": "Depense", "compressible": "Oui" },
-                      { "id": "cat_loisirs", "label": "Loisirs", "kind": "Depense", "compressible": "Oui" },
+                      { "id": "cat_loyer", "label": "Logement", "kind": "D\u00e9pense", "compressible": "Non" },
+                      { "id": "cat_courses", "label": "Alimentation", "kind": "D\u00e9pense", "compressible": "Oui" },
+                      { "id": "cat_loisirs", "label": "Loisirs", "kind": "D\u00e9pense", "compressible": "Oui" },
                       { "id": "cat_salaire", "label": "Revenus", "kind": "Revenu", "compressible": "Non" }
                     ],
                     "transactions": [

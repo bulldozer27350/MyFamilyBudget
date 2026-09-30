@@ -157,6 +157,8 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
   `driftRows` (moyennes 3/12 mois, écart, statut, absence de moyenne sans pointage), propagation d'un
   `PUT /pointage/matchings/{mois}` vers `/pointage` et `/analyse`, fenêtre `monthsBack`.
   Valeurs attendues calculées à la main d'après `AnalyseCalculator` (HEAD `3d77990`) ; à confirmer en CI.
+  Correctif VT-120b : les catégories du dataset utilisent `kind` = `Dépense` (valeur de l'enum OpenAPI
+  `BankImportCategoryDto`) ; `Depense` sans accent provoquait un HTTP 500 sur `POST /budget/import`.
 
 ## VT-210 — Scénarios frontend lecture + reload
 
