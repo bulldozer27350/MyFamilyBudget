@@ -381,7 +381,13 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Travaux** : documenter la commande exacte de CI/local pour backend, Playwright et PostgreSQL ; vérifier
   qu'aucun test obligatoire n'est uniquement "toléré" ou désactivé.
 - **Livrable** : section de [14-checklist-maven.md](14-checklist-maven.md) complétée avec les identifiants VT.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : section « Gate de validation des tests avant Maven (VT-600) » de `14-checklist-maven.md` (commandes CI et
+  PowerShell pour backend, PostgreSQL, smoke JS, Playwright, critères par identifiant VT, points de vigilance) ;
+  script `tests/gate/check-gate.js` (`static`, `reports`, `all`) et étape « Gate VT-600 » dans `ci-cd.yml` après `mvn test`.
+  Audit : seul test conditionnel = variante PostgreSQL de `RestartPersistenceTest` (exigée en CI par le script) ;
+  aucun `@Disabled`, `test.skip`, `.only`, `continue-on-error`, `-DskipTests` ni `retries` > 0. Cases de la checklist
+  volontairement non cochées : à cocher après une exécution CI verte (plusieurs patchs VT restent « à confirmer en CI »).
 
 ## Graphe de parallélisation recommandé
 

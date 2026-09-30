@@ -69,6 +69,11 @@ jobs:
           MFB_TEST_POSTGRES_PASSWORD: myfamilybudget
         run: mvn -f back/server/pom.xml -B test
 
+      # VT-600 : aucun test obligatoire ne doit etre ignore ou desactive (la variante PostgreSQL
+      # de RestartPersistenceTest doit s'etre executee, le service postgres ci-dessus etant present).
+      - name: Gate VT-600 (aucun test ignore ou desactive)
+        run: node tests/gate/check-gate.js all
+
       - name: JS smoke test (test-all-apis.js)
         run: bun run test
 
