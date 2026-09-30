@@ -71,9 +71,8 @@ class MultiDomainAtomicityTest {
 
     @BeforeEach
     void importReferenceDataset() throws Exception {
-        String json = new ClassPathResource("mock-budget.json").getContentAsString(StandardCharsets.UTF_8);
         mockMvc.perform(post("/api/v1/budget/import").contextPath("/api/v1")
-                .contentType(MediaType.APPLICATION_JSON).content(json))
+                .contentType(MediaType.APPLICATION_JSON).content(referenceDatasetJson()))
                 .andExpect(status().isOk());
         objectifsSettingsService.save(new ObjectifsParameters(12, 3));
 
@@ -148,9 +147,22 @@ class MultiDomainAtomicityTest {
         return model.getEffectiveIncomes().stream().map(IncomeModel::id).toList();
     }
 
+    /**
+     * Dataset de reference sans modification du fichier partage : {@code sweepEnabled} est absent de
+     * {@code mock-budget.json}, or {@code BudgetMutationService.updateTaxSettings} deballe ce Boolean nul (NPE)
+     * des qu'un autre champ des parametres est modifie. On le renseigne a {@code false} ici, valeur sans effet
+     * sur les calculs, pour ne pas changer les reponses caracterisees par les autres tests.
+     */
+    private static String referenceDatasetJson() throws Exception {
+        String json = new ClassPathResource("mock-budget.json").getContentAsString(StandardCharsets.UTF_8);
+        String withSweep = json.replace("\"retireAge\": 64,", "\"retireAge\": 64, \"sweepEnabled\": false,");
+        assertThat(withSweep).contains("\"sweepEnabled\": false");
+        return withSweep;
+    }
+
     /** Dataset de reference dont le revenu et l'age de depart en retraite different de l'etat initial. */
     private static String importedBudgetJson() throws Exception {
-        String json = new ClassPathResource("mock-budget.json").getContentAsString(StandardCharsets.UTF_8);
-        return json.replace("\"retireAge\": 64", "\"retireAge\": 58").replace("inc_1", "inc_imported");
+        return referenceDatasetJson().replace("\"retireAge\": 64", "\"retireAge\": 58")
+                .replace("inc_1", "inc_imported");
     }
 }

@@ -256,7 +256,10 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
   réinitialisation et `PUT /settings` (champ Fiscalité appliqué puis champ Objectifs en échec) laissent inchangés le cache, la base
   relue directement et les paramètres Objectifs ; la même mise à jour aboutit en entier sans échec. Point de vigilance pour
   VT-350 : une transaction multi-étapes garde désormais ses verrous base entre deux écritures alors que `mutationLock` est pris
-  écriture par écriture ; à observer dans le test de concurrence. Exécution à confirmer en CI (compilation non vérifiée localement).
+  écriture par écriture ; à observer dans le test de concurrence. Constat hors périmètre, non corrigé :
+  `BudgetMutationService.updateTaxSettings` lève une `NullPointerException` (déballage de `sweepEnabled` nul) dès qu'on modifie
+  un champ quelconque des paramètres alors que `sweepEnabled` est absent des données importées (cas de `mock-budget.json`) ;
+  `MultiDomainAtomicityTest` renseigne donc `sweepEnabled: false` dans son propre dataset, sans toucher au fichier partagé. Exécution à confirmer en CI (compilation non vérifiée localement).
 
 ## VT-350 — Test de concurrence sur mutations critiques
 
