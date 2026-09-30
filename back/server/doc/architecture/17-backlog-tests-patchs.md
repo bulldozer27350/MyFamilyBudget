@@ -199,7 +199,16 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
 - **Objectif** : tester la façade Settings après séparation de l'ownership.
 - **Travaux** : modifier au moins deux familles de paramètres de propriétaires distincts, relire Settings,
   puis les vues impactées après reload.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `tests/e2e/settings-multi-domain.spec.js` (fichier dédié, fallback JS désactivé, contexte vierge).
+  Trois propriétaires modifiés depuis l'écran Paramètres, chacun avec `PUT /settings` 2xx exigé : `retireAge`
+  (Retraite), `startBalance` (Trésorerie), `goalSecureHorizonMonths` (Objectifs). Relecture de `GET /settings`
+  (les trois valeurs, `birthYear` inchangé), de `/overview` (année de retraite = naissance + nouvel âge,
+  trésorerie de départ) puis de l'écran Paramètres avant et après `page.reload()`. Le cas « champ invalide » de F5
+  (aucune mutation partielle) reste couvert côté backend par `MultiDomainAtomicityTest` (VT-340). Le test importe une
+  copie du dataset de référence avec `sweepEnabled: false` (constat VT-340 : `updateTaxSettings` lève une
+  `NullPointerException` si `sweepEnabled` est absent ; fichier partagé inchangé). Section ajoutée dans
+  `tests/e2e/README.md`. Exécution à confirmer en CI (Playwright non exécuté localement).
 
 ## VT-240 — Scénario diagnostique backend indisponible
 

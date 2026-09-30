@@ -27,6 +27,7 @@ garde son `baseURL`).
 | `no-fallback.spec.js` | Vérifie le mode sans fallback JS (VT-200). |
 | `read-reload.spec.js` | Lecture + reload sans fallback pour Overview, Trésorerie, Patrimoine, Paramètres et Analyse (VT-210). |
 | `mutation-patrimoine.spec.js` | Mutation d'un placement depuis Patrimoine, relue par Trésorerie et Overview, puis après reload (VT-220). |
+| `settings-multi-domain.spec.js` | Paramètres de trois propriétaires (Retraite, Trésorerie, Objectifs) relus après reload (VT-230). |
 | `helpers/index.js` | Point d'entrée : `require('./helpers')`. |
 | `fixtures/budget-familial.json` | Dataset canonique de référence. |
 
@@ -130,3 +131,14 @@ backend** : `GET /patrimoine`, puis l'épargne 2027 du `cashflow` de `GET /treso
 (PEA de référence : 200 €/mois, soit 2 400 € en année pleine), directement puis lue par les pages elles-mêmes
 avant et après `page.reload()`. Deux cas : modification du versement mensuel du PEA (200 → 300) et création d'un
 placement (50 €/mois dès 2026-01-01). L'IHM ne sert qu'à déclencher la mutation et à rouvrir le tiroir.
+
+## Paramètres multi-domaines (VT-230)
+
+`settings-multi-domain.spec.js` modifie depuis l'écran Paramètres un champ de chacun de trois propriétaires
+(`retireAge` : Retraite, `startBalance` : Trésorerie, `goalSecureHorizonMonths` : Objectifs, store dédié), exige
+`PUT /settings` 2xx pour chacun, puis relit `GET /settings`, l'Overview (année de retraite, trésorerie de départ)
+et l'écran Paramètres avant et après `page.reload()`.
+
+Le test importe une copie temporaire du dataset canonique avec `sweepEnabled: false` : tant que
+`BudgetMutationService.updateTaxSettings` lève une `NullPointerException` sur `sweepEnabled` absent (constat
+VT-340), toute modification de paramètre échoue sur le dataset partagé, qui reste inchangé.
