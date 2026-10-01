@@ -51,7 +51,7 @@ class RetraiteServiceImplTest {
                 mapper,
                 new RetirementInputFactory(),
                 calculationService,
-                new RetirementCommandService(persistenceManager),
+                new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager)),
                 new SettingsPersistenceAdapter(persistenceManager),
                 new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager),

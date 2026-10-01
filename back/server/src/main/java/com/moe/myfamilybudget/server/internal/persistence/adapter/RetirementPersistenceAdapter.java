@@ -5,12 +5,13 @@ import org.springframework.stereotype.Component;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.port.RetirementReader;
+import com.moe.myfamilybudget.server.internal.port.RetirementWriter;
 
 /**
- * Adaptateur de persistance pour {@link RetirementReader} (RF-B00).
+ * Adaptateur de persistance pour {@link RetirementReader} (RF-B00) et {@link RetirementWriter} (DB-020).
  */
 @Component
-public class RetirementPersistenceAdapter implements RetirementReader {
+public class RetirementPersistenceAdapter implements RetirementReader, RetirementWriter {
 
     private final PersistenceManager persistenceManager;
 
@@ -21,5 +22,10 @@ public class RetirementPersistenceAdapter implements RetirementReader {
     @Override
     public RetirementModel getRetirement() {
         return persistenceManager.getBudgetData().retirement();
+    }
+
+    @Override
+    public void updateRetirement(RetirementModel retirement) {
+        persistenceManager.updateRetirement(retirement);
     }
 }

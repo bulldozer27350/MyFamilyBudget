@@ -3,22 +3,29 @@ package com.moe.myfamilybudget.server.internal.command;
 import org.springframework.stereotype.Service;
 
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.RetirementWriter;
 
 /**
- * Service de commande du domaine Retraite (RF-A00).
- * Encapsule les operations d'ecriture sur le modele de retraite.
+ * Service de commande du domaine Retraite (RF-A00, DB-020).
+ * Unique point d'ecriture du modele de retraite : valide la commande puis delegue au port
+ * {@link RetirementWriter}. N'a plus de dependance directe vers {@code PersistenceManager}.
  */
 @Service
 public class RetirementCommandService {
 
-    private final PersistenceManager persistenceManager;
+    private final RetirementWriter retirementWriter;
 
-    public RetirementCommandService(PersistenceManager persistenceManager) {
-        this.persistenceManager = persistenceManager;
+    public RetirementCommandService(RetirementWriter retirementWriter) {
+        this.retirementWriter = retirementWriter;
     }
 
+    /**
+     * @throws IllegalArgumentException si {@code retirement} est {@code null} (aucune ecriture n'est alors faite)
+     */
     public void updateRetirement(RetirementModel retirement) {
-        persistenceManager.updateRetirement(retirement);
+        if (retirement == null) {
+            throw new IllegalArgumentException("Le modele de retraite est obligatoire");
+        }
+        retirementWriter.updateRetirement(retirement);
     }
 }
