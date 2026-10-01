@@ -8,24 +8,26 @@ import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.TaxWriter;
 
 /**
- * Service de commande du domaine Fiscalite (RF-A00).
- * Encapsule les operations d'ecriture sur les regles, baremes et parametres fiscaux.
+ * Service de commande du domaine Fiscalite (RF-A00, DB-021).
+ * Unique point d'ecriture des regles, baremes et parametres fiscaux : valide la commande puis delegue au
+ * port {@link TaxWriter}. N'a plus de dependance directe vers {@code PersistenceManager}.
  */
 @Service
 public class TaxCommandService {
 
-    private final PersistenceManager persistenceManager;
+    private final TaxWriter taxWriter;
 
-    public TaxCommandService(PersistenceManager persistenceManager) {
-        this.persistenceManager = persistenceManager;
+    public TaxCommandService(TaxWriter taxWriter) {
+        this.taxWriter = taxWriter;
     }
 
+    /** Une liste {@code null} conserve la valeur existante (contrat historique de l'API). */
     public void updateTaxConfig(List<TaxChildModel> children, List<TaxBracketModel> brackets,
                                 List<TaxRateOverrideModel> rateOverrides, List<TaxActualOverrideModel> actualOverrides) {
-        persistenceManager.updateTaxConfig(children, brackets, rateOverrides, actualOverrides);
+        taxWriter.updateTaxConfig(children, brackets, rateOverrides, actualOverrides);
     }
 
     /**
@@ -34,14 +36,20 @@ public class TaxCommandService {
      * verrous de lignes de la base (pas d'interblocage entre deux façades).
      */
     public void lockBudgetForCurrentTransaction() {
-        persistenceManager.lockForCurrentTransaction();
+        taxWriter.lockBudgetForCurrentTransaction();
     }
 
+    /**
+     * @throws IllegalArgumentException si {@code field} est {@code null} (aucune ecriture n'est alors faite)
+     */
     public void updateTaxSettings(String field, Object value) {
-        persistenceManager.updateTaxSettings(field, value);
+        if (field == null) {
+            throw new IllegalArgumentException("Le nom du parametre fiscal est obligatoire");
+        }
+        taxWriter.updateTaxSettings(field, value);
     }
 
     public void resetDefaultTaxBrackets() {
-        persistenceManager.resetDefaultTaxBrackets();
+        taxWriter.resetDefaultTaxBrackets();
     }
 }

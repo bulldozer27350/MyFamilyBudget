@@ -23,6 +23,7 @@ import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -44,7 +45,7 @@ class ParametersServiceImplTest {
                 mapper,
                 new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore()),
                 new PatrimoineCommandService(persistenceManager),
-                new TaxCommandService(persistenceManager));
+                new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)));
     }
 
     @Test

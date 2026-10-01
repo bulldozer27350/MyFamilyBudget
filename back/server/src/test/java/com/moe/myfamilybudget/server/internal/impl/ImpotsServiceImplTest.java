@@ -43,7 +43,7 @@ class ImpotsServiceImplTest {
                 mapper,
                 new RetirementInputFactory(),
                 new RetirementCalculationService(),
-                new TaxCommandService(persistenceManager),
+                new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)),
                 new SettingsPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),

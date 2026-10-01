@@ -10,12 +10,13 @@ import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.port.TaxReader;
+import com.moe.myfamilybudget.server.internal.port.TaxWriter;
 
 /**
- * Adaptateur de persistance pour {@link TaxReader} (RF-B00).
+ * Adaptateur de persistance pour {@link TaxReader} (RF-B00) et {@link TaxWriter} (DB-021).
  */
 @Component
-public class TaxPersistenceAdapter implements TaxReader {
+public class TaxPersistenceAdapter implements TaxReader, TaxWriter {
 
     private final PersistenceManager persistenceManager;
 
@@ -41,5 +42,27 @@ public class TaxPersistenceAdapter implements TaxReader {
     @Override
     public List<TaxActualOverrideModel> getTaxActualOverrides() {
         return persistenceManager.getBudgetData().getEffectiveTaxActualOverrides();
+    }
+
+    @Override
+    public void updateTaxConfig(List<TaxChildModel> children, List<TaxBracketModel> brackets,
+                                List<TaxRateOverrideModel> rateOverrides,
+                                List<TaxActualOverrideModel> actualOverrides) {
+        persistenceManager.updateTaxConfig(children, brackets, rateOverrides, actualOverrides);
+    }
+
+    @Override
+    public void updateTaxSettings(String field, Object value) {
+        persistenceManager.updateTaxSettings(field, value);
+    }
+
+    @Override
+    public void resetDefaultTaxBrackets() {
+        persistenceManager.resetDefaultTaxBrackets();
+    }
+
+    @Override
+    public void lockBudgetForCurrentTransaction() {
+        persistenceManager.lockForCurrentTransaction();
     }
 }
