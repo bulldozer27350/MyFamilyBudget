@@ -234,7 +234,11 @@ Lacunes constatées pour les patchs suivants :
 - **Prérequis** : DB-000.
 - **Objectif** : remplacer les vérifications « non-null » par des preuves write/read.
 - **Travaux** : tester les objets critiques, le reset et les cas optionnels ; conserver H2 pour la boucle rapide.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `PersistenceAdaptersJpaRoundTripTest` (H2, vrais repositories) : écriture par le `PersistenceManager` du
+  contexte, relecture par un second `PersistenceManager` à cache vierge ; couvre import complet, second import,
+  mutations ciblées (Retraite, Fiscalité, catégories d'actifs, Banque), reset et cas optionnels. `PersistenceAdaptersTest`
+  (VT-310, repositories mockés) est conservé.
 
 ## DB-011 — Test PostgreSQL + redémarrage Spring
 
