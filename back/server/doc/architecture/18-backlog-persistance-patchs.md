@@ -250,6 +250,17 @@ Lacunes constatées pour les patchs suivants :
 
 ## DB-020 à DB-041 — Commands orientées owner
 
+### Statut DB-040 — Finaliser les commands Banque
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : port `BankWriter` (`updateBankImport`) implémenté par `BankPersistenceAdapter` (qui implémente aussi
+  `BankReader`) ; `BankImportCommandService` ne dépend plus de `PersistenceManager`, refuse un import `null`
+  (`IllegalArgumentException`, 400) et laisse l'erreur de persistance remonter telle quelle.
+  `EnableBankingSyncService` lit désormais via `BankReader` au lieu de `PersistenceManager` (dernier appel métier
+  Banque hors command/reader). `BankImportEntity.jsonData` reste interne à Banque ; contrats REST inchangés.
+- **Tests** : `BankImportCommandServiceTest` (délégation, validation, propagation, relecture via
+  `BankPersistenceAdapter`) ; 6 tests d'`impl/` adaptés au nouveau constructeur.
+
 Pour chaque domaine :
 
 - remplacer les derniers appels métier à `PersistenceManager` par le command service propriétaire ;

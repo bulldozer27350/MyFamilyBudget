@@ -31,7 +31,7 @@ class PendingOperationsServiceImplTest {
         persistenceManager.init();
         service = new PendingOperationsServiceImpl(
                 new BankPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
-                new SettingsPersistenceAdapter(persistenceManager), new BankImportCommandService(persistenceManager),
+                new SettingsPersistenceAdapter(persistenceManager), new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)),
                 new StatementBankImportMapper());
     }
 

@@ -33,7 +33,7 @@ class PointageServiceImplIntegrationTest {
         service = new PointageServiceImpl(
                 new BankPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new SettingsPersistenceAdapter(persistenceManager),
-                new BankImportCommandService(persistenceManager), new PointageMapper());
+                new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)), new PointageMapper());
     }
 
     @Test

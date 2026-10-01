@@ -36,11 +36,11 @@ class StatementBankImportServiceImplIntegrationTest {
         persistenceManager.init();
         StatementBankImportMapper mapper = new StatementBankImportMapper();
         service = new StatementBankImportServiceImpl(
-                new BankPersistenceAdapter(persistenceManager), new BankImportCommandService(persistenceManager),
+                new BankPersistenceAdapter(persistenceManager), new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)),
                 mapper, new ExcelToCsvService());
         pendingService = new PendingOperationsServiceImpl(
                 new BankPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
-                new SettingsPersistenceAdapter(persistenceManager), new BankImportCommandService(persistenceManager),
+                new SettingsPersistenceAdapter(persistenceManager), new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)),
                 mapper);
     }
 

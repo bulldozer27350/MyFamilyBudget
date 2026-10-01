@@ -17,9 +17,9 @@ import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportSummaryModel;
 import com.moe.myfamilybudget.server.internal.command.BankImportCommandService;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.entity.EnableBankingSyncStateEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.EnableBankingSyncStateRepository;
+import com.moe.myfamilybudget.server.internal.port.BankReader;
 
 /**
  * Récupère les transactions bancaires via Enable Banking (DSP2) et les importe, en réutilisant
@@ -43,19 +43,19 @@ public class EnableBankingSyncService {
 
     private final EnableBankingConfig config;
     private final EnableBankingClient client;
-    private final PersistenceManager persistenceManager;
+    private final BankReader bankReader;
     private final EnableBankingSyncStateRepository stateRepository;
     private final BankImportCommandService bankImportCommandService;
 
     public EnableBankingSyncService(
             EnableBankingConfig config,
             EnableBankingClient client,
-            PersistenceManager persistenceManager,
+            BankReader bankReader,
             EnableBankingSyncStateRepository stateRepository,
             BankImportCommandService bankImportCommandService) {
         this.config = config;
         this.client = client;
-        this.persistenceManager = persistenceManager;
+        this.bankReader = bankReader;
         this.stateRepository = stateRepository;
         this.bankImportCommandService = bankImportCommandService;
     }
@@ -121,7 +121,7 @@ public class EnableBankingSyncService {
             return new AccountResult(account.label(), 0, 0, 0, null);
         }
 
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankReader.getBankImport();
         BankImportModel.BankColumnMappingModel mapping = new BankImportModel.BankColumnMappingModel(
                 ";", "YYYY-MM-DD", false, null, null, null, null);
 
