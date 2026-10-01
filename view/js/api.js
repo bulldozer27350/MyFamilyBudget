@@ -1572,7 +1572,14 @@
      * @returns {Promise<Object>}
      */
     async getPointage() {
-      return Promise.resolve(app().PointageService.buildPointage());
+      const res = await fetchJsonOrFallback('/pointage', () => app().PointageService.buildPointage());
+      // GET /pointage ne renvoie pas les operations en cours (gerees par /pending-operations et
+      // le store local) : on les complete pour que le panneau de pointage les voie toujours.
+      if (res && !Array.isArray(res.pendingOperations)) {
+        const local = app().PendingOperationsService.buildPendingOperations();
+        return { ...res, pendingOperations: local.pendingOperations || [] };
+      }
+      return res;
     },
 
     /**
@@ -1580,7 +1587,31 @@
      * @returns {Promise<Array>}
      */
     async savePointageMatching(monthISO, newLinks) {
-      return Promise.resolve(app().PointageService.savePointageMatching(monthISO, newLinks));
+      const localResult = app().PointageService.savePointageMatching(monthISO, newLinks);
+      if (typeof fetch === 'undefined') return localResult;
+      const url = API_BASE_URL + '/pointage/matchings/' + encodeURIComponent(monthISO);
+      const body = { links: newLinks };
+      try {
+        const res = await safeFetch(url, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!res || !res.ok) throw new Error('HTTP ' + (res ? res.status : 'réseau indisponible'));
+        // Le serveur est à jour : Pointage et Analyse relisent maintenant l'état persisté.
+        notifyServerSynced();
+      } catch (e) {
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'PUT',
+            url,
+            body,
+            description: 'Pointage — enregistrement du mois ' + monthISO
+          });
+        }
+      }
+      return localResult;
     },
 
     /**
