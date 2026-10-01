@@ -3,6 +3,7 @@ package com.moe.myfamilybudget.server.internal.persistence.adapter;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -67,7 +68,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOve
  * second gestionnaire : toute donnee qui n'est pas reellement stockee et relue par JPA est donc detectee.
  * Aucun redemarrage Spring n'est necessaire (voir {@code RestartPersistenceTest} / VT-320 pour cela).
  *
- * <p>Les montants sont compares avec {@code compareTo} (l'echelle des {@code BigDecimal} peut changer en
+ * <p>Les montants sont compares avec un {@code compareTo} null-safe (l'echelle des {@code BigDecimal} peut changer en
  * base) et l'ordre des collections est ignore (les relations JPA ne garantissent pas l'ordre).
  *
  * <p>Base H2 dediee, pour ne pas partager d'etat avec les autres contextes de test.
@@ -361,10 +362,14 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(settings.passGrowthRate()).isEqualByComparingTo(SETTINGS.passGrowthRate());
     }
 
+    /** compareTo ignore l'echelle ; null-safe car certains champs (ex. plafond de tranche) valent null. */
+    private static final Comparator<BigDecimal> NULL_SAFE_BIG_DECIMAL =
+            Comparator.nullsFirst(Comparator.<BigDecimal>naturalOrder());
+
     private static <T> void assertSameContent(T actual, T expected) {
         assertThat(actual)
                 .usingRecursiveComparison()
-                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .withComparatorForType(NULL_SAFE_BIG_DECIMAL, BigDecimal.class)
                 .ignoringCollectionOrder()
                 .isEqualTo(expected);
     }
