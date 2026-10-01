@@ -95,7 +95,139 @@ from-scratch de cette infrastructure.
 - **Travaux** : pour chaque modèle, indiquer owner, entité actuelle, repository, adapter, callers, relations vers
   `BudgetDataEntity`, tests existants et test E2E de preuve.
 - **Livrable** : aucune modification de production ; tableau dans ce document ou note liée.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+
+### Inventaire (état du code au moment de DB-000)
+
+Chemins relatifs à `back/server/src/main/java/com/moe/myfamilybudget/server/internal/`. Les « repositories » sont
+dans `persistence/repository/`, les « adapters » dans `persistence/adapter/`, les « commands » dans `command/`.
+
+#### 1. Entités rattachées au hub `BudgetDataEntity`
+
+`BudgetDataEntity` (singleton, `BudgetDataRepository.findFirstByOrderByIdAsc`) porte aujourd'hui toutes les
+relations ci-dessous, avec `cascade = ALL` (et `orphanRemoval` pour `retirement` et `bankImport`), en `EAGER`
+sauf `bankImport` (`LAZY`).
+
+| Owner cible | Champ du hub | Entité | Repository dédié | Reader / adapter actuel | Command actuelle |
+|---|---|---|---|---|---|
+| Budget de base | `incomes` | `IncomeEntity` | `IncomeRepository` | `BudgetReader` / `BudgetPersistenceAdapter` | aucune (via Trésorerie) |
+| Budget de base | `charges` | `ChargeEntity` | `ChargeRepository` | idem | aucune (via Trésorerie) |
+| Budget de base | `oneoff` | `OneOffExpenseEntity` | `OneOffExpenseRepository` | idem | aucune (via Trésorerie) |
+| Budget de base | `transfers` | `TransferEntity` | `TransferRepository` | idem | aucune (via Trésorerie) |
+| Budget de base | `variableIncomes` | `VariableIncomeEntity` | `VariableIncomeRepository` | idem | aucune (via Trésorerie) |
+| Budget de base | `variableOverrides` | `VariableOverrideEntity` | `VariableOverrideRepository` | idem | aucune (via Trésorerie) |
+| Retraite | `retirement` | `RetirementEntity` | `RetirementRepository` | `RetirementReader` / `RetirementPersistenceAdapter` | `RetirementCommandService` |
+| Fiscalité | `taxChildren` | `TaxChildEntity` | `TaxChildRepository` | `TaxReader` / `TaxPersistenceAdapter` | `TaxCommandService` |
+| Fiscalité | `taxBrackets` | `TaxBracketEntity` | `TaxBracketRepository` | idem | idem |
+| Fiscalité | `taxRateOverrides` | `TaxRateOverrideEntity` | `TaxRateOverrideRepository` | idem | idem |
+| Fiscalité | `taxActualOverrides` | `TaxActualOverrideEntity` | `TaxActualOverrideRepository` | idem | idem |
+| Patrimoine | `placements` | `PlacementEntity` | `PlacementRepository` | `PatrimoineReader` / `PatrimoinePersistenceAdapter` | `PatrimoineCommandService` |
+| Patrimoine | `realEstate` | `RealEstateEntity` | `RealEstateRepository` | idem | idem |
+| Patrimoine | `assetCategories` | `AssetCategoryEntity` | `AssetCategoryRepository` | idem | idem |
+| Banque | `bankImport` | `BankImportEntity` (`jsonData`) | `BankImportRepository` | `BankReader` / `BankPersistenceAdapter` | `BankImportCommandService` |
+| Crédit | `loans` | `LoanEntity` | `LoanRepository` | `LoanReader` / `LoanPersistenceAdapter` | `LoanCommandService` (délègue à `PatrimoineCommandService`) |
+| Objectifs | `objectifs` | `ObjectifEntity` | `ObjectifRepository` | `GoalReader` / `GoalPersistenceAdapter` | `GoalCommandService` (délègue à `PatrimoineCommandService`) |
+| Settings | `settings` (`@OneToOne`, côté hub) | `SettingsEntity` | `SettingsRepository` | `SettingsReader` / `SettingsPersistenceAdapter` | pas de command ; `ParametersServiceImpl.saveSettings` (`@Transactional`) |
+
+Notes :
+
+- Aucune entité Trésorerie dédiée : le domaine lit/écrit les lignes du budget de base ;
+  `TresorerieCommandService` appelle `addTresorerieRow`, `updateTresorerieRow`, `removeTresorerieRow` et
+  `applyTresorerieAjustement` de `PersistenceManager` (contrats `listKey` / `field` / `value`).
+- `ObjectifEntity` et `LoanEntity` n'ont pas encore de command propriétaire : leurs mutations passent par
+  `PatrimoineCommandService` (`GoalCommandService` et `LoanCommandService` n'ont aucune dépendance directe à
+  `PersistenceManager`).
+
+#### 2. Entités enfants (sans lien direct avec le hub)
+
+| Entité | Parent | Owner cible |
+|---|---|---|
+| `RetirementPersonEntity` | `RetirementEntity` | Retraite |
+| `SalaryHistoryEntity` | `RetirementPersonEntity` | Retraite |
+| `PlacementHistoryEntryEntity` | `PlacementEntity` | Patrimoine |
+| `ObjectifAllocationEntity` | `ObjectifEntity` | Objectifs |
+
+#### 3. Entités autonomes (hors hub) déjà isolées
+
+| Entité | Repository | Utilisé par (hors package `persistence`) |
+|---|---|---|
+| `ObjectifsSettingsEntity` | `ObjectifsSettingsRepository` | `calculation/JpaObjectifsSettingsStore` |
+| `LoanAdviceSettingsEntity` | `LoanAdviceSettingsRepository` | `calculation/JpaLoanAdviceSettingsStore` |
+| `MarketSnapshotEntity` | `MarketSnapshotRepository` | `marketdata/JpaMarketSnapshotStore` |
+| `NotificationSettingsEntity` | `NotificationSettingsRepository` | `notification/JpaNotificationSettingsStore`, `notification/NotificationDispatchService`, `impl/NotificationsServiceImpl` |
+| `NotificationSentLogEntity` | `NotificationSentLogRepository` | `notification/NotificationDispatchService` |
+| `PushSubscriptionEntity` | `PushSubscriptionRepository` | `notification/channel/WebPushNotificationChannel`, `impl/NotificationsServiceImpl` |
+| `EnableBankingSyncStateEntity` | `EnableBankingSyncStateRepository` | `enablebanking/EnableBankingSyncService` |
+
+Ces sept entités n'ont **aucune relation vers le hub** : elles ne sont pas concernées par `DB-1100` à `DB-1160`.
+
+#### 4. Callers de `PersistenceManager` hors package `persistence`
+
+| Classe | Méthodes appelées |
+|---|---|
+| `command/RetirementCommandService` | `updateRetirement` |
+| `command/TaxCommandService` | `updateTaxConfig`, `updateTaxSettings`, `resetDefaultTaxBrackets`, `lockForCurrentTransaction` |
+| `command/PatrimoineCommandService` | `savePatrimoineRow`, `deletePatrimoineRow`, `addAssetCategory`, `updateAssetCategory`, `removeAssetCategory`, `addPlacementHistoryEntry`, `updatePlacementHistoryEntry`, `deletePlacementHistoryEntry` |
+| `command/TresorerieCommandService` | `addTresorerieRow`, `updateTresorerieRow`, `removeTresorerieRow`, `applyTresorerieAjustement` |
+| `command/BankImportCommandService` | `updateBankImport` |
+| `enablebanking/EnableBankingSyncService` | `getBankImport` |
+| `impl/SystemeServiceImpl` | `getBudgetData`, `setBudgetData`, `resetData`, `lockForCurrentTransaction` |
+| `notification/NotificationDispatchService` | `getBudgetData` |
+
+Les autres services de `impl/` (`AnalyseServiceImpl`, `AnalysePretsServiceImpl`, `ImpotsServiceImpl`,
+`OverviewServiceImpl`, `ParametersServiceImpl`, `PatrimoineServiceImpl`, `PendingOperationsServiceImpl`,
+`PointageServiceImpl`, `RetraiteServiceImpl`, `StatementBankImportServiceImpl`, `SuggestionsTauxServiceImpl`,
+`TresorerieServiceImpl`) référencent encore `PersistenceManager` dans leurs imports ou leurs constructeurs, mais
+aucun appel direct à une de ses méthodes n'a été relevé en dehors de ceux listés ci-dessus : cela devra être
+confirmé par DB-050 / DB-1070 (recherche statique).
+
+Les 8 adapters (`persistence/adapter/*PersistenceAdapter`) dépendent tous de `PersistenceManager` et lisent via
+`getBudgetData()` : ils sont le principal point de bascule des phases B de `DB-1001` à `DB-1061`.
+
+#### 5. Zones de conflit communes
+
+| Fichier | Lignes (approx.) | Raison | Patchs concernés |
+|---|---|---|---|
+| `persistence/entity/BudgetDataEntity.java` | 70 | hub : toutes les relations | `DB-1100` à `DB-1160` (sérialisés) |
+| `persistence/converter/EntityModelConverter.java` | 695 | conversion globale modèle ↔ entités | `DB-1000`…`DB-1061` (additifs : ne pas le modifier), `DB-1170` |
+| `persistence/BudgetMutationService.java` | 998 | mutations génériques et verrou transactionnel | `DB-020`…`DB-050`, `DB-060` |
+| `persistence/PersistenceManager.java` | 342 | façade de transition | `DB-020`…`DB-060`, `DB-1190` |
+| `persistence/BudgetPersistenceGateway.java` | 361 | accès repositories globaux | `DB-060`, `DB-1190` |
+| `persistence/BudgetCacheStore.java` | 384 | cache mémoire + rollback | `DB-060`, `DB-1180` |
+| `model/BudgetDataModel.java` | 264 | snapshot global consommé par les adapters | `DB-1180` |
+| `updater/*FieldUpdaters.java`, `FieldValueConverter`, `TresorerieFieldUpdateDispatcher` | — | contrats `listKey` / `field` / `value` | `DB-031`, `DB-050` |
+
+Recommandation de découpage : les patchs `DB-1000`…`DB-1061` doivent créer de **nouveaux** fichiers et ne pas toucher
+à `EntityModelConverter` ni à `BudgetDataEntity` (règle de la phase A).
+
+#### 6. Tests existants et preuve E2E
+
+Chemins relatifs à `back/server/src/test/java/com/moe/myfamilybudget/server/internal/`.
+
+| Domaine / sujet | Tests existants |
+|---|---|
+| Adapters (tous domaines) | `persistence/adapter/PersistenceAdaptersTest` |
+| Cache, rollback, concurrence | `persistence/BudgetCacheStoreRollbackTest`, `persistence/BudgetCacheStoreConcurrencyTest`, `persistence/WriteFailureKeepsMemoryTest` |
+| Mapping Crédit / taux | `persistence/LoanContractInfoConversionTest`, `persistence/RatePrecisionPersistenceTest` |
+| Redémarrage Spring | `integration/RestartPersistenceTest` (VT-320) |
+| Atomicité multi-domaines | `integration/MultiDomainAtomicityTest` |
+| Concurrence API | `integration/ConcurrentMutationsApiTest` |
+| Caractérisation REST | `integration/CriticalEndpointsCharacterizationTest` |
+| Parcours Retraite → Overview | `integration/RetirementToOverviewScenarioTest` |
+| Banque / Pointage / Analyse | `integration/BankPointageAnalyseScenarioTest` |
+| Logique métier globale | `integration/BusinessLogicIntegrationTest` |
+| Garde-fous d'architecture | `architecture/CalculationDependenciesArchTest` |
+| Fabrique de test | `testsupport/PersistenceManagerTestFactory` |
+
+Preuves E2E Playwright de référence : voir `16-tests.md` (`VT-220` Patrimoine → Trésorerie → Overview, `VT-230`
+paramètres multi-domaines, `VT-240` backend indisponible, `VT-500` suite finale F1/F3/F4).
+
+Lacunes constatées pour les patchs suivants :
+
+- aucun test dédié par adapter pour Fiscalité, Banque, Crédit et Objectifs au-delà de `PersistenceAdaptersTest`
+  (à traiter par `DB-010`) ;
+- aucune exécution PostgreSQL dédiée aux adapters : `RestartPersistenceTest` est la seule preuve de redémarrage
+  (à traiter par `DB-011`).
 
 ## DB-010 — Renforcer les tests round-trip des adapters
 
