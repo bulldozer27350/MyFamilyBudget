@@ -44,7 +44,7 @@ class ParametersServiceImplTest {
                 new BankPersistenceAdapter(persistenceManager),
                 mapper,
                 new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore()),
-                new PatrimoineCommandService(persistenceManager),
+                new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
                 new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)));
     }
 

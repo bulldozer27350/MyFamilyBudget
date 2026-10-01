@@ -56,7 +56,7 @@ class PatrimoineServiceImplTest {
         persistenceManager.init();
         service = new PatrimoineServiceImpl(
                 mapper, new PatrimoineProjectionService(), new PlacementEvolutionService(),
-                new PatrimoineCommandService(persistenceManager),
+                new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
                 new SettingsPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
