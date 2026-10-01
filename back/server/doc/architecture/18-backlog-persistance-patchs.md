@@ -283,6 +283,18 @@ DB-031, DB-040 et DB-041 en parallèle.
 - **Tests** : `TresorerieCommandServiceTest` (délégation, validation, propagation, relecture via
   `BudgetPersistenceAdapter`) ; `TresorerieServiceImplTest` adapté au nouveau constructeur.
 
+### Statut DB-041 — Finaliser les commands Crédit/Objectifs
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : ports `LoanWriter` et `GoalWriter` implémentés par `LoanPersistenceAdapter` et
+  `GoalPersistenceAdapter` (qui fixent la liste `loans` / `objectifs` côté adapter). `LoanCommandService` et
+  `GoalCommandService` ne délèguent plus à `PatrimoineCommandService` et valident l'identifiant de suppression
+  (`IllegalArgumentException`, 400) ; corps `null` accepté à la sauvegarde. `PatrimoineServiceImpl` route désormais
+  `loans` / `credits` (insensible à la casse) vers le command Crédit et `objectifs` vers le command Objectifs ; les
+  autres `listKey` restent sur `PatrimoineCommandService`. Contrats REST inchangés (retrait du `listKey` en DB-050).
+- **Tests** : `LoanCommandServiceTest`, `GoalCommandServiceTest` (délégation, validation, propagation, relecture via
+  l'adapter) ; `PatrimoineServiceImplTest` : routage prêts (+ alias `credits`) et objectifs, constructeur adapté.
+
 ## DB-050 — Retirer les dernières mutations génériques
 
 - **Prérequis** : DB-020, DB-021, DB-030, DB-031, DB-040, DB-041.

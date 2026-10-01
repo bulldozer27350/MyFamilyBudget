@@ -21,6 +21,8 @@ import com.moe.myfamilybudget.server.internal.mapper.PatrimoineMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.server.internal.command.GoalCommandService;
+import com.moe.myfamilybudget.server.internal.command.LoanCommandService;
 import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
@@ -43,6 +45,8 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
     private final PatrimoineProjectionService projectionService;
     private final PlacementEvolutionService evolutionService;
     private final PatrimoineCommandService patrimoineCommandService;
+    private final LoanCommandService loanCommandService;
+    private final GoalCommandService goalCommandService;
     private final SettingsReader settingsReader;
     private final PatrimoineReader patrimoineReader;
     private final BudgetReader budgetReader;
@@ -54,6 +58,8 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
             PatrimoineProjectionService projectionService,
             PlacementEvolutionService evolutionService,
             PatrimoineCommandService patrimoineCommandService,
+            LoanCommandService loanCommandService,
+            GoalCommandService goalCommandService,
             SettingsReader settingsReader,
             PatrimoineReader patrimoineReader,
             BudgetReader budgetReader,
@@ -63,6 +69,8 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         this.projectionService = projectionService;
         this.evolutionService = evolutionService;
         this.patrimoineCommandService = patrimoineCommandService;
+        this.loanCommandService = loanCommandService;
+        this.goalCommandService = goalCommandService;
         this.settingsReader = settingsReader;
         this.patrimoineReader = patrimoineReader;
         this.budgetReader = budgetReader;
@@ -90,14 +98,36 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
     @SuppressWarnings("unchecked")
     public ResponseEntity<Void> savePatrimoineLigne(String listKey, Object body) {
         Map<String, Object> map = (body instanceof Map) ? (Map<String, Object>) body : null;
-        this.patrimoineCommandService.savePatrimoineRow(listKey, map);
+        if (isLoanList(listKey)) {
+            this.loanCommandService.saveLoanRow(map);
+        } else if (isGoalList(listKey)) {
+            this.goalCommandService.saveGoalRow(map);
+        } else {
+            this.patrimoineCommandService.savePatrimoineRow(listKey, map);
+        }
         return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<Void> deletePatrimoineLigne(String listKey, String id) {
-        this.patrimoineCommandService.deletePatrimoineRow(listKey, id);
+        if (isLoanList(listKey)) {
+            this.loanCommandService.deleteLoanRow(id);
+        } else if (isGoalList(listKey)) {
+            this.goalCommandService.deleteGoalRow(id);
+        } else {
+            this.patrimoineCommandService.deletePatrimoineRow(listKey, id);
+        }
         return ResponseEntity.noContent().build();
+    }
+
+    /** DB-041 : les prets ("loans", alias "credits") sont ecrits par le command service Credit. */
+    private static boolean isLoanList(String listKey) {
+        return "loans".equalsIgnoreCase(listKey) || "credits".equalsIgnoreCase(listKey);
+    }
+
+    /** DB-041 : les objectifs sont ecrits par le command service Objectifs. */
+    private static boolean isGoalList(String listKey) {
+        return "objectifs".equalsIgnoreCase(listKey);
     }
 
     @Override

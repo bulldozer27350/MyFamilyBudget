@@ -27,6 +27,8 @@ import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
 import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionService;
+import com.moe.myfamilybudget.server.internal.command.GoalCommandService;
+import com.moe.myfamilybudget.server.internal.command.LoanCommandService;
 import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.server.internal.mapper.PatrimoineMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
@@ -38,6 +40,7 @@ import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.GoalPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.LoanPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
@@ -57,11 +60,55 @@ class PatrimoineServiceImplTest {
         service = new PatrimoineServiceImpl(
                 mapper, new PatrimoineProjectionService(), new PlacementEvolutionService(),
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
+                new LoanCommandService(new LoanPersistenceAdapter(persistenceManager)),
+                new GoalCommandService(new GoalPersistenceAdapter(persistenceManager)),
                 new SettingsPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager),
                 new BankPersistenceAdapter(persistenceManager));
+    }
+
+    // -------------------------------------------------------------------------
+    // DB-041 : prets et objectifs ecrits par leurs command services
+    // -------------------------------------------------------------------------
+
+    @Test
+    void savePatrimoineLigne_loansAndCreditsAlias_areWrittenAndDeletedViaLoanCommand() {
+        Map<String, Object> loan = new HashMap<>();
+        loan.put("id", "loan_db041");
+        loan.put("label", "Pret DB-041");
+        loan.put("crd", new BigDecimal("1000"));
+
+        assertEquals(HttpStatus.OK, service.savePatrimoineLigne("loans", loan).getStatusCode());
+        assertTrue(new LoanPersistenceAdapter(persistenceManager).getLoans().stream()
+                .anyMatch(l -> "loan_db041".equals(l.id())));
+
+        loan.put("label", "Pret renomme");
+        assertEquals(HttpStatus.OK, service.savePatrimoineLigne("CREDITS", loan).getStatusCode());
+        assertEquals(1, new LoanPersistenceAdapter(persistenceManager).getLoans().stream()
+                .filter(l -> "loan_db041".equals(l.id()) && "Pret renomme".equals(l.label())).count());
+
+        assertEquals(HttpStatus.NO_CONTENT, service.deletePatrimoineLigne("loans", "loan_db041").getStatusCode());
+        assertFalse(new LoanPersistenceAdapter(persistenceManager).getLoans().stream()
+                .anyMatch(l -> "loan_db041".equals(l.id())));
+    }
+
+    @Test
+    void savePatrimoineLigne_objectifs_areWrittenAndDeletedViaGoalCommand() {
+        Map<String, Object> goal = new HashMap<>();
+        goal.put("id", "goal_db041");
+        goal.put("label", "Objectif DB-041");
+        goal.put("targetAmount", new BigDecimal("3000"));
+        goal.put("targetDate", "2027-07-01");
+
+        assertEquals(HttpStatus.OK, service.savePatrimoineLigne("objectifs", goal).getStatusCode());
+        assertTrue(new GoalPersistenceAdapter(persistenceManager).getGoals().stream()
+                .anyMatch(o -> "goal_db041".equals(o.id())));
+
+        assertEquals(HttpStatus.NO_CONTENT, service.deletePatrimoineLigne("objectifs", "goal_db041").getStatusCode());
+        assertFalse(new GoalPersistenceAdapter(persistenceManager).getGoals().stream()
+                .anyMatch(o -> "goal_db041".equals(o.id())));
     }
 
     // -------------------------------------------------------------------------
