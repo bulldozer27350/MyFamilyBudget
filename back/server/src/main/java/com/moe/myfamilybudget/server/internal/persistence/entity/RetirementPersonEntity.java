@@ -20,6 +20,7 @@ public class RetirementPersonEntity {
     private Integer trimestresValides;
     private String trimestresDate;
     private BigDecimal agircPoints;
+    @Column(precision = 19, scale = 8)
     private BigDecimal ratioPointsParEuro;
     private Boolean cadre;
     

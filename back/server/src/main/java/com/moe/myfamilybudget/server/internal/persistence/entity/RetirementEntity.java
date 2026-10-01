@@ -16,6 +16,7 @@ public class RetirementEntity {
     private BigDecimal pass2026;
     @Column(precision = 19, scale = 8)
     private BigDecimal passGrowthRate;
+    @Column(precision = 19, scale = 8)
     private BigDecimal agircPointValue;
     private String agircPointDateGlobal;
     @Column(precision = 19, scale = 8)
