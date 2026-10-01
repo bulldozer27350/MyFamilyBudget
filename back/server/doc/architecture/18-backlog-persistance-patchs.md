@@ -246,7 +246,15 @@ Lacunes constatées pour les patchs suivants :
 - **Objectif** : prouver que les mutations critiques survivent à un nouveau contexte Spring.
 - **Travaux** : mutation → GET → redémarrage → GET ; au moins une exécution PostgreSQL.
 - **Relation** : doit alimenter `VT-320` plutôt que dupliquer une suite indépendante.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : pas de nouvelle suite : le scénario de `RestartPersistenceTest` (VT-320) est étendu aux écritures des
+  command services finalisés en DB-020 à DB-041 — Retraite (`PUT /retraite`), Fiscalité (`PUT /impots`), Banque
+  (`PUT /bank-import/transactions/{id}/category`), Crédit (`POST /patrimoine/loans`), Objectifs
+  (`POST /patrimoine/objectifs`) et historique de placement — avec mêmes assertions avant et après redémarrage. Les
+  deux variantes (H2 fichier, toujours exécutée ; PostgreSQL, exécutée en CI par le service `postgres` et exigée par
+  le gate VT-600) en bénéficient. Aucun changement de CI ni de code de production.
+- **Exécution locale** : `mvn -Dtest=RestartPersistenceTest test` (H2) ; avec PostgreSQL, définir
+  `MFB_TEST_POSTGRES_URL` (voir `17-backlog-tests-patchs.md`, VT-320).
 
 ## DB-020 à DB-041 — Commands orientées owner
 

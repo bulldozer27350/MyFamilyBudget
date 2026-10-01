@@ -45,6 +45,11 @@ import com.moe.myfamilybudget.ServerApplication;
  * Banque) et un import bancaire avec ventilation : c'est le chemin a risque du redemarrage (lecture
  * paresseuse et objets volumineux, cf. {@code BudgetCacheStore#init}). Les contextes sont lances en HTTP reel
  * sur un port libre : le contrat verifie est celui de l'API, pas celui d'un bean.
+ *
+ * <p>DB-011 : le meme scenario couvre aussi les ecritures passees par les command services finalises en
+ * DB-020 a DB-041 (Retraite, Fiscalite, Banque, Credit, Objectifs, historique de placement), afin que la
+ * bascule JPA de chaque domaine (DB-1001 a DB-1061) soit protegee par la meme preuve de redemarrage, sur H2 et
+ * sur PostgreSQL, sans suite dupliquee.
  */
 @DisplayName("VT-320 -- Persistance apres redemarrage Spring")
 class RestartPersistenceTest {
@@ -110,6 +115,7 @@ class RestartPersistenceTest {
                     "{\"field\":\"label\",\"value\":\"" + NEW_INCOME_LABEL + "\"}", 200);
             api.put("/tresorerie/placements/plc_1", "{\"field\":\"balance\",\"value\":12345}", 200);
             api.put("/settings", "{\"settings\":{\"retireAge\":58,\"goalSecureHorizonMonths\":24}}", 200);
+            applyDb011Mutations(api);
 
             assertMutatedState(api, incomeId, "avant redemarrage");
         }
@@ -158,6 +164,82 @@ class RestartPersistenceTest {
         assertThat(split.path("amount").asDouble()).as("montant ventile %s", moment).isCloseTo(-200.0, within(EPS));
         assertThat(budget.path("oneoff").get(0).path("amount").asDouble())
                 .as("depense ponctuelle %s", moment).isCloseTo(15000.0, within(EPS));
+
+        assertDb011State(api, budget, moment);
+    }
+
+    // =========================================================================
+    // DB-011 : ecritures des command services Retraite, Fiscalite, Banque, Credit, Objectifs, Patrimoine
+    // =========================================================================
+
+    private void applyDb011Mutations(Api api) throws Exception {
+        // Retraite (DB-020) : une personne modifiee, une personne ajoutee
+        api.put("/retraite", """
+                {
+                  "people": [
+                    { "id": "p_1", "name": "Alice", "birthYear": 1990, "incomeLabel": "Salaire",
+                      "trimestresValides": 150, "trimestresDate": "2025-12-31",
+                      "salaryHistory": [ { "year": 2024, "salary": 35000 }, { "year": 2025, "salary": 36000 } ],
+                      "agircPoints": 2500, "ratioPointsParEuro": 0.0051 },
+                    { "id": "p_2", "name": "Bob", "birthYear": 1992, "incomeLabel": "Salaire Bob",
+                      "trimestresValides": 90, "trimestresDate": "2025-12-31",
+                      "salaryHistory": [], "agircPoints": 1200, "ratioPointsParEuro": 0.0051 }
+                  ],
+                  "pass2026": 47100, "passGrowthRate": 0.015, "agircPointValue": 1.4386,
+                  "agircPointDateGlobal": "2025-01-01", "agircPointGrowthRate": 0.01
+                }
+                """, 200);
+
+        // Fiscalite (DB-021) : une liste fournie remplace l'existante, les autres restent inchangees
+        api.put("/impots",
+                "{\"taxChildren\":[{\"id\":\"child_db011\",\"name\":\"Enfant DB-011\",\"birthYear\":2015}]}", 200);
+
+        // Banque (DB-040) : recategorisation d'une transaction de l'import
+        api.put("/bank-import/transactions/tx_loyer/category", "{\"categoryId\":\"cat_courses\"}", 200);
+
+        // Credit (DB-041) et Objectifs (DB-041) : ecritures routees vers leurs command services
+        api.post("/patrimoine/loans", """
+                { "id": "loan_db011", "label": "Pret DB-011", "crd": 150000, "rate": 0.02, "monthly": 900,
+                  "insurance": 20, "startDate": "2024-01-01", "endDate": "2044-01-01" }
+                """, 200);
+        api.post("/patrimoine/objectifs", """
+                { "id": "goal_db011", "label": "Objectif DB-011", "targetAmount": 5000, "targetDate": "2027-06-01" }
+                """, 200);
+
+        // Patrimoine (DB-030) : point d'historique de valorisation, de meme valeur que le solde deja ecrit
+        // (la ligne synchronise son solde sur le dernier releve : le solde attendu reste 12345).
+        api.post("/patrimoine/placements/plc_1/historique",
+                "{\"date\":\"2026-02-01\",\"value\":12345,\"notes\":\"DB-011\"}", 200);
+    }
+
+    private void assertDb011State(Api api, JsonNode budget, String moment) throws Exception {
+        JsonNode people = budget.path("retirement").path("people");
+        assertThat(people).as("personnes retraite %s", moment).hasSize(2);
+        assertThat(byId(people, "p_1").path("trimestresValides").asInt())
+                .as("trimestres valides d'Alice %s", moment).isEqualTo(150);
+        assertThat(byId(people, "p_2")).as("personne ajoutee %s", moment).isNotNull();
+        assertThat(byId(people, "p_2").path("name").asText()).as("nom de la personne ajoutee %s", moment)
+                .isEqualTo("Bob");
+
+        JsonNode child = byId(budget.path("taxChildren"), "child_db011");
+        assertThat(child).as("enfant fiscal %s", moment).isNotNull();
+        assertThat(child.path("name").asText()).as("nom de l'enfant fiscal %s", moment).isEqualTo("Enfant DB-011");
+
+        JsonNode loyer = byId(budget.path("bankImport").path("transactions"), "tx_loyer");
+        assertThat(loyer).as("transaction tx_loyer %s", moment).isNotNull();
+        assertThat(loyer.path("categoryId").asText()).as("categorie de tx_loyer %s", moment)
+                .isEqualTo("cat_courses");
+
+        JsonNode goal = byId(budget.path("objectifs"), "goal_db011");
+        assertThat(goal).as("objectif %s", moment).isNotNull();
+        assertThat(goal.path("targetAmount").asDouble()).as("montant cible %s", moment).isCloseTo(5000.0, within(EPS));
+
+        JsonNode patrimoine = api.getJson("/patrimoine");
+        JsonNode loan = byId(patrimoine.path("loans"), "loan_db011");
+        assertThat(loan).as("pret %s", moment).isNotNull();
+        assertThat(loan.path("label").asText()).as("libelle du pret %s", moment).isEqualTo("Pret DB-011");
+        assertThat(byId(patrimoine.path("placements"), "plc_1").path("history"))
+                .as("historique du placement plc_1 %s", moment).hasSize(1);
     }
 
     private static JsonNode byId(JsonNode array, String id) {
