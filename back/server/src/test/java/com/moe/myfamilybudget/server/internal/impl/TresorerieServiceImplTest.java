@@ -44,6 +44,7 @@ import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenc
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.TresoreriePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class TresorerieServiceImplTest {
@@ -58,7 +59,7 @@ class TresorerieServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new TresorerieServiceImpl(
-                mapper, new TresorerieCommandService(persistenceManager),
+                mapper, new TresorerieCommandService(new TresoreriePersistenceAdapter(persistenceManager)),
                 new SettingsPersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),

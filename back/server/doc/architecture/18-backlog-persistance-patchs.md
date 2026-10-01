@@ -260,6 +260,18 @@ Pour chaque domaine :
 Les domaines sont volontairement séparés afin que plusieurs agents puissent réaliser DB-020, DB-021, DB-030,
 DB-031, DB-040 et DB-041 en parallèle.
 
+### Statut DB-031 — Finaliser les commands Trésorerie
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : port `TresorerieWriter` (4 opérations : ajout, mise à jour, suppression, ajustement) implémenté par
+  `TresoreriePersistenceAdapter` ; `TresorerieCommandService` ne dépend plus de `PersistenceManager`, valide les
+  identifiants (`listKey`, `id`, `field`, `lineId`, `kind`, `newMonthly` : `IllegalArgumentException`, traduite en
+  400 par `GlobalExceptionHandler`) et laisse l'erreur de persistance remonter telle quelle. Corps `null` (ajout)
+  et valeur `null` (mise à jour) restent acceptés ; contrats REST et `listKey` / `field` / `value` inchangés
+  (retrait en DB-050).
+- **Tests** : `TresorerieCommandServiceTest` (délégation, validation, propagation, relecture via
+  `BudgetPersistenceAdapter`) ; `TresorerieServiceImplTest` adapté au nouveau constructeur.
+
 ## DB-050 — Retirer les dernières mutations génériques
 
 - **Prérequis** : DB-020, DB-021, DB-030, DB-031, DB-040, DB-041.
