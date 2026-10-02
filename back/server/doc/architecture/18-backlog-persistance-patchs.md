@@ -53,12 +53,12 @@ from-scratch de cette infrastructure.
 | DB-021 | Finaliser les commands Fiscalité | DB-000 | DB-020, DB-030, DB-040 |
 | DB-030 | Finaliser les commands Patrimoine | DB-000 | DB-020, DB-021, DB-031 |
 | DB-031 | Finaliser les commands Trésorerie | DB-000 | DB-020, DB-021, DB-030 |
-| DB-040 | Finaliser les commands Banque | DB-000 | DB-020, DB-021, DB-030, DB-041 |
+| DB-040 | Finaliser les commands Banque | DB-000, FIX-010 | DB-020, DB-021, DB-030, DB-041 |
 | DB-041 | Finaliser les commands Crédit/Objectifs | DB-000 | DB-020, DB-021, DB-030, DB-040 |
 | DB-050 | Retirer les dernières mutations génériques | DB-020, DB-021, DB-030, DB-031, DB-040, DB-041 | DB-060 |
 | DB-060 | Réduire `PersistenceManager` | DB-050 | DB-061 |
-| DB-061 | Finaliser l'orchestrateur Settings sans owner global | DB-060 | JPA additif |
-| DB-1000 | JPA Retraite — entités/repositories additifs | DB-060 | DB-1010, DB-1020, DB-1030, DB-1040 |
+| DB-061 | Finaliser l'orchestrateur Settings sans owner global | DB-060, SET-030 | JPA additif |
+| DB-1000 | JPA Retraite — entités/repositories additifs | DB-060, SET-040 | DB-1010, DB-1020, DB-1030, DB-1040 |
 | DB-1001 | JPA Retraite — basculer l'adapter | DB-1000 | DB-1011, DB-1021, DB-1031, DB-1041 |
 | DB-1010 | JPA Fiscalité — entités/repositories additifs | DB-060 | DB-1000, DB-1020, DB-1030, DB-1040 |
 | DB-1011 | JPA Fiscalité — basculer l'adapter | DB-1010 | DB-1001, DB-1021, DB-1031, DB-1041 |
@@ -70,7 +70,7 @@ from-scratch de cette infrastructure.
 | DB-1041 | JPA Crédit — basculer l'adapter | DB-1040 | DB-1001, DB-1011, DB-1021, DB-1031 |
 | DB-1050 | JPA Patrimoine — entités/repositories additifs | DB-060 | DB-1000, DB-1010, DB-1020, DB-1030, DB-1040 |
 | DB-1051 | JPA Patrimoine — basculer l'adapter | DB-1050 | DB-1001, DB-1011, DB-1021, DB-1031, DB-1041 |
-| DB-1060 | JPA Trésorerie — entités/repositories additifs | DB-060 | DB-1050, DB-1000, DB-1010, DB-1030, DB-1040 |
+| DB-1060 | JPA Trésorerie — entités/repositories additifs | DB-060, FIX-020 | DB-1050, DB-1000, DB-1010, DB-1030, DB-1040 |
 | DB-1061 | JPA Trésorerie — basculer l'adapter | DB-1060 | DB-1051 |
 | DB-1070 | Vérifier les readers après bascule JPA | DB-1001, DB-1011, DB-1021, DB-1031, DB-1041 | DB-1051 |
 | DB-1080 | Vérifier les parcours E2E après bascule JPA | DB-1051, DB-1061, VT-220, VT-320 | DB-1070 |
@@ -81,10 +81,26 @@ from-scratch de cette infrastructure.
 | DB-1140 | Retirer la relation hub Crédit | DB-1130 | — |
 | DB-1150 | Retirer la relation hub Patrimoine | DB-1140 | — |
 | DB-1160 | Retirer la relation hub Trésorerie | DB-1150 | — |
-| DB-1170 | Nettoyer `EntityModelConverter` en mappers par domaine | DB-1160 | DB-1180 |
-| DB-1180 | Réduire `BudgetDataModel` au snapshot global | DB-1170, VT-500 | DB-1190 |
+| DB-1170 | Nettoyer `EntityModelConverter` en mappers par domaine | DB-1160, ARCH-020 | DB-1180 |
+| DB-1180 | Réduire `BudgetDataModel` au snapshot global | DB-1170, VT-500, CLEAN-010, CLEAN-020 | DB-1190 |
 | DB-1190 | Nettoyage final du bootstrap/persistence legacy | DB-1180 | DB-1200 |
-| DB-1200 | Gate persistance avant Maven | DB-011, DB-061, DB-1080, DB-1190, VT-320, VT-330, VT-340, VT-350 | aucun |
+| DB-1200 | Gate persistance avant Maven | DB-011, DB-061, DB-1080, DB-1190, VT-320, VT-330, VT-340, VT-350, GATE-010 | aucun |
+
+### Prédécesseurs hors `DB-xxx` (backlog 19)
+
+Les patchs de finition de [`19-backlog-pre-maven-patchs.md`](19-backlog-pre-maven-patchs.md) sont des prédécesseurs
+explicites des items ci-dessus (colonne « Prérequis » de la vue d'ensemble) ; tous sont `Terminé` à l'exception de
+`GATE-010` :
+
+| Patch du backlog 19 | Item `DB-xxx` qui en dépend | Raison |
+|---|---|---|
+| `FIX-010` | DB-040 | les échecs d'écriture BankImport sont propagés avant de finaliser les commands Banque |
+| `SET-030` | DB-061 | plus de dispatcher générique `updateTaxSettings(field,value)` avant l'orchestrateur Settings final |
+| `SET-040` | DB-1000 | `pass2026` / `passGrowthRate` ont pour seul propriétaire la Retraite avant sa cible JPA |
+| `FIX-020` | DB-1060 | `sweepEnabled` n'est plus une précondition implicite d'une mutation de paramètres |
+| `ARCH-020` | DB-1170 | les interdictions de dépendances inter-domaines protègent le découpage des mappers |
+| `CLEAN-010`, `CLEAN-020` | DB-1180 | inventaire de `BudgetDataModel` et snapshot global isolé avant sa réduction |
+| `GATE-010` | DB-1200 | gate final du backlog 19 avant le gate persistance |
 
 ---
 
@@ -405,7 +421,7 @@ pas les agents qui travaillent sur les autres domaines.
 
 ## DB-1000 — JPA Retraite — entités/repositories additifs
 
-- **Prérequis** : DB-060.
+- **Prérequis** : DB-060, SET-040.
 - **Périmètre** : entités et repositories Retraite uniquement.
 - **Objectif** : créer la cible JPA autonome sans changer encore le comportement.
 - **Validation** : compilation + tests mapping/round-trip.
@@ -668,6 +684,7 @@ pas les agents qui travaillent sur les autres domaines.
 
 ## DB-1060 / DB-1061 — JPA Trésorerie
 
+- **Prérequis** : DB-060, FIX-020 (pour DB-1060).
 - **DB-1060** : entités/repositories Trésorerie additifs.
 - **DB-1061** : bascule adapter et tests.
 - **Validation** : `VT-110` obligatoire pour protéger le graphe Retraite → Fiscalité → Trésorerie → Overview.
@@ -738,7 +755,7 @@ les plus isolés.
 
 ## DB-1170 — Nettoyer `EntityModelConverter` en mappers par domaine
 
-- **Prérequis** : DB-1160.
+- **Prérequis** : DB-1160, ARCH-020.
 - **Objectif** : retirer la dépendance technique globale après disparition du hub.
 - **Travaux** : un mapper/converter par owner ; supprimer les méthodes mortes ; laisser les conversions du snapshot
   global dans un composant explicitement transverse.
@@ -746,7 +763,7 @@ les plus isolés.
 
 ## DB-1180 — Réduire `BudgetDataModel` au snapshot global
 
-- **Prérequis** : DB-1170, `VT-500`.
+- **Prérequis** : DB-1170, `VT-500`, CLEAN-010, CLEAN-020.
 - **Objectif** : empêcher l'utilisation de `BudgetDataModel` comme façade d'accès quotidien à la persistance.
 - **Travaux** : recherche des `new BudgetDataModel(...)`, `getBudgetData()`, `setBudgetData()` ; conserver seulement
   les chemins import/export/backup/migration/tests globaux.
@@ -761,7 +778,7 @@ les plus isolés.
 
 ## DB-1200 — Gate persistance avant Maven
 
-- **Prérequis** : DB-011, DB-061, DB-1080, DB-1190, `VT-320`, `VT-330`, `VT-340`, `VT-350`.
+- **Prérequis** : DB-011, DB-061, DB-1080, DB-1190, `VT-320`, `VT-330`, `VT-340`, `VT-350`, `GATE-010`.
 - **Objectif** : autoriser la création des modules uniquement lorsque les frontières sont réellement exploitables.
 - **Contrôles** : build, PostgreSQL, restart, E2E fallback désactivé, ArchUnit, recherche des références résiduelles,
   checklist `14-checklist-maven.md`.

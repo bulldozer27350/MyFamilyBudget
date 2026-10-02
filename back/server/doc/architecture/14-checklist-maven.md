@@ -103,9 +103,13 @@ et exige, en CI ou si `MFB_REQUIRE_POSTGRES=true`, que la variante PostgreSQL ai
 - La variante PostgreSQL est la seule exécution conditionnelle : sans `MFB_TEST_POSTGRES_URL`, elle est ignorée sur un poste
   local. Le gate local doit donc définir la variable ; en CI elle l'est toujours.
 - Les règles ArchUnit n'utilisent plus `FreezingArchRule` (VT-400) : `archunit_store/` est vide et aucune violation n'est gelée donc tolérée.
-- Constat VT-340 toujours ouvert : `BudgetMutationService.updateTaxSettings` lève une `NullPointerException` si `sweepEnabled`
-  est absent des données ; les scénarios VT-230 et `MultiDomainAtomicityTest` le contournent par leur dataset. À traiter avant de relâcher ce contournement.
-- Constat VT-330 : `BudgetPersistenceGateway.saveBankImport` journalise les exceptions sans les propager.
+- Distinction à respecter : « patch VT terminé » (le test demandé est livré) n'est pas « défaut résiduel corrigé ».
+  Les deux constats hors périmètre relevés par VT-330 et VT-340 étaient des défauts réels, traités par des patchs
+  distincts du backlog 19 et désormais **corrigés** : FIX-010 (`BudgetPersistenceGateway.saveBankImport` propage les
+  erreurs de persistance) et FIX-020 (`BudgetMutationService.updateTaxSettings` ne dépend plus de `sweepEnabled`).
+  VT-330 et VT-340 restent `Terminé` sans réserve ouverte.
+- Le contournement `sweepEnabled: false` dans les datasets de VT-230 (`tests/e2e/settings-multi-domain.spec.js`) et de
+  `MultiDomainAtomicityTest` est conservé mais n'est plus nécessaire ; son retrait éventuel n'est pas un prérequis.
 - `bun run test` (`view/scratch/test-all-apis.js`) est un smoke test JS, pas un test de contrat ; il ne remplace aucune étape ci-dessus.
 
 ### Critères (un identifiant VT par ligne)
@@ -114,7 +118,8 @@ et exige, en CI ou si `MFB_REQUIRE_POSTGRES=true`, que la variante PostgreSQL ai
 - [ ] VT-200, VT-210, VT-220, VT-230, VT-240 : scénarios frontend sans fallback JS, contexte vierge, relus après reload.
 - [ ] VT-300 tests de mapping isolés ; VT-310 adaptateurs de persistance.
 - [ ] VT-320 persistance après redémarrage Spring, **variante PostgreSQL exécutée**.
-- [ ] VT-330 échec d'écriture sans modification de la mémoire ; VT-340 atomicité multi-domaines ; VT-350 concurrence.
+- [ ] VT-330 échec d'écriture sans modification de la mémoire ; VT-340 atomicité multi-domaines ; VT-350 concurrence
+      (patchs livrés ; défauts résiduels corrigés par FIX-010 et FIX-020 ; case à cocher par GATE-010).
 - [ ] VT-400 ArchUnit : aucun `BudgetDataModel`, `PersistenceManager` ni DTO OpenAPI dans les couches pures.
 - [ ] VT-500 suite E2E de référence F1 à F6, sans donnée locale.
 - [ ] VT-600 gate : `node tests/gate/check-gate.js all` vert en CI, aucun test obligatoire ignoré ou désactivé.

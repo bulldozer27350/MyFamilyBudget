@@ -212,8 +212,9 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
   (les trois valeurs, `birthYear` inchangé), de `/overview` (année de retraite = naissance + nouvel âge,
   trésorerie de départ) puis de l'écran Paramètres avant et après `page.reload()`. Le cas « champ invalide » de F5
   (aucune mutation partielle) reste couvert côté backend par `MultiDomainAtomicityTest` (VT-340). Le test importe une
-  copie du dataset de référence avec `sweepEnabled: false` (constat VT-340 : `updateTaxSettings` lève une
-  `NullPointerException` si `sweepEnabled` est absent ; fichier partagé inchangé). Section ajoutée dans
+  copie du dataset de référence avec `sweepEnabled: false` (contournement historique du constat VT-340, corrigé par
+  FIX-020 : `updateTaxSettings` ne lève plus de `NullPointerException` si `sweepEnabled` est absent ; la copie n'est plus
+  nécessaire ; fichier partagé inchangé). Section ajoutée dans
   `tests/e2e/README.md`. Exécution à confirmer en CI (Playwright non exécuté localement).
 
 ## VT-240 — Scénario diagnostique backend indisponible
@@ -289,9 +290,10 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
   `setBudgetData`, et `resetData` / `setBudgetData(null)` pour l'entité principale) : l'exception d'origine remonte
   telle quelle, `getBudgetData()` renvoie toujours la même instance, les huit ports de lecture restituent l'ancien
   état et aucun `BudgetMutatedEvent` n'est publié. Test de reprise : une fois la base revenue, la même mutation
-  aboutit et n'est visible qu'à ce moment-là. Constat hors périmètre, non modifié :
-  `BudgetPersistenceGateway.saveBankImport` intercepte les exceptions (journalisées) ; une panne limitée à
-  l'écriture du blob d'import bancaire ne remonte donc pas et la mémoire est tout de même mise à jour.
+  aboutit et n'est visible qu'à ce moment-là. Constat hors périmètre de VT-330, **corrigé depuis par FIX-010** :
+  `BudgetPersistenceGateway.saveBankImport` interceptait les exceptions (journalisées), si bien qu'une panne limitée à
+  l'écriture du blob d'import bancaire ne remontait pas et que la mémoire était tout de même mise à jour. Les échecs
+  sont désormais propagés ; VT-330 reste `Terminé`, sans réserve ouverte.
   Exécution à confirmer en CI (compilation non vérifiée localement).
 
 ## VT-340 — Test d'atomicité des mutations multi-domaines
@@ -311,10 +313,11 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
   réinitialisation et `PUT /settings` (champ Fiscalité appliqué puis champ Objectifs en échec) laissent inchangés le cache, la base
   relue directement et les paramètres Objectifs ; la même mise à jour aboutit en entier sans échec. Point de vigilance pour
   VT-350 : une transaction multi-étapes garde désormais ses verrous base entre deux écritures alors que `mutationLock` est pris
-  écriture par écriture ; à observer dans le test de concurrence. Constat hors périmètre, non corrigé :
-  `BudgetMutationService.updateTaxSettings` lève une `NullPointerException` (déballage de `sweepEnabled` nul) dès qu'on modifie
-  un champ quelconque des paramètres alors que `sweepEnabled` est absent des données importées (cas de `mock-budget.json`) ;
-  `MultiDomainAtomicityTest` renseigne donc `sweepEnabled: false` dans son propre dataset, sans toucher au fichier partagé. Exécution à confirmer en CI (compilation non vérifiée localement).
+  écriture par écriture ; à observer dans le test de concurrence. Constat hors périmètre de VT-340, **corrigé depuis par FIX-020** :
+  `BudgetMutationService.updateTaxSettings` levait une `NullPointerException` (déballage de `sweepEnabled` nul) dès qu'on
+  modifiait un champ des paramètres alors que `sweepEnabled` était absent des données importées (cas de `mock-budget.json`) ;
+  `MultiDomainAtomicityTest` renseigne donc `sweepEnabled: false` dans son propre dataset, sans toucher au fichier partagé.
+  Ce contournement de fixture est conservé mais n'est plus nécessaire ; VT-340 reste `Terminé`, sans réserve ouverte. Exécution à confirmer en CI (compilation non vérifiée localement).
 
 ## VT-350 — Test de concurrence sur mutations critiques
 

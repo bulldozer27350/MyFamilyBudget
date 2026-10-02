@@ -340,7 +340,19 @@ Avant tout patch :
   - `14-checklist-maven.md` : distinguer « patch VT terminé » de « défaut résiduel corrigé » ;
   - `18-backlog-persistance-patchs.md` : ajouter les nouveaux prédécesseurs `FIX-*`, `SET-*`, `ARCH-*`.
 - **Livrable** : documentation cohérente avec le code réellement présent.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [x] Terminé
+- **Livraison** (documentation uniquement, aucun code ni test modifié) :
+  - `17-backlog-tests-patchs.md` : VT-330 et VT-340 restent `Terminé` ; leurs « constats hors périmètre, non
+    corrigés » sont réécrits comme corrigés par FIX-010 et FIX-020 ; la note VT-230 précise que le contournement
+    `sweepEnabled: false` n'est plus nécessaire ;
+  - `14-checklist-maven.md` : les « constats toujours ouverts » deviennent une distinction explicite entre
+    « patch VT terminé » et « défaut résiduel corrigé » (FIX-010, FIX-020) ; les cases VT-330 / VT-340 / VT-350 restent
+    à cocher par GATE-010 ;
+  - `18-backlog-persistance-patchs.md` : colonne « Prérequis » et sections de DB-040, DB-061, DB-1000, DB-1060,
+    DB-1170, DB-1180 et DB-1200 complétées, avec un tableau « Prédécesseurs hors `DB-xxx` » ;
+  - état du code vérifié sur `main` (b414d7c) : `saveBankImport` propage les erreurs (FIX-010), `updateTaxSettings`
+    n'est plus dépendant de `sweepEnabled` (FIX-020).
+  - Reste : GATE-010.
 
 ---
 
