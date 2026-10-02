@@ -29,7 +29,6 @@ import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenc
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowChargeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowIncomeRepository;
@@ -74,7 +73,6 @@ class BankImportWriteFailureTest {
     private static final BankImportModel NEW_BANK_IMPORT = new BankImportModel(List.of(), List.of(), List.of());
 
     private BudgetDataRepository budgetDataRepository;
-    private BankImportRepository bankImportRepository;
     private BankImportDocumentRepository bankImportDocumentRepository;
     private ApplicationEventPublisher eventPublisher;
     private PersistenceManager persistenceManager;
@@ -87,7 +85,6 @@ class BankImportWriteFailureTest {
     @BeforeEach
     void setUp() {
         budgetDataRepository = mock(BudgetDataRepository.class);
-        bankImportRepository = mock(BankImportRepository.class);
         bankImportDocumentRepository = mock(BankImportDocumentRepository.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         doAnswer(invocation -> invocation.getArgument(0)).when(budgetDataRepository).save(any());
@@ -104,7 +101,6 @@ class BankImportWriteFailureTest {
                 mock(VariableIncomeRepository.class),
                 mock(VariableOverrideRepository.class),
                 mock(AssetCategoryRepository.class),
-                bankImportRepository,
                 mock(LoanRepository.class),
                 mock(GoalRepository.class),
                 mock(CreditLoanRepository.class),
@@ -138,14 +134,6 @@ class BankImportWriteFailureTest {
     }
 
     @Test
-    @DisplayName("Table legacy bank_import en echec : l'exception d'origine remonte, la memoire reste inchangee")
-    void legacyBankImportFailureIsPropagated() {
-        doThrow(DB_DOWN).when(bankImportRepository).save(any());
-
-        assertEveryMutationFailsAndLeavesMemoryUntouched();
-    }
-
-    @Test
     @DisplayName("Table autonome bank_import_document en echec : l'exception d'origine remonte, la memoire reste inchangee")
     void documentTableFailureIsPropagated() {
         doThrow(DB_DOWN).when(bankImportDocumentRepository).save(any());
@@ -154,9 +142,9 @@ class BankImportWriteFailureTest {
     }
 
     @Test
-    @DisplayName("Suppression de l'ancien import en echec : l'exception d'origine remonte, la memoire reste inchangee")
-    void legacyBankImportDeleteFailureIsPropagated() {
-        doThrow(DB_DOWN).when(bankImportRepository).deleteByBudgetDataId(any());
+    @DisplayName("Suppression du document precedent en echec : l'exception d'origine remonte, la memoire reste inchangee")
+    void documentTableDeleteFailureIsPropagated() {
+        doThrow(DB_DOWN).when(bankImportDocumentRepository).deleteAll();
 
         assertEveryMutationFailsAndLeavesMemoryUntouched();
     }
@@ -164,11 +152,11 @@ class BankImportWriteFailureTest {
     @Test
     @DisplayName("Une fois la base revenue, la meme mutation aboutit et publie un seul evenement")
     void writeSucceedsOnceBankImportRecovers() {
-        doThrow(DB_DOWN).when(bankImportRepository).save(any());
+        doThrow(DB_DOWN).when(bankImportDocumentRepository).save(any());
         assertThatThrownBy(() -> persistenceManager.write(m -> m.updateBankImport(NEW_BANK_IMPORT))).isSameAs(DB_DOWN);
         verifyNoInteractions(eventPublisher);
 
-        reset(bankImportRepository);
+        reset(bankImportDocumentRepository);
         persistenceManager.write(m -> m.updateBankImport(NEW_BANK_IMPORT));
 
         assertThat(bankAdapter.getBankImport()).isEqualTo(NEW_BANK_IMPORT);

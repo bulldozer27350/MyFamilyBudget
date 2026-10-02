@@ -881,6 +881,29 @@ les plus isolés.
   fabriques de test. `RestartPersistenceTest` (VT-320, H2 + PostgreSQL) et `GoalCommandServiceTest` à exécuter en CI (non
   exécutés ici : pas de Maven dans l'environnement de rédaction).
 
+### Statut DB-1130 — Retirer la relation hub Banque
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Prérequis** : DB-1120 (même décision : anciennes tables supprimées, schéma recréé, données réimportées depuis le JSON).
+- **Livré** : `BudgetDataEntity` n'a plus la relation `bankImport` ; l'entité legacy `BankImportEntity` et
+  `BankImportRepository` sont supprimés (table `bank_import`). Au chargement du cache (démarrage),
+  `BudgetPersistenceGateway` relit l'import bancaire depuis la table autonome `bank_import_document`
+  (`BankImportDocumentRepository` + `BankImportDocumentMapper`) ; un document absent donne un import vide, un document
+  illisible est journalisé puis traité comme absent, comme avant (la lecture par `BankPersistenceAdapter` propage en
+  revanche l'erreur, DB-1031). `saveBankImport`, `loadBankImport(budgetDataId)` et l'`ObjectMapper` de la passerelle
+  disparaissent ; `syncBankImport` n'est plus rejoué à la reconstruction depuis le hub : il reste appelé à chaque
+  sauvegarde, dans la même transaction (FIX-010 : une erreur d'écriture ou de sérialisation remonte telle quelle).
+  `PersistenceManager` et la passerelle perdent le paramètre `BankImportRepository` (constructeur réduit ; fabrique et
+  tests adaptés). Contrats REST inchangés. `getBankImport` de `PersistenceManager` reste (retrait en DB-1190).
+- **Procédure de déploiement** : identique à DB-1100 à DB-1120 (schéma complet supprimé puis recréé, réimport du JSON) ; si
+  ces patchs sont déjà déployés, une seule opération suffit pour tous.
+- **Tests** : `bankImportIsReloadedFromDocumentTableOnStartup` remplace la reconstruction depuis le hub ;
+  `BankImportWriteFailureTest` : les cas « table legacy » sont retirés, l'échec de suppression et la reprise portent sur
+  `bank_import_document` ; les helpers `readDatabase` de `MultiDomainAtomicityTest` et `ConcurrentMutationsApiTest`
+  relisent aussi l'import bancaire depuis `bank_import_document` ; mocks `BankImportRepository` retirés des fabriques de
+  test. `RestartPersistenceTest` (VT-320, H2 + PostgreSQL) à exécuter en CI (non exécuté ici : pas de Maven).
+- **Prérequis de livraison** : ce patch s'applique après le patch DB-1120 (mêmes fichiers de câblage et de test).
+
 ## DB-1170 — Nettoyer `EntityModelConverter` en mappers par domaine
 
 - **Prérequis** : DB-1160, ARCH-020.

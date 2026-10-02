@@ -11,16 +11,15 @@ import jakarta.persistence.Table;
  * Import bancaire (categories, regles, transactions, operations en attente, rapprochements), cible JPA
  * autonome du domaine Banque (DB-1030).
  *
- * <p>Contrairement a {@link BankImportEntity}, cette entite n'a <strong>aucune relation vers
- * {@link BudgetDataEntity}</strong> : elle est la racine de son propre agregat (singleton fonctionnel : une
- * seule ligne, lue par {@code findFirstByOrderByIdAsc}). Elle est additive et n'est pas encore utilisee par
- * {@code BankPersistenceAdapter} (bascule en DB-1031). Le chemin legacy (table {@code bank_import}) reste
- * inchange.
+ * <p>Cette entite n'a <strong>aucune relation vers {@link BudgetDataEntity}</strong> : elle est la racine de
+ * son propre agregat (singleton fonctionnel : une seule ligne, lue par {@code findFirstByOrderByIdAsc}). Elle est
+ * lue par {@code BankPersistenceAdapter} depuis DB-1031 et, depuis DB-1130, c'est aussi la seule source de
+ * chargement du cache : l'ancienne table {@code bank_import} et son entite ont ete supprimees.
  *
  * <p>Le format JSON reste une decision interne a Banque : le contenu n'est volontairement pas eclate en
  * tables relationnelles. Il est stocke en colonne {@code TEXT} explicite (pas {@code @Lob}) pour eviter le
  * mecanisme PostgreSQL « Large Object » (colonne {@code oid}), qui exige une connexion non-autocommit pour la
- * lecture (voir {@link BankImportEntity}). La serialisation est portee par {@code BankImportDocumentMapper}.
+ * lecture (cas de l'ancienne {@code BankImportEntity}). La serialisation est portee par {@code BankImportDocumentMapper}.
  */
 @Entity
 @Table(name = "bank_import_document")

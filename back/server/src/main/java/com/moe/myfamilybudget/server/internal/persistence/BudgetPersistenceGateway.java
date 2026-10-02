@@ -7,9 +7,6 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.migration.LegacyObjectifAllocationMigrator;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
@@ -37,11 +34,9 @@ import com.moe.myfamilybudget.server.internal.persistence.converter.FiscalEntity
 import com.moe.myfamilybudget.server.internal.persistence.converter.GoalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.WealthEntityMapper;
-import com.moe.myfamilybudget.server.internal.persistence.entity.BankImportEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowChargeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowIncomeRepository;
@@ -107,7 +102,6 @@ class BudgetPersistenceGateway {
     private final VariableIncomeRepository variableIncomeRepository;
     private final VariableOverrideRepository variableOverrideRepository;
     private final AssetCategoryRepository assetCategoryRepository;
-    private final BankImportRepository bankImportRepository;
     private final LoanRepository loanRepository;
     // DB-1021 / DB-1120 : tables autonomes du domaine Objectifs, alimentees en ecriture a chaque sauvegarde du
     // modele et seule source de chargement du cache (le hub ne porte plus les objectifs).
@@ -137,9 +131,6 @@ class BudgetPersistenceGateway {
     private final CashflowVariableIncomeRepository cashflowVariableIncomeRepository;
     private final CashflowVariableOverrideRepository cashflowVariableOverrideRepository;
 
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
     BudgetPersistenceGateway(BudgetDataRepository budgetDataRepository,
                               IncomeRepository incomeRepository,
                               ChargeRepository chargeRepository,
@@ -150,7 +141,6 @@ class BudgetPersistenceGateway {
                               VariableIncomeRepository variableIncomeRepository,
                               VariableOverrideRepository variableOverrideRepository,
                               AssetCategoryRepository assetCategoryRepository,
-                              BankImportRepository bankImportRepository,
                               LoanRepository loanRepository,
                               GoalRepository goalRepository,
                               CreditLoanRepository creditLoanRepository,
@@ -179,7 +169,6 @@ class BudgetPersistenceGateway {
         this.variableIncomeRepository = variableIncomeRepository;
         this.variableOverrideRepository = variableOverrideRepository;
         this.assetCategoryRepository = assetCategoryRepository;
-        this.bankImportRepository = bankImportRepository;
         this.loanRepository = loanRepository;
         this.goalRepository = goalRepository;
         this.creditLoanRepository = creditLoanRepository;
@@ -224,8 +213,6 @@ class BudgetPersistenceGateway {
         if (loaded != null) {
             // DB-1041 : idem pour la table Credit.
             syncCreditLoans(loaded.loans());
-            // DB-1031 : idem pour le document Banque.
-            syncBankImport(loaded.bankImport());
             // DB-1051 : idem pour les tables Patrimoine.
             syncWealth(loaded);
             // DB-1061 : idem pour les tables Tresorerie.
@@ -236,7 +223,7 @@ class BudgetPersistenceGateway {
 
     private BudgetDataModel loadCompleteBudgetData(BudgetDataEntity entity) {
         BudgetDataModel loaded = EntityModelConverter.toModel(entity);
-        BankImportModel bi = loadBankImport(entity.getId());
+        BankImportModel bi = loadBankImport();
         // DB-1100 : la retraite n'est plus portee par le hub, elle est relue depuis les tables pension_*.
         RetirementModel retirement = PensionEntityMapper.toModel(pensionPlanRepository.findFirstByOrderByIdAsc().orElse(null));
         // DB-1110 : la fiscalite n'est plus portee par le hub, elle est relue depuis les tables fiscal_*.
@@ -315,7 +302,6 @@ class BudgetPersistenceGateway {
         syncBankImport(model.bankImport());
         syncWealth(model);
         syncCashflow(model);
-        saveBankImport(model.bankImport(), entity);
     }
 
     private void saveLoans(List<LoanModel> loans, BudgetDataEntity budgetData) {
@@ -411,9 +397,9 @@ class BudgetPersistenceGateway {
 
     /**
      * DB-1031 : remplace le document de la table {@code bank_import_document} par l'import bancaire du modele,
-     * dans la transaction de l'appelant ({@code flush} apres la suppression, comme {@link #syncGoals}). Comme
-     * le chemin legacy ({@link #saveBankImport}), une erreur de serialisation ou d'ecriture est propagee a
-     * l'appelant (FIX-010) : une ecriture en echec ne doit jamais devenir une reussite en memoire.
+     * dans la transaction de l'appelant ({@code flush} apres la suppression, comme {@link #syncGoals}). Une erreur
+     * de serialisation ou d'ecriture est propagee a l'appelant (FIX-010) : une ecriture en echec ne doit jamais
+     * devenir une reussite en memoire.
      */
     private void syncBankImport(BankImportModel bankImport) {
         bankImportDocumentRepository.deleteAll();
@@ -472,38 +458,18 @@ class BudgetPersistenceGateway {
                 CashflowEntityMapper.toVariableOverrideEntities(model.getEffectiveVariableOverrides()));
     }
 
-    private BankImportModel loadBankImport(Long budgetDataId) {
-        if (budgetDataId == null) return null;
-        Optional<BankImportEntity> biEntity = bankImportRepository.findFirstByBudgetDataId(budgetDataId);
-        if (biEntity.isPresent() && biEntity.get().getJsonData() != null && !biEntity.get().getJsonData().isBlank()) {
-            try {
-                return objectMapper.readValue(biEntity.get().getJsonData(), BankImportModel.class);
-            } catch (Exception e) {
-                LOG.error("Erreur lors de la lecture de BankImport depuis la base: ", e);
-            }
-        }
-        return null;
-    }
-
     /**
-     * FIX-010 : toute erreur est propagee a l'appelant. Les exceptions du repository remontent telles quelles
-     * (non encapsulees) ; seule l'erreur de serialisation JSON, checked, est convertie en
-     * {@link IllegalStateException} avec la cause d'origine. L'appelant ({@code BudgetCacheStore}) ne publie
-     * alors aucun nouvel etat memoire.
+     * DB-1130 : l'import bancaire n'est plus porte par le hub, il est relu depuis la table autonome
+     * {@code bank_import_document}. Comme le chemin legacy, un document illisible est journalise puis restitue
+     * comme absent (l'appelant fournit alors un import vide) ; la lecture par {@code BankPersistenceAdapter}
+     * propage en revanche l'erreur (DB-1031).
      */
-    private void saveBankImport(BankImportModel bankImport, BudgetDataEntity budgetData) {
-        if (budgetData == null) return;
-        bankImportRepository.deleteByBudgetDataId(budgetData.getId());
-        if (bankImport != null) {
-            String json;
-            try {
-                json = objectMapper.writeValueAsString(bankImport);
-            } catch (JsonProcessingException e) {
-                throw new IllegalStateException("Serialisation de l'import bancaire impossible", e);
-            }
-            BankImportEntity biEntity = new BankImportEntity(json);
-            biEntity.setBudgetData(budgetData);
-            bankImportRepository.save(biEntity);
+    private BankImportModel loadBankImport() {
+        try {
+            return BankImportDocumentMapper.toModel(bankImportDocumentRepository.findFirstByOrderByIdAsc().orElse(null));
+        } catch (IllegalStateException e) {
+            LOG.error("Erreur lors de la lecture de BankImport depuis la base: ", e);
+            return null;
         }
     }
 

@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
  * Dernier instantané de données de marché (taux publics), stocké en JSON.
  *
  * Colonne TEXT explicite et non {@code @Lob}, pour la même raison que
- * {@link BankImportEntity} : éviter le mécanisme « Large Object » de PostgreSQL.
+ * {@code BankImportEntity} (supprimee en DB-1130) : éviter le mécanisme « Large Object » de PostgreSQL.
  */
 @Entity
 @Table(name = "market_snapshot")

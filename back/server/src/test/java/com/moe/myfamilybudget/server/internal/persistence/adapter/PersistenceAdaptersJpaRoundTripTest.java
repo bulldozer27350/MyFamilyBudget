@@ -40,7 +40,6 @@ import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowChargeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowIncomeRepository;
@@ -629,14 +628,13 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     @Test
-    @DisplayName("DB-1031 -- table autonome videe (donnees pre-existantes) -> reconstruite depuis le hub")
-    void bankDocumentTableIsRebuiltFromHubOnStartup() {
+    @DisplayName("DB-1130 -- au demarrage, l'import bancaire du cache est recharge depuis bank_import_document")
+    void bankImportIsReloadedFromDocumentTableOnStartup() {
         writer.setBudgetData(referenceData());
-        context.getBean(BankImportDocumentRepository.class).deleteAll();
-        assertThat(context.getBean(BankImportDocumentRepository.class).count()).isZero();
 
         PersistenceManager restarted = freshReader();
 
+        assertSameContent(restarted.getBudgetData().bankImport().transactions(), BANK_IMPORT.transactions());
         assertSameContent(jpaBankAdapter(restarted).getBankImport().transactions(), BANK_IMPORT.transactions());
     }
 
@@ -930,7 +928,6 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(VariableIncomeRepository.class),
                 context.getBean(VariableOverrideRepository.class),
                 context.getBean(AssetCategoryRepository.class),
-                context.getBean(BankImportRepository.class),
                 context.getBean(LoanRepository.class),
                 context.getBean(GoalRepository.class),
                 context.getBean(CreditLoanRepository.class),

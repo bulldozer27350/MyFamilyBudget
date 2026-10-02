@@ -37,10 +37,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.persistence.converter.BankImportDocumentMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.server.internal.persistence.converter.FiscalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.GoalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntityMapper;
+import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalBracketRepository;
@@ -97,6 +99,9 @@ class ConcurrentMutationsApiTest {
 
     @Autowired
     private GoalRepository goalRepository;
+
+    @Autowired
+    private BankImportDocumentRepository bankImportDocumentRepository;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -268,7 +273,9 @@ class ConcurrentMutationsApiTest {
                         .withTaxActualOverrides(FiscalEntityMapper.toActualOverrideModels(
                                 fiscalActualOverrideRepository.findAllByOrderByPositionAsc()))
                         .withObjectifs(GoalEntityMapper.toModels(
-                                goalRepository.findAllByOrderByPositionAsc())));
+                                goalRepository.findAllByOrderByPositionAsc()))
+                        .withBankImport(BankImportDocumentMapper.toModel(
+                                bankImportDocumentRepository.findFirstByOrderByIdAsc().orElse(null))));
     }
 
     private static List<String> chargeIds(BudgetDataModel model) {

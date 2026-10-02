@@ -40,9 +40,6 @@ public class BudgetDataEntity {
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<VariableOverrideEntity> variableOverrides = new ArrayList<>();
     
-    @OneToOne(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    private BankImportEntity bankImport;
-    
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<AssetCategoryEntity> assetCategories = new ArrayList<>();
 
@@ -135,14 +132,6 @@ public class BudgetDataEntity {
     
     public void setVariableOverrides(List<VariableOverrideEntity> variableOverrides) {
         this.variableOverrides = variableOverrides;
-    }
-    
-    public BankImportEntity getBankImport() {
-        return bankImport;
-    }
-    
-    public void setBankImport(BankImportEntity bankImport) {
-        this.bankImport = bankImport;
     }
     
     public List<AssetCategoryEntity> getAssetCategories() {
