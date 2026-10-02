@@ -341,7 +341,21 @@ DB-031, DB-040 et DB-041 en parallèle.
 - **Travaux** : import/export/reset global, bootstrap ou orchestration qui ne possède pas de owner unique ; retirer
   les opérations de domaine déjà transférées.
 - **Critère** : aucun calculateur métier n'a besoin de cette classe.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : les 17 méthodes de mutation de domaine (Trésorerie, Patrimoine, Retraite, Fiscalité, catégories d'actifs,
+  historique de placement, Banque) quittent `PersistenceManager` pour `DomainMutations` (même package, constructeur
+  non public, pas un bean Spring). `PersistenceManager` ne garde que : `init`, `getBudgetData`, `setBudgetData`,
+  `resetData`, `lockForCurrentTransaction`, `getBankImport` (lecture du snapshot) et le point d'entrée
+  transactionnel `write(Consumer)` / `writeAndGet(Function)`, qui donne accès à `DomainMutations` à l'intérieur du
+  `@Transactional` de classe (transaction, verrou VT-350b et événement `BudgetMutatedEvent` inchangés).
+  Les adapters (`*PersistenceAdapter`) appellent `persistenceManager.write(m -> m.xxx(...))` ; leurs constructeurs
+  et ceux des tests restent inchangés. Aucun appelant hors adapters et tests : services, commands et calculateurs
+  n'utilisent plus que `getBudgetData` / `setBudgetData` / `resetData` / verrou (`SystemeServiceImpl`,
+  `NotificationDispatchService`).
+- **Reste (hors DB-060)** : `getBankImport` et `DomainMutations` disparaissent avec la bascule JPA par domaine
+  (DB-1001…DB-1061) et DB-1190.
+- **Tests** : `WriteFailureKeepsMemoryTest`, `PersistenceAdaptersTest`, `PersistenceAdaptersJpaRoundTripTest`,
+  `StatementBankImportServiceImpl(Integration)Test` migrés vers `write(...)` sans changement d'assertion.
 
 ## DB-061 — Finaliser Settings sans owner global
 

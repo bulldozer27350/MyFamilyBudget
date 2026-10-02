@@ -49,17 +49,17 @@ public class TaxPersistenceAdapter implements TaxReader, TaxWriter {
     public void updateTaxConfig(List<TaxChildModel> children, List<TaxBracketModel> brackets,
                                 List<TaxRateOverrideModel> rateOverrides,
                                 List<TaxActualOverrideModel> actualOverrides) {
-        persistenceManager.updateTaxConfig(children, brackets, rateOverrides, actualOverrides);
+        persistenceManager.write(m -> m.updateTaxConfig(children, brackets, rateOverrides, actualOverrides));
     }
 
     @Override
     public void updateTaxSettings(TaxSettingField field, Object value) {
-        persistenceManager.updateTaxSettings(field.key(), value);
+        persistenceManager.write(m -> m.updateTaxSettings(field.key(), value));
     }
 
     @Override
     public void resetDefaultTaxBrackets() {
-        persistenceManager.resetDefaultTaxBrackets();
+        persistenceManager.write(m -> m.resetDefaultTaxBrackets());
     }
 
     @Override

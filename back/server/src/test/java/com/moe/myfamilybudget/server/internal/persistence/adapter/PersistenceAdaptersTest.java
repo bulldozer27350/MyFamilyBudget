@@ -276,7 +276,7 @@ class PersistenceAdaptersTest {
             RetirementPersistenceAdapter adapter = new RetirementPersistenceAdapter(persistenceManager);
             assertThat(adapter.getRetirement().people()).isEmpty();
 
-            persistenceManager.updateRetirement(RETIREMENT);
+            persistenceManager.write(m -> m.updateRetirement(RETIREMENT));
 
             assertThat(adapter.getRetirement()).isEqualTo(RETIREMENT);
             assertThat(new BudgetPersistenceAdapter(persistenceManager).getIncomes()).containsExactly(INCOME);
@@ -288,8 +288,8 @@ class PersistenceAdaptersTest {
         void updateTaxConfig() {
             TaxPersistenceAdapter adapter = new TaxPersistenceAdapter(persistenceManager);
 
-            persistenceManager.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS,
-                    List.of(TAX_RATE_OVERRIDE), List.of(TAX_ACTUAL_OVERRIDE));
+            persistenceManager.write(m -> m.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS,
+                    List.of(TAX_RATE_OVERRIDE), List.of(TAX_ACTUAL_OVERRIDE)));
 
             assertThat(adapter.getTaxChildren()).containsExactly(TAX_CHILD);
             assertThat(adapter.getTaxBrackets()).containsExactlyElementsOf(CUSTOM_BRACKETS);
@@ -300,10 +300,10 @@ class PersistenceAdaptersTest {
         @Test
         @DisplayName("updateTaxConfig avec des listes nulles conserve l'existant")
         void updateTaxConfigWithNullsKeepsExistingValues() {
-            persistenceManager.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS,
-                    List.of(TAX_RATE_OVERRIDE), List.of(TAX_ACTUAL_OVERRIDE));
+            persistenceManager.write(m -> m.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS,
+                    List.of(TAX_RATE_OVERRIDE), List.of(TAX_ACTUAL_OVERRIDE)));
 
-            persistenceManager.updateTaxConfig(null, null, null, null);
+            persistenceManager.write(m -> m.updateTaxConfig(null, null, null, null));
 
             TaxPersistenceAdapter adapter = new TaxPersistenceAdapter(persistenceManager);
             assertThat(adapter.getTaxChildren()).containsExactly(TAX_CHILD);
@@ -315,12 +315,12 @@ class PersistenceAdaptersTest {
         @Test
         @DisplayName("resetDefaultTaxBrackets -> bareme par defaut, enfants et surcharges conserves")
         void resetDefaultTaxBrackets() {
-            persistenceManager.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS,
-                    List.of(TAX_RATE_OVERRIDE), List.of(TAX_ACTUAL_OVERRIDE));
+            persistenceManager.write(m -> m.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS,
+                    List.of(TAX_RATE_OVERRIDE), List.of(TAX_ACTUAL_OVERRIDE)));
             TaxPersistenceAdapter adapter = new TaxPersistenceAdapter(persistenceManager);
             assertThat(adapter.getTaxBrackets()).containsExactlyElementsOf(CUSTOM_BRACKETS);
 
-            persistenceManager.resetDefaultTaxBrackets();
+            persistenceManager.write(m -> m.resetDefaultTaxBrackets());
 
             assertDefaultBrackets(adapter.getTaxBrackets());
             assertThat(adapter.getTaxChildren()).containsExactly(TAX_CHILD);
@@ -332,14 +332,14 @@ class PersistenceAdaptersTest {
         void assetCategoryAddAndRemove() {
             PatrimoinePersistenceAdapter adapter = new PatrimoinePersistenceAdapter(persistenceManager);
 
-            persistenceManager.addAssetCategory(ASSET_CATEGORY);
+            persistenceManager.write(m -> m.addAssetCategory(ASSET_CATEGORY));
             assertThat(adapter.getAssetCategories()).containsExactly(ASSET_CATEGORY);
 
             AssetCategoryModel second = new AssetCategoryModel("cat_2", "icon2", "Livrets", "epargne", "#00ff00");
-            persistenceManager.addAssetCategory(second);
+            persistenceManager.write(m -> m.addAssetCategory(second));
             assertThat(adapter.getAssetCategories()).containsExactly(ASSET_CATEGORY, second);
 
-            persistenceManager.removeAssetCategory(ASSET_CATEGORY.id());
+            persistenceManager.write(m -> m.removeAssetCategory(ASSET_CATEGORY.id()));
             assertThat(adapter.getAssetCategories()).containsExactly(second);
         }
 
@@ -349,7 +349,7 @@ class PersistenceAdaptersTest {
             BankPersistenceAdapter adapter = new BankPersistenceAdapter(persistenceManager);
             assertThat(adapter.getBankImport().transactions()).isEmpty();
 
-            persistenceManager.updateBankImport(BANK_IMPORT);
+            persistenceManager.write(m -> m.updateBankImport(BANK_IMPORT));
 
             assertThat(adapter.getBankImport()).isSameAs(BANK_IMPORT);
             assertThat(adapter.getBankImport().transactions()).hasSize(1);
@@ -359,9 +359,9 @@ class PersistenceAdaptersTest {
         @Test
         @DisplayName("updateBankImport(null) est ignore : l'import existant est conserve")
         void updateBankImportNullIsIgnored() {
-            persistenceManager.updateBankImport(BANK_IMPORT);
+            persistenceManager.write(m -> m.updateBankImport(BANK_IMPORT));
 
-            persistenceManager.updateBankImport(null);
+            persistenceManager.write(m -> m.updateBankImport(null));
 
             assertThat(new BankPersistenceAdapter(persistenceManager).getBankImport()).isSameAs(BANK_IMPORT);
         }

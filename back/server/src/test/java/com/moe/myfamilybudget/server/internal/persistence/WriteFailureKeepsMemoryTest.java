@@ -131,13 +131,13 @@ class WriteFailureKeepsMemoryTest {
         settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
 
         // Etat de reference non trivial, ecrit alors que la base fonctionne.
-        persistenceManager.addTresorerieRow("incomes",
-                Map.of("id", "inc_seed", "label", "Salaire", "monthly", new BigDecimal("2500")));
-        persistenceManager.addTresorerieRow("incomes",
-                Map.of("id", "inc_other", "label", "Freelance", "monthly", new BigDecimal("400")));
-        persistenceManager.savePatrimoineRow("placements",
-                Map.of("id", "plc_seed", "label", "Livret", "balance", new BigDecimal("1000")));
-        persistenceManager.updateRetirement(RETIREMENT_BEFORE);
+        persistenceManager.write(m -> m.addTresorerieRow("incomes",
+                Map.of("id", "inc_seed", "label", "Salaire", "monthly", new BigDecimal("2500"))));
+        persistenceManager.write(m -> m.addTresorerieRow("incomes",
+                Map.of("id", "inc_other", "label", "Freelance", "monthly", new BigDecimal("400"))));
+        persistenceManager.write(m -> m.savePatrimoineRow("placements",
+                Map.of("id", "plc_seed", "label", "Livret", "balance", new BigDecimal("1000"))));
+        persistenceManager.write(m -> m.updateRetirement(RETIREMENT_BEFORE));
 
         before = persistenceManager.getBudgetData();
         clearInvocations(eventPublisher);
@@ -180,9 +180,9 @@ class WriteFailureKeepsMemoryTest {
     void newValueIsNotServedAfterFailure() {
         databaseFailsOnMainEntity();
 
-        assertThatThrownBy(() -> persistenceManager.updateRetirement(RETIREMENT_AFTER)).isSameAs(DB_DOWN);
-        assertThatThrownBy(() -> persistenceManager.addTresorerieRow("incomes",
-                Map.of("id", "inc_new", "label", "Prime", "monthly", new BigDecimal("999")))).isSameAs(DB_DOWN);
+        assertThatThrownBy(() -> persistenceManager.write(m -> m.updateRetirement(RETIREMENT_AFTER))).isSameAs(DB_DOWN);
+        assertThatThrownBy(() -> persistenceManager.write(m -> m.addTresorerieRow("incomes",
+                Map.of("id", "inc_new", "label", "Prime", "monthly", new BigDecimal("999"))))).isSameAs(DB_DOWN);
 
         assertThat(retirementAdapter.getRetirement()).isEqualTo(RETIREMENT_BEFORE);
         assertThat(persistenceManager.getBudgetData().retirement()).isEqualTo(RETIREMENT_BEFORE);
@@ -198,12 +198,12 @@ class WriteFailureKeepsMemoryTest {
     @DisplayName("Une fois la base revenue, la meme mutation aboutit et n'est visible qu'a ce moment-la")
     void writeSucceedsOnceDatabaseRecovers() {
         databaseFailsOnMainEntity();
-        assertThatThrownBy(() -> persistenceManager.updateRetirement(RETIREMENT_AFTER)).isSameAs(DB_DOWN);
+        assertThatThrownBy(() -> persistenceManager.write(m -> m.updateRetirement(RETIREMENT_AFTER))).isSameAs(DB_DOWN);
         assertThat(retirementAdapter.getRetirement()).isEqualTo(RETIREMENT_BEFORE);
         verifyNoInteractions(eventPublisher);
 
         databaseWorks();
-        persistenceManager.updateRetirement(RETIREMENT_AFTER);
+        persistenceManager.write(m -> m.updateRetirement(RETIREMENT_AFTER));
 
         assertThat(retirementAdapter.getRetirement()).isEqualTo(RETIREMENT_AFTER);
         verify(eventPublisher).publishEvent(any(BudgetMutatedEvent.class));
@@ -216,24 +216,24 @@ class WriteFailureKeepsMemoryTest {
     /** Mutations qui laissent au moins un revenu en base : elles atteignent toutes l'ecriture des lignes enfants. */
     private Map<String, Runnable> mutationsKeepingIncomes() {
         Map<String, Runnable> mutations = new LinkedHashMap<>();
-        mutations.put("addTresorerieRow", () -> persistenceManager.addTresorerieRow("incomes",
-                Map.of("id", "inc_new", "label", "Prime", "monthly", new BigDecimal("999"))));
-        mutations.put("updateTresorerieRow", () -> persistenceManager.updateTresorerieRow("incomes", "inc_seed",
-                "monthly", new BigDecimal("1")));
+        mutations.put("addTresorerieRow", () -> persistenceManager.write(m -> m.addTresorerieRow("incomes",
+                Map.of("id", "inc_new", "label", "Prime", "monthly", new BigDecimal("999")))));
+        mutations.put("updateTresorerieRow", () -> persistenceManager.write(m -> m.updateTresorerieRow("incomes", "inc_seed",
+                "monthly", new BigDecimal("1"))));
         mutations.put("removeTresorerieRow",
-                () -> persistenceManager.removeTresorerieRow("incomes", "inc_seed"));
-        mutations.put("savePatrimoineRow", () -> persistenceManager.savePatrimoineRow("placements",
-                Map.of("id", "plc_seed", "label", "Livret modifie", "balance", new BigDecimal("5"))));
+                () -> persistenceManager.write(m -> m.removeTresorerieRow("incomes", "inc_seed")));
+        mutations.put("savePatrimoineRow", () -> persistenceManager.write(m -> m.savePatrimoineRow("placements",
+                Map.of("id", "plc_seed", "label", "Livret modifie", "balance", new BigDecimal("5")))));
         mutations.put("deletePatrimoineRow",
-                () -> persistenceManager.deletePatrimoineRow("placements", "plc_seed"));
-        mutations.put("updateRetirement", () -> persistenceManager.updateRetirement(RETIREMENT_AFTER));
-        mutations.put("updateTaxConfig", () -> persistenceManager.updateTaxConfig(
-                List.of(new TaxChildModel("tc_new", "Emma", 2015)), null, null, null));
-        mutations.put("updateTaxSettings", () -> persistenceManager.updateTaxSettings("retireAge", 60));
-        mutations.put("addAssetCategory", () -> persistenceManager.addAssetCategory(
-                new AssetCategoryModel("cat_new", "icon", "Nouvelle categorie", "bucket", "#ffffff")));
-        mutations.put("updateBankImport", () -> persistenceManager.updateBankImport(
-                new BankImportModel(List.of(), List.of(), List.of())));
+                () -> persistenceManager.write(m -> m.deletePatrimoineRow("placements", "plc_seed")));
+        mutations.put("updateRetirement", () -> persistenceManager.write(m -> m.updateRetirement(RETIREMENT_AFTER)));
+        mutations.put("updateTaxConfig", () -> persistenceManager.write(m -> m.updateTaxConfig(
+                List.of(new TaxChildModel("tc_new", "Emma", 2015)), null, null, null)));
+        mutations.put("updateTaxSettings", () -> persistenceManager.write(m -> m.updateTaxSettings("retireAge", 60)));
+        mutations.put("addAssetCategory", () -> persistenceManager.write(m -> m.addAssetCategory(
+                new AssetCategoryModel("cat_new", "icon", "Nouvelle categorie", "bucket", "#ffffff"))));
+        mutations.put("updateBankImport", () -> persistenceManager.write(m -> m.updateBankImport(
+                new BankImportModel(List.of(), List.of(), List.of()))));
         mutations.put("setBudgetData", () -> persistenceManager.setBudgetData(
                 before.withIncomes(List.of(INCOME_REPLACEMENT))));
         return mutations;

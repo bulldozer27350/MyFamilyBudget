@@ -26,6 +26,6 @@ public class RetirementPersistenceAdapter implements RetirementReader, Retiremen
 
     @Override
     public void updateRetirement(RetirementModel retirement) {
-        persistenceManager.updateRetirement(retirement);
+        persistenceManager.write(m -> m.updateRetirement(retirement));
     }
 }

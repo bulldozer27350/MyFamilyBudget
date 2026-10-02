@@ -49,42 +49,42 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
 
     @Override
     public Map<String, Object> savePatrimoineRow(PatrimoineList list, Map<String, Object> body) {
-        return persistenceManager.savePatrimoineRow(list.key(), body);
+        return persistenceManager.writeAndGet(m -> m.savePatrimoineRow(list.key(), body));
     }
 
     @Override
     public void deletePatrimoineRow(PatrimoineList list, String id) {
-        persistenceManager.deletePatrimoineRow(list.key(), id);
+        persistenceManager.write(m -> m.deletePatrimoineRow(list.key(), id));
     }
 
     @Override
     public Map<String, Object> addPlacementHistoryEntry(String placementId, Map<String, Object> body) {
-        return persistenceManager.addPlacementHistoryEntry(placementId, body);
+        return persistenceManager.writeAndGet(m -> m.addPlacementHistoryEntry(placementId, body));
     }
 
     @Override
     public Map<String, Object> updatePlacementHistoryEntry(String placementId, String entryId,
                                                            Map<String, Object> body) {
-        return persistenceManager.updatePlacementHistoryEntry(placementId, entryId, body);
+        return persistenceManager.writeAndGet(m -> m.updatePlacementHistoryEntry(placementId, entryId, body));
     }
 
     @Override
     public void deletePlacementHistoryEntry(String placementId, String entryId) {
-        persistenceManager.deletePlacementHistoryEntry(placementId, entryId);
+        persistenceManager.write(m -> m.deletePlacementHistoryEntry(placementId, entryId));
     }
 
     @Override
     public void addAssetCategory(AssetCategoryModel category) {
-        persistenceManager.addAssetCategory(category);
+        persistenceManager.write(m -> m.addAssetCategory(category));
     }
 
     @Override
     public void updateAssetCategory(String id, AssetCategoryField field, Object value) {
-        persistenceManager.updateAssetCategory(id, field.key(), value);
+        persistenceManager.write(m -> m.updateAssetCategory(id, field.key(), value));
     }
 
     @Override
     public void removeAssetCategory(String id) {
-        persistenceManager.removeAssetCategory(id);
+        persistenceManager.write(m -> m.removeAssetCategory(id));
     }
 }

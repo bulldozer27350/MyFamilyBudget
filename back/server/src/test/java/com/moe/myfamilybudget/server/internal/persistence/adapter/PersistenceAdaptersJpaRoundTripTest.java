@@ -142,7 +142,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         writer.setBudgetData(referenceData().withRetirement(
                 new RetirementModel(List.of(), bd("47100"), bd("0.015"), bd("1.4386"), "2025-01-01", bd("0.01"))));
 
-        writer.updateRetirement(RETIREMENT);
+        writer.write(m -> m.updateRetirement(RETIREMENT));
 
         PersistenceManager reader = freshReader();
         assertSameContent(new RetirementPersistenceAdapter(reader).getRetirement(), RETIREMENT);
@@ -153,8 +153,8 @@ class PersistenceAdaptersJpaRoundTripTest {
     @Test
     @DisplayName("updateTaxConfig puis resetDefaultTaxBrackets -> relus en base")
     void taxConfigAndBracketResetAreReadBackFromDatabase() {
-        writer.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS, List.of(TAX_RATE_OVERRIDE),
-                List.of(TAX_ACTUAL_OVERRIDE));
+        writer.write(m -> m.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS, List.of(TAX_RATE_OVERRIDE),
+                List.of(TAX_ACTUAL_OVERRIDE)));
 
         TaxPersistenceAdapter afterConfig = new TaxPersistenceAdapter(freshReader());
         assertSameContent(afterConfig.getTaxChildren(), List.of(TAX_CHILD));
@@ -162,7 +162,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(afterConfig.getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
         assertSameContent(afterConfig.getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
 
-        writer.resetDefaultTaxBrackets();
+        writer.write(m -> m.resetDefaultTaxBrackets());
 
         TaxPersistenceAdapter afterReset = new TaxPersistenceAdapter(freshReader());
         assertDefaultBrackets(afterReset.getTaxBrackets());
@@ -175,19 +175,19 @@ class PersistenceAdaptersJpaRoundTripTest {
     void assetCategoriesAreReadBackFromDatabase() {
         AssetCategoryModel second = new AssetCategoryModel("cat_2", "icon2", "Livrets", "epargne", "#00ff00");
 
-        writer.addAssetCategory(ASSET_CATEGORY);
-        writer.addAssetCategory(second);
+        writer.write(m -> m.addAssetCategory(ASSET_CATEGORY));
+        writer.write(m -> m.addAssetCategory(second));
         assertSameContent(new PatrimoinePersistenceAdapter(freshReader()).getAssetCategories(),
                 List.of(ASSET_CATEGORY, second));
 
-        writer.removeAssetCategory(ASSET_CATEGORY.id());
+        writer.write(m -> m.removeAssetCategory(ASSET_CATEGORY.id()));
         assertSameContent(new PatrimoinePersistenceAdapter(freshReader()).getAssetCategories(), List.of(second));
     }
 
     @Test
     @DisplayName("updateBankImport -> transactions, categories et pointages relus en base")
     void bankImportIsReadBackFromDatabase() {
-        writer.updateBankImport(BANK_IMPORT);
+        writer.write(m -> m.updateBankImport(BANK_IMPORT));
 
         BankImportModel bank = new BankPersistenceAdapter(freshReader()).getBankImport();
 

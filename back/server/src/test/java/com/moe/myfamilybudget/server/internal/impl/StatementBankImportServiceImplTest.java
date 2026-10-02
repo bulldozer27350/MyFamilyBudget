@@ -114,9 +114,9 @@ class StatementBankImportServiceImplTest {
         );
         java.util.List<BankImportModel.BankTransactionModel> txs = new java.util.ArrayList<>(current.transactions());
         txs.add(tx);
-        persistenceManager.updateBankImport(new BankImportModel(
+        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), current.rules(), txs, current.pendingOperations(), current.matchings()
-        ));
+        )));
         
         BankTransactionSplitDto split1 = new BankTransactionSplitDto();
         split1.setId("s1");
@@ -159,9 +159,9 @@ class StatementBankImportServiceImplTest {
         );
         java.util.List<BankImportModel.BankTransactionModel> txs = new java.util.ArrayList<>(current.transactions());
         txs.add(tx);
-        persistenceManager.updateBankImport(new BankImportModel(
+        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), current.rules(), txs, current.pendingOperations(), current.matchings()
-        ));
+        )));
 
         BankTransactionSplitDto split1 = new BankTransactionSplitDto();
         split1.setId("s1");
@@ -305,10 +305,10 @@ class StatementBankImportServiceImplTest {
         BankImportModel.BankTransactionModel tx2 = new BankImportModel.BankTransactionModel(
                 "tx_cat_2", "2026-01-18", "BOULANGERIE PAUL SUD", "", new java.math.BigDecimal("-8.00"), ""
         );
-        persistenceManager.updateBankImport(new BankImportModel(
+        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), current.rules(),
                 java.util.List.of(tx1, tx2), current.pendingOperations(), current.matchings()
-        ));
+        )));
 
         SetBankTransactionCategoryRequestDto request = new SetBankTransactionCategoryRequestDto();
         request.setCategoryId("cat_boulangerie");
@@ -335,10 +335,10 @@ class StatementBankImportServiceImplTest {
         BankImportModel.BankTransactionModel tx = new BankImportModel.BankTransactionModel(
                 "tx_auchan", "2026-01-15", "AUCHAN DRIVE", "", new java.math.BigDecimal("-50.00"), ""
         );
-        persistenceManager.updateBankImport(new BankImportModel(
+        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), java.util.List.of(rule),
                 java.util.List.of(tx), current.pendingOperations(), current.matchings()
-        ));
+        )));
 
         SetBankTransactionCategoryRequestDto request = new SetBankTransactionCategoryRequestDto();
         request.setCategoryId("cat_new");
@@ -365,10 +365,10 @@ class StatementBankImportServiceImplTest {
         BankImportModel.BankTransactionModel txAlreadyCat = new BankImportModel.BankTransactionModel(
                 "tx_manual", "2026-01-11", "NETFLIX COM", "", new java.math.BigDecimal("-15.99"), "cat_custom"
         );
-        persistenceManager.updateBankImport(new BankImportModel(
+        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), java.util.List.of(rule),
                 java.util.List.of(txUncat, txAlreadyCat), current.pendingOperations(), current.matchings()
-        ));
+        )));
 
         ResponseEntity<Void> response = service.recalculateBankImportRules();
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
@@ -385,10 +385,10 @@ class StatementBankImportServiceImplTest {
     void testImportBankTransactions() {
         BankImportModel current = persistenceManager.getBankImport();
         BankImportModel.BankImportRuleModel rule = new BankImportModel.BankImportRuleModel("r_leclerc", "LECLERC", "cat_supermarche");
-        persistenceManager.updateBankImport(new BankImportModel(
+        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), java.util.List.of(rule),
                 java.util.List.of(), current.pendingOperations(), current.matchings()
-        ));
+        )));
 
         ImportBankTransactionsRequestDto request = new ImportBankTransactionsRequestDto();
         request.setColRoles(java.util.List.of("date", "ignore", "label", "amount"));
@@ -419,10 +419,10 @@ class StatementBankImportServiceImplTest {
     void testForceImportBankTransactionAppliesRules() {
         BankImportModel current = persistenceManager.getBankImport();
         BankImportModel.BankImportRuleModel rule = new BankImportModel.BankImportRuleModel("r_edf", "EDF", "cat_energie");
-        persistenceManager.updateBankImport(new BankImportModel(
+        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), java.util.List.of(rule),
                 java.util.List.of(), current.pendingOperations(), current.matchings()
-        ));
+        )));
 
         Map<String, Object> tx = Map.of(
                 "id", "tx_dup_1",
@@ -454,10 +454,10 @@ class StatementBankImportServiceImplTest {
         BankImportModel.BankTransactionModel existing = new BankImportModel.BankTransactionModel(
                 "tx_existing", "2026-01-10", "LOYER", "", new java.math.BigDecimal("-750.00"), "cat_logement"
         );
-        persistenceManager.updateBankImport(new BankImportModel(
+        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), current.rules(),
                 java.util.List.of(existing), current.pendingOperations(), current.matchings()
-        ));
+        )));
 
         Map<String, Object> tx = Map.of(
                 "id", "tx_dup_2",

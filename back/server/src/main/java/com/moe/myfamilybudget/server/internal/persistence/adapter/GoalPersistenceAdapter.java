@@ -33,11 +33,11 @@ public class GoalPersistenceAdapter implements GoalReader, GoalWriter {
 
     @Override
     public Map<String, Object> saveGoalRow(Map<String, Object> body) {
-        return persistenceManager.savePatrimoineRow(LIST_KEY, body);
+        return persistenceManager.writeAndGet(m -> m.savePatrimoineRow(LIST_KEY, body));
     }
 
     @Override
     public void deleteGoalRow(String id) {
-        persistenceManager.deletePatrimoineRow(LIST_KEY, id);
+        persistenceManager.write(m -> m.deletePatrimoineRow(LIST_KEY, id));
     }
 }

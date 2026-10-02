@@ -26,21 +26,21 @@ public class TresoreriePersistenceAdapter implements TresorerieWriter {
 
     @Override
     public Map<String, Object> addTresorerieRow(TresorerieList list, Map<String, Object> body) {
-        return persistenceManager.addTresorerieRow(list.key(), body);
+        return persistenceManager.writeAndGet(m -> m.addTresorerieRow(list.key(), body));
     }
 
     @Override
     public void updateTresorerieRow(TresorerieList list, String id, TresorerieLineField field, Object value) {
-        persistenceManager.updateTresorerieRow(list.key(), id, field.key(), value);
+        persistenceManager.write(m -> m.updateTresorerieRow(list.key(), id, field.key(), value));
     }
 
     @Override
     public void removeTresorerieRow(TresorerieList list, String id) {
-        persistenceManager.removeTresorerieRow(list.key(), id);
+        persistenceManager.write(m -> m.removeTresorerieRow(list.key(), id));
     }
 
     @Override
     public void applyTresorerieAjustement(String lineId, TresorerieAdjustmentKind kind, BigDecimal newMonthly) {
-        persistenceManager.applyTresorerieAjustement(lineId, kind.kind(), newMonthly);
+        persistenceManager.write(m -> m.applyTresorerieAjustement(lineId, kind.kind(), newMonthly));
     }
 }

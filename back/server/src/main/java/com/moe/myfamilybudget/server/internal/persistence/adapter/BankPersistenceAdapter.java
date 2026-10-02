@@ -26,6 +26,6 @@ public class BankPersistenceAdapter implements BankReader, BankWriter {
 
     @Override
     public void updateBankImport(BankImportModel bankImport) {
-        persistenceManager.updateBankImport(bankImport);
+        persistenceManager.write(m -> m.updateBankImport(bankImport));
     }
 }
