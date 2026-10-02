@@ -772,7 +772,21 @@ pas les agents qui travaillent sur les autres domaines.
 - **Prérequis** : DB-1001, DB-1011, DB-1021, DB-1031, DB-1041.
 - **Objectif** : vérifier qu'aucun service applicatif n'est revenu à `getBudgetData()` pour compenser une migration.
 - **Travaux** : recherche statique + ArchUnit + tests d'intégration.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : aucune modification de code de production. Recherche statique : hors `internal.persistence`, seul
+  `internal.snapshot.GlobalBudgetSnapshotService` référence encore `PersistenceManager` (import / reset, CLEAN-020) ; plus
+  aucun service d'`impl/`, command, calculateur, factory, notification ni `enablebanking` ne l'utilise ni n'appelle
+  `getBudgetData()` / `getBankImport()` ; les références restantes dans ces packages sont des commentaires. Les sept
+  readers basculés (Budget/Trésorerie, Patrimoine, Fiscalité, Retraite, Banque, Crédit, Objectifs) lisent leurs tables
+  autonomes en production. `SettingsPersistenceAdapter` lit encore le cache : les paramètres restent stockés dans le hub
+  (hors périmètre, DB-1100 à DB-1190).
+- **Tests** : `ReaderPersistenceBoundaryArchTest` (ArchUnit, règles strictes sans gel) : (1) seul `internal.persistence`
+  dépend du cache, de la passerelle, des mutations, de `DomainMutations`, de `BudgetDataEntity`, de `BudgetDataRepository`
+  et de `EntityModelConverter` ; (2) seuls `internal.persistence` et `internal.snapshot` dépendent de `PersistenceManager` ;
+  (3) aucun appel à `getBudgetData` / `getBankImport` hors persistance. `ReadersDoNotUseBudgetCacheTest` (H2) : les
+  readers câblés comme en production répondent sans aucune interaction avec un `PersistenceManager` factice, et le reader
+  Spring suit la table `cashflow_income` vidée directement alors que le cache garde encore la ligne.
+- **Pour DB-1100** : la vérification des readers est acquise ; la suppression des relations du hub peut démarrer.
 
 ## DB-1080 — Vérifier les parcours E2E après bascule JPA
 
