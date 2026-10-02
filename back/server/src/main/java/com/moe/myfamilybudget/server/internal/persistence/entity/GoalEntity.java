@@ -16,10 +16,10 @@ import jakarta.persistence.Table;
 /**
  * Objectif d'epargne, cible JPA autonome du domaine Objectifs (DB-1020).
  *
- * <p>Contrairement a {@link ObjectifEntity}, cette entite n'a <strong>aucune relation vers
- * {@link BudgetDataEntity}</strong> : elle est la racine de son propre agregat. Elle est additive et
- * est lue par {@code GoalPersistenceAdapter} depuis DB-1021. Le chemin legacy ({@code objectif} /
- * {@code objectif_allocation}) reste alimente en parallele pour permettre un retour arriere simple.
+ * <p>Cette entite n'a <strong>aucune relation vers {@link BudgetDataEntity}</strong> : elle est la racine de
+ * son propre agregat. Elle est lue par {@code GoalPersistenceAdapter} depuis DB-1021 et, depuis DB-1120,
+ * c'est aussi la seule source de chargement du cache : les anciennes tables {@code objectif} /
+ * {@code objectif_allocation} et leurs entites ont ete supprimees.
  */
 @Entity
 @Table(name = "goal")

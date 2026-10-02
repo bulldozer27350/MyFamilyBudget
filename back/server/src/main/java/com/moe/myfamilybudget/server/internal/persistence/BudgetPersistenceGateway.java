@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
+import com.moe.myfamilybudget.server.internal.migration.LegacyObjectifAllocationMigrator;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
@@ -57,7 +58,6 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalRateO
 import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.ObjectifRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.OneOffExpenseRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
@@ -109,9 +109,8 @@ class BudgetPersistenceGateway {
     private final AssetCategoryRepository assetCategoryRepository;
     private final BankImportRepository bankImportRepository;
     private final LoanRepository loanRepository;
-    private final ObjectifRepository objectifRepository;
-    // DB-1021 : tables autonomes du domaine Objectifs, alimentees en ecriture a chaque sauvegarde du modele
-    // (le hub reste la source de chargement du cache, ce qui garde le retour arriere trivial).
+    // DB-1021 / DB-1120 : tables autonomes du domaine Objectifs, alimentees en ecriture a chaque sauvegarde du
+    // modele et seule source de chargement du cache (le hub ne porte plus les objectifs).
     private final GoalRepository goalRepository;
     // DB-1041 : table autonome du domaine Credit, meme principe que goalRepository.
     private final CreditLoanRepository creditLoanRepository;
@@ -153,7 +152,6 @@ class BudgetPersistenceGateway {
                               AssetCategoryRepository assetCategoryRepository,
                               BankImportRepository bankImportRepository,
                               LoanRepository loanRepository,
-                              ObjectifRepository objectifRepository,
                               GoalRepository goalRepository,
                               CreditLoanRepository creditLoanRepository,
                               FiscalChildRepository fiscalChildRepository,
@@ -183,7 +181,6 @@ class BudgetPersistenceGateway {
         this.assetCategoryRepository = assetCategoryRepository;
         this.bankImportRepository = bankImportRepository;
         this.loanRepository = loanRepository;
-        this.objectifRepository = objectifRepository;
         this.goalRepository = goalRepository;
         this.creditLoanRepository = creditLoanRepository;
         this.fiscalChildRepository = fiscalChildRepository;
@@ -225,9 +222,6 @@ class BudgetPersistenceGateway {
         Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
         BudgetDataModel loaded = existingData.map(this::loadCompleteBudgetData).orElse(null);
         if (loaded != null) {
-            // DB-1021 : re-synchronise les tables Objectifs depuis le hub (migration au premier demarrage,
-            // puis reparation idempotente a chaque chargement).
-            syncGoals(loaded.objectifs());
             // DB-1041 : idem pour la table Credit.
             syncCreditLoans(loaded.loans());
             // DB-1031 : idem pour le document Banque.
@@ -252,6 +246,12 @@ class BudgetPersistenceGateway {
                 FiscalEntityMapper.toRateOverrideModels(fiscalRateOverrideRepository.findAllByOrderByPositionAsc());
         List<TaxActualOverrideModel> taxActualOverrides =
                 FiscalEntityMapper.toActualOverrideModels(fiscalActualOverrideRepository.findAllByOrderByPositionAsc());
+        // DB-1120 : les objectifs ne sont plus portes par le hub, ils sont relus depuis les tables goal_*. Le filet
+        // LegacyObjectifAllocationMigrator reste applique au chargement du cache, comme avant (sans effet sur un
+        // objectif deja porteur d'allocations).
+        List<ObjectifModel> objectifs = GoalEntityMapper.toModels(goalRepository.findAllByOrderByPositionAsc()).stream()
+                .map(LegacyObjectifAllocationMigrator::migrate)
+                .toList();
         return new BudgetDataModel(
                 loaded.settings(), loaded.incomes(), loaded.charges(), loaded.placements(),
                 loaded.realEstate(), retirement, taxChildren, taxBrackets,
@@ -260,7 +260,7 @@ class BudgetPersistenceGateway {
                 bi != null ? bi : new BankImportModel(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
                 loaded.assetCategories(),
                 loaded.loans(),
-                loaded.objectifs()
+                objectifs
         );
     }
 
@@ -308,7 +308,6 @@ class BudgetPersistenceGateway {
         saveVariableOverrides(model.variableOverrides(), entity);
         saveAssetCategories(model.assetCategories(), entity);
         saveLoans(model.loans(), entity);
-        saveObjectifs(model.objectifs(), entity);
         syncGoals(model.objectifs());
         syncCreditLoans(model.loans());
         syncFiscal(model);
@@ -324,15 +323,6 @@ class BudgetPersistenceGateway {
         if (loans != null) {
             for (LoanModel loan : loans) {
                 loanRepository.save(EntityModelConverter.toEntity(loan, budgetData));
-            }
-        }
-    }
-
-    private void saveObjectifs(List<ObjectifModel> objectifs, BudgetDataEntity budgetData) {
-        objectifRepository.deleteByBudgetDataId(budgetData.getId());
-        if (objectifs != null) {
-            for (ObjectifModel objectif : objectifs) {
-                objectifRepository.save(EntityModelConverter.toEntity(objectif, budgetData));
             }
         }
     }

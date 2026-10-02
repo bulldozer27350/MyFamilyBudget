@@ -41,7 +41,6 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalRateO
 import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.ObjectifRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.OneOffExpenseRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
@@ -86,7 +85,6 @@ class UpdateTaxSettingsMinimalBudgetTest {
                 mock(AssetCategoryRepository.class),
                 mock(BankImportRepository.class),
                 mock(LoanRepository.class),
-                mock(ObjectifRepository.class),
                 mock(GoalRepository.class),
                 mock(CreditLoanRepository.class),
                 mock(FiscalChildRepository.class),

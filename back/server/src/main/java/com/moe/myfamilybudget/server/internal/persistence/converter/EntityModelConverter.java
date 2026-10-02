@@ -1,6 +1,5 @@
 package com.moe.myfamilybudget.server.internal.persistence.converter;
 
-import com.moe.myfamilybudget.server.internal.migration.LegacyObjectifAllocationMigrator;
 import com.moe.myfamilybudget.server.internal.model.*;
 import com.moe.myfamilybudget.server.internal.persistence.entity.*;
 
@@ -316,69 +315,6 @@ public class EntityModelConverter {
         );
     }
 
-    // Objectif conversions
-    public static ObjectifEntity toEntity(ObjectifModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        ObjectifEntity entity = new ObjectifEntity(
-            model.id(),
-            model.label(),
-            model.targetAmount(),
-            model.allocatedAmount(),
-            model.targetDate(),
-            model.sourcePlacementId(),
-            model.notes()
-        );
-        entity.setBudgetData(budgetData);
-
-        List<ObjectifAllocationEntity> allocations = model.getEffectiveAllocations().stream()
-            .map(a -> toEntity(a, entity))
-            .collect(Collectors.toList());
-        entity.setAllocations(allocations);
-
-        return entity;
-    }
-
-    public static ObjectifModel toModel(ObjectifEntity entity) {
-        if (entity == null) return null;
-        List<ObjectifAllocationModel> allocations = entity.getAllocations().stream()
-            .map(EntityModelConverter::toModel)
-            .collect(Collectors.toList());
-        ObjectifModel model = new ObjectifModel(
-            entity.getUid(),
-            entity.getLabel(),
-            entity.getTargetAmount(),
-            entity.getAllocatedAmount(),
-            entity.getTargetDate(),
-            entity.getSourcePlacementId(),
-            entity.getNotes(),
-            allocations
-        );
-        // Filet de sécurité temporaire : voir LegacyObjectifAllocationMigrator (à supprimer dans
-        // un patch futur).
-        return LegacyObjectifAllocationMigrator.migrate(model);
-    }
-
-    // ObjectifAllocation conversions
-    public static ObjectifAllocationEntity toEntity(ObjectifAllocationModel model, ObjectifEntity objectif) {
-        if (model == null) return null;
-        ObjectifAllocationEntity entity = new ObjectifAllocationEntity(
-            model.id(),
-            model.placementId(),
-            model.amount()
-        );
-        entity.setObjectif(objectif);
-        return entity;
-    }
-
-    public static ObjectifAllocationModel toModel(ObjectifAllocationEntity entity) {
-        if (entity == null) return null;
-        return new ObjectifAllocationModel(
-            entity.getUid(),
-            entity.getPlacementId(),
-            entity.getAmount()
-        );
-    }
-
     // VariableIncome conversions
     public static VariableIncomeEntity toEntity(VariableIncomeModel model, BudgetDataEntity budgetData) {
         if (model == null) return null;
@@ -498,7 +434,7 @@ public class EntityModelConverter {
             null, // BankImport - handled separately due to JSON serialization
             entity.getAssetCategories().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             entity.getLoans().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            entity.getObjectifs().stream().map(EntityModelConverter::toModel).collect(Collectors.toList())
+            List.of() // objectifs - lus depuis les tables autonomes goal_* (DB-1120)
         );
     }
 }

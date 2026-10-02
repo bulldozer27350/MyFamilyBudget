@@ -859,6 +859,28 @@ les plus isolés.
   de test. `RestartPersistenceTest` (VT-320, H2 + PostgreSQL) et `TaxCommandServiceTest` à exécuter en CI (non exécutés
   ici : pas de Maven dans l'environnement de rédaction).
 
+### Statut DB-1120 — Retirer la relation hub Objectifs
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Prérequis** : DB-1110 (même décision : anciennes tables supprimées, schéma recréé, données réimportées depuis le JSON).
+- **Livré** : `BudgetDataEntity` n'a plus la relation `objectifs` ; les entités legacy `ObjectifEntity` et
+  `ObjectifAllocationEntity` et `ObjectifRepository` sont supprimés (tables `objectif`, `objectif_allocation`). Au
+  chargement du cache (démarrage), `BudgetPersistenceGateway` relit les objectifs depuis les tables autonomes `goal` /
+  `goal_allocation` (tri par `position`, via `GoalEntityMapper`) ; `EntityModelConverter` ne les convertit plus (liste
+  vide, renseignée par la passerelle). `syncGoals` n'est plus rejoué à la reconstruction depuis le hub : il reste appelé à
+  chaque sauvegarde (import, reset, mutations), dans la même transaction. `PersistenceManager` et la passerelle perdent
+  le paramètre `ObjectifRepository` (constructeur réduit ; fabrique et tests adaptés). Contrats REST inchangés.
+- **Décision** : `LegacyObjectifAllocationMigrator` est conservé et appliqué au chargement du cache sur les objectifs
+  relus (sans effet sur un objectif déjà porteur d'allocations), pour ne pas changer le comportement d'un import au
+  format historique (`sourcePlacementId` sans allocations) ; sa suppression reste à traiter dans un patch dédié.
+- **Procédure de déploiement** : identique à DB-1100 / DB-1110 (schéma complet supprimé puis recréé, réimport du JSON) ; si
+  DB-1100 et DB-1110 sont déjà déployés, une seule opération suffit pour les trois patchs.
+- **Tests** : `goalsAreReloadedFromGoalTablesOnStartup` remplace la reconstruction depuis le hub (le cache redémarré
+  expose les objectifs lus dans `goal_*`) ; les helpers `readDatabase` de `MultiDomainAtomicityTest` et
+  `ConcurrentMutationsApiTest` relisent aussi les objectifs depuis `goal_*` ; mocks `ObjectifRepository` retirés des
+  fabriques de test. `RestartPersistenceTest` (VT-320, H2 + PostgreSQL) et `GoalCommandServiceTest` à exécuter en CI (non
+  exécutés ici : pas de Maven dans l'environnement de rédaction).
+
 ## DB-1170 — Nettoyer `EntityModelConverter` en mappers par domaine
 
 - **Prérequis** : DB-1160, ARCH-020.

@@ -37,7 +37,6 @@ public class PersistenceManager {
     private final AssetCategoryRepository assetCategoryRepository;
     private final BankImportRepository bankImportRepository;
     private final LoanRepository loanRepository;
-    private final ObjectifRepository objectifRepository;
     private final GoalRepository goalRepository;
     private final CreditLoanRepository creditLoanRepository;
     private final FiscalChildRepository fiscalChildRepository;
@@ -107,7 +106,6 @@ public class PersistenceManager {
                             AssetCategoryRepository assetCategoryRepository,
                             BankImportRepository bankImportRepository,
                             LoanRepository loanRepository,
-                            ObjectifRepository objectifRepository,
                             GoalRepository goalRepository,
                             CreditLoanRepository creditLoanRepository,
                             FiscalChildRepository fiscalChildRepository,
@@ -140,7 +138,6 @@ public class PersistenceManager {
         this.assetCategoryRepository = assetCategoryRepository;
         this.bankImportRepository = bankImportRepository;
         this.loanRepository = loanRepository;
-        this.objectifRepository = objectifRepository;
         this.goalRepository = goalRepository;
         this.creditLoanRepository = creditLoanRepository;
         this.fiscalChildRepository = fiscalChildRepository;
@@ -163,7 +160,7 @@ public class PersistenceManager {
                 budgetDataRepository, incomeRepository, chargeRepository, placementRepository,
                 realEstateRepository, oneOffExpenseRepository, transferRepository,
                 variableIncomeRepository, variableOverrideRepository,
-                assetCategoryRepository, bankImportRepository, loanRepository, objectifRepository,
+                assetCategoryRepository, bankImportRepository, loanRepository,
                 goalRepository, creditLoanRepository, fiscalChildRepository, fiscalBracketRepository,
                 fiscalRateOverrideRepository, fiscalActualOverrideRepository, pensionPlanRepository,
                 bankImportDocumentRepository, wealthPlacementRepository, wealthRealEstateRepository,

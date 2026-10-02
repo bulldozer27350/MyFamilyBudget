@@ -57,7 +57,6 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalRateO
 import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.ObjectifRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.OneOffExpenseRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
@@ -333,14 +332,13 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     @Test
-    @DisplayName("DB-1021 -- tables autonomes vides au demarrage (donnees pre-existantes) -> reconstruites depuis le hub")
-    void goalTablesAreRebuiltFromHubOnStartup() {
+    @DisplayName("DB-1120 -- au demarrage, les objectifs du cache sont recharges depuis les tables goal_*")
+    void goalsAreReloadedFromGoalTablesOnStartup() {
         writer.setBudgetData(referenceData());
-        context.getBean(GoalRepository.class).deleteAll();
-        assertThat(context.getBean(GoalRepository.class).count()).isZero();
 
         PersistenceManager restarted = freshReader();
 
+        assertSameContent(restarted.getBudgetData().objectifs(), List.of(GOAL));
         assertSameContent(jpaGoalAdapter(restarted).getGoals(), List.of(GOAL));
     }
 
@@ -934,7 +932,6 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(AssetCategoryRepository.class),
                 context.getBean(BankImportRepository.class),
                 context.getBean(LoanRepository.class),
-                context.getBean(ObjectifRepository.class),
                 context.getBean(GoalRepository.class),
                 context.getBean(CreditLoanRepository.class),
                 context.getBean(FiscalChildRepository.class),

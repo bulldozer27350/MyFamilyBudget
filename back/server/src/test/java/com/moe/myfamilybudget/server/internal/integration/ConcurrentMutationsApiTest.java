@@ -39,12 +39,14 @@ import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.server.internal.persistence.converter.FiscalEntityMapper;
+import com.moe.myfamilybudget.server.internal.persistence.converter.GoalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalBracketRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalChildRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalRateOverrideRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 
 /**
@@ -92,6 +94,9 @@ class ConcurrentMutationsApiTest {
 
     @Autowired
     private FiscalActualOverrideRepository fiscalActualOverrideRepository;
+
+    @Autowired
+    private GoalRepository goalRepository;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -261,7 +266,9 @@ class ConcurrentMutationsApiTest {
                         .withTaxRateOverrides(FiscalEntityMapper.toRateOverrideModels(
                                 fiscalRateOverrideRepository.findAllByOrderByPositionAsc()))
                         .withTaxActualOverrides(FiscalEntityMapper.toActualOverrideModels(
-                                fiscalActualOverrideRepository.findAllByOrderByPositionAsc())));
+                                fiscalActualOverrideRepository.findAllByOrderByPositionAsc()))
+                        .withObjectifs(GoalEntityMapper.toModels(
+                                goalRepository.findAllByOrderByPositionAsc())));
     }
 
     private static List<String> chargeIds(BudgetDataModel model) {
