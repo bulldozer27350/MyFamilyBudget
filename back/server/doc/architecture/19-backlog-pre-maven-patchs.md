@@ -137,7 +137,7 @@ Avant tout patch :
   - supprimer l'import direct de `PersistenceManager`.
 - **Tests** : conserver les tests d'inputs ; tests du dispatch automatique après commit et manuel ; règle ArchUnit dédiée.
 - **Limite** : ne pas déplacer ici les canaux de notification ou les repositories de déduplication.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Terminé
 
 ---
 

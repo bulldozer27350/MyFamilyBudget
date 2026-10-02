@@ -3,7 +3,6 @@ package com.moe.myfamilybudget.server.internal.factory;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import com.moe.myfamilybudget.server.internal.calculation.BalanceFloorInput;
 import com.moe.myfamilybudget.server.internal.calculation.DebitThresholdInput;
@@ -12,7 +11,6 @@ import com.moe.myfamilybudget.server.internal.calculation.PlacementBalanceSnapsh
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.PendingOperationModel;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
@@ -23,20 +21,24 @@ import com.moe.myfamilybudget.server.internal.model.PlacementModel;
  * {@link BalanceFloorInput} et {@link ObjectifReachableInput}.
  *
  * <p>Une méthode par règle, volontairement : aucune entrée d'évaluation commune n'est produite.
- * C'est ici, et non plus dans les règles, que {@code BudgetDataModel} est traduit en records
- * minimaux. Les seuils sont fournis par l'appelant (paramètres de notification), la factory ne
- * dépend donc pas du package {@code notification}.
+ * C'est ici, et non plus dans les règles, que les modèles du budget sont traduits en records
+ * minimaux. Depuis NOTIF-010, chaque méthode reçoit uniquement les fragments dont la règle a
+ * besoin (import bancaire, solde de départ, objectifs, placements), lus par l'appelant via les
+ * ports de lecture : la factory ne connaît plus {@code BudgetDataModel}. Les seuils sont fournis
+ * par l'appelant (paramètres de notification), la factory ne dépend donc pas du package
+ * {@code notification}.
  */
 public final class NotificationInputFactory {
 
     private NotificationInputFactory() {
     }
 
-    /** @param threshold seuil de débit configuré ({@code null} si non paramétré) */
-    public static DebitThresholdInput debitThreshold(BudgetDataModel data, BigDecimal threshold) {
-        Objects.requireNonNull(data, "data");
+    /**
+     * @param bankImport import bancaire courant ({@code null} accepté : aucune transaction)
+     * @param threshold seuil de débit configuré ({@code null} si non paramétré)
+     */
+    public static DebitThresholdInput debitThreshold(BankImportModel bankImport, BigDecimal threshold) {
         List<DebitThresholdInput.Transaction> transactions = new ArrayList<>();
-        BankImportModel bankImport = data.bankImport();
         if (bankImport != null && bankImport.transactions() != null) {
             for (BankTransactionModel tx : bankImport.transactions()) {
                 transactions.add(new DebitThresholdInput.Transaction(tx.id(), tx.date(), tx.label(), tx.amount()));
@@ -45,12 +47,15 @@ public final class NotificationInputFactory {
         return new DebitThresholdInput(threshold, transactions);
     }
 
-    /** @param floor seuil plancher configuré ({@code null} si non paramétré) */
-    public static BalanceFloorInput balanceFloor(BudgetDataModel data, BigDecimal floor) {
-        Objects.requireNonNull(data, "data");
+    /**
+     * @param bankImport     import bancaire courant ({@code null} accepté : aucune transaction)
+     * @param openingBalance solde de départ des paramètres ({@code null} traité comme zéro)
+     * @param floor          seuil plancher configuré ({@code null} si non paramétré)
+     */
+    public static BalanceFloorInput balanceFloor(BankImportModel bankImport, BigDecimal openingBalance,
+            BigDecimal floor) {
         List<BalanceFloorInput.AccountTransactionAmount> imported = new ArrayList<>();
         List<BalanceFloorInput.PendingAmount> pending = new ArrayList<>();
-        BankImportModel bankImport = data.bankImport();
         if (bankImport != null) {
             if (bankImport.transactions() != null) {
                 for (BankTransactionModel tx : bankImport.transactions()) {
@@ -63,13 +68,18 @@ public final class NotificationInputFactory {
                 }
             }
         }
-        return new BalanceFloorInput(floor, data.getEffectiveSettings().getEffectiveStartBalance(), imported, pending);
+        return new BalanceFloorInput(floor, openingBalance != null ? openingBalance : BigDecimal.ZERO,
+                imported, pending);
     }
 
-    public static ObjectifReachableInput objectifReachable(BudgetDataModel data) {
-        Objects.requireNonNull(data, "data");
+    /**
+     * @param objectifs  objectifs courants ({@code null} accepté : aucun objectif)
+     * @param placements placements courants, pour leur solde ({@code null} accepté : aucun placement)
+     */
+    public static ObjectifReachableInput objectifReachable(List<ObjectifModel> objectifs,
+            List<PlacementModel> placements) {
         List<ObjectifReachableInput.GoalCoverage> goals = new ArrayList<>();
-        for (ObjectifModel objectif : data.getEffectiveObjectifs()) {
+        for (ObjectifModel objectif : objectifs != null ? objectifs : List.<ObjectifModel>of()) {
             List<ObjectifReachableInput.Allocation> allocations = new ArrayList<>();
             for (ObjectifAllocationModel allocation : objectif.getEffectiveAllocations()) {
                 allocations.add(new ObjectifReachableInput.Allocation(
@@ -79,7 +89,7 @@ public final class NotificationInputFactory {
                     objectif.id(), objectif.label(), objectif.getEffectiveTargetAmount(), allocations));
         }
         List<PlacementBalanceSnapshot> balances = new ArrayList<>();
-        for (PlacementModel placement : data.getEffectivePlacements()) {
+        for (PlacementModel placement : placements != null ? placements : List.<PlacementModel>of()) {
             balances.add(new PlacementBalanceSnapshot(placement.id(), placement.balance()));
         }
         return new ObjectifReachableInput(goals, balances);

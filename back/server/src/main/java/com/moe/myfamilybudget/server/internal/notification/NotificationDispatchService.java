@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.notification;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
@@ -13,14 +14,17 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.moe.myfamilybudget.server.internal.factory.NotificationInputFactory;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.persistence.BudgetMutatedEvent;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.entity.NotificationSentLogEntity;
 import com.moe.myfamilybudget.server.internal.notification.rules.BalanceFloorRule;
 import com.moe.myfamilybudget.server.internal.notification.rules.DebitThresholdRule;
 import com.moe.myfamilybudget.server.internal.notification.rules.ObjectifReachableRule;
 import com.moe.myfamilybudget.server.internal.persistence.repository.NotificationSentLogRepository;
+import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.server.internal.port.GoalReader;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
 /**
  * Croise les {@link NotificationRule} actives avec la liste des {@link NotificationChannel}, et
@@ -28,11 +32,13 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.Notificatio
  *
  * Depuis RF-702, ce service assemble en amont l'entrée propre à chaque règle (voir
  * {@link NotificationInputFactory}) avant de l'évaluer : les règles ne connaissent plus le budget.
- * L'accès au budget lui-même ({@code PersistenceManager}) reste ici jusqu'aux ports de lecture
- * (RF-B00/RF-B01).
+ * Depuis NOTIF-010, cet assemblage lit uniquement les fragments nécessaires à chaque règle via les
+ * ports de lecture existants ({@link BankReader}, {@link SettingsReader}, {@link GoalReader},
+ * {@link PatrimoineReader}) : ce service ne dépend plus de {@code PersistenceManager} ni du budget
+ * global. Les lectures ne sont effectuées que pour les règles actives.
  *
  * Déclenchement automatique : à chaque {@link BudgetMutatedEvent} (publié par
- * {@link PersistenceManager} après chaque mutation — "toute modification doit déclencher un
+ * {@code PersistenceManager} après chaque mutation — "toute modification doit déclencher un
  * contrôle des notifications"), après le commit de la transaction en cours
  * ({@link TransactionPhase#AFTER_COMMIT}) pour ne lire que des données effectivement persistées.
  * Une alerte automatique n'est envoyée qu'une fois par 24h (par clé de déduplication), et pas du
@@ -56,19 +62,26 @@ public class NotificationDispatchService {
     private final ObjectifReachableRule objectifReachableRule;
     private final List<NotificationChannel> channels;
     private final NotificationSettingsService settingsService;
-    private final PersistenceManager persistenceManager;
+    private final BankReader bankReader;
+    private final SettingsReader settingsReader;
+    private final GoalReader goalReader;
+    private final PatrimoineReader patrimoineReader;
     private final NotificationSentLogRepository sentLogRepository;
 
     public NotificationDispatchService(DebitThresholdRule debitThresholdRule, BalanceFloorRule balanceFloorRule,
             ObjectifReachableRule objectifReachableRule, List<NotificationChannel> channels,
-            NotificationSettingsService settingsService, PersistenceManager persistenceManager,
+            NotificationSettingsService settingsService, BankReader bankReader, SettingsReader settingsReader,
+            GoalReader goalReader, PatrimoineReader patrimoineReader,
             NotificationSentLogRepository sentLogRepository) {
         this.debitThresholdRule = debitThresholdRule;
         this.balanceFloorRule = balanceFloorRule;
         this.objectifReachableRule = objectifReachableRule;
         this.channels = channels;
         this.settingsService = settingsService;
-        this.persistenceManager = persistenceManager;
+        this.bankReader = bankReader;
+        this.settingsReader = settingsReader;
+        this.goalReader = goalReader;
+        this.patrimoineReader = patrimoineReader;
         this.sentLogRepository = sentLogRepository;
     }
 
@@ -87,15 +100,26 @@ public class NotificationDispatchService {
         if (!manual && settings.isWithinQuietHours(LocalTime.now())) {
             return 0;
         }
-        BudgetDataModel data = persistenceManager.getBudgetData();
         int sent = 0;
         sent += runRule(debitThresholdRule,
-                () -> NotificationInputFactory.debitThreshold(data, settings.debitThresholdAmount()), settings, manual);
+                () -> NotificationInputFactory.debitThreshold(
+                        bankReader.getBankImport(), settings.debitThresholdAmount()),
+                settings, manual);
         sent += runRule(balanceFloorRule,
-                () -> NotificationInputFactory.balanceFloor(data, settings.balanceFloorAmount()), settings, manual);
+                () -> NotificationInputFactory.balanceFloor(
+                        bankReader.getBankImport(), openingBalance(), settings.balanceFloorAmount()),
+                settings, manual);
         sent += runRule(objectifReachableRule,
-                () -> NotificationInputFactory.objectifReachable(data), settings, manual);
+                () -> NotificationInputFactory.objectifReachable(
+                        goalReader.getGoals(), patrimoineReader.getPlacements()),
+                settings, manual);
         return sent;
+    }
+
+    /** Solde de départ des paramètres budgétaires ({@code null} traité comme zéro par la factory). */
+    private BigDecimal openingBalance() {
+        SettingsModel budgetSettings = settingsReader.getSettings();
+        return budgetSettings != null ? budgetSettings.getEffectiveStartBalance() : null;
     }
 
     /**

@@ -157,6 +157,23 @@ class CalculationDependenciesArchTest {
                     + "(doc/architecture/09-domaine-objectifs-notifications.md)");
 
     /**
+     * Garde-fou du service applicatif de notifications (NOTIF-010) : le package {@code internal.notification}
+     * (dont {@code NotificationDispatchService}) lit le budget uniquement via les ports de lecture
+     * ({@code internal.port}) et ne dépend ni de {@link PersistenceManager} ni de {@link BudgetDataModel}.
+     * La règle ne vise volontairement pas {@code internal.factory} : les factories d'assemblage peuvent
+     * légitimement manipuler les modèles pendant la transition. Règle stricte (sans gel).
+     */
+    @ArchTest
+    static final ArchRule NOTIFICATION_PACKAGE_DOES_NOT_DEPEND_ON_PERSISTENCE_MANAGER = noClasses()
+            .that().resideInAPackage("..internal.notification..")
+            .should().dependOnClassesThat().belongToAnyOf(
+                    PersistenceManager.class,
+                    BudgetDataModel.class)
+            .as("le package internal.notification doit lire le budget via les ports de lecture "
+                    + "(internal.port), sans PersistenceManager ni BudgetDataModel "
+                    + "(doc/architecture/09-domaine-objectifs-notifications.md)");
+
+    /**
      * Garde-fou du domaine Crédit (RF-803) : les moteurs d'analyse des prêts et de suggestions de
      * taux ne reçoivent que {@code LoanAdviceInput} et {@code PlacementRateSuggestionInput} ; ils ne
      * connaissent ni le budget, ni les prêts, placements et catégories d'actifs, ni le résolveur de

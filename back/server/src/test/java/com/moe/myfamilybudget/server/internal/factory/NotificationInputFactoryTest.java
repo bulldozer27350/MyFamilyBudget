@@ -15,7 +15,6 @@ import com.moe.myfamilybudget.server.internal.calculation.ObjectifReachableInput
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.PendingOperationModel;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
@@ -44,12 +43,6 @@ class NotificationInputFactoryTest {
                 null, null, null, null, null);
     }
 
-    private static BudgetDataModel data(BankImportModel bankImport, List<PlacementModel> placements,
-            List<ObjectifModel> objectifs) {
-        return new BudgetDataModel(null, null, null, placements, null, null, null, null, null, null, null, null,
-                null, null, bankImport, List.of(), List.of(), objectifs);
-    }
-
     @Test
     @DisplayName("debitThreshold() reprend les transactions importées et le seuil fournis")
     void testDebitThresholdAssembly() {
@@ -60,7 +53,7 @@ class NotificationInputFactoryTest {
                         new BankTransactionModel("t3", today, "Salaire", bd("2000"))),
                 List.of(), List.of());
 
-        DebitThresholdInput input = NotificationInputFactory.debitThreshold(data(bank, null, null), bd("500"));
+        DebitThresholdInput input = NotificationInputFactory.debitThreshold(bank, bd("500"));
 
         assertThat(input.threshold()).isEqualByComparingTo("500");
         assertThat(input.recentTransactions()).hasSize(3);
@@ -71,7 +64,7 @@ class NotificationInputFactoryTest {
     @Test
     @DisplayName("debitThreshold() sans import bancaire : entrée vide, aucune alerte")
     void testDebitThresholdWithoutBankImport() {
-        DebitThresholdInput input = NotificationInputFactory.debitThreshold(data(null, null, null), bd("500"));
+        DebitThresholdInput input = NotificationInputFactory.debitThreshold(null, bd("500"));
 
         assertThat(input.recentTransactions()).isEmpty();
         assertThat(new DebitThresholdRule().check(input)).isEmpty();
@@ -87,7 +80,7 @@ class NotificationInputFactoryTest {
                 List.of(pendingOp("o1", "pending", "-100"), pendingOp("o2", "cleared", "-300")),
                 List.of());
 
-        BalanceFloorInput input = NotificationInputFactory.balanceFloor(data(bank, null, null), bd("1000"));
+        BalanceFloorInput input = NotificationInputFactory.balanceFloor(bank, null, bd("1000"));
 
         assertThat(input.floor()).isEqualByComparingTo("1000");
         assertThat(input.openingBalance()).isEqualByComparingTo("0");
@@ -100,9 +93,18 @@ class NotificationInputFactoryTest {
     }
 
     @Test
+    @DisplayName("balanceFloor() : le solde de départ fourni est repris (zéro s'il est absent)")
+    void testBalanceFloorOpeningBalance() {
+        assertThat(NotificationInputFactory.balanceFloor(null, bd("250"), bd("1000")).openingBalance())
+                .isEqualByComparingTo("250");
+        assertThat(NotificationInputFactory.balanceFloor(null, null, bd("1000")).openingBalance())
+                .isEqualByComparingTo("0");
+    }
+
+    @Test
     @DisplayName("balanceFloor() sans seuil configuré : aucune alerte")
     void testBalanceFloorWithoutFloor() {
-        BalanceFloorInput input = NotificationInputFactory.balanceFloor(data(null, null, null), null);
+        BalanceFloorInput input = NotificationInputFactory.balanceFloor(null, null, null);
 
         assertThat(new BalanceFloorRule().check(input)).isEmpty();
     }
@@ -115,10 +117,8 @@ class NotificationInputFactoryTest {
                         new ObjectifAllocationModel("a2", "p2", bd("400"))));
         ObjectifModel notCovered = new ObjectifModel("g2", "Voiture", bd("1000"), null, null, null, null,
                 List.of(new ObjectifAllocationModel("a3", "p2", bd("900"))));
-        BudgetDataModel data = data(null, List.of(placement("p1", "700"), placement("p2", "500")),
-                List.of(covered, notCovered));
-
-        ObjectifReachableInput input = NotificationInputFactory.objectifReachable(data);
+        ObjectifReachableInput input = NotificationInputFactory.objectifReachable(
+                List.of(covered, notCovered), List.of(placement("p1", "700"), placement("p2", "500")));
 
         assertThat(input.goals()).hasSize(2);
         assertThat(input.placementBalances()).hasSize(2);
@@ -130,7 +130,7 @@ class NotificationInputFactoryTest {
     @Test
     @DisplayName("objectifReachable() sans objectif : entrée vide, aucune alerte")
     void testObjectifReachableWithoutGoals() {
-        ObjectifReachableInput input = NotificationInputFactory.objectifReachable(data(null, null, null));
+        ObjectifReachableInput input = NotificationInputFactory.objectifReachable(null, null);
 
         assertThat(input.goals()).isEmpty();
         assertThat(new ObjectifReachableRule().check(input)).isEmpty();

@@ -47,5 +47,11 @@ public record ObjectifReachableInput(
 déduplication et des canaux — mais ne construit plus et ne connaît plus `BudgetDataModel`.
 L'assemblage des trois snapshots doit être effectué avant l'évaluation des règles, en amont.
 
+Depuis NOTIF-010, `NotificationDispatchService` ne dépend plus de `PersistenceManager` : il lit uniquement
+les fragments nécessaires via les ports de lecture existants (`BankReader` pour l'import bancaire,
+`SettingsReader` pour le solde de départ, `GoalReader` pour les objectifs, `PatrimoineReader` pour les
+placements), et seulement pour les règles actives. `NotificationInputFactory` reçoit ces fragments
+explicites et non plus le budget global. Une règle ArchUnit protège le package `internal.notification`.
+
 Chaque règle devient alors testable avec quelques records, sans budget complet — préférable à des
 tests de règles qui dépendent implicitement de dizaines de valeurs non pertinentes.
