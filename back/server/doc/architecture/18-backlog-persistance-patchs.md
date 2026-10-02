@@ -392,7 +392,23 @@ pas les agents qui travaillent sur les autres domaines.
 - **Périmètre** : entités et repositories Retraite uniquement.
 - **Objectif** : créer la cible JPA autonome sans changer encore le comportement.
 - **Validation** : compilation + tests mapping/round-trip.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : entités `PensionPlanEntity` (table `pension_plan`, hypothèses PASS / point Agirc, singleton fonctionnel),
+  `PensionPersonEntity` (`pension_person`, FK `plan_id`, `position`) et `PensionSalaryEntity` (`pension_salary`, FK
+  `person_id`, `position`), `PensionPlanRepository` (`findFirstByOrderByIdAsc`) et `PensionEntityMapper`
+  (`RetirementModel` ↔ `PensionPlanEntity`, sans perte, aucun défaut `getEffective*` appliqué). Taux, valeur de
+  point, ratios et points Agirc en `NUMERIC(19,8)`, PASS et salaires en `NUMERIC(19,2)`. Collections `EAGER` en
+  `FetchMode.SELECT` (deux listes chargées par jointure provoqueraient une `MultipleBagFetchException`). Aucune
+  relation vers `BudgetDataEntity` ; `RetirementEntity`, `RetirementPersonEntity`, `SalaryHistoryEntity`,
+  `EntityModelConverter`, `RetirementPersistenceAdapter` et le hub sont **inchangés** (chemin legacy intact, aucune
+  donnée migrée). Les nouvelles tables sont créées vides par `ddl-auto` et restent inutilisées jusqu'à DB-1001.
+  Le préfixe `Pension*` évite la collision avec les classes legacy `Retirement*`.
+- **Tests** : `PensionJpaModelTest` (H2, `@DataJpaTest`) : aller-retour multi-personnes avec ordre des personnes et
+  des salaires conservé, taux non arrondis, champs optionnels à `null`, listes absentes relues vides, suppression
+  des salaires orphelins à la mise à jour, cascade à la suppression, tolérance du mapper à `null`.
+- **Pour DB-1001** : reproduire le schéma de DB-1021 / DB-1041 (lecture JPA, recopie par `BudgetPersistenceGateway`
+  dans la transaction de sauvegarde, reconstruction depuis le hub au chargement du cache) ; vider la table avec
+  `deleteAll` + `flush` avant réinsertion.
 
 ## DB-1001 — JPA Retraite — basculer l'adapter
 
