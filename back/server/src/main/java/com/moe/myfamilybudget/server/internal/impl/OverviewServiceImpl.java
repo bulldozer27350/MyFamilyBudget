@@ -7,11 +7,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.OverviewApi;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
+import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.calculation.OverviewCalculationService;
 import com.moe.myfamilybudget.server.internal.calculation.OverviewInput;
 import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.server.internal.factory.OverviewInputFactory;
 import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
+import com.moe.myfamilybudget.server.internal.mapper.BudgetFacadeView;
 import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.OverviewResultModel;
@@ -95,7 +97,8 @@ public class OverviewServiceImpl implements OverviewApi {
         BudgetDataModel internalData = composeBudgetData();
         OverviewInput input = inputFactory.from(internalData, Boolean.TRUE.equals(useConstantEuros));
         OverviewResultModel internalResult = calculationService.computeOverview(input);
-        return ResponseEntity.ok(this.mapper.toDto(internalResult, internalData));
+        return ResponseEntity.ok(this.mapper.toDto(internalResult,
+                BudgetFacadeView.from(internalData, ObjectifsParameters.defaults())));
     }
 
     /**

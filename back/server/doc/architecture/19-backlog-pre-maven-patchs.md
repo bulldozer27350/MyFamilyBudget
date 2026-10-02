@@ -120,7 +120,13 @@ Avant tout patch :
   autres services lorsque le snapshot n'est plus indispensable.
 - **Tests** : tests de mapping isolés ; tests de composants ; scénarios backend et E2E de référence.
 - **Critère de sortie** : aucun `ResultModel` métier n'embarque `BudgetDataModel`.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Terminé
+- **Livraison** : `BudgetFacadeView` (package `internal.mapper`) devient la vue de façade des réponses composites
+  `/overview` et `/analyse` ; `OverviewMapper.toDto(OverviewResultModel, BudgetFacadeView)` et
+  `AnalyseMapper.toDto(AnalyseResultModel, BudgetFacadeView)` ne reçoivent plus `BudgetDataModel`. Contrats REST inchangés.
+  Règles ArchUnit `ResultModelsArchTest`. Restent hors périmètre : `PatrimoineMapper`, `StatementBankImportMapper`,
+  `TresorerieServiceImpl` (signatures publiques) et les services qui recomposent encore un snapshot pour les input
+  factories (voir ARCH-010 / CLEAN-010).
 
 ---
 

@@ -142,59 +142,69 @@ public class OverviewMapper {
     /**
      * Comme {@link #toBudgetDataDto(BudgetDataModel)}, en réinjectant les paramètres du domaine
      * Objectifs dans {@code settings} pour conserver le contrat d'API inchangé (RF-700).
+     * Réservé aux opérations sur le snapshot global ({@code /budget}, import, reset) : les
+     * réponses composites Overview/Analyse passent par {@link #toBudgetDataDto(BudgetFacadeView)}.
      */
     public BudgetDataDto toBudgetDataDto(BudgetDataModel model, ObjectifsParameters objectifs) {
-        if (model == null) {
+        return toBudgetDataDto(BudgetFacadeView.from(model, objectifs));
+    }
+
+    /**
+     * Vue composite exposée par l'API (RES-010) : le budget est lu depuis la vue de façade
+     * dédiée, et non depuis le snapshot global.
+     */
+    public BudgetDataDto toBudgetDataDto(BudgetFacadeView view) {
+        if (view == null) {
             return null;
         }
         BudgetDataDto dto = new BudgetDataDto();
-        dto.setBankImport(toBankImportDto(model.bankImport()));
+        dto.setBankImport(toBankImportDto(view.bankImport()));
         dto.setCharges(
-                model.charges() != null ? model.charges().stream().map(this::toChargeDto).collect(Collectors.toList())
+                view.charges() != null ? view.charges().stream().map(this::toChargeDto).collect(Collectors.toList())
                         : List.of());
         dto.setIncomes(
-                model.incomes() != null ? model.incomes().stream().map(this::toIncomeDto).collect(Collectors.toList())
+                view.incomes() != null ? view.incomes().stream().map(this::toIncomeDto).collect(Collectors.toList())
                         : List.of());
-        dto.setPlacements(model.placements() != null
-                ? model.placements().stream().map(this::toPlacementDto).collect(Collectors.toList())
+        dto.setPlacements(view.placements() != null
+                ? view.placements().stream().map(this::toPlacementDto).collect(Collectors.toList())
                 : List.of());
-        dto.setRealEstate(model.realEstate() != null
-                ? model.realEstate().stream().map(this::toRealEstateDto).collect(Collectors.toList())
+        dto.setRealEstate(view.realEstate() != null
+                ? view.realEstate().stream().map(this::toRealEstateDto).collect(Collectors.toList())
                 : List.of());
-        dto.setLoans(model.loans() != null
-                ? model.loans().stream().map(this::toLoanDto).collect(Collectors.toList())
+        dto.setLoans(view.loans() != null
+                ? view.loans().stream().map(this::toLoanDto).collect(Collectors.toList())
                 : List.of());
-        dto.setRetirement(toRetirementDto(model.retirement()));
-        dto.setSettings(toSettingsDto(model.settings(), objectifs));
-        dto.setTaxChildren(model.taxChildren() != null
-                ? model.taxChildren().stream().map(this::toTaxChildDto).collect(Collectors.toList())
+        dto.setRetirement(toRetirementDto(view.retirement()));
+        dto.setSettings(toSettingsDto(view.settings(), view.objectifsParameters()));
+        dto.setTaxChildren(view.taxChildren() != null
+                ? view.taxChildren().stream().map(this::toTaxChildDto).collect(Collectors.toList())
                 : List.of());
-        dto.setTaxBrackets(model.taxBrackets() != null
-                ? model.taxBrackets().stream().map(this::toTaxBracketDto).collect(Collectors.toList())
+        dto.setTaxBrackets(view.taxBrackets() != null
+                ? view.taxBrackets().stream().map(this::toTaxBracketDto).collect(Collectors.toList())
                 : List.of());
-        dto.setTaxRateOverrides(model.taxRateOverrides() != null
-                ? model.taxRateOverrides().stream().map(this::toTaxRateOverrideDto).collect(Collectors.toList())
+        dto.setTaxRateOverrides(view.taxRateOverrides() != null
+                ? view.taxRateOverrides().stream().map(this::toTaxRateOverrideDto).collect(Collectors.toList())
                 : List.of());
-        dto.setTaxActualOverrides(model.taxActualOverrides() != null
-                ? model.taxActualOverrides().stream().map(this::toTaxActualOverrideDto).collect(Collectors.toList())
+        dto.setTaxActualOverrides(view.taxActualOverrides() != null
+                ? view.taxActualOverrides().stream().map(this::toTaxActualOverrideDto).collect(Collectors.toList())
                 : List.of());
-        dto.setOneoff(model.oneoff() != null
-                ? model.oneoff().stream().map(this::toOneOffExpenseDto).collect(Collectors.toList())
+        dto.setOneoff(view.oneoff() != null
+                ? view.oneoff().stream().map(this::toOneOffExpenseDto).collect(Collectors.toList())
                 : List.of());
-        dto.setTransfers(model.transfers() != null
-                ? model.transfers().stream().map(this::toTransferDto).collect(Collectors.toList())
+        dto.setTransfers(view.transfers() != null
+                ? view.transfers().stream().map(this::toTransferDto).collect(Collectors.toList())
                 : List.of());
-        dto.setVariableIncomes(model.variableIncomes() != null
-                ? model.variableIncomes().stream().map(this::toVariableIncomeDto).collect(Collectors.toList())
+        dto.setVariableIncomes(view.variableIncomes() != null
+                ? view.variableIncomes().stream().map(this::toVariableIncomeDto).collect(Collectors.toList())
                 : List.of());
-        dto.setVariableOverrides(model.variableOverrides() != null
-                ? model.variableOverrides().stream().map(this::toVariableOverrideDto).collect(Collectors.toList())
+        dto.setVariableOverrides(view.variableOverrides() != null
+                ? view.variableOverrides().stream().map(this::toVariableOverrideDto).collect(Collectors.toList())
                 : List.of());
-        dto.setAssetCategories(model.assetCategories() != null
-                ? model.assetCategories().stream().map(this::toAssetCategoryDto).collect(Collectors.toList())
+        dto.setAssetCategories(view.assetCategories() != null
+                ? view.assetCategories().stream().map(this::toAssetCategoryDto).collect(Collectors.toList())
                 : List.of());
-        dto.setObjectifs(model.objectifs() != null
-                ? model.objectifs().stream().map(this::toObjectifDto).collect(Collectors.toList())
+        dto.setObjectifs(view.objectifs() != null
+                ? view.objectifs().stream().map(this::toObjectifDto).collect(Collectors.toList())
                 : List.of());
         return dto;
     }
@@ -203,7 +213,7 @@ public class OverviewMapper {
         return toDto(model, null);
     }
 
-    public OverviewResponseDto toDto(OverviewResultModel model, BudgetDataModel data) {
+    public OverviewResponseDto toDto(OverviewResultModel model, BudgetFacadeView data) {
         if (model == null) {
             return null;
         }

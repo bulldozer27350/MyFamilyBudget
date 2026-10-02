@@ -6,6 +6,7 @@ import com.moe.myfamilybudget.server.internal.calculation.AnalyseInput;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.factory.AnalyseInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.AnalyseMapper;
+import com.moe.myfamilybudget.server.internal.mapper.BudgetFacadeView;
 import com.moe.myfamilybudget.server.internal.model.AnalyseCalculator;
 import com.moe.myfamilybudget.server.internal.model.AnalyseResultModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
@@ -27,7 +28,9 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
  * {@code PersistenceManager}. La réponse recopie la quasi-totalité de {@code BudgetDataModel}
- * (voir {@code OverviewMapper.toBudgetDataDto}), donc tous les ports de lecture sont composés ici.
+ * (voir {@code OverviewMapper.toBudgetDataDto(BudgetFacadeView)}), donc tous les ports de lecture sont
+ * composés ici. RES-010 : le mapper ne reçoit plus {@code BudgetDataModel}, mais une
+ * {@code BudgetFacadeView} assemblée ici.
  */
 @RestController
 public class AnalyseServiceImpl implements AnalyseApi {
@@ -85,7 +88,8 @@ public class AnalyseServiceImpl implements AnalyseApi {
 
         AnalyseInput input = analyseInputFactory.from(data, bankImport, monthsBack);
         AnalyseResultModel resultModel = AnalyseCalculator.computeAnalyse(input);
-        AnalyseResponseDto responseDto = analyseMapper.toDto(resultModel, objectifsSettingsService.current(), data);
+        AnalyseResponseDto responseDto = analyseMapper.toDto(resultModel,
+                BudgetFacadeView.from(data, objectifsSettingsService.current()));
 
         return ResponseEntity.ok(responseDto);
     }

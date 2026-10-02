@@ -6,14 +6,12 @@ import com.moe.myfamilybudget.api.model.AnalyseKpiDto;
 import com.moe.myfamilybudget.api.model.AnalyseLandingRowDto;
 import com.moe.myfamilybudget.api.model.AnalyseMonthlyCompareDto;
 import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.model.AnalyseCategorySummaryModel;
 import com.moe.myfamilybudget.server.internal.model.AnalyseDriftRowModel;
 import com.moe.myfamilybudget.server.internal.model.AnalyseKpiModel;
 import com.moe.myfamilybudget.server.internal.model.AnalyseLandingRowModel;
 import com.moe.myfamilybudget.server.internal.model.AnalyseMonthlyCompareModel;
 import com.moe.myfamilybudget.server.internal.model.AnalyseResultModel;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import org.springframework.stereotype.Component;
 
 import java.util.stream.Collectors;
@@ -35,27 +33,24 @@ public class AnalyseMapper {
     }
 
     public AnalyseResponseDto toDto(AnalyseResultModel model) {
-        return toDto(model, ObjectifsParameters.defaults(), null);
-    }
-
-    public AnalyseResponseDto toDto(AnalyseResultModel model, ObjectifsParameters objectifs) {
-        return toDto(model, objectifs, null);
+        return toDto(model, null);
     }
 
     /**
-     * Les paramètres du domaine Objectifs (RF-700) sont réinjectés dans {@code settings} : la vue
-     * Analyse, onglet Objectifs, lit les seuils de bascule depuis {@code data.settings}.
-     * Le modèle persistant {@link BudgetDataModel} n'est plus porté par {@link AnalyseResultModel}
-     * (suppression de la fuite de résultat en RF-601), mais passé séparément pour les consommateurs API.
+     * Les paramètres du domaine Objectifs (RF-700) sont portés par la vue de façade et réinjectés
+     * dans {@code settings} : la vue Analyse, onglet Objectifs, lit les seuils de bascule depuis
+     * {@code data.settings}. Le budget réexposé par l'API est fourni par {@link BudgetFacadeView}
+     * (RES-010) et non par le snapshot global {@code BudgetDataModel}, qui n'est plus porté par
+     * {@link AnalyseResultModel} (RF-601) ni passé aux signatures du mapper.
      */
-    public AnalyseResponseDto toDto(AnalyseResultModel model, ObjectifsParameters objectifs, BudgetDataModel data) {
+    public AnalyseResponseDto toDto(AnalyseResultModel model, BudgetFacadeView data) {
         if (model == null) {
             return new AnalyseResponseDto();
         }
 
         AnalyseResponseDto dto = new AnalyseResponseDto();
         if (data != null && overviewMapper != null) {
-            var dataDto = overviewMapper.toBudgetDataDto(data, objectifs);
+            var dataDto = overviewMapper.toBudgetDataDto(data);
             dto.setData(dataDto);
             dto.setBankImport(dataDto.getBankImport());
             dto.setCharges(dataDto.getCharges());
