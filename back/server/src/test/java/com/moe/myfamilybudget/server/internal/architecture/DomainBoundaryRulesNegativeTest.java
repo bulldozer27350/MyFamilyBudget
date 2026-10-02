@@ -35,6 +35,14 @@ class DomainBoundaryRulesNegativeTest {
         return new ClassFileImporter().importClasses(types);
     }
 
+    /**
+     * Les fixtures conformes n'illustrent pas chaque domaine : une regle dont le {@code that()} ne retient aucune
+     * classe est donc vide ici, ce qui ne constitue pas une violation ({@code allowEmptyShould}).
+     */
+    private static void assertCompliant(ArchRule rule, JavaClasses compliant) {
+        assertDoesNotThrow(() -> rule.allowEmptyShould(true).check(compliant));
+    }
+
     private static void assertFails(ArchRule rule, Class<?> fixture) {
         assertThrows(AssertionError.class, () -> rule.check(classes(fixture)));
     }
@@ -45,17 +53,17 @@ class DomainBoundaryRulesNegativeTest {
         JavaClasses compliant = classes(TaxWithRetirementProjectionFixture.class,
                 TresorerieWithProjectionsFixture.class);
 
-        assertDoesNotThrow(() -> DomainBoundaryRules.RETRAITE_DOES_NOT_DEPEND_ON_OTHER_DOMAINS.check(compliant));
-        assertDoesNotThrow(() -> DomainBoundaryRules.FISCALITE_CONSUMES_RETIREMENT_PROJECTION_ONLY.check(compliant));
-        assertDoesNotThrow(() -> DomainBoundaryRules.FISCALITE_DOES_NOT_DEPEND_ON_TRESORERIE.check(compliant));
-        assertDoesNotThrow(() -> DomainBoundaryRules.TRESORERIE_CONSUMES_EXPLICIT_PROJECTIONS_ONLY.check(compliant));
-        assertDoesNotThrow(() -> DomainBoundaryRules.PATRIMOINE_DOES_NOT_DEPEND_ON_TRESORERIE.check(compliant));
-        assertDoesNotThrow(() -> DomainBoundaryRules.PATRIMOINE_DOES_NOT_DEPEND_ON_OBJECTIFS.check(compliant));
-        assertDoesNotThrow(() -> DomainBoundaryRules.ANALYSE_IS_A_CONSUMER_ONLY.check(compliant));
-        assertDoesNotThrow(() -> DomainBoundaryRules.OVERVIEW_IS_AN_AGGREGATOR_ONLY.check(compliant));
-        assertDoesNotThrow(() -> DomainBoundaryRules.NOTIFICATIONS_IS_A_CONSUMER_ONLY.check(compliant));
-        assertDoesNotThrow(() -> DomainBoundaryRules.DOMAIN_DOES_NOT_DEPEND_ON_REST_FACADE.check(compliant));
-        assertDoesNotThrow(() -> DomainBoundaryRules.DOMAIN_DOES_NOT_DEPEND_ON_OPENAPI_DTO.check(compliant));
+        assertCompliant(DomainBoundaryRules.RETRAITE_DOES_NOT_DEPEND_ON_OTHER_DOMAINS, compliant);
+        assertCompliant(DomainBoundaryRules.FISCALITE_CONSUMES_RETIREMENT_PROJECTION_ONLY, compliant);
+        assertCompliant(DomainBoundaryRules.FISCALITE_DOES_NOT_DEPEND_ON_TRESORERIE, compliant);
+        assertCompliant(DomainBoundaryRules.TRESORERIE_CONSUMES_EXPLICIT_PROJECTIONS_ONLY, compliant);
+        assertCompliant(DomainBoundaryRules.PATRIMOINE_DOES_NOT_DEPEND_ON_TRESORERIE, compliant);
+        assertCompliant(DomainBoundaryRules.PATRIMOINE_DOES_NOT_DEPEND_ON_OBJECTIFS, compliant);
+        assertCompliant(DomainBoundaryRules.ANALYSE_IS_A_CONSUMER_ONLY, compliant);
+        assertCompliant(DomainBoundaryRules.OVERVIEW_IS_AN_AGGREGATOR_ONLY, compliant);
+        assertCompliant(DomainBoundaryRules.NOTIFICATIONS_IS_A_CONSUMER_ONLY, compliant);
+        assertCompliant(DomainBoundaryRules.DOMAIN_DOES_NOT_DEPEND_ON_REST_FACADE, compliant);
+        assertCompliant(DomainBoundaryRules.DOMAIN_DOES_NOT_DEPEND_ON_OPENAPI_DTO, compliant);
     }
 
     @Test

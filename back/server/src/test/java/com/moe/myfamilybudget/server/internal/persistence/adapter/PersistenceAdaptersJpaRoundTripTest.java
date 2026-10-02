@@ -967,7 +967,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         return reader;
     }
 
-    private static void assertReferenceState(PersistenceManager reader) {
+    private void assertReferenceState(PersistenceManager reader) {
         BudgetPersistenceAdapter budget = jpaBudgetAdapter(reader);
         assertSameContent(budget.getIncomes(), List.of(INCOME));
         assertSameContent(budget.getCharges(), List.of(CHARGE));
