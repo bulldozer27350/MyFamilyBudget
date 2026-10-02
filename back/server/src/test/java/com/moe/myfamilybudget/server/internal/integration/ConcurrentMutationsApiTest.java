@@ -38,8 +38,13 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
+import com.moe.myfamilybudget.server.internal.persistence.converter.FiscalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalActualOverrideRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalBracketRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalChildRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 
 /**
@@ -75,6 +80,18 @@ class ConcurrentMutationsApiTest {
 
     @Autowired
     private PensionPlanRepository pensionPlanRepository;
+
+    @Autowired
+    private FiscalChildRepository fiscalChildRepository;
+
+    @Autowired
+    private FiscalBracketRepository fiscalBracketRepository;
+
+    @Autowired
+    private FiscalRateOverrideRepository fiscalRateOverrideRepository;
+
+    @Autowired
+    private FiscalActualOverrideRepository fiscalActualOverrideRepository;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -236,7 +253,15 @@ class ConcurrentMutationsApiTest {
         return new TransactionTemplate(transactionManager).execute(status ->
                 EntityModelConverter.toModel(budgetDataRepository.findFirstByOrderByIdAsc().orElseThrow())
                         .withRetirement(PensionEntityMapper.toModel(
-                                pensionPlanRepository.findFirstByOrderByIdAsc().orElse(null))));
+                                pensionPlanRepository.findFirstByOrderByIdAsc().orElse(null)))
+                        .withTaxChildren(FiscalEntityMapper.toChildModels(
+                                fiscalChildRepository.findAllByOrderByPositionAsc()))
+                        .withTaxBrackets(FiscalEntityMapper.toBracketModels(
+                                fiscalBracketRepository.findAllByOrderByPositionAsc()))
+                        .withTaxRateOverrides(FiscalEntityMapper.toRateOverrideModels(
+                                fiscalRateOverrideRepository.findAllByOrderByPositionAsc()))
+                        .withTaxActualOverrides(FiscalEntityMapper.toActualOverrideModels(
+                                fiscalActualOverrideRepository.findAllByOrderByPositionAsc())));
     }
 
     private static List<String> chargeIds(BudgetDataModel model) {

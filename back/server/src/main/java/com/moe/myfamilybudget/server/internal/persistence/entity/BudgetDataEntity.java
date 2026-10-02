@@ -29,18 +29,6 @@ public class BudgetDataEntity {
     private List<RealEstateEntity> realEstate = new ArrayList<>();
     
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<TaxChildEntity> taxChildren = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<TaxBracketEntity> taxBrackets = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<TaxRateOverrideEntity> taxRateOverrides = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<TaxActualOverrideEntity> taxActualOverrides = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<OneOffExpenseEntity> oneoff = new ArrayList<>();
     
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
@@ -118,38 +106,6 @@ public class BudgetDataEntity {
     
     public void setRealEstate(List<RealEstateEntity> realEstate) {
         this.realEstate = realEstate;
-    }
-    
-    public List<TaxChildEntity> getTaxChildren() {
-        return taxChildren;
-    }
-    
-    public void setTaxChildren(List<TaxChildEntity> taxChildren) {
-        this.taxChildren = taxChildren;
-    }
-    
-    public List<TaxBracketEntity> getTaxBrackets() {
-        return taxBrackets;
-    }
-    
-    public void setTaxBrackets(List<TaxBracketEntity> taxBrackets) {
-        this.taxBrackets = taxBrackets;
-    }
-    
-    public List<TaxRateOverrideEntity> getTaxRateOverrides() {
-        return taxRateOverrides;
-    }
-    
-    public void setTaxRateOverrides(List<TaxRateOverrideEntity> taxRateOverrides) {
-        this.taxRateOverrides = taxRateOverrides;
-    }
-    
-    public List<TaxActualOverrideEntity> getTaxActualOverrides() {
-        return taxActualOverrides;
-    }
-    
-    public void setTaxActualOverrides(List<TaxActualOverrideEntity> taxActualOverrides) {
-        this.taxActualOverrides = taxActualOverrides;
     }
     
     public List<OneOffExpenseEntity> getOneoff() {

@@ -63,10 +63,6 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlan
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.SettingsRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxActualOverrideRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxBracketRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxChildRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxRateOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.TransferRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableIncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOverrideRepository;
@@ -479,15 +475,17 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     @Test
-    @DisplayName("DB-1011 -- tables autonomes videes (donnees pre-existantes) -> reconstruites depuis le hub")
-    void fiscalTablesAreRebuiltFromHubOnStartup() {
+    @DisplayName("DB-1110 -- au demarrage, la fiscalite du cache est rechargee depuis les tables fiscal_*")
+    void fiscalDataIsReloadedFromFiscalTablesOnStartup() {
         writer.setBudgetData(referenceData());
-        context.getBean(FiscalChildRepository.class).deleteAll();
-        context.getBean(FiscalBracketRepository.class).deleteAll();
-        context.getBean(FiscalRateOverrideRepository.class).deleteAll();
-        context.getBean(FiscalActualOverrideRepository.class).deleteAll();
 
-        TaxPersistenceAdapter restarted = jpaTaxAdapter(freshReader());
+        PersistenceManager reloaded = freshReader();
+        assertSameContent(reloaded.getBudgetData().taxChildren(), List.of(TAX_CHILD));
+        assertSameContent(reloaded.getBudgetData().taxBrackets(), CUSTOM_BRACKETS);
+        assertSameContent(reloaded.getBudgetData().taxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
+        assertSameContent(reloaded.getBudgetData().taxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
+
+        TaxPersistenceAdapter restarted = jpaTaxAdapter(reloaded);
 
         assertSameContent(restarted.getTaxChildren(), List.of(TAX_CHILD));
         assertSameContent(restarted.getTaxBrackets(), CUSTOM_BRACKETS);
@@ -933,10 +931,6 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(TransferRepository.class),
                 context.getBean(VariableIncomeRepository.class),
                 context.getBean(VariableOverrideRepository.class),
-                context.getBean(TaxChildRepository.class),
-                context.getBean(TaxBracketRepository.class),
-                context.getBean(TaxRateOverrideRepository.class),
-                context.getBean(TaxActualOverrideRepository.class),
                 context.getBean(AssetCategoryRepository.class),
                 context.getBean(BankImportRepository.class),
                 context.getBean(LoanRepository.class),

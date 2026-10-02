@@ -839,6 +839,26 @@ les plus isolés.
 - **Reste** : `RestartPersistenceTest` (VT-320, H2 + PostgreSQL) couvre `PUT /retraite` ; à exécuter en CI (non exécuté
   ici : pas de Maven dans l'environnement de rédaction).
 
+### Statut DB-1110 — Retirer la relation hub Fiscalité
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Prérequis** : DB-1100 (même décision : anciennes tables supprimées, schéma recréé, données réimportées depuis le JSON).
+- **Livré** : `BudgetDataEntity` n'a plus les relations `taxChildren`, `taxBrackets`, `taxRateOverrides` et
+  `taxActualOverrides` ; les entités legacy `TaxChildEntity`, `TaxBracketEntity`, `TaxRateOverrideEntity`,
+  `TaxActualOverrideEntity` et leurs quatre repositories sont supprimés (tables `tax_child`, `tax_bracket`,
+  `tax_rate_override`, `tax_actual_override`). Au chargement du cache, `BudgetPersistenceGateway` relit la fiscalité depuis
+  les tables autonomes `fiscal_*` (tri par `position`, via `FiscalEntityMapper`) ; `EntityModelConverter` ne la convertit
+  plus (listes vides, renseignées par la passerelle). `syncFiscal` n'est plus rejoué à la reconstruction depuis le hub : il
+  reste appelé à chaque sauvegarde. `PersistenceManager` et la passerelle perdent les quatre paramètres `Tax*Repository`.
+  Contrats REST inchangés.
+- **Procédure de déploiement** : identique à DB-1100 (schéma complet supprimé puis recréé, réimport du JSON) ; si DB-1100 est
+  déjà déployé, une seule opération suffit pour les deux patchs.
+- **Tests** : `fiscalDataIsReloadedFromFiscalTablesOnStartup` remplace la reconstruction depuis le hub (le cache redémarré
+  expose la fiscalité lue dans `fiscal_*`) ; les helpers `readDatabase` de `MultiDomainAtomicityTest` et
+  `ConcurrentMutationsApiTest` relisent aussi la fiscalité depuis `fiscal_*` ; mocks `Tax*Repository` retirés des fabriques
+  de test. `RestartPersistenceTest` (VT-320, H2 + PostgreSQL) et `TaxCommandServiceTest` à exécuter en CI (non exécutés
+  ici : pas de Maven dans l'environnement de rédaction).
+
 ## DB-1170 — Nettoyer `EntityModelConverter` en mappers par domaine
 
 - **Prérequis** : DB-1160, ARCH-020.

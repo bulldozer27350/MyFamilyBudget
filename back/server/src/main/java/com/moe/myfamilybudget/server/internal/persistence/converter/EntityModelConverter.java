@@ -439,86 +439,6 @@ public class EntityModelConverter {
         );
     }
 
-    // TaxChild conversions
-    public static TaxChildEntity toEntity(TaxChildModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        TaxChildEntity entity = new TaxChildEntity(
-            model.id(),
-            model.name(),
-            model.birthYear()
-        );
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static TaxChildModel toModel(TaxChildEntity entity) {
-        if (entity == null) return null;
-        return new TaxChildModel(
-            entity.getUid(),
-            entity.getName(),
-            entity.getBirthYear()
-        );
-    }
-
-    // TaxBracket conversions
-    public static TaxBracketEntity toEntity(TaxBracketModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        TaxBracketEntity entity = new TaxBracketEntity(
-            model.id(),
-            model.upTo(),
-            model.rate()
-        );
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static TaxBracketModel toModel(TaxBracketEntity entity) {
-        if (entity == null) return null;
-        return new TaxBracketModel(
-            entity.getUid(),
-            entity.getUpTo(),
-            entity.getRate()
-        );
-    }
-
-    // TaxRateOverride conversions
-    public static TaxRateOverrideEntity toEntity(TaxRateOverrideModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        TaxRateOverrideEntity entity = new TaxRateOverrideEntity(
-            model.year(),
-            model.rate()
-        );
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static TaxRateOverrideModel toModel(TaxRateOverrideEntity entity) {
-        if (entity == null) return null;
-        return new TaxRateOverrideModel(
-            entity.getYear(),
-            entity.getRate()
-        );
-    }
-
-    // TaxActualOverride conversions
-    public static TaxActualOverrideEntity toEntity(TaxActualOverrideModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        TaxActualOverrideEntity entity = new TaxActualOverrideEntity(
-            model.year(),
-            model.amount()
-        );
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static TaxActualOverrideModel toModel(TaxActualOverrideEntity entity) {
-        if (entity == null) return null;
-        return new TaxActualOverrideModel(
-            entity.getYear(),
-            entity.getAmount()
-        );
-    }
-
     // AssetCategory conversions
     public static AssetCategoryEntity toEntity(AssetCategoryModel model, BudgetDataEntity budgetData) {
         if (model == null) return null;
@@ -567,10 +487,10 @@ public class EntityModelConverter {
             entity.getPlacements().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             entity.getRealEstate().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             null, // Retirement - lue depuis les tables autonomes pension_* (DB-1100)
-            entity.getTaxChildren().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            entity.getTaxBrackets().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            entity.getTaxRateOverrides().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            entity.getTaxActualOverrides().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
+            List.of(), // taxChildren - lues depuis les tables autonomes fiscal_* (DB-1110)
+            List.of(),
+            List.of(),
+            List.of(),
             entity.getOneoff().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             entity.getTransfers().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             entity.getVariableIncomes().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),

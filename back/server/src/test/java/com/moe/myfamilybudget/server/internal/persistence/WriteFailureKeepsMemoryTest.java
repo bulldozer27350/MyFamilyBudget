@@ -60,10 +60,6 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlan
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.SettingsRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxActualOverrideRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxBracketRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxChildRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxRateOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.TransferRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableIncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOverrideRepository;
@@ -127,10 +123,6 @@ class WriteFailureKeepsMemoryTest {
                 mock(TransferRepository.class),
                 mock(VariableIncomeRepository.class),
                 mock(VariableOverrideRepository.class),
-                mock(TaxChildRepository.class),
-                mock(TaxBracketRepository.class),
-                mock(TaxRateOverrideRepository.class),
-                mock(TaxActualOverrideRepository.class),
                 mock(AssetCategoryRepository.class),
                 mock(BankImportRepository.class),
                 mock(LoanRepository.class),

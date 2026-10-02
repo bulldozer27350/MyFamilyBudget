@@ -62,10 +62,6 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.OneOffExpen
 import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.RealEstateRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxActualOverrideRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxBracketRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxChildRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.TaxRateOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.TransferRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableIncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOverrideRepository;
@@ -110,10 +106,6 @@ class BudgetPersistenceGateway {
     private final TransferRepository transferRepository;
     private final VariableIncomeRepository variableIncomeRepository;
     private final VariableOverrideRepository variableOverrideRepository;
-    private final TaxChildRepository taxChildRepository;
-    private final TaxBracketRepository taxBracketRepository;
-    private final TaxRateOverrideRepository taxRateOverrideRepository;
-    private final TaxActualOverrideRepository taxActualOverrideRepository;
     private final AssetCategoryRepository assetCategoryRepository;
     private final BankImportRepository bankImportRepository;
     private final LoanRepository loanRepository;
@@ -158,10 +150,6 @@ class BudgetPersistenceGateway {
                               TransferRepository transferRepository,
                               VariableIncomeRepository variableIncomeRepository,
                               VariableOverrideRepository variableOverrideRepository,
-                              TaxChildRepository taxChildRepository,
-                              TaxBracketRepository taxBracketRepository,
-                              TaxRateOverrideRepository taxRateOverrideRepository,
-                              TaxActualOverrideRepository taxActualOverrideRepository,
                               AssetCategoryRepository assetCategoryRepository,
                               BankImportRepository bankImportRepository,
                               LoanRepository loanRepository,
@@ -192,10 +180,6 @@ class BudgetPersistenceGateway {
         this.transferRepository = transferRepository;
         this.variableIncomeRepository = variableIncomeRepository;
         this.variableOverrideRepository = variableOverrideRepository;
-        this.taxChildRepository = taxChildRepository;
-        this.taxBracketRepository = taxBracketRepository;
-        this.taxRateOverrideRepository = taxRateOverrideRepository;
-        this.taxActualOverrideRepository = taxActualOverrideRepository;
         this.assetCategoryRepository = assetCategoryRepository;
         this.bankImportRepository = bankImportRepository;
         this.loanRepository = loanRepository;
@@ -246,8 +230,6 @@ class BudgetPersistenceGateway {
             syncGoals(loaded.objectifs());
             // DB-1041 : idem pour la table Credit.
             syncCreditLoans(loaded.loans());
-            // DB-1011 : idem pour les tables Fiscalite.
-            syncFiscal(loaded);
             // DB-1031 : idem pour le document Banque.
             syncBankImport(loaded.bankImport());
             // DB-1051 : idem pour les tables Patrimoine.
@@ -263,10 +245,17 @@ class BudgetPersistenceGateway {
         BankImportModel bi = loadBankImport(entity.getId());
         // DB-1100 : la retraite n'est plus portee par le hub, elle est relue depuis les tables pension_*.
         RetirementModel retirement = PensionEntityMapper.toModel(pensionPlanRepository.findFirstByOrderByIdAsc().orElse(null));
+        // DB-1110 : la fiscalite n'est plus portee par le hub, elle est relue depuis les tables fiscal_*.
+        List<TaxChildModel> taxChildren = FiscalEntityMapper.toChildModels(fiscalChildRepository.findAllByOrderByPositionAsc());
+        List<TaxBracketModel> taxBrackets = FiscalEntityMapper.toBracketModels(fiscalBracketRepository.findAllByOrderByPositionAsc());
+        List<TaxRateOverrideModel> taxRateOverrides =
+                FiscalEntityMapper.toRateOverrideModels(fiscalRateOverrideRepository.findAllByOrderByPositionAsc());
+        List<TaxActualOverrideModel> taxActualOverrides =
+                FiscalEntityMapper.toActualOverrideModels(fiscalActualOverrideRepository.findAllByOrderByPositionAsc());
         return new BudgetDataModel(
                 loaded.settings(), loaded.incomes(), loaded.charges(), loaded.placements(),
-                loaded.realEstate(), retirement, loaded.taxChildren(), loaded.taxBrackets(),
-                loaded.taxRateOverrides(), loaded.taxActualOverrides(), loaded.oneoff(),
+                loaded.realEstate(), retirement, taxChildren, taxBrackets,
+                taxRateOverrides, taxActualOverrides, loaded.oneoff(),
                 loaded.transfers(), loaded.variableIncomes(), loaded.variableOverrides(),
                 bi != null ? bi : new BankImportModel(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
                 loaded.assetCategories(),
@@ -317,10 +306,6 @@ class BudgetPersistenceGateway {
         saveTransfers(model.transfers(), entity);
         saveVariableIncomes(model.variableIncomes(), entity);
         saveVariableOverrides(model.variableOverrides(), entity);
-        saveTaxChildren(model.taxChildren(), entity);
-        saveTaxBrackets(model.taxBrackets(), entity);
-        saveTaxRateOverrides(model.taxRateOverrides(), entity);
-        saveTaxActualOverrides(model.taxActualOverrides(), entity);
         saveAssetCategories(model.assetCategories(), entity);
         saveLoans(model.loans(), entity);
         saveObjectifs(model.objectifs(), entity);
@@ -585,34 +570,6 @@ class BudgetPersistenceGateway {
         variableOverrideRepository.deleteByBudgetDataId(budgetData.getId());
         for (VariableOverrideModel vo : variableOverrides) {
             variableOverrideRepository.save(EntityModelConverter.toEntity(vo, budgetData));
-        }
-    }
-
-    private void saveTaxChildren(List<TaxChildModel> taxChildren, BudgetDataEntity budgetData) {
-        taxChildRepository.deleteByBudgetDataId(budgetData.getId());
-        for (TaxChildModel tc : taxChildren) {
-            taxChildRepository.save(EntityModelConverter.toEntity(tc, budgetData));
-        }
-    }
-
-    private void saveTaxBrackets(List<TaxBracketModel> taxBrackets, BudgetDataEntity budgetData) {
-        taxBracketRepository.deleteByBudgetDataId(budgetData.getId());
-        for (TaxBracketModel tb : taxBrackets) {
-            taxBracketRepository.save(EntityModelConverter.toEntity(tb, budgetData));
-        }
-    }
-
-    private void saveTaxRateOverrides(List<TaxRateOverrideModel> taxRateOverrides, BudgetDataEntity budgetData) {
-        taxRateOverrideRepository.deleteByBudgetDataId(budgetData.getId());
-        for (TaxRateOverrideModel tro : taxRateOverrides) {
-            taxRateOverrideRepository.save(EntityModelConverter.toEntity(tro, budgetData));
-        }
-    }
-
-    private void saveTaxActualOverrides(List<TaxActualOverrideModel> taxActualOverrides, BudgetDataEntity budgetData) {
-        taxActualOverrideRepository.deleteByBudgetDataId(budgetData.getId());
-        for (TaxActualOverrideModel tao : taxActualOverrides) {
-            taxActualOverrideRepository.save(EntityModelConverter.toEntity(tao, budgetData));
         }
     }
 

@@ -34,10 +34,6 @@ public class PersistenceManager {
     private final TransferRepository transferRepository;
     private final VariableIncomeRepository variableIncomeRepository;
     private final VariableOverrideRepository variableOverrideRepository;
-    private final TaxChildRepository taxChildRepository;
-    private final TaxBracketRepository taxBracketRepository;
-    private final TaxRateOverrideRepository taxRateOverrideRepository;
-    private final TaxActualOverrideRepository taxActualOverrideRepository;
     private final AssetCategoryRepository assetCategoryRepository;
     private final BankImportRepository bankImportRepository;
     private final LoanRepository loanRepository;
@@ -108,10 +104,6 @@ public class PersistenceManager {
                             TransferRepository transferRepository,
                             VariableIncomeRepository variableIncomeRepository,
                             VariableOverrideRepository variableOverrideRepository,
-                            TaxChildRepository taxChildRepository,
-                            TaxBracketRepository taxBracketRepository,
-                            TaxRateOverrideRepository taxRateOverrideRepository,
-                            TaxActualOverrideRepository taxActualOverrideRepository,
                             AssetCategoryRepository assetCategoryRepository,
                             BankImportRepository bankImportRepository,
                             LoanRepository loanRepository,
@@ -145,10 +137,6 @@ public class PersistenceManager {
         this.transferRepository = transferRepository;
         this.variableIncomeRepository = variableIncomeRepository;
         this.variableOverrideRepository = variableOverrideRepository;
-        this.taxChildRepository = taxChildRepository;
-        this.taxBracketRepository = taxBracketRepository;
-        this.taxRateOverrideRepository = taxRateOverrideRepository;
-        this.taxActualOverrideRepository = taxActualOverrideRepository;
         this.assetCategoryRepository = assetCategoryRepository;
         this.bankImportRepository = bankImportRepository;
         this.loanRepository = loanRepository;
@@ -174,8 +162,7 @@ public class PersistenceManager {
         this.gateway = new BudgetPersistenceGateway(
                 budgetDataRepository, incomeRepository, chargeRepository, placementRepository,
                 realEstateRepository, oneOffExpenseRepository, transferRepository,
-                variableIncomeRepository, variableOverrideRepository, taxChildRepository,
-                taxBracketRepository, taxRateOverrideRepository, taxActualOverrideRepository,
+                variableIncomeRepository, variableOverrideRepository,
                 assetCategoryRepository, bankImportRepository, loanRepository, objectifRepository,
                 goalRepository, creditLoanRepository, fiscalChildRepository, fiscalBracketRepository,
                 fiscalRateOverrideRepository, fiscalActualOverrideRepository, pensionPlanRepository,
