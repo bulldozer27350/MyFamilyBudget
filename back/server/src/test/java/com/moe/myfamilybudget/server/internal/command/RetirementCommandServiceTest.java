@@ -16,13 +16,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
-import com.moe.myfamilybudget.server.internal.port.RetirementWriter;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 /**

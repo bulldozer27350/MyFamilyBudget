@@ -13,7 +13,7 @@ import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;

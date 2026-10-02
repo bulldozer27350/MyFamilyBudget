@@ -1,6 +1,7 @@
 package com.moe.myfamilybudget.server.internal.calculation;
 
 import java.util.List;
+import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
 
 /**
  * Contrat d'entrée du domaine Fiscalité (RF-200, voir doc/architecture/04-domaine-fiscalite.md).

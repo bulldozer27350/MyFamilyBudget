@@ -11,9 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel.RetirementPersonModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel.SalaryHistoryModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.RetirementPersonModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.SalaryHistoryModel;
 import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.entity.PensionPersonEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.PensionPlanEntity;

@@ -20,8 +20,8 @@ import com.moe.myfamilybudget.api.model.SettingsDto;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.RetraitePersonWithProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 
 @Component

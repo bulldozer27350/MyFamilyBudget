@@ -2,7 +2,7 @@ package com.moe.myfamilybudget.server.internal.mapper;
 
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsResultModel;
 import org.springframework.stereotype.Component;

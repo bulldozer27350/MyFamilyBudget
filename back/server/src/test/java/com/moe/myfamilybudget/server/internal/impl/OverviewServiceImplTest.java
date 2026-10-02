@@ -18,9 +18,9 @@ import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel.RetirementPersonModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel.SalaryHistoryModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.RetirementPersonModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.SalaryHistoryModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
@@ -161,7 +161,7 @@ class OverviewServiceImplTest {
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
 
         // When
-        com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel projection = overviewService.computeRetirementProjection(budgetData,
+        com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel projection = overviewService.computeRetirementProjection(budgetData,
                 person, 2049);
 
         // Then

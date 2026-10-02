@@ -16,7 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
-import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.TaxMapper;

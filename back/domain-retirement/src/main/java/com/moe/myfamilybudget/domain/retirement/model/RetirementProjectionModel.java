@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.retirement.model;
 
 import java.math.BigDecimal;
 

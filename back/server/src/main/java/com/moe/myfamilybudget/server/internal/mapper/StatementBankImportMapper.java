@@ -21,7 +21,7 @@ import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PendingImportSummaryModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 
 /**

@@ -5,7 +5,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
-import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
 import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
 

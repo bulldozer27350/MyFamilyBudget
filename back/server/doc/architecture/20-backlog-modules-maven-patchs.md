@@ -154,9 +154,17 @@ La stratégie retenue est :
   - réorganiser le package en sous-packages cohérents (`calculation`, `model`, `port`) si utile ;
   - faire en sorte que le moteur compile sans Spring/JPA ;
   - remplacer les imports des anciens packages dans l’application.
+- **Décisions retenues** :
+  - module `back/domain-retirement` (artifact `domain-retirement`, jar), sans dépendance de production : ni Spring, ni JPA, ni autre module du reactor (il ne dépend pas de `domain-budget`) ;
+  - sous-packages `com.moe.myfamilybudget.domain.retirement.calculation` (8 classes : `RetirementCalculationInput`, `RetirementCalculationService`, `RetirementParameters`, `RetirementPersonInput`, `AnnualSalaryProjection`, `SalaryHistoryEntry`, `AnnualTaxableRetirementIncome`, `RetirementIncomeProjection`), `.model` (`RetirementModel`, `RetirementProjection`, `RetirementProjectionModel`) et `.port` (`RetirementReader`, `RetirementWriter`, `RetirementSettingField`) ;
+  - `RetirementCalculationService` perd son `@Component` pour que le moteur compile sans Spring : son bean est déclaré dans `server` par `com.moe.myfamilybudget.config.DomainEngineConfig` (convention reprise par les extractions suivantes) ;
+  - restent dans `server` : `RetirementInputFactory`, `RetraiteResultModel` et `RetraitePersonWithProjectionModel` (vues composites dépendant de `SettingsModel`/`IncomeModel`, relevant de la couche application), adapters/repositories JPA, mappers, contrôleurs ;
+  - `RetirementCalculationServiceTest` est déplacé dans le module (JUnit 5 + AssertJ en dépendances de test) ; les tests transverses (`RetraiteServiceImplTest`, `RetirementToOverviewScenarioTest`, fixtures ArchUnit) restent dans `server` ;
+  - les règles ArchUnit `PureLayerRules`, `DomainBoundaryRules` et `CalculationDependenciesArchTest` traitent `..domain.retirement..` comme couche pure ; la détection des domaines reste faite par nom de classe, donc inchangée ;
+  - le gate VT-600 analyse aussi les sources de test du module.
 - **Critères de sortie** : aucune dépendance vers `internal.persistence`, `api`, `PersistenceManager` ou `BudgetDataModel`.
 - **Tests** : tests de composants Retraite ; règle ArchUnit ; test d’intégration Retraite → Overview inchangé.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 # MAVEN-030 — Extraire `domain-tax`
 

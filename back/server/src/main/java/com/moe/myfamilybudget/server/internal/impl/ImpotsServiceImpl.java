@@ -1,7 +1,7 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
 import com.moe.myfamilybudget.api.controller.ImpotsApi;
-import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.server.internal.calculation.TaxCalculationInput;
 import com.moe.myfamilybudget.server.internal.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
@@ -11,7 +11,7 @@ import com.moe.myfamilybudget.server.internal.mapper.TaxMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
@@ -22,7 +22,7 @@ import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
-import com.moe.myfamilybudget.server.internal.port.RetirementReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 import com.moe.myfamilybudget.server.internal.port.TaxReader;
 import org.springframework.http.ResponseEntity;

@@ -55,6 +55,7 @@ jobs:
           cache-dependency-path: |
             back/pom.xml
             back/domain-budget/pom.xml
+            back/domain-retirement/pom.xml
             back/server/pom.xml
 
       - name: Set up Bun

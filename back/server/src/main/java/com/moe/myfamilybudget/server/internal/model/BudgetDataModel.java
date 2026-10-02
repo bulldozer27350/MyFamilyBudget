@@ -8,6 +8,7 @@ import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.budget.TransferModel;
 import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 
 public record BudgetDataModel(
     SettingsModel settings,

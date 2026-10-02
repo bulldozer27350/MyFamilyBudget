@@ -3,9 +3,9 @@ package com.moe.myfamilybudget.server.internal.persistence.converter;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel.RetirementPersonModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel.SalaryHistoryModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.RetirementPersonModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.SalaryHistoryModel;
 import com.moe.myfamilybudget.server.internal.persistence.entity.PensionPersonEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.PensionPlanEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.PensionSalaryEntity;

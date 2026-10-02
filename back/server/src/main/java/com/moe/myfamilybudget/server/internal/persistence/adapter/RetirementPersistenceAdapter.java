@@ -3,13 +3,13 @@ package com.moe.myfamilybudget.server.internal.persistence.adapter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
-import com.moe.myfamilybudget.server.internal.port.RetirementReader;
-import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
-import com.moe.myfamilybudget.server.internal.port.RetirementWriter;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementWriter;
 
 /**
  * Adaptateur de persistance pour {@link RetirementReader} (RF-B00) et {@link RetirementWriter} (DB-020).

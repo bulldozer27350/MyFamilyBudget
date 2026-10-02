@@ -17,9 +17,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
 import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
 import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCategoryRepository;

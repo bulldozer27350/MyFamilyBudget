@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.retirement.calculation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -11,8 +11,8 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
-import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 
 /**
  * Tests de composant du moteur retraite centralisé (RF-103, voir

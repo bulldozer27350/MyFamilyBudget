@@ -28,6 +28,12 @@
             <artifactId>domain-budget</artifactId>
         </dependency>
 
+        <!-- Domaine Retraite : moteur, projections, modèle et ports (MAVEN-020) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-retirement</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

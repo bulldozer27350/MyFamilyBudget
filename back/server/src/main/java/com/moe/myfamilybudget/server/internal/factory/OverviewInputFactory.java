@@ -17,7 +17,7 @@ import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionIn
 import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.server.internal.calculation.RealEstateProjection;
 import com.moe.myfamilybudget.server.internal.calculation.RealEstateProjection.RealEstateItemProjection;
-import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.server.internal.calculation.TaxCalculationInput;
 import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
 import com.moe.myfamilybudget.server.internal.calculation.TaxProjection;
@@ -30,7 +30,7 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TaxYearlyModel;
 

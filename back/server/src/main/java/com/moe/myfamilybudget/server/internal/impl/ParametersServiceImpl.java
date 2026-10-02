@@ -21,7 +21,7 @@ import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetMutationLock;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
-import com.moe.myfamilybudget.server.internal.port.RetirementReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
 /**

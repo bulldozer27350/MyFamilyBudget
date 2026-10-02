@@ -1,6 +1,6 @@
-package com.moe.myfamilybudget.server.internal.port;
+package com.moe.myfamilybudget.domain.retirement.port;
 
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 
 /**
  * Port de lecture pour le domaine Retraite (RF-B00).

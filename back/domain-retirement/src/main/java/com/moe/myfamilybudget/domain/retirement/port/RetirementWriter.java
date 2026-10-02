@@ -1,6 +1,6 @@
-package com.moe.myfamilybudget.server.internal.port;
+package com.moe.myfamilybudget.domain.retirement.port;
 
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 
 /**
  * Port d'ecriture pour le domaine Retraite (DB-020). Seul le command service du domaine

@@ -2,9 +2,9 @@ package com.moe.myfamilybudget.server.internal.command;
 
 import org.springframework.stereotype.Service;
 
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
-import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
-import com.moe.myfamilybudget.server.internal.port.RetirementWriter;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementWriter;
 
 /**
  * Service de commande du domaine Retraite (RF-A00, DB-020).

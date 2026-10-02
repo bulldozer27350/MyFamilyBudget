@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.retirement.calculation;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -7,10 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.stereotype.Component;
-
-import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
-import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 
 /**
  * Moteur de calcul retraite centralisé (RF-101, voir doc/architecture/03-domaine-retraite.md).
@@ -25,7 +23,6 @@ import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
  * autre modèle persistant, conformément au garde-fou ArchUnit RF-001
  * (doc/architecture/00-principes.md).
  */
-@Component
 public class RetirementCalculationService {
 
     private static final int TRIMESTRES_REQUIS = 172;

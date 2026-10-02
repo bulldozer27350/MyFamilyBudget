@@ -2,6 +2,8 @@ package com.moe.myfamilybudget.server.internal.model;
 
 import java.math.BigDecimal;
 import java.util.List;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 
 /**
  * Représente un individu dans la section Retraite avec sa projection calculée.

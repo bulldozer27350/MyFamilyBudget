@@ -18,13 +18,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationInput;
-import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
-import com.moe.myfamilybudget.server.internal.calculation.RetirementParameters;
-import com.moe.myfamilybudget.server.internal.calculation.RetirementPersonInput;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationInput;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementParameters;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementPersonInput;
 import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.RetraiteMapper;
-import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
 import com.moe.myfamilybudget.server.internal.command.RetirementCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;

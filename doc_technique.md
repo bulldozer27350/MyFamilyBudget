@@ -170,6 +170,9 @@ Depuis MAVEN-010, le backend est un reactor Maven (`back/pom.xml`). Les modèles
 (`IncomeModel`, `ChargeModel`, `OneOffExpenseModel`, `TransferModel`, `VariableIncomeModel`,
 `VariableOverrideModel`, ...) vivent dans le module `back/domain-budget` (package
 `com.moe.myfamilybudget.domain.budget`), sans dépendance Spring/JPA/OpenAPI ; `server` en dépend.
+Le domaine Retraite (moteur de calcul, projections, modèle, ports Reader/Writer) vit de même dans
+`back/domain-retirement` (`com.moe.myfamilybudget.domain.retirement.*`) ; son bean Spring est déclaré
+par `config/DomainEngineConfig` dans `server`.
 
 ### 4.5 Le pattern "oracle JS" pour les tests d'intégration
 

@@ -7,14 +7,14 @@ import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.calculation.AnnualSalaryProjection;
-import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationInput;
-import com.moe.myfamilybudget.server.internal.calculation.RetirementParameters;
-import com.moe.myfamilybudget.server.internal.calculation.RetirementPersonInput;
-import com.moe.myfamilybudget.server.internal.calculation.SalaryHistoryEntry;
+import com.moe.myfamilybudget.domain.retirement.calculation.AnnualSalaryProjection;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationInput;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementParameters;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementPersonInput;
+import com.moe.myfamilybudget.domain.retirement.calculation.SalaryHistoryEntry;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
-import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 
 @Component

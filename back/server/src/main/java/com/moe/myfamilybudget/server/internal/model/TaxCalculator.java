@@ -1,7 +1,7 @@
 package com.moe.myfamilybudget.server.internal.model;
 
 import com.moe.myfamilybudget.server.internal.calculation.AnnualTaxIncome;
-import com.moe.myfamilybudget.server.internal.calculation.AnnualTaxableRetirementIncome;
+import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
 import com.moe.myfamilybudget.server.internal.calculation.AnnualVariableIncome;
 import com.moe.myfamilybudget.server.internal.calculation.TaxActualOverride;
 import com.moe.myfamilybudget.server.internal.calculation.TaxBracket;
