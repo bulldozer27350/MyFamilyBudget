@@ -271,7 +271,24 @@ Avant tout patch :
   - aucun domaine ne dépend d'un controller REST ou d'un DTO OpenAPI.
 - **Critère** : les règles correspondent au graphe défini dans `00-principes.md`.
 - **Limite** : ne pas imposer déjà les packages Maven finaux ; protéger les frontières logiques existantes.
-- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Terminé
+- **Livraison** : `DomainBoundaryRules` (règles), `DomainBoundaryArchTest` (code de production) et
+  `DomainBoundaryRulesNegativeTest` (fixtures fautives et conformes dans `internal.calculation.archfixture`).
+  `internal.calculation` et `internal.model` étant communs à tous les domaines, les domaines sont reconnus par
+  le nom de leur classe de premier niveau. Règles « domaine vers domaine » (visent les couches pures
+  `PURE_LAYER`, pas `internal.factory`) : Retraite sans dépendance vers les internals Fiscalité, Trésorerie,
+  Patrimoine ni Objectifs ; Fiscalité consomme `AnnualTaxableRetirementIncome`, jamais les internals Retraite,
+  et ne dépend pas de Trésorerie ; Trésorerie consomme uniquement les projections (`RetirementIncomeProjection`,
+  `TaxProjection`, `VariableIncomeProjection`, `PlacementCashflowInput`), pas les internals Retraite, Fiscalité
+  ni Patrimoine ; Patrimoine sans dépendance vers Trésorerie ni Objectifs. Règles « consommateurs » (visent
+  toutes les couches de domaine, `internal.factory` compris) : aucun autre domaine ne dépend d'Analyse,
+  d'Overview ni de Notifications. Règles REST/OpenAPI : aucune couche de domaine ne dépend de `internal.impl`,
+  `mapper`, `controller`, `snapshot` ni des DTO `com.moe.myfamilybudget.api`. Règles strictes, sans gel : le
+  code actuel ne présente aucune violation. Les projections publiées (`TaxProjection`,
+  `RetirementIncomeProjection`, `PlacementCashflowInput`, `PlacementBalanceSnapshot`, `CashflowProjection`,
+  `PauseState`, `LiquidPlacementAlternative`) ne sont volontairement pas dans les listes d'internals. Limite
+  connue : les données de budget partagées (`IncomeModel`, `ChargeModel`, `PlacementModel`, `SettingsModel`...)
+  ne sont rattachées à aucun domaine par ces règles ; leur ownership relève des modules Maven.
 
 ---
 
