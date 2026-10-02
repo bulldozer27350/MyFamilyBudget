@@ -34,6 +34,7 @@ import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelC
 import com.moe.myfamilybudget.server.internal.persistence.converter.FiscalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.GoalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntityMapper;
+import com.moe.myfamilybudget.server.internal.persistence.converter.WealthEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BankImportEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCategoryRepository;
@@ -61,6 +62,9 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.TaxRateOver
 import com.moe.myfamilybudget.server.internal.persistence.repository.TransferRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableIncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOverrideRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthCategoryRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthPlacementRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthRealEstateRepository;
 
 /**
  * Passerelle vers la couche JPA : seule classe qui parle directement aux repositories Spring Data.
@@ -121,6 +125,11 @@ class BudgetPersistenceGateway {
     private final PensionPlanRepository pensionPlanRepository;
     // DB-1031 : table autonome du domaine Banque (document JSON), meme principe que goalRepository.
     private final BankImportDocumentRepository bankImportDocumentRepository;
+    // DB-1051 : tables autonomes du domaine Patrimoine (placements, immobilier, categories), meme principe
+    // que goalRepository.
+    private final WealthPlacementRepository wealthPlacementRepository;
+    private final WealthRealEstateRepository wealthRealEstateRepository;
+    private final WealthCategoryRepository wealthCategoryRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -149,7 +158,10 @@ class BudgetPersistenceGateway {
                               FiscalRateOverrideRepository fiscalRateOverrideRepository,
                               FiscalActualOverrideRepository fiscalActualOverrideRepository,
                               PensionPlanRepository pensionPlanRepository,
-                              BankImportDocumentRepository bankImportDocumentRepository) {
+                              BankImportDocumentRepository bankImportDocumentRepository,
+                              WealthPlacementRepository wealthPlacementRepository,
+                              WealthRealEstateRepository wealthRealEstateRepository,
+                              WealthCategoryRepository wealthCategoryRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.incomeRepository = incomeRepository;
         this.chargeRepository = chargeRepository;
@@ -175,6 +187,9 @@ class BudgetPersistenceGateway {
         this.fiscalActualOverrideRepository = fiscalActualOverrideRepository;
         this.pensionPlanRepository = pensionPlanRepository;
         this.bankImportDocumentRepository = bankImportDocumentRepository;
+        this.wealthPlacementRepository = wealthPlacementRepository;
+        this.wealthRealEstateRepository = wealthRealEstateRepository;
+        this.wealthCategoryRepository = wealthCategoryRepository;
     }
 
     /**
@@ -210,6 +225,8 @@ class BudgetPersistenceGateway {
             syncPension(loaded.retirement());
             // DB-1031 : idem pour le document Banque.
             syncBankImport(loaded.bankImport());
+            // DB-1051 : idem pour les tables Patrimoine.
+            syncWealth(loaded);
         }
         return loaded;
     }
@@ -283,6 +300,7 @@ class BudgetPersistenceGateway {
         syncFiscal(model);
         syncPension(model.retirement());
         syncBankImport(model.bankImport());
+        syncWealth(model);
         saveBankImport(model.bankImport(), entity);
     }
 
@@ -399,6 +417,25 @@ class BudgetPersistenceGateway {
             return;
         }
         bankImportDocumentRepository.save(BankImportDocumentMapper.toEntity(bankImport));
+    }
+
+    /**
+     * DB-1051 : remplace le contenu des tables {@code wealth_*} (placements avec leur historique, biens
+     * immobiliers, categories d'actifs) par le patrimoine du modele, dans la transaction de l'appelant
+     * ({@code flush} apres les suppressions, comme {@link #syncGoals}). Les listes sont copiees telles que le
+     * cache les expose ({@code getEffective*}) : la lecture JPA restitue donc exactement le contenu du cache.
+     * Les virements ne sont pas concernes : ils relevent de Tresorerie.
+     */
+    private void syncWealth(BudgetDataModel model) {
+        wealthPlacementRepository.deleteAll();
+        wealthRealEstateRepository.deleteAll();
+        wealthCategoryRepository.deleteAll();
+        wealthPlacementRepository.flush();
+        wealthRealEstateRepository.flush();
+        wealthCategoryRepository.flush();
+        wealthPlacementRepository.saveAll(WealthEntityMapper.toPlacementEntities(model.getEffectivePlacements()));
+        wealthRealEstateRepository.saveAll(WealthEntityMapper.toRealEstateEntities(model.getEffectiveRealEstate()));
+        wealthCategoryRepository.saveAll(WealthEntityMapper.toCategoryEntities(model.getEffectiveAssetCategories()));
     }
 
     private BankImportModel loadBankImport(Long budgetDataId) {

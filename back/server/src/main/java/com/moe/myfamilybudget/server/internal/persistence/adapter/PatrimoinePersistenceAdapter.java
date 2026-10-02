@@ -3,6 +3,7 @@ package com.moe.myfamilybudget.server.internal.persistence.adapter;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
@@ -10,6 +11,10 @@ import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.persistence.converter.WealthEntityMapper;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthCategoryRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthPlacementRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthRealEstateRepository;
 import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineList;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
@@ -17,29 +22,61 @@ import com.moe.myfamilybudget.server.internal.port.PatrimoineWriter;
 
 /**
  * Adaptateur de persistance pour {@link PatrimoineReader} (RF-B00) et {@link PatrimoineWriter} (DB-030).
+ *
+ * <p>DB-1051 : en production, la lecture des placements, des biens immobiliers et des categories d'actifs
+ * passe par les repositories autonomes {@code wealth_*} (DB-1050). Les ecritures passent toujours par le
+ * {@code PersistenceManager} : la passerelle de persistance recopie le patrimoine dans les tables autonomes
+ * dans la meme transaction. Les virements ({@link #getTransfers()}) relevent de Tresorerie et restent lus
+ * depuis le cache jusqu'a DB-1061.
+ *
+ * <p>Le constructeur sans repository conserve l'ancienne lecture depuis le cache memoire ; il sert aux tests
+ * unitaires adosses a des repositories mockes et constitue le chemin de retour arriere.
  */
 @Component
 public class PatrimoinePersistenceAdapter implements PatrimoineReader, PatrimoineWriter {
 
     private final PersistenceManager persistenceManager;
+    private final WealthPlacementRepository wealthPlacementRepository;
+    private final WealthRealEstateRepository wealthRealEstateRepository;
+    private final WealthCategoryRepository wealthCategoryRepository;
 
     public PatrimoinePersistenceAdapter(PersistenceManager persistenceManager) {
+        this(persistenceManager, null, null, null);
+    }
+
+    @Autowired
+    public PatrimoinePersistenceAdapter(PersistenceManager persistenceManager,
+                                        WealthPlacementRepository wealthPlacementRepository,
+                                        WealthRealEstateRepository wealthRealEstateRepository,
+                                        WealthCategoryRepository wealthCategoryRepository) {
         this.persistenceManager = persistenceManager;
+        this.wealthPlacementRepository = wealthPlacementRepository;
+        this.wealthRealEstateRepository = wealthRealEstateRepository;
+        this.wealthCategoryRepository = wealthCategoryRepository;
     }
 
     @Override
     public List<PlacementModel> getPlacements() {
-        return persistenceManager.getBudgetData().getEffectivePlacements();
+        if (wealthPlacementRepository == null) {
+            return persistenceManager.getBudgetData().getEffectivePlacements();
+        }
+        return WealthEntityMapper.toPlacementModels(wealthPlacementRepository.findAllByOrderByPositionAsc());
     }
 
     @Override
     public List<RealEstateModel> getRealEstate() {
-        return persistenceManager.getBudgetData().getEffectiveRealEstate();
+        if (wealthRealEstateRepository == null) {
+            return persistenceManager.getBudgetData().getEffectiveRealEstate();
+        }
+        return WealthEntityMapper.toRealEstateModels(wealthRealEstateRepository.findAllByOrderByPositionAsc());
     }
 
     @Override
     public List<AssetCategoryModel> getAssetCategories() {
-        return persistenceManager.getBudgetData().getEffectiveAssetCategories();
+        if (wealthCategoryRepository == null) {
+            return persistenceManager.getBudgetData().getEffectiveAssetCategories();
+        }
+        return WealthEntityMapper.toCategoryModels(wealthCategoryRepository.findAllByOrderByPositionAsc());
     }
 
     @Override

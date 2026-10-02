@@ -65,6 +65,10 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.TaxRateOver
 import com.moe.myfamilybudget.server.internal.persistence.repository.TransferRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableIncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOverrideRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthCategoryRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthPlacementRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthRealEstateRepository;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineList;
 
 /**
  * DB-010 -- Round-trip des adaptateurs de lecture contre une vraie base (H2 en memoire, vrais repositories
@@ -134,7 +138,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         PersistenceManager reader = freshReader();
         assertSameContent(new BudgetPersistenceAdapter(reader).getIncomes(), List.of(other));
         assertThat(new BudgetPersistenceAdapter(reader).getCharges()).isEmpty();
-        assertThat(new PatrimoinePersistenceAdapter(reader).getPlacements()).isEmpty();
+        assertThat(jpaPatrimoineAdapter(reader).getPlacements()).isEmpty();
         assertThat(new GoalPersistenceAdapter(reader).getGoals()).isEmpty();
         // Les domaines non touches par le second import restent identiques.
         assertSameContent(new RetirementPersistenceAdapter(reader).getRetirement(), RETIREMENT);
@@ -186,11 +190,11 @@ class PersistenceAdaptersJpaRoundTripTest {
 
         writer.write(m -> m.addAssetCategory(ASSET_CATEGORY));
         writer.write(m -> m.addAssetCategory(second));
-        assertSameContent(new PatrimoinePersistenceAdapter(freshReader()).getAssetCategories(),
+        assertSameContent(jpaPatrimoineAdapter(freshReader()).getAssetCategories(),
                 List.of(ASSET_CATEGORY, second));
 
         writer.write(m -> m.removeAssetCategory(ASSET_CATEGORY.id()));
-        assertSameContent(new PatrimoinePersistenceAdapter(freshReader()).getAssetCategories(), List.of(second));
+        assertSameContent(jpaPatrimoineAdapter(freshReader()).getAssetCategories(), List.of(second));
     }
 
     @Test
@@ -222,10 +226,10 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(new BudgetPersistenceAdapter(reader).getOneoffExpenses()).isEmpty();
         assertThat(new BudgetPersistenceAdapter(reader).getVariableIncomes()).isEmpty();
         assertThat(new BudgetPersistenceAdapter(reader).getVariableOverrides()).isEmpty();
-        assertThat(new PatrimoinePersistenceAdapter(reader).getPlacements()).isEmpty();
-        assertThat(new PatrimoinePersistenceAdapter(reader).getRealEstate()).isEmpty();
-        assertThat(new PatrimoinePersistenceAdapter(reader).getAssetCategories()).isEmpty();
-        assertThat(new PatrimoinePersistenceAdapter(reader).getTransfers()).isEmpty();
+        assertThat(jpaPatrimoineAdapter(reader).getPlacements()).isEmpty();
+        assertThat(jpaPatrimoineAdapter(reader).getRealEstate()).isEmpty();
+        assertThat(jpaPatrimoineAdapter(reader).getAssetCategories()).isEmpty();
+        assertThat(jpaPatrimoineAdapter(reader).getTransfers()).isEmpty();
         assertThat(new RetirementPersistenceAdapter(reader).getRetirement().people()).isEmpty();
         assertThat(new TaxPersistenceAdapter(reader).getTaxChildren()).isEmpty();
         assertThat(new TaxPersistenceAdapter(reader).getTaxRateOverrides()).isEmpty();
@@ -268,7 +272,7 @@ class PersistenceAdaptersJpaRoundTripTest {
                 .withRetirement(noPeople));
 
         PersistenceManager reader = freshReader();
-        List<PlacementModel> placements = new PatrimoinePersistenceAdapter(reader).getPlacements();
+        List<PlacementModel> placements = jpaPatrimoineAdapter(reader).getPlacements();
         assertThat(placements).hasSize(1);
         assertThat(placements.get(0).id()).isEqualTo("plc_bare");
         assertThat(placements.get(0).history()).isNotNull().isEmpty();
@@ -662,6 +666,137 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     // =========================================================================
+    // DB-1051 -- Patrimoine lu depuis les tables autonomes
+    // =========================================================================
+
+    private PatrimoinePersistenceAdapter jpaPatrimoineAdapter(PersistenceManager manager) {
+        return new PatrimoinePersistenceAdapter(manager,
+                context.getBean(WealthPlacementRepository.class),
+                context.getBean(WealthRealEstateRepository.class),
+                context.getBean(WealthCategoryRepository.class));
+    }
+
+    @Test
+    @DisplayName("DB-1051 -- import -> placements, immobilier et categories recopies dans les tables autonomes et relus par JPA")
+    void importedWealthIsReadFromWealthTables() {
+        writer.setBudgetData(referenceData());
+
+        assertThat(context.getBean(WealthPlacementRepository.class).count()).isEqualTo(1);
+        assertThat(context.getBean(WealthRealEstateRepository.class).count()).isEqualTo(1);
+        assertThat(context.getBean(WealthCategoryRepository.class).count()).isEqualTo(1);
+
+        PatrimoinePersistenceAdapter adapter = jpaPatrimoineAdapter(freshReader());
+        assertSameContent(adapter.getPlacements(), List.of(PLACEMENT));
+        assertThat(adapter.getPlacements().get(0).history()).hasSize(1);
+        assertSameContent(adapter.getRealEstate(), List.of(REAL_ESTATE));
+        assertSameContent(adapter.getAssetCategories(), List.of(ASSET_CATEGORY));
+    }
+
+    @Test
+    @DisplayName("DB-1051 -- creation, mise a jour et suppression d'un placement sont visibles via la lecture JPA")
+    void placementWritesAreVisibleThroughJpaReader() {
+        writer.setBudgetData(referenceData());
+        PatrimoinePersistenceAdapter adapter = jpaPatrimoineAdapter(writer);
+
+        adapter.savePatrimoineRow(PatrimoineList.PLACEMENTS, Map.of("id", "plc_2", "label", "Livret A",
+                "category", "Epargne", "balance", bd("5000"), "ratePess", bd("0.02512")));
+        assertThat(adapter.getPlacements()).extracting(PlacementModel::id)
+                .containsExactlyInAnyOrder("plc_1", "plc_2");
+        assertThat(adapter.getPlacements()).filteredOn(p -> "plc_2".equals(p.id()))
+                .singleElement()
+                .satisfies(p -> assertThat(p.ratePess()).isEqualByComparingTo("0.02512"));
+
+        adapter.savePatrimoineRow(PatrimoineList.PLACEMENTS, Map.of("id", "plc_2", "label", "Livret A renomme",
+                "category", "Epargne", "balance", bd("5200")));
+        assertThat(adapter.getPlacements()).filteredOn(p -> "plc_2".equals(p.id()))
+                .singleElement()
+                .satisfies(p -> assertThat(p.label()).isEqualTo("Livret A renomme"));
+
+        adapter.deletePatrimoineRow(PatrimoineList.PLACEMENTS, "plc_1");
+        assertThat(jpaPatrimoineAdapter(freshReader()).getPlacements()).extracting(PlacementModel::id)
+                .containsExactly("plc_2");
+    }
+
+    @Test
+    @DisplayName("DB-1051 -- l'historique d'un placement (ajout, mise a jour, suppression) est visible via la lecture JPA")
+    void placementHistoryWritesAreVisibleThroughJpaReader() {
+        writer.setBudgetData(referenceData());
+        PatrimoinePersistenceAdapter adapter = jpaPatrimoineAdapter(writer);
+
+        Map<String, Object> added = adapter.addPlacementHistoryEntry("plc_1",
+                Map.of("date", "2026-06-01", "value", bd("10400"), "notes", "releve juin"));
+        String entryId = String.valueOf(added.get("id"));
+        assertThat(adapter.getPlacements().get(0).history()).extracting(PlacementHistoryEntryModel::id)
+                .containsExactlyInAnyOrder("h_1", entryId);
+
+        adapter.updatePlacementHistoryEntry("plc_1", entryId, Map.of("value", bd("10450")));
+        assertThat(jpaPatrimoineAdapter(freshReader()).getPlacements().get(0).history())
+                .filteredOn(h -> entryId.equals(h.id()))
+                .singleElement()
+                .satisfies(h -> assertThat(h.value()).isEqualByComparingTo("10450"));
+
+        adapter.deletePlacementHistoryEntry("plc_1", "h_1");
+        assertThat(jpaPatrimoineAdapter(freshReader()).getPlacements().get(0).history())
+                .extracting(PlacementHistoryEntryModel::id).containsExactly(entryId);
+    }
+
+    @Test
+    @DisplayName("DB-1051 -- biens immobiliers et categories d'actifs : ecritures visibles via la lecture JPA")
+    void realEstateAndCategoryWritesAreVisibleThroughJpaReader() {
+        writer.setBudgetData(referenceData());
+        PatrimoinePersistenceAdapter adapter = jpaPatrimoineAdapter(writer);
+
+        adapter.savePatrimoineRow(PatrimoineList.REAL_ESTATE, Map.of("id", "re_2", "label", "Studio",
+                "currentValue", bd("90000")));
+        assertThat(adapter.getRealEstate()).extracting(RealEstateModel::id)
+                .containsExactlyInAnyOrder("re_1", "re_2");
+        adapter.deletePatrimoineRow(PatrimoineList.REAL_ESTATE, "re_1");
+        assertThat(jpaPatrimoineAdapter(freshReader()).getRealEstate()).extracting(RealEstateModel::id)
+                .containsExactly("re_2");
+
+        AssetCategoryModel second = new AssetCategoryModel("cat_2", "icon2", "Livrets", "epargne", "#00ff00");
+        adapter.addAssetCategory(second);
+        assertSameContent(jpaPatrimoineAdapter(freshReader()).getAssetCategories(), List.of(ASSET_CATEGORY, second));
+        adapter.removeAssetCategory("cat_1");
+        assertSameContent(jpaPatrimoineAdapter(freshReader()).getAssetCategories(), List.of(second));
+    }
+
+    @Test
+    @DisplayName("DB-1051 -- tables autonomes vides au demarrage (donnees pre-existantes) -> reconstruites depuis le hub")
+    void wealthTablesAreRebuiltFromHubOnStartup() {
+        writer.setBudgetData(referenceData());
+        context.getBean(WealthPlacementRepository.class).deleteAll();
+        context.getBean(WealthRealEstateRepository.class).deleteAll();
+        context.getBean(WealthCategoryRepository.class).deleteAll();
+        assertThat(context.getBean(WealthPlacementRepository.class).count()).isZero();
+        assertThat(context.getBean(WealthRealEstateRepository.class).count()).isZero();
+        assertThat(context.getBean(WealthCategoryRepository.class).count()).isZero();
+
+        PersistenceManager restarted = freshReader();
+
+        PatrimoinePersistenceAdapter adapter = jpaPatrimoineAdapter(restarted);
+        assertSameContent(adapter.getPlacements(), List.of(PLACEMENT));
+        assertSameContent(adapter.getRealEstate(), List.of(REAL_ESTATE));
+        assertSameContent(adapter.getAssetCategories(), List.of(ASSET_CATEGORY));
+    }
+
+    @Test
+    @DisplayName("DB-1051 -- reinitialisation -> les tables autonomes sont videes")
+    void resetEmptiesWealthTables() {
+        writer.setBudgetData(referenceData());
+
+        writer.resetData();
+
+        assertThat(context.getBean(WealthPlacementRepository.class).count()).isZero();
+        assertThat(context.getBean(WealthRealEstateRepository.class).count()).isZero();
+        assertThat(context.getBean(WealthCategoryRepository.class).count()).isZero();
+        PatrimoinePersistenceAdapter adapter = jpaPatrimoineAdapter(writer);
+        assertThat(adapter.getPlacements()).isEmpty();
+        assertThat(adapter.getRealEstate()).isEmpty();
+        assertThat(adapter.getAssetCategories()).isEmpty();
+    }
+
+    // =========================================================================
     // Utilitaires
     // =========================================================================
 
@@ -698,6 +833,9 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(FiscalActualOverrideRepository.class),
                 context.getBean(PensionPlanRepository.class),
                 context.getBean(BankImportDocumentRepository.class),
+                context.getBean(WealthPlacementRepository.class),
+                context.getBean(WealthRealEstateRepository.class),
+                context.getBean(WealthCategoryRepository.class),
                 transactionManager,
                 eventPublisher);
         reader.init();
@@ -712,7 +850,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(budget.getVariableIncomes(), List.of(VARIABLE_INCOME));
         assertSameContent(budget.getVariableOverrides(), List.of(VARIABLE_OVERRIDE));
 
-        PatrimoinePersistenceAdapter patrimoine = new PatrimoinePersistenceAdapter(reader);
+        PatrimoinePersistenceAdapter patrimoine = jpaPatrimoineAdapter(reader);
         assertSameContent(patrimoine.getPlacements(), List.of(PLACEMENT));
         assertThat(patrimoine.getPlacements().get(0).history()).hasSize(1);
         assertSameContent(patrimoine.getRealEstate(), List.of(REAL_ESTATE));

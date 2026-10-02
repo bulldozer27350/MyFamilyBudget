@@ -49,6 +49,9 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.TaxRateOver
 import com.moe.myfamilybudget.server.internal.persistence.repository.TransferRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableIncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOverrideRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthCategoryRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthPlacementRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthRealEstateRepository;
 
 /**
  * FIX-020 -- Modifier un parametre ne depend plus de la presence de {@code sweepEnabled}.
@@ -96,6 +99,9 @@ class UpdateTaxSettingsMinimalBudgetTest {
                 mock(FiscalActualOverrideRepository.class),
                 mock(PensionPlanRepository.class),
                 mock(BankImportDocumentRepository.class),
+                mock(WealthPlacementRepository.class),
+                mock(WealthRealEstateRepository.class),
+                mock(WealthCategoryRepository.class),
                 mock(PlatformTransactionManager.class),
                 mock(ApplicationEventPublisher.class));
         persistenceManager.init();

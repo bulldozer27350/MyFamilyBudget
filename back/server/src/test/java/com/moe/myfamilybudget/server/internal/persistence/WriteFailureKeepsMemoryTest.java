@@ -62,6 +62,9 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.TaxRateOver
 import com.moe.myfamilybudget.server.internal.persistence.repository.TransferRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableIncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOverrideRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthCategoryRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthPlacementRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthRealEstateRepository;
 
 /**
  * VT-330 -- Protege l'ordre voulu {@code DB -> memoire} de {@code BudgetCacheStore.applyAndPersist} :
@@ -136,6 +139,9 @@ class WriteFailureKeepsMemoryTest {
                 mock(FiscalActualOverrideRepository.class),
                 mock(PensionPlanRepository.class),
                 mock(BankImportDocumentRepository.class),
+                mock(WealthPlacementRepository.class),
+                mock(WealthRealEstateRepository.class),
+                mock(WealthCategoryRepository.class),
                 mock(PlatformTransactionManager.class),
                 eventPublisher);
         persistenceManager.init();

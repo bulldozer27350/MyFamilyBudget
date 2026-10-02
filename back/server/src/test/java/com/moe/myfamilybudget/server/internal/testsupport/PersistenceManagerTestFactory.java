@@ -35,6 +35,9 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.TaxRateOver
 import com.moe.myfamilybudget.server.internal.persistence.repository.TransferRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableIncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOverrideRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthCategoryRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthPlacementRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.WealthRealEstateRepository;
 
 /**
  * Fabrique un {@link PersistenceManager} adossé à des repositories Spring Data entièrement
@@ -100,6 +103,9 @@ public final class PersistenceManagerTestFactory {
                 mock(FiscalActualOverrideRepository.class),
                 mock(PensionPlanRepository.class),
                 mock(BankImportDocumentRepository.class),
+                mock(WealthPlacementRepository.class),
+                mock(WealthRealEstateRepository.class),
+                mock(WealthCategoryRepository.class),
                 mock(PlatformTransactionManager.class),
                 mock(ApplicationEventPublisher.class));
     }

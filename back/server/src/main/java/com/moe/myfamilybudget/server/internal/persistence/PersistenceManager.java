@@ -51,6 +51,9 @@ public class PersistenceManager {
     private final FiscalActualOverrideRepository fiscalActualOverrideRepository;
     private final PensionPlanRepository pensionPlanRepository;
     private final BankImportDocumentRepository bankImportDocumentRepository;
+    private final WealthPlacementRepository wealthPlacementRepository;
+    private final WealthRealEstateRepository wealthRealEstateRepository;
+    private final WealthCategoryRepository wealthCategoryRepository;
 
     // Gestion programmatique de la transaction pour l'initialisation au démarrage.
     // Voir le commentaire dans BudgetPersistenceGateway.save() : le @Transactional de classe ne
@@ -118,6 +121,9 @@ public class PersistenceManager {
                             FiscalActualOverrideRepository fiscalActualOverrideRepository,
                             PensionPlanRepository pensionPlanRepository,
                             BankImportDocumentRepository bankImportDocumentRepository,
+                            WealthPlacementRepository wealthPlacementRepository,
+                            WealthRealEstateRepository wealthRealEstateRepository,
+                            WealthCategoryRepository wealthCategoryRepository,
                             PlatformTransactionManager transactionManager,
                             ApplicationEventPublisher eventPublisher) {
         this.budgetDataRepository = budgetDataRepository;
@@ -147,6 +153,9 @@ public class PersistenceManager {
         this.fiscalActualOverrideRepository = fiscalActualOverrideRepository;
         this.pensionPlanRepository = pensionPlanRepository;
         this.bankImportDocumentRepository = bankImportDocumentRepository;
+        this.wealthPlacementRepository = wealthPlacementRepository;
+        this.wealthRealEstateRepository = wealthRealEstateRepository;
+        this.wealthCategoryRepository = wealthCategoryRepository;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.gateway = new BudgetPersistenceGateway(
                 budgetDataRepository, incomeRepository, chargeRepository, placementRepository,
@@ -156,7 +165,8 @@ public class PersistenceManager {
                 assetCategoryRepository, bankImportRepository, loanRepository, objectifRepository,
                 goalRepository, creditLoanRepository, fiscalChildRepository, fiscalBracketRepository,
                 fiscalRateOverrideRepository, fiscalActualOverrideRepository, pensionPlanRepository,
-                bankImportDocumentRepository);
+                bankImportDocumentRepository, wealthPlacementRepository, wealthRealEstateRepository,
+                wealthCategoryRepository);
         this.cacheStore = new BudgetCacheStore(this.gateway, this.transactionTemplate);
         this.mutationService = new BudgetMutationService(this.cacheStore);
         this.eventPublisher = eventPublisher;

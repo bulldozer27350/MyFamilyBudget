@@ -680,7 +680,28 @@ pas les agents qui travaillent sur les autres domaines.
 
 ### Statut DB-1051 — JPA Patrimoine — basculer l'adapter
 
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `PatrimoinePersistenceAdapter.getPlacements()`, `getRealEstate()` et `getAssetCategories()` lisent désormais
+  `WealthPlacementRepository`, `WealthRealEstateRepository` et `WealthCategoryRepository` (tables `wealth_*`) via
+  `WealthEntityMapper` ; l'historique de valorisation d'un placement est relu avec son placement. Les écritures
+  (`savePatrimoineRow`, `deletePatrimoineRow`, historique de placement, catégories d'actifs) restent portées par
+  `PersistenceManager` ; `BudgetPersistenceGateway` recopie les placements (avec historique), les biens immobiliers et
+  les catégories du modèle dans les tables autonomes à chaque sauvegarde, dans la même transaction (import, reset et
+  mutations de tous domaines inclus : rollback cohérent). Au chargement du cache (démarrage), les tables sont
+  reconstruites depuis le hub, ce qui migre les données existantes sans script. Les trois repositories sont injectés
+  dans `PersistenceManager` (constructeur élargi ; fabrique et tests adaptés). `getTransfers()` reste lu depuis le
+  cache : les virements relèvent de Trésorerie (DB-1061).
+- **Retour arrière** : le hub (`placement`, `placement_history_entry`, `real_estate`, `asset_category`) reste alimenté et
+  reste la source de chargement du cache. Le constructeur `PatrimoinePersistenceAdapter(PersistenceManager)` conserve la
+  lecture depuis le cache (tests unitaires à repositories mockés) ; revenir au comportement antérieur en production
+  consiste à revenir sur ce patch.
+- **Tests** : `PersistenceAdaptersJpaRoundTripTest` (H2) : import relu par JPA (historique inclus), création / mise à
+  jour (taux non arrondi) / suppression d'un placement, ajout / mise à jour / suppression d'une ligne d'historique, biens
+  immobiliers et catégories d'actifs, reconstruction des tables au démarrage, reset ; les lectures Patrimoine existantes
+  du test passent par la lecture JPA. Constructeurs de `PersistenceManager` adaptés dans `PersistenceManagerTestFactory`,
+  `WriteFailureKeepsMemoryTest`, `BankImportWriteFailureTest`, `UpdateTaxSettingsMinimalBudgetTest` et le round-trip.
+- **Reste** : `VT-220` (Patrimoine → Trésorerie → Overview) et `VT-320` (redémarrage, H2 + PostgreSQL) à exécuter en CI
+  après la bascule ; la suppression des relations du hub relève de DB-1150.
 
 ## DB-1060 / DB-1061 — JPA Trésorerie
 
