@@ -461,6 +461,24 @@ pas les agents qui travaillent sur les autres domaines.
 - **DB-1040** : entités/repositories des prêts additifs.
 - **DB-1041** : bascule adapter + tests.
 - **Parallèle** : tous les domaines hors modifications du hub.
+
+### Statut DB-1040 — JPA Crédit — entités/repositories additifs
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : entité `CreditLoanEntity` (table `credit_loan`, clé `id` = identifiant métier, `position`, taux
+  `NUMERIC(19,8)`), `CreditLoanRepository` (`findAllByOrderByPositionAsc`) et `CreditLoanEntityMapper`
+  (`LoanModel` ↔ `CreditLoanEntity`, sans perte, informations du contrat bancaire incluses). Aucune relation vers
+  `BudgetDataEntity` ; `LoanEntity`, `EntityModelConverter`, `LoanPersistenceAdapter` et le hub sont **inchangés**
+  (chemin legacy intact, aucune donnée migrée). La nouvelle table est créée vide par `ddl-auto` et reste inutilisée
+  jusqu'à DB-1041. Le nom `Loan*` est déjà pris par le chemin legacy, d'où le préfixe `CreditLoan*`.
+- **Tests** : `CreditLoanJpaModelTest` (H2, `@DataJpaTest`) : aller-retour avec ordre conservé, taux non arrondi,
+  champs du contrat absents conservés à `null`, remplacement de la liste, refus d'un prêt sans identifiant.
+- **Pour DB-1041** : reproduire le schéma de DB-1021 (lecture JPA, recopie par `BudgetPersistenceGateway` dans la
+  transaction de sauvegarde, reconstruction depuis le hub au chargement du cache) ; la table `credit_loan` devra
+  être vidée/réécrite avec `flush` entre suppression et réinsertion (clé primaire métier).
+
+### Statut DB-1041 — JPA Crédit — basculer l'adapter
+
 - **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 ## DB-1050 / DB-1051 — JPA Patrimoine
