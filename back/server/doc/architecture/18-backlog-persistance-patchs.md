@@ -429,7 +429,26 @@ pas les agents qui travaillent sur les autres domaines.
 
 ### Statut DB-1011 — JPA Fiscalité — basculer l'adapter
 
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `TaxPersistenceAdapter` lit désormais `FiscalChildRepository`, `FiscalBracketRepository`,
+  `FiscalRateOverrideRepository` et `FiscalActualOverrideRepository` (tables `fiscal_*`) via `FiscalEntityMapper`.
+  Les écritures (`updateTaxConfig`, `updateTaxSettings`, `resetDefaultTaxBrackets`) restent portées par
+  `PersistenceManager` ; `BudgetPersistenceGateway` recopie la fiscalité du modèle dans les tables autonomes à chaque
+  sauvegarde, dans la même transaction (import, reset et mutations de tous domaines inclus : rollback cohérent). Au
+  chargement du cache (démarrage), les tables sont reconstruites depuis le hub, ce qui migre les données existantes
+  sans script. Le barème recopié est le barème **effectif** (barème par défaut si la liste du modèle est vide) : la
+  lecture JPA restitue donc exactement ce que le cache expose. Les quatre repositories sont injectés dans
+  `PersistenceManager` (constructeur élargi ; fabrique et tests adaptés). Les paramètres fiscaux scalaires restent
+  dans Settings (DB-061).
+- **Retour arrière** : le hub (`tax_*`) reste alimenté et reste la source de chargement du cache. Le constructeur
+  `TaxPersistenceAdapter(PersistenceManager)` conserve la lecture depuis le cache (tests unitaires à repositories
+  mockés) ; revenir au comportement antérieur en production consiste à revenir sur ce patch.
+- **Tests** : `PersistenceAdaptersJpaRoundTripTest` (H2) : fiscalité d'un import relue par JPA, `updateTaxConfig` /
+  `resetDefaultTaxBrackets` visibles via la lecture JPA, import sans barème (barème par défaut), reconstruction des
+  tables au démarrage, reset. Constructeurs de `PersistenceManager` adaptés dans `PersistenceManagerTestFactory`,
+  `WriteFailureKeepsMemoryTest` et le round-trip.
+- **Reste** : `VT-320` (redémarrage, H2 + PostgreSQL) couvre déjà `PUT /impots` ; à exécuter en CI. La suppression
+  de la relation du hub relève de DB-1110.
 
 ## DB-1020 / DB-1021 — JPA Objectifs
 

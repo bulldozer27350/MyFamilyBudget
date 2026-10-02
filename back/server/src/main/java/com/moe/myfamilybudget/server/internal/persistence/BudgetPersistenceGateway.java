@@ -28,6 +28,7 @@ import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 import com.moe.myfamilybudget.server.internal.persistence.converter.CreditLoanEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
+import com.moe.myfamilybudget.server.internal.persistence.converter.FiscalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.GoalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BankImportEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BudgetDataEntity;
@@ -36,6 +37,10 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportR
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CreditLoanRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalActualOverrideRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalBracketRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalChildRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
@@ -101,6 +106,11 @@ class BudgetPersistenceGateway {
     private final GoalRepository goalRepository;
     // DB-1041 : table autonome du domaine Credit, meme principe que goalRepository.
     private final CreditLoanRepository creditLoanRepository;
+    // DB-1011 : tables autonomes du domaine Fiscalite, meme principe que goalRepository.
+    private final FiscalChildRepository fiscalChildRepository;
+    private final FiscalBracketRepository fiscalBracketRepository;
+    private final FiscalRateOverrideRepository fiscalRateOverrideRepository;
+    private final FiscalActualOverrideRepository fiscalActualOverrideRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -123,7 +133,11 @@ class BudgetPersistenceGateway {
                               LoanRepository loanRepository,
                               ObjectifRepository objectifRepository,
                               GoalRepository goalRepository,
-                              CreditLoanRepository creditLoanRepository) {
+                              CreditLoanRepository creditLoanRepository,
+                              FiscalChildRepository fiscalChildRepository,
+                              FiscalBracketRepository fiscalBracketRepository,
+                              FiscalRateOverrideRepository fiscalRateOverrideRepository,
+                              FiscalActualOverrideRepository fiscalActualOverrideRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.incomeRepository = incomeRepository;
         this.chargeRepository = chargeRepository;
@@ -143,6 +157,10 @@ class BudgetPersistenceGateway {
         this.objectifRepository = objectifRepository;
         this.goalRepository = goalRepository;
         this.creditLoanRepository = creditLoanRepository;
+        this.fiscalChildRepository = fiscalChildRepository;
+        this.fiscalBracketRepository = fiscalBracketRepository;
+        this.fiscalRateOverrideRepository = fiscalRateOverrideRepository;
+        this.fiscalActualOverrideRepository = fiscalActualOverrideRepository;
     }
 
     /**
@@ -172,6 +190,8 @@ class BudgetPersistenceGateway {
             syncGoals(loaded.objectifs());
             // DB-1041 : idem pour la table Credit.
             syncCreditLoans(loaded.loans());
+            // DB-1011 : idem pour les tables Fiscalite.
+            syncFiscal(loaded);
         }
         return loaded;
     }
@@ -242,6 +262,7 @@ class BudgetPersistenceGateway {
         saveObjectifs(model.objectifs(), entity);
         syncGoals(model.objectifs());
         syncCreditLoans(model.loans());
+        syncFiscal(model);
         saveBankImport(model.bankImport(), entity);
     }
 
@@ -306,6 +327,29 @@ class BudgetPersistenceGateway {
                     loans.size() - identified.size());
         }
         creditLoanRepository.saveAll(CreditLoanEntityMapper.toEntities(identified));
+    }
+
+    /**
+     * DB-1011 : remplace le contenu des quatre tables {@code fiscal_*} par la fiscalite du modele, dans la
+     * transaction de l'appelant ({@code flush} apres les suppressions, comme {@link #syncGoals}). Le bareme
+     * copie est le bareme <em>effectif</em> : si la liste du modele est vide, le bareme par defaut est ecrit,
+     * de sorte que la lecture JPA restitue exactement ce que le cache expose.
+     */
+    private void syncFiscal(BudgetDataModel model) {
+        fiscalChildRepository.deleteAll();
+        fiscalBracketRepository.deleteAll();
+        fiscalRateOverrideRepository.deleteAll();
+        fiscalActualOverrideRepository.deleteAll();
+        fiscalChildRepository.flush();
+        fiscalBracketRepository.flush();
+        fiscalRateOverrideRepository.flush();
+        fiscalActualOverrideRepository.flush();
+        fiscalChildRepository.saveAll(FiscalEntityMapper.toChildEntities(model.getEffectiveTaxChildren()));
+        fiscalBracketRepository.saveAll(FiscalEntityMapper.toBracketEntities(model.getEffectiveTaxBrackets()));
+        fiscalRateOverrideRepository.saveAll(
+                FiscalEntityMapper.toRateOverrideEntities(model.getEffectiveTaxRateOverrides()));
+        fiscalActualOverrideRepository.saveAll(
+                FiscalEntityMapper.toActualOverrideEntities(model.getEffectiveTaxActualOverrides()));
     }
 
     private BankImportModel loadBankImport(Long budgetDataId) {

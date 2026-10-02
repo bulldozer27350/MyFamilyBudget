@@ -43,6 +43,10 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportR
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CreditLoanRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalActualOverrideRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalBracketRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalChildRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
@@ -409,6 +413,92 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     // =========================================================================
+    // DB-1011 -- Fiscalite lue depuis les tables autonomes
+    // =========================================================================
+
+    private TaxPersistenceAdapter jpaTaxAdapter(PersistenceManager manager) {
+        return new TaxPersistenceAdapter(manager,
+                context.getBean(FiscalChildRepository.class),
+                context.getBean(FiscalBracketRepository.class),
+                context.getBean(FiscalRateOverrideRepository.class),
+                context.getBean(FiscalActualOverrideRepository.class));
+    }
+
+    @Test
+    @DisplayName("DB-1011 -- import -> la fiscalite est recopiee dans les tables autonomes et relue par JPA")
+    void importedTaxConfigIsReadFromFiscalTables() {
+        writer.setBudgetData(referenceData());
+
+        assertThat(context.getBean(FiscalChildRepository.class).count()).isEqualTo(1);
+        assertThat(context.getBean(FiscalBracketRepository.class).count()).isEqualTo(CUSTOM_BRACKETS.size());
+        TaxPersistenceAdapter adapter = jpaTaxAdapter(freshReader());
+        assertSameContent(adapter.getTaxChildren(), List.of(TAX_CHILD));
+        assertSameContent(adapter.getTaxBrackets(), CUSTOM_BRACKETS);
+        assertSameContent(adapter.getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
+        assertSameContent(adapter.getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
+    }
+
+    @Test
+    @DisplayName("DB-1011 -- updateTaxConfig et resetDefaultTaxBrackets sont visibles via la lecture JPA")
+    void taxWritesAreVisibleThroughJpaReader() {
+        writer.setBudgetData(referenceData());
+        TaxPersistenceAdapter adapter = jpaTaxAdapter(writer);
+        TaxChildModel secondChild = new TaxChildModel("tc_2", "Lucas", 2018);
+
+        adapter.updateTaxConfig(List.of(TAX_CHILD, secondChild), CUSTOM_BRACKETS, List.of(), List.of());
+
+        assertThat(adapter.getTaxChildren()).extracting(TaxChildModel::id).containsExactly("tc_1", "tc_2");
+        assertThat(adapter.getTaxRateOverrides()).isEmpty();
+        assertThat(adapter.getTaxActualOverrides()).isEmpty();
+        assertSameContent(adapter.getTaxBrackets(), CUSTOM_BRACKETS);
+
+        adapter.resetDefaultTaxBrackets();
+
+        TaxPersistenceAdapter reread = jpaTaxAdapter(freshReader());
+        assertDefaultBrackets(reread.getTaxBrackets());
+        assertThat(reread.getTaxChildren()).extracting(TaxChildModel::id).containsExactly("tc_1", "tc_2");
+    }
+
+    @Test
+    @DisplayName("DB-1011 -- import sans bareme -> le bareme par defaut est ecrit puis relu par JPA")
+    void emptyBracketsAreReadAsDefaultScheduleThroughJpa() {
+        writer.setBudgetData(referenceData().withTaxBrackets(List.of()));
+
+        assertDefaultBrackets(jpaTaxAdapter(freshReader()).getTaxBrackets());
+    }
+
+    @Test
+    @DisplayName("DB-1011 -- tables autonomes videes (donnees pre-existantes) -> reconstruites depuis le hub")
+    void fiscalTablesAreRebuiltFromHubOnStartup() {
+        writer.setBudgetData(referenceData());
+        context.getBean(FiscalChildRepository.class).deleteAll();
+        context.getBean(FiscalBracketRepository.class).deleteAll();
+        context.getBean(FiscalRateOverrideRepository.class).deleteAll();
+        context.getBean(FiscalActualOverrideRepository.class).deleteAll();
+
+        TaxPersistenceAdapter restarted = jpaTaxAdapter(freshReader());
+
+        assertSameContent(restarted.getTaxChildren(), List.of(TAX_CHILD));
+        assertSameContent(restarted.getTaxBrackets(), CUSTOM_BRACKETS);
+        assertSameContent(restarted.getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
+        assertSameContent(restarted.getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
+    }
+
+    @Test
+    @DisplayName("DB-1011 -- reinitialisation -> listes videes et bareme par defaut relu par JPA")
+    void resetClearsFiscalTablesAndRestoresDefaultBrackets() {
+        writer.setBudgetData(referenceData());
+
+        writer.resetData();
+
+        TaxPersistenceAdapter adapter = jpaTaxAdapter(writer);
+        assertThat(adapter.getTaxChildren()).isEmpty();
+        assertThat(adapter.getTaxRateOverrides()).isEmpty();
+        assertThat(adapter.getTaxActualOverrides()).isEmpty();
+        assertDefaultBrackets(adapter.getTaxBrackets());
+    }
+
+    // =========================================================================
     // Utilitaires
     // =========================================================================
 
@@ -439,6 +529,10 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(ObjectifRepository.class),
                 context.getBean(GoalRepository.class),
                 context.getBean(CreditLoanRepository.class),
+                context.getBean(FiscalChildRepository.class),
+                context.getBean(FiscalBracketRepository.class),
+                context.getBean(FiscalRateOverrideRepository.class),
+                context.getBean(FiscalActualOverrideRepository.class),
                 transactionManager,
                 eventPublisher);
         reader.init();
