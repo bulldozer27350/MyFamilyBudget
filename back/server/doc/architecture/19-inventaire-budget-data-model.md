@@ -1,6 +1,6 @@
 # 19 — Inventaire des usages de `BudgetDataModel` (CLEAN-010)
 
-Statut : 🟢 livré avec `CLEAN-010`
+Statut : 🟢 livré avec `CLEAN-010`, mis à jour par `CLEAN-020`
 
 Référence : `b91877c` (SET-040). Périmètre : `back/server/src/main/java` (production). Les tests ne sont pas
 classés ici.
@@ -20,7 +20,7 @@ classés ici.
 | `persistence/converter/EntityModelConverter` | SNAPSHOT-GLOBAL | Entités → snapshot. |
 | `persistence/BudgetCacheStore` | SNAPSHOT-GLOBAL | Publication du nouvel état en cache. |
 | `persistence/BudgetPersistenceGateway` | SNAPSHOT-GLOBAL | Chargement depuis la base. |
-| `impl/SystemeServiceImpl` (`composeBudgetData`) | SNAPSHOT-GLOBAL | Export / import / reset : `CLEAN-020`. |
+| `snapshot/GlobalBudgetSnapshotService` (`composeSnapshot`) | SNAPSHOT-GLOBAL | Export / import / reset, isolés par `CLEAN-020` (ex-`SystemeServiceImpl`, qui ne référence plus le modèle). |
 | `mapper/OverviewMapper` (`toInternalModel`, 2 sites) | SNAPSHOT-GLOBAL | Import JSON `/budget/import` ; le cas `dto == null` renvoie un snapshot vide. |
 | `impl/OverviewServiceImpl` (`composeBudgetData`) | ASSEMBLY-TEMP | Alimente `OverviewInputFactory`. |
 | `impl/AnalyseServiceImpl` (`composeBudgetData`) | ASSEMBLY-TEMP | Alimente `AnalyseInputFactory` / `BudgetFacadeView`. |
@@ -40,7 +40,7 @@ classés ici.
 | `persistence/BudgetCacheStore` | SNAPSHOT-GLOBAL | Source de vérité du cache. |
 | `persistence/BudgetMutationService` | SNAPSHOT-GLOBAL | Lecture du `bankImport` du cache pour les mutations. |
 | `persistence/adapter/*PersistenceAdapter` (Budget, Goal, Loan, Patrimoine, Retirement, Settings, Tax) | ASSEMBLY-TEMP | Lectures par fragment (`getEffective*`) via le cache ; disparaît adapter par adapter avec les `DB-xxx`. |
-| `impl/SystemeServiceImpl` (`setBudgetData` à l'import) | SNAPSHOT-GLOBAL | `CLEAN-020`. |
+| `snapshot/GlobalBudgetSnapshotService` (`setBudgetData` à l'import, `resetData`) | SNAPSHOT-GLOBAL | Seul appelant applicatif hors persistance (`CLEAN-020`). |
 | `persistence/entity/*Entity` (`getBudgetData()`) | hors périmètre | Accesseur vers `BudgetDataEntity`, sans rapport avec le modèle. |
 
 ## Autres consommateurs (signatures)
@@ -63,12 +63,13 @@ lui-même (garanti par `PureLayerArchTest` et `ResultModelsArchTest`). Aucune r�
 ## Garde-fou
 
 `BudgetDataModelUsageArchTest` : seuls `..internal.persistence..`, `..internal.factory..`,
-`..internal.mapper..`, `..internal.updater..` et les neuf services d'API listés ci-dessus peuvent dépendre de
-`BudgetDataModel`. Un nouveau consommateur fait échouer la règle : il doit consommer des fragments via les `Reader`
+`..internal.mapper..`, `..internal.updater..`, `..internal.snapshot..` et les huit services d'API listés ci-dessus
+peuvent dépendre de `BudgetDataModel`. Un nouveau consommateur fait échouer la règle : il doit consommer des fragments via les `Reader`
 ou être ajouté à ce fichier et à la liste blanche avec sa classification.
 
 ## Dette restante (hors `CLEAN-010`)
 
 - `composeBudgetData()` dupliqué dans sept services (et assemblé en ligne dans `RetraiteServiceImpl`) : à supprimer lorsque les factories consommeront des fragments
   (reprise des `DB-xxx`) ;
-- isolement des opérations `/budget`, `/budget/import`, `/budget/reset` : `CLEAN-020`.
+- opérations `/budget`, `/budget/import`, `/budget/reset` : isolées dans `internal.snapshot` par `CLEAN-020`
+  (`GlobalBudgetSnapshotServiceTest`, `GlobalSnapshotBoundaryArchTest`).

@@ -1,0 +1,60 @@
+package com.moe.myfamilybudget.server.internal.snapshot;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import com.moe.myfamilybudget.api.model.BudgetDataDto;
+import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+
+/**
+ * CLEAN-020 -- Opérations globales isolées dans {@link GlobalBudgetSnapshotService} : export, import
+ * (y compris corps {@code null}) et reset. Base H2 dédiée.
+ */
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:clean020;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE")
+@DisplayName("CLEAN-020 -- Snapshot global (export/import/reset)")
+class GlobalBudgetSnapshotServiceTest {
+
+    @Autowired
+    private GlobalBudgetSnapshotService snapshotService;
+
+    @Autowired
+    private PersistenceManager persistenceManager;
+
+    @Test
+    @DisplayName("import(null) n'écrit rien et renvoie l'état courant")
+    void importNullKeepsCurrentState() {
+        snapshotService.reset();
+        BudgetDataModel before = persistenceManager.getBudgetData();
+
+        BudgetDataDto result = snapshotService.importSnapshot(null);
+
+        assertThat(persistenceManager.getBudgetData()).isEqualTo(before);
+        assertThat(result).isEqualTo(snapshotService.export());
+    }
+
+    @Test
+    @DisplayName("reset() renvoie le même contenu que l'export suivant")
+    void resetMatchesFollowingExport() {
+        BudgetDataDto reset = snapshotService.reset();
+
+        assertThat(reset).isNotNull();
+        assertThat(snapshotService.export()).isEqualTo(reset);
+    }
+
+    @Test
+    @DisplayName("export -> import -> export est stable (aller-retour du snapshot)")
+    void exportImportRoundTripIsStable() {
+        snapshotService.reset();
+        BudgetDataDto exported = snapshotService.export();
+
+        BudgetDataDto imported = snapshotService.importSnapshot(exported);
+
+        assertThat(imported).isEqualTo(exported);
+        assertThat(snapshotService.export()).isEqualTo(exported);
+    }
+}

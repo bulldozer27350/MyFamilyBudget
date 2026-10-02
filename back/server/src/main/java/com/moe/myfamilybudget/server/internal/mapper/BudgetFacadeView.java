@@ -32,7 +32,7 @@ import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
  * plus de raccourci dans leurs signatures. Les paramètres du domaine Objectifs (RF-700) sont
  * portés explicitement pour être réinjectés dans {@code settings} sans changer le contrat REST.
  *
- * <p>Seuls les assemblers de façade (services d'API, {@code SystemeServiceImpl}) construisent
+ * <p>Seuls les assemblers de façade (services d'API, {@code GlobalBudgetSnapshotService}) construisent
  * cette vue, via {@link #from(BudgetDataModel, ObjectifsParameters)}.
  */
 public record BudgetFacadeView(

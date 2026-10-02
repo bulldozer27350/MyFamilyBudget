@@ -300,7 +300,16 @@ Avant tout patch :
 - **Travaux attendus** : centraliser le snapshot global dans un composant applicatif/transverse ; conserver `/budget`, `/budget/import`,
   `/budget/reset` comme opérations transverses ; ne pas propager le snapshot dans les services métiers locaux ; documenter cette exception.
 - **Tests** : import/export/reset ; fixture de référence ; restart PostgreSQL ; E2E F1.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Terminé
+- **Livraison** : `GlobalBudgetSnapshotService` (package `internal.snapshot`) est le composant applicatif unique du snapshot
+  global : `export()` (`GET /budget`), `importSnapshot(BudgetDataDto)` (`POST /budget/import`, corps `null` = aucune écriture) et
+  `reset()` (`POST /budget/reset`). Il porte l'assemblage du snapshot depuis les huit ports de lecture, les appels à
+  `PersistenceManager.setBudgetData` / `resetData`, le verrou du budget en premier et la transaction multi-domaines (budget puis
+  Objectifs, VT-340). `SystemeServiceImpl` n'est plus qu'une façade REST qui délègue : il ne référence plus `BudgetDataModel`
+  ni `PersistenceManager` et sort de la liste blanche de `BudgetDataModelUsageArchTest` (remplacé par `..internal.snapshot..`).
+  `GlobalSnapshotBoundaryArchTest` interdit à tout autre composant (hors persistance) d'appeler `setBudgetData` / `resetData`.
+  Contrats REST, comportements et URL inchangés. Hors périmètre : les sept `composeBudgetData()` `ASSEMBLY-TEMP` des services
+  métiers (fin des `DB-xxx`).
 
 ---
 
