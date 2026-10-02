@@ -258,7 +258,7 @@ Avant tout patch :
   - aucun domaine ne dépend d'un controller REST ou d'un DTO OpenAPI.
 - **Critère** : les règles correspondent au graphe défini dans `00-principes.md`.
 - **Limite** : ne pas imposer déjà les packages Maven finaux ; protéger les frontières logiques existantes.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Terminé
 
 ---
 
