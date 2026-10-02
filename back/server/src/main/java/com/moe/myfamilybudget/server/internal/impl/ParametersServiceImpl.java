@@ -17,9 +17,11 @@ import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsCalculator;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsResultModel;
+import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
+import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
 
 /**
  * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
@@ -86,7 +88,8 @@ public class ParametersServiceImpl implements ParametresApi {
                 String id = typedMap.get("id") != null ? String.valueOf(typedMap.get("id")) : String.valueOf(typedMap.get("assetCategoryId"));
                 String field = String.valueOf(typedMap.get("field"));
                 Object value = typedMap.get("value");
-                patrimoineCommandService.updateAssetCategory(id, field, value);
+                AssetCategoryField.find(field)
+                        .ifPresent(f -> patrimoineCommandService.updateAssetCategory(id, f, value));
             } else if ("addAssetCategory".equals(action)) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> rowMap = (Map<String, Object>) typedMap.get("row");
@@ -118,7 +121,7 @@ public class ParametersServiceImpl implements ParametresApi {
         if (ObjectifsSettingsService.owns(field)) {
             objectifsSettingsService.updateField(field, value);
         } else {
-            taxCommandService.updateTaxSettings(field, value);
+            TaxSettingField.find(field).ifPresent(f -> taxCommandService.updateTaxSettings(f, value));
         }
     }
 }

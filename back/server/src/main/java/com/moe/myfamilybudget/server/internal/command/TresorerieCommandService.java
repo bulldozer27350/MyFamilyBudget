@@ -5,6 +5,9 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.moe.myfamilybudget.server.internal.port.TresorerieAdjustmentKind;
+import com.moe.myfamilybudget.server.internal.port.TresorerieLineField;
+import com.moe.myfamilybudget.server.internal.port.TresorerieList;
 import com.moe.myfamilybudget.server.internal.port.TresorerieWriter;
 
 /**
@@ -12,6 +15,10 @@ import com.moe.myfamilybudget.server.internal.port.TresorerieWriter;
  * Unique point d'ecriture des lignes de tresorerie (revenus, charges, depenses ponctuelles, revenus
  * variables et ajustements) : valide la commande puis delegue au port {@link TresorerieWriter}. N'a plus
  * de dependance directe vers {@code PersistenceManager}.
+ *
+ * <p>DB-050 : la liste et la nature d'ajustement sont des enums ({@link TresorerieList},
+ * {@link TresorerieAdjustmentKind}) interpretes a la frontiere REST ; ce service ne manipule plus de
+ * {@code listKey} en chaine.
  *
  * <p>Les identifiants issus de l'URL ne sont jamais {@code null} cote REST : un {@code null} est donc une
  * erreur de programmation, refusee avant toute ecriture ({@link IllegalArgumentException}, traduite en
@@ -28,25 +35,25 @@ public class TresorerieCommandService {
         this.tresorerieWriter = tresorerieWriter;
     }
 
-    public Map<String, Object> addTresorerieRow(String listKey, Map<String, Object> body) {
-        require(listKey, "La liste de tresorerie (listKey)");
-        return tresorerieWriter.addTresorerieRow(listKey, body);
+    public Map<String, Object> addTresorerieRow(TresorerieList list, Map<String, Object> body) {
+        require(list, "La liste de tresorerie");
+        return tresorerieWriter.addTresorerieRow(list, body);
     }
 
-    public void updateTresorerieRow(String listKey, String id, String field, Object value) {
-        require(listKey, "La liste de tresorerie (listKey)");
+    public void updateTresorerieRow(TresorerieList list, String id, TresorerieLineField field, Object value) {
+        require(list, "La liste de tresorerie");
         require(id, "L'identifiant de la ligne");
         require(field, "Le champ de la ligne");
-        tresorerieWriter.updateTresorerieRow(listKey, id, field, value);
+        tresorerieWriter.updateTresorerieRow(list, id, field, value);
     }
 
-    public void removeTresorerieRow(String listKey, String id) {
-        require(listKey, "La liste de tresorerie (listKey)");
+    public void removeTresorerieRow(TresorerieList list, String id) {
+        require(list, "La liste de tresorerie");
         require(id, "L'identifiant de la ligne");
-        tresorerieWriter.removeTresorerieRow(listKey, id);
+        tresorerieWriter.removeTresorerieRow(list, id);
     }
 
-    public void applyTresorerieAjustement(String lineId, String kind, BigDecimal newMonthly) {
+    public void applyTresorerieAjustement(String lineId, TresorerieAdjustmentKind kind, BigDecimal newMonthly) {
         require(lineId, "L'identifiant de la ligne a ajuster");
         require(kind, "Le type de ligne a ajuster");
         require(newMonthly, "Le nouveau montant mensuel");

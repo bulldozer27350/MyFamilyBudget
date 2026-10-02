@@ -3,7 +3,6 @@ package com.moe.myfamilybudget.server.internal.command;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -23,6 +22,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
 import com.moe.myfamilybudget.server.internal.port.TaxWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -71,16 +71,26 @@ class TaxCommandServiceTest {
     @Test
     @DisplayName("succes : updateTaxSettings, resetDefaultTaxBrackets et verrou sont delegues")
     void otherCommandsDelegate() {
-        service.updateTaxSettings("childExitAge", 18);
+        service.updateTaxSettings(TaxSettingField.CHILD_EXIT_AGE, 18);
         service.resetDefaultTaxBrackets();
         service.lockBudgetForCurrentTransaction();
 
-        verify(writer).updateTaxSettings("childExitAge", 18);
+        verify(writer).updateTaxSettings(TaxSettingField.CHILD_EXIT_AGE, 18);
         verify(writer).resetDefaultTaxBrackets();
         verify(writer).lockBudgetForCurrentTransaction();
     }
 
     // --- validation ---
+
+    @Test
+    @DisplayName("DB-050 : TaxSettingField.find respecte la casse et ignore les champs inconnus")
+    void settingFieldFind() {
+        assertThat(TaxSettingField.find("childExitAge")).contains(TaxSettingField.CHILD_EXIT_AGE);
+        assertThat(TaxSettingField.find("pivotBalanceManual")).contains(TaxSettingField.PIVOT_BALANCE_MANUAL);
+        assertThat(TaxSettingField.find("CHILDEXITAGE")).isEmpty();
+        assertThat(TaxSettingField.find("inconnu")).isEmpty();
+        assertThat(TaxSettingField.find(null)).isEmpty();
+    }
 
     @Test
     @DisplayName("validation : un nom de parametre null est refuse et rien n'est ecrit")
@@ -98,11 +108,11 @@ class TaxCommandServiceTest {
     void writerFailuresArePropagated() {
         IllegalStateException dbDown = new IllegalStateException("database down");
         doThrow(dbDown).when(writer).updateTaxConfig(any(), any(), any(), any());
-        doThrow(dbDown).when(writer).updateTaxSettings(anyString(), any());
+        doThrow(dbDown).when(writer).updateTaxSettings(any(TaxSettingField.class), any());
         doThrow(dbDown).when(writer).resetDefaultTaxBrackets();
 
         assertThatThrownBy(() -> service.updateTaxConfig(List.of(CHILD), null, null, null)).isSameAs(dbDown);
-        assertThatThrownBy(() -> service.updateTaxSettings("childExitAge", 18)).isSameAs(dbDown);
+        assertThatThrownBy(() -> service.updateTaxSettings(TaxSettingField.CHILD_EXIT_AGE, 18)).isSameAs(dbDown);
         assertThatThrownBy(() -> service.resetDefaultTaxBrackets()).isSameAs(dbDown);
     }
 
@@ -118,7 +128,7 @@ class TaxCommandServiceTest {
         TaxCommandService realService = new TaxCommandService(adapter);
 
         realService.updateTaxConfig(List.of(CHILD), BRACKETS, List.of(RATE_OVERRIDE), List.of(ACTUAL_OVERRIDE));
-        realService.updateTaxSettings("childExitAge", 18);
+        realService.updateTaxSettings(TaxSettingField.CHILD_EXIT_AGE, 18);
 
         assertThat(adapter.getTaxChildren()).containsExactly(CHILD);
         assertThat(adapter.getTaxBrackets()).containsExactlyElementsOf(BRACKETS);

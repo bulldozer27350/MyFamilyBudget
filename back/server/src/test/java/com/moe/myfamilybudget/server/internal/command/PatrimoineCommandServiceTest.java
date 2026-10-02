@@ -21,6 +21,8 @@ import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineList;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -51,20 +53,20 @@ class PatrimoineCommandServiceTest {
     void rowCommandsDelegate() {
         Map<String, Object> body = Map.of("id", "plc_1", "label", "PEA");
         Map<String, Object> saved = Map.of("id", "plc_1");
-        when(writer.savePatrimoineRow("placements", body)).thenReturn(saved);
+        when(writer.savePatrimoineRow(PatrimoineList.PLACEMENTS, body)).thenReturn(saved);
 
-        assertThat(service.savePatrimoineRow("placements", body)).isSameAs(saved);
-        service.deletePatrimoineRow("placements", "plc_1");
+        assertThat(service.savePatrimoineRow(PatrimoineList.PLACEMENTS, body)).isSameAs(saved);
+        service.deletePatrimoineRow(PatrimoineList.PLACEMENTS, "plc_1");
 
-        verify(writer).deletePatrimoineRow("placements", "plc_1");
+        verify(writer).deletePatrimoineRow(PatrimoineList.PLACEMENTS, "plc_1");
     }
 
     @Test
     @DisplayName("succes : un corps null reste accepte pour savePatrimoineRow (contrat historique)")
     void nullBodyIsAllowedForSave() {
-        service.savePatrimoineRow("placements", null);
+        service.savePatrimoineRow(PatrimoineList.PLACEMENTS, null);
 
-        verify(writer).savePatrimoineRow("placements", null);
+        verify(writer).savePatrimoineRow(PatrimoineList.PLACEMENTS, null);
     }
 
     @Test
@@ -78,14 +80,36 @@ class PatrimoineCommandServiceTest {
         service.updatePlacementHistoryEntry("plc_1", "hist_1", body);
         service.deletePlacementHistoryEntry("plc_1", "hist_1");
         service.addAssetCategory(CATEGORY);
-        service.updateAssetCategory("cat_1", "name", "Immo");
+        service.updateAssetCategory("cat_1", AssetCategoryField.NAME, "Immo");
         service.removeAssetCategory("cat_1");
 
         verify(writer).updatePlacementHistoryEntry("plc_1", "hist_1", body);
         verify(writer).deletePlacementHistoryEntry("plc_1", "hist_1");
         verify(writer).addAssetCategory(CATEGORY);
-        verify(writer).updateAssetCategory("cat_1", "name", "Immo");
+        verify(writer).updateAssetCategory("cat_1", AssetCategoryField.NAME, "Immo");
         verify(writer).removeAssetCategory("cat_1");
+    }
+
+    // --- DB-050 : enum interprete a la frontiere REST ---
+
+    @Test
+    @DisplayName("DB-050 : PatrimoineList.fromKey est insensible a la casse ; une liste inconnue ou null est refusee")
+    void listFromKey() {
+        assertThat(PatrimoineList.fromKey("placements")).isEqualTo(PatrimoineList.PLACEMENTS);
+        assertThat(PatrimoineList.fromKey("TRANSFERS")).isEqualTo(PatrimoineList.TRANSFERS);
+        assertThat(PatrimoineList.fromKey("realestate")).isEqualTo(PatrimoineList.REAL_ESTATE);
+        assertThatThrownBy(() -> PatrimoineList.fromKey("inconnue")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> PatrimoineList.fromKey("loans")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> PatrimoineList.fromKey(null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("DB-050 : AssetCategoryField.find respecte la casse et ignore les champs inconnus")
+    void categoryFieldFind() {
+        assertThat(AssetCategoryField.find("icon")).contains(AssetCategoryField.ICON);
+        assertThat(AssetCategoryField.find("bucket")).contains(AssetCategoryField.BUCKET);
+        assertThat(AssetCategoryField.find("Name")).isEmpty();
+        assertThat(AssetCategoryField.find(null)).isEmpty();
     }
 
     // --- validation ---
@@ -97,7 +121,7 @@ class PatrimoineCommandServiceTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.deletePatrimoineRow(null, "x"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.deletePatrimoineRow("placements", null))
+        assertThatThrownBy(() -> service.deletePatrimoineRow(PatrimoineList.PLACEMENTS, null))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.addPlacementHistoryEntry(null, Map.of()))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -107,7 +131,7 @@ class PatrimoineCommandServiceTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.addAssetCategory(null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.updateAssetCategory(null, "name", "x"))
+        assertThatThrownBy(() -> service.updateAssetCategory(null, AssetCategoryField.NAME, "x"))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.updateAssetCategory("cat_1", null, "x"))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -123,12 +147,12 @@ class PatrimoineCommandServiceTest {
     @DisplayName("erreur : l'exception du port est propagee telle quelle")
     void writerFailuresArePropagated() {
         IllegalStateException dbDown = new IllegalStateException("database down");
-        when(writer.savePatrimoineRow(anyString(), any())).thenThrow(dbDown);
-        doThrow(dbDown).when(writer).deletePatrimoineRow(anyString(), anyString());
+        when(writer.savePatrimoineRow(any(PatrimoineList.class), any())).thenThrow(dbDown);
+        doThrow(dbDown).when(writer).deletePatrimoineRow(any(PatrimoineList.class), anyString());
         doThrow(dbDown).when(writer).addAssetCategory(any());
 
-        assertThatThrownBy(() -> service.savePatrimoineRow("placements", Map.of())).isSameAs(dbDown);
-        assertThatThrownBy(() -> service.deletePatrimoineRow("placements", "plc_1")).isSameAs(dbDown);
+        assertThatThrownBy(() -> service.savePatrimoineRow(PatrimoineList.PLACEMENTS, Map.of())).isSameAs(dbDown);
+        assertThatThrownBy(() -> service.deletePatrimoineRow(PatrimoineList.PLACEMENTS, "plc_1")).isSameAs(dbDown);
         assertThatThrownBy(() -> service.addAssetCategory(CATEGORY)).isSameAs(dbDown);
     }
 
@@ -142,7 +166,7 @@ class PatrimoineCommandServiceTest {
         PatrimoinePersistenceAdapter adapter = new PatrimoinePersistenceAdapter(persistenceManager);
         PatrimoineCommandService realService = new PatrimoineCommandService(adapter);
 
-        realService.savePatrimoineRow("placements", Map.of("id", "plc_1", "label", "PEA", "category", "Actions"));
+        realService.savePatrimoineRow(PatrimoineList.PLACEMENTS, Map.of("id", "plc_1", "label", "PEA", "category", "Actions"));
         assertThat(adapter.getPlacements()).extracting(PlacementModel::id).containsExactly("plc_1");
 
         Map<String, Object> entry = realService.addPlacementHistoryEntry("plc_1",
@@ -158,7 +182,7 @@ class PatrimoineCommandServiceTest {
         realService.removeAssetCategory("cat_1");
         assertThat(adapter.getAssetCategories()).isEmpty();
 
-        realService.deletePatrimoineRow("placements", "plc_1");
+        realService.deletePatrimoineRow(PatrimoineList.PLACEMENTS, "plc_1");
         assertThat(adapter.getPlacements()).isEmpty();
     }
 }

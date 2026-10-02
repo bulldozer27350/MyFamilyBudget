@@ -22,6 +22,7 @@ import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.RetirementReader;
+import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 import com.moe.myfamilybudget.server.internal.port.TaxReader;
 import org.springframework.http.ResponseEntity;
@@ -134,7 +135,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
                 } else if ("updateSettings".equalsIgnoreCase(action) || map.containsKey("field")) {
                     String field = String.valueOf(map.get("field"));
                     Object value = map.get("value");
-                    taxCommandService.updateTaxSettings(field, value);
+                    TaxSettingField.find(field).ifPresent(f -> taxCommandService.updateTaxSettings(f, value));
                     return ResponseEntity.ok().build();
                 }
             }

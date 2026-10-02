@@ -8,6 +8,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
 import com.moe.myfamilybudget.server.internal.port.TaxWriter;
 
 /**
@@ -42,9 +43,9 @@ public class TaxCommandService {
     /**
      * @throws IllegalArgumentException si {@code field} est {@code null} (aucune ecriture n'est alors faite)
      */
-    public void updateTaxSettings(String field, Object value) {
+    public void updateTaxSettings(TaxSettingField field, Object value) {
         if (field == null) {
-            throw new IllegalArgumentException("Le nom du parametre fiscal est obligatoire");
+            throw new IllegalArgumentException("Le parametre fiscal est obligatoire");
         }
         taxWriter.updateTaxSettings(field, value);
     }

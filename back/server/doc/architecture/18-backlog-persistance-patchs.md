@@ -308,7 +308,31 @@ DB-031, DB-040 et DB-041 en parallèle.
 - **Prérequis** : DB-020, DB-021, DB-030, DB-031, DB-040, DB-041.
 - **Objectif** : faire disparaître les contrats `listKey` / `field` / `value` des chemins métier ordinaires.
 - **Validation** : suite backend + Playwright des écrans concernés.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré (lot 1 — `listKey` et `kind`)** : enums `TresorerieList`, `TresorerieAdjustmentKind` et
+  `PatrimoineList` (package `port`), interprétés **une seule fois** à la frontière REST
+  (`TresorerieServiceImpl`, `PatrimoineServiceImpl`) ; `TresorerieCommandService`, `PatrimoineCommandService`,
+  `TresorerieWriter`, `PatrimoineWriter` et leurs adapters ne manipulent plus de `listKey` / `kind` en chaîne. Seuls
+  les adapters traduisent l'enum vers la clé historique (`list.key()`) pour appeler `PersistenceManager`, qui reste
+  inchangé (réduction en DB-060). Contrats REST inchangés ; une `listKey` inconnue est désormais refusée en 400
+  pour l'ajout, la suppression et la sauvegarde (avant : no-op silencieux ; la mise à jour la refusait déjà).
+- **Livré (lot 2 — `field` fiscalité et catégories d'actifs)** : enums `TaxSettingField` et `AssetCategoryField`
+  (package `port`) ; `TaxCommandService.updateTaxSettings`, `PatrimoineCommandService.updateAssetCategory`, leurs ports
+  et adapters sont typés. L'interprétation du nom de champ se fait à la frontière REST (`ImpotsServiceImpl`,
+  `ParametersServiceImpl`) via `find(...)` : un champ inconnu reste sans effet, comme avant (aucun nouveau 400).
+- **Livré (lot 3 — `field` Trésorerie)** : enum `TresorerieLineField` (union des 29 champs des `*FieldUpdaters`) ;
+  `TresorerieCommandService.updateTresorerieRow`, `TresorerieWriter` et l'adapter sont typés. Le champ est interprété
+  à la frontière REST (`TresorerieServiceImpl`) : un champ inconnu est refusé en 400 (`UnknownTresorerieFieldException`,
+  comme avant quand la ligne existait ; désormais aussi si la ligne n'existe pas). La validité d'un champ pour une liste
+  reste vérifiée par les `*FieldUpdaters`.
+- **Reporté volontairement** : les chaînes `listKey` / `field` qui subsistent sont confinées (a) à la frontière REST
+  (Banque : `StatementBankImportServiceImpl`, dont la command est déjà typée) et (b) à `PersistenceManager` /
+  `BudgetMutationService` / `*FieldUpdaters`, appelés uniquement par les adapters (`list.key()`, `field.key()`,
+  `LIST_KEY` de `LoanPersistenceAdapter` / `GoalPersistenceAdapter`). Leur retrait relève de DB-060 (réduction de
+  `PersistenceManager`) et de DB-1190, car les adapters en dépendent jusqu'à la bascule JPA.
+- **Tests** : `TresorerieCommandServiceTest`, `PatrimoineCommandServiceTest` et `TaxCommandServiceTest` adaptés aux
+  enums (+ `fromKey` / `fromKind` / `find`, valeur inconnue ou `null`) ; `TresorerieServiceImplTest` : champ ou liste
+  inconnus refusés.
 
 ## DB-060 — Réduire `PersistenceManager`
 

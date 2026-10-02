@@ -5,6 +5,8 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
+import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineList;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineWriter;
 
 /**
@@ -12,6 +14,9 @@ import com.moe.myfamilybudget.server.internal.port.PatrimoineWriter;
  * Unique point d'ecriture du patrimoine (immobilier, placements, categories d'actifs et historique de
  * valorisation) : valide la commande puis delegue au port {@link PatrimoineWriter}. N'a plus de
  * dependance directe vers {@code PersistenceManager}.
+ *
+ * <p>DB-050 : la liste est un enum ({@link PatrimoineList}) interprete a la frontiere REST ; ce service ne
+ * manipule plus de {@code listKey} en chaine.
  *
  * <p>Les identifiants issus de l'URL ne sont jamais {@code null} cote REST : un {@code null} est donc une
  * erreur de programmation, refusee avant toute ecriture ({@link IllegalArgumentException}). Un corps
@@ -27,15 +32,15 @@ public class PatrimoineCommandService {
         this.patrimoineWriter = patrimoineWriter;
     }
 
-    public Map<String, Object> savePatrimoineRow(String listKey, Map<String, Object> body) {
-        require(listKey, "La liste patrimoine (listKey)");
-        return patrimoineWriter.savePatrimoineRow(listKey, body);
+    public Map<String, Object> savePatrimoineRow(PatrimoineList list, Map<String, Object> body) {
+        require(list, "La liste patrimoine");
+        return patrimoineWriter.savePatrimoineRow(list, body);
     }
 
-    public void deletePatrimoineRow(String listKey, String id) {
-        require(listKey, "La liste patrimoine (listKey)");
+    public void deletePatrimoineRow(PatrimoineList list, String id) {
+        require(list, "La liste patrimoine");
         require(id, "L'identifiant de la ligne");
-        patrimoineWriter.deletePatrimoineRow(listKey, id);
+        patrimoineWriter.deletePatrimoineRow(list, id);
     }
 
     public Map<String, Object> addPlacementHistoryEntry(String placementId, Map<String, Object> body) {
@@ -60,7 +65,7 @@ public class PatrimoineCommandService {
         patrimoineWriter.addAssetCategory(category);
     }
 
-    public void updateAssetCategory(String id, String field, Object value) {
+    public void updateAssetCategory(String id, AssetCategoryField field, Object value) {
         require(id, "L'identifiant de la categorie d'actif");
         require(field, "Le champ de la categorie d'actif");
         patrimoineWriter.updateAssetCategory(id, field, value);

@@ -27,6 +27,7 @@ import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
 import com.moe.myfamilybudget.server.internal.port.LoanReader;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineList;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
@@ -103,7 +104,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         } else if (isGoalList(listKey)) {
             this.goalCommandService.saveGoalRow(map);
         } else {
-            this.patrimoineCommandService.savePatrimoineRow(listKey, map);
+            this.patrimoineCommandService.savePatrimoineRow(PatrimoineList.fromKey(listKey), map);
         }
         return ResponseEntity.ok().build();
     }
@@ -115,7 +116,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         } else if (isGoalList(listKey)) {
             this.goalCommandService.deleteGoalRow(id);
         } else {
-            this.patrimoineCommandService.deletePatrimoineRow(listKey, id);
+            this.patrimoineCommandService.deletePatrimoineRow(PatrimoineList.fromKey(listKey), id);
         }
         return ResponseEntity.noContent().build();
     }

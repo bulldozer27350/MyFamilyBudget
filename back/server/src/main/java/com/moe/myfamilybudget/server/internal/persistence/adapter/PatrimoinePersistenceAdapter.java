@@ -10,6 +10,8 @@ import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
+import com.moe.myfamilybudget.server.internal.port.PatrimoineList;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineWriter;
 
@@ -46,13 +48,13 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
     }
 
     @Override
-    public Map<String, Object> savePatrimoineRow(String listKey, Map<String, Object> body) {
-        return persistenceManager.savePatrimoineRow(listKey, body);
+    public Map<String, Object> savePatrimoineRow(PatrimoineList list, Map<String, Object> body) {
+        return persistenceManager.savePatrimoineRow(list.key(), body);
     }
 
     @Override
-    public void deletePatrimoineRow(String listKey, String id) {
-        persistenceManager.deletePatrimoineRow(listKey, id);
+    public void deletePatrimoineRow(PatrimoineList list, String id) {
+        persistenceManager.deletePatrimoineRow(list.key(), id);
     }
 
     @Override
@@ -77,8 +79,8 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
     }
 
     @Override
-    public void updateAssetCategory(String id, String field, Object value) {
-        persistenceManager.updateAssetCategory(id, field, value);
+    public void updateAssetCategory(String id, AssetCategoryField field, Object value) {
+        persistenceManager.updateAssetCategory(id, field.key(), value);
     }
 
     @Override

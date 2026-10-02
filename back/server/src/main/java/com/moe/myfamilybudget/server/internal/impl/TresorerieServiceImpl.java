@@ -42,6 +42,10 @@ import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
+import com.moe.myfamilybudget.server.internal.port.TresorerieAdjustmentKind;
+import com.moe.myfamilybudget.server.internal.port.TresorerieLineField;
+import com.moe.myfamilybudget.server.internal.port.TresorerieList;
+import com.moe.myfamilybudget.server.internal.updater.UnknownTresorerieFieldException;
 
 /**
  * Contrôleur REST de la trésorerie prévisionnelle (Trésorerie) : orchestration HTTP uniquement
@@ -106,21 +110,24 @@ public class TresorerieServiceImpl implements TresorerieApi {
 
     @Override
     public ResponseEntity<Object> addTresorerieLigne(String listKey, Object body) {
-        Map<String, Object> created = this.tresorerieCommandService.addTresorerieRow(listKey, (Map<String, Object>)body);
+        Map<String, Object> created = this.tresorerieCommandService.addTresorerieRow(TresorerieList.fromKey(listKey), (Map<String, Object>)body);
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(created);
     }
 
     @Override
     public ResponseEntity<Void> updateTresorerieLigne(String listKey, String id, com.moe.myfamilybudget.api.model.UpdateTresorerieLigneRequestDto body) {
         if (body != null) {
-            this.tresorerieCommandService.updateTresorerieRow(listKey, id, body.getField(), body.getValue());
+            TresorerieList list = TresorerieList.fromKey(listKey);
+            TresorerieLineField field = TresorerieLineField.find(body.getField())
+                    .orElseThrow(() -> new UnknownTresorerieFieldException(listKey, body.getField()));
+            this.tresorerieCommandService.updateTresorerieRow(list, id, field, body.getValue());
         }
         return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<Void> removeTresorerieLigne(String listKey, String id) {
-        this.tresorerieCommandService.removeTresorerieRow(listKey, id);
+        this.tresorerieCommandService.removeTresorerieRow(TresorerieList.fromKey(listKey), id);
         return ResponseEntity.noContent().build();
     }
 
@@ -128,7 +135,8 @@ public class TresorerieServiceImpl implements TresorerieApi {
     public ResponseEntity<Void> applyTresorerieAjustement(TresorerieAjustementRequestDto request) {
         if (request != null && request.getLineId() != null && request.getKind() != null && request.getNewMonthly() != null) {
             BigDecimal newMonthly = BigDecimal.valueOf(request.getNewMonthly().doubleValue());
-            this.tresorerieCommandService.applyTresorerieAjustement(request.getLineId(), request.getKind(), newMonthly);
+            this.tresorerieCommandService.applyTresorerieAjustement(request.getLineId(),
+                    TresorerieAdjustmentKind.fromKind(request.getKind()), newMonthly);
         }
         return ResponseEntity.ok().build();
     }

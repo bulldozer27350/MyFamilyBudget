@@ -19,7 +19,7 @@ public interface TaxWriter {
                          List<TaxRateOverrideModel> rateOverrides, List<TaxActualOverrideModel> actualOverrides);
 
     /** Met a jour un champ des parametres historiquement portes par la fiscalite (voir 12-settings.md). */
-    void updateTaxSettings(String field, Object value);
+    void updateTaxSettings(TaxSettingField field, Object value);
 
     /** Restaure le bareme par defaut ; enfants et surcharges sont conserves. */
     void resetDefaultTaxBrackets();

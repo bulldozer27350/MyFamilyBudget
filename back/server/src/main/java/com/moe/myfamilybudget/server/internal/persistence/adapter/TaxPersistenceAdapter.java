@@ -10,6 +10,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.port.TaxReader;
+import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
 import com.moe.myfamilybudget.server.internal.port.TaxWriter;
 
 /**
@@ -52,8 +53,8 @@ public class TaxPersistenceAdapter implements TaxReader, TaxWriter {
     }
 
     @Override
-    public void updateTaxSettings(String field, Object value) {
-        persistenceManager.updateTaxSettings(field, value);
+    public void updateTaxSettings(TaxSettingField field, Object value) {
+        persistenceManager.updateTaxSettings(field.key(), value);
     }
 
     @Override

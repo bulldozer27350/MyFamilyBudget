@@ -3,6 +3,7 @@ package com.moe.myfamilybudget.server.internal.impl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
@@ -379,6 +380,31 @@ class TresorerieServiceImplTest {
         assertNotNull(updated);
         assertEquals(new BigDecimal("0.08"), updated.getRate());
         assertEquals(2027, updated.getStartYear());
+    }
+
+    @Test
+    void updateTresorerieLigne_unknownFieldOrList_isRejected() {
+        ResponseEntity<Object> addResp = service.addTresorerieLigne("charges", new HashMap<>());
+        @SuppressWarnings("unchecked")
+        String id = (String) ((Map<String, Object>) addResp.getBody()).get("id");
+
+        UpdateTresorerieLigneRequestDto unknownField = new UpdateTresorerieLigneRequestDto();
+        unknownField.setField("inconnu");
+        unknownField.setValue("x");
+        assertThrows(com.moe.myfamilybudget.server.internal.updater.UnknownTresorerieFieldException.class,
+                () -> service.updateTresorerieLigne("charges", id, unknownField));
+
+        // champ connu mais sans objet pour la liste visee : toujours refuse par les updaters
+        UpdateTresorerieLigneRequestDto wrongList = new UpdateTresorerieLigneRequestDto();
+        wrongList.setField("ratePess");
+        wrongList.setValue(new BigDecimal("0.03"));
+        assertThrows(com.moe.myfamilybudget.server.internal.updater.UnknownTresorerieFieldException.class,
+                () -> service.updateTresorerieLigne("charges", id, wrongList));
+
+        UpdateTresorerieLigneRequestDto ok = new UpdateTresorerieLigneRequestDto();
+        ok.setField("label");
+        ok.setValue("x");
+        assertThrows(IllegalArgumentException.class, () -> service.updateTresorerieLigne("inconnue", id, ok));
     }
 
     // -------------------------------------------------------------------------
