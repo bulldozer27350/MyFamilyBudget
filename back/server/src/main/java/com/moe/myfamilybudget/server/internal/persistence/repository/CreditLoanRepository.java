@@ -9,7 +9,7 @@ import com.moe.myfamilybudget.server.internal.persistence.entity.CreditLoanEntit
 
 /**
  * Repository autonome du domaine Credit (DB-1040), sans lien avec {@code BudgetDataEntity}.
- * Additif : pas encore branche sur {@code LoanPersistenceAdapter} (bascule en DB-1041).
+ * Lu par {@code LoanPersistenceAdapter} (DB-1041) ; alimente par {@code BudgetPersistenceGateway}.
  */
 @Repository
 public interface CreditLoanRepository extends JpaRepository<CreditLoanEntity, String> {

@@ -26,6 +26,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.moe.myfamilybudget.server.internal.persistence.converter.CreditLoanEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.server.internal.persistence.converter.GoalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BankImportEntity;
@@ -34,6 +35,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCatego
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CreditLoanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
@@ -97,6 +99,8 @@ class BudgetPersistenceGateway {
     // DB-1021 : tables autonomes du domaine Objectifs, alimentees en ecriture a chaque sauvegarde du modele
     // (le hub reste la source de chargement du cache, ce qui garde le retour arriere trivial).
     private final GoalRepository goalRepository;
+    // DB-1041 : table autonome du domaine Credit, meme principe que goalRepository.
+    private final CreditLoanRepository creditLoanRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -118,7 +122,8 @@ class BudgetPersistenceGateway {
                               BankImportRepository bankImportRepository,
                               LoanRepository loanRepository,
                               ObjectifRepository objectifRepository,
-                              GoalRepository goalRepository) {
+                              GoalRepository goalRepository,
+                              CreditLoanRepository creditLoanRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.incomeRepository = incomeRepository;
         this.chargeRepository = chargeRepository;
@@ -137,6 +142,7 @@ class BudgetPersistenceGateway {
         this.loanRepository = loanRepository;
         this.objectifRepository = objectifRepository;
         this.goalRepository = goalRepository;
+        this.creditLoanRepository = creditLoanRepository;
     }
 
     /**
@@ -164,6 +170,8 @@ class BudgetPersistenceGateway {
             // DB-1021 : re-synchronise les tables Objectifs depuis le hub (migration au premier demarrage,
             // puis reparation idempotente a chaque chargement).
             syncGoals(loaded.objectifs());
+            // DB-1041 : idem pour la table Credit.
+            syncCreditLoans(loaded.loans());
         }
         return loaded;
     }
@@ -233,6 +241,7 @@ class BudgetPersistenceGateway {
         saveLoans(model.loans(), entity);
         saveObjectifs(model.objectifs(), entity);
         syncGoals(model.objectifs());
+        syncCreditLoans(model.loans());
         saveBankImport(model.bankImport(), entity);
     }
 
@@ -275,6 +284,28 @@ class BudgetPersistenceGateway {
                     objectifs.size() - identified.size());
         }
         goalRepository.saveAll(GoalEntityMapper.toEntities(identified));
+    }
+
+    /**
+     * DB-1041 : remplace le contenu de la table {@code credit_loan} par les prets du modele, dans la
+     * transaction de l'appelant. Meme contrainte que {@link #syncGoals} : {@code flush} apres la suppression
+     * pour eviter la violation de la cle primaire metier. Un pret sans identifiant reste dans le cache et le
+     * hub mais n'est pas copie dans la nouvelle table.
+     */
+    private void syncCreditLoans(List<LoanModel> loans) {
+        creditLoanRepository.deleteAll();
+        creditLoanRepository.flush();
+        if (loans == null || loans.isEmpty()) {
+            return;
+        }
+        List<LoanModel> identified = loans.stream()
+                .filter(l -> l != null && l.id() != null)
+                .toList();
+        if (identified.size() != loans.size()) {
+            LOG.warn("{} pret(s) sans identifiant ignore(s) lors de la synchronisation de la table Credit",
+                    loans.size() - identified.size());
+        }
+        creditLoanRepository.saveAll(CreditLoanEntityMapper.toEntities(identified));
     }
 
     private BankImportModel loadBankImport(Long budgetDataId) {

@@ -479,7 +479,22 @@ pas les agents qui travaillent sur les autres domaines.
 
 ### Statut DB-1041 — JPA Crédit — basculer l'adapter
 
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `LoanPersistenceAdapter.getLoans()` lit désormais `CreditLoanRepository` (table `credit_loan`) via
+  `CreditLoanEntityMapper`. Les écritures (`saveLoanRow`, `deleteLoanRow`) restent portées par `PersistenceManager` ;
+  `BudgetPersistenceGateway` recopie les prêts du modèle dans la table autonome à chaque sauvegarde, dans la même
+  transaction (import, reset et mutations de tous domaines inclus : rollback cohérent). Au chargement du cache
+  (démarrage), la table est reconstruite depuis le hub, ce qui migre les données existantes sans script.
+  `CreditLoanRepository` est injecté dans `PersistenceManager` (constructeur élargi ; fabrique et tests adaptés).
+- **Retour arrière** : le hub (`loan`) reste alimenté et reste la source de chargement du cache. Le constructeur
+  `LoanPersistenceAdapter(PersistenceManager)` conserve la lecture depuis le cache (tests unitaires à repositories
+  mockés) ; revenir au comportement antérieur en production consiste à revenir sur ce patch.
+- **Tests** : `PersistenceAdaptersJpaRoundTripTest` (H2) : prêts d'un import relus par JPA, création / mise à jour
+  (taux non arrondi) / suppression visibles via la lecture JPA, reconstruction de la table au démarrage, reset.
+  Constructeurs de `PersistenceManager` adaptés dans `PersistenceManagerTestFactory`, `WriteFailureKeepsMemoryTest`
+  et le round-trip.
+- **Reste** : `VT-320` (redémarrage, H2 + PostgreSQL) couvre déjà `POST /patrimoine/loans` ; à exécuter en CI. La
+  suppression de la relation du hub relève de DB-1140.
 
 ## DB-1050 / DB-1051 — JPA Patrimoine
 

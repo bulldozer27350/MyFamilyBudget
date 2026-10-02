@@ -12,6 +12,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCatego
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CreditLoanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
@@ -86,6 +87,7 @@ public final class PersistenceManagerTestFactory {
                 mock(LoanRepository.class),
                 mock(ObjectifRepository.class),
                 mock(GoalRepository.class),
+                mock(CreditLoanRepository.class),
                 mock(PlatformTransactionManager.class),
                 mock(ApplicationEventPublisher.class));
     }

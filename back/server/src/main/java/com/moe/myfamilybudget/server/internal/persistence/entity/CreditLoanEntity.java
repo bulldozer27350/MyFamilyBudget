@@ -12,8 +12,8 @@ import jakarta.persistence.Table;
  *
  * <p>Contrairement a {@link LoanEntity}, cette entite n'a <strong>aucune relation vers
  * {@link BudgetDataEntity}</strong> : elle est la racine de son propre agregat. Elle est additive et
- * n'est pas encore utilisee par {@code LoanPersistenceAdapter} (bascule en DB-1041). Le chemin legacy
- * (table {@code loan}) reste inchange.
+ * est lue par {@code LoanPersistenceAdapter} depuis DB-1041. Le chemin legacy (table {@code loan}) reste
+ * alimente en parallele pour permettre un retour arriere simple.
  *
  * <p>Le taux est stocke en fraction (0,0251 = 2,51 %) avec 8 decimales : une precision par defaut
  * l'arrondirait (voir {@code RatePrecisionPersistenceTest}).

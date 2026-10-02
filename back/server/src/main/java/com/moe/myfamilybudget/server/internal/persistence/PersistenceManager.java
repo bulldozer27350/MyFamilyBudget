@@ -44,6 +44,7 @@ public class PersistenceManager {
     private final LoanRepository loanRepository;
     private final ObjectifRepository objectifRepository;
     private final GoalRepository goalRepository;
+    private final CreditLoanRepository creditLoanRepository;
 
     // Gestion programmatique de la transaction pour l'initialisation au démarrage.
     // Voir le commentaire dans BudgetPersistenceGateway.save() : le @Transactional de classe ne
@@ -104,6 +105,7 @@ public class PersistenceManager {
                             LoanRepository loanRepository,
                             ObjectifRepository objectifRepository,
                             GoalRepository goalRepository,
+                            CreditLoanRepository creditLoanRepository,
                             PlatformTransactionManager transactionManager,
                             ApplicationEventPublisher eventPublisher) {
         this.budgetDataRepository = budgetDataRepository;
@@ -126,6 +128,7 @@ public class PersistenceManager {
         this.loanRepository = loanRepository;
         this.objectifRepository = objectifRepository;
         this.goalRepository = goalRepository;
+        this.creditLoanRepository = creditLoanRepository;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.gateway = new BudgetPersistenceGateway(
                 budgetDataRepository, incomeRepository, chargeRepository, placementRepository,
@@ -133,7 +136,7 @@ public class PersistenceManager {
                 variableIncomeRepository, variableOverrideRepository, taxChildRepository,
                 taxBracketRepository, taxRateOverrideRepository, taxActualOverrideRepository,
                 assetCategoryRepository, bankImportRepository, loanRepository, objectifRepository,
-                goalRepository);
+                goalRepository, creditLoanRepository);
         this.cacheStore = new BudgetCacheStore(this.gateway, this.transactionTemplate);
         this.mutationService = new BudgetMutationService(this.cacheStore);
         this.eventPublisher = eventPublisher;

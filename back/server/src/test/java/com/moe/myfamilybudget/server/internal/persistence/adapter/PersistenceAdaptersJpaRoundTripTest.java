@@ -42,6 +42,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCatego
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CreditLoanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
@@ -344,6 +345,70 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     // =========================================================================
+    // DB-1041 -- Prets lus depuis la table autonome
+    // =========================================================================
+
+    private LoanPersistenceAdapter jpaLoanAdapter(PersistenceManager manager) {
+        return new LoanPersistenceAdapter(manager, context.getBean(CreditLoanRepository.class));
+    }
+
+    @Test
+    @DisplayName("DB-1041 -- import -> les prets sont recopies dans la table autonome et relus par JPA")
+    void importedLoansAreReadFromCreditTable() {
+        writer.setBudgetData(referenceData());
+
+        assertThat(context.getBean(CreditLoanRepository.class).count()).isEqualTo(1);
+        assertSameContent(jpaLoanAdapter(freshReader()).getLoans(), List.of(LOAN));
+    }
+
+    @Test
+    @DisplayName("DB-1041 -- creation, mise a jour et suppression d'un pret sont visibles via la lecture JPA")
+    void loanWritesAreVisibleThroughJpaReader() {
+        writer.setBudgetData(referenceData());
+        LoanPersistenceAdapter adapter = jpaLoanAdapter(writer);
+
+        adapter.saveLoanRow(Map.of("id", "loan_2", "label", "Pret auto", "crd", bd("12000"),
+                "rate", bd("0.02512"), "monthly", bd("300")));
+        assertThat(adapter.getLoans()).extracting(LoanModel::id).containsExactlyInAnyOrder("loan_1", "loan_2");
+        assertThat(adapter.getLoans()).filteredOn(l -> "loan_2".equals(l.id()))
+                .singleElement()
+                .satisfies(l -> assertThat(l.rate()).isEqualByComparingTo("0.02512"));
+
+        adapter.saveLoanRow(Map.of("id", "loan_2", "label", "Pret auto solde", "crd", bd("0"),
+                "rate", bd("0.02512"), "monthly", bd("300")));
+        assertThat(adapter.getLoans()).filteredOn(l -> "loan_2".equals(l.id()))
+                .singleElement()
+                .satisfies(l -> assertThat(l.label()).isEqualTo("Pret auto solde"));
+
+        adapter.deleteLoanRow("loan_1");
+        assertThat(jpaLoanAdapter(freshReader()).getLoans()).extracting(LoanModel::id)
+                .containsExactly("loan_2");
+    }
+
+    @Test
+    @DisplayName("DB-1041 -- table autonome vide au demarrage (donnees pre-existantes) -> reconstruite depuis le hub")
+    void creditTableIsRebuiltFromHubOnStartup() {
+        writer.setBudgetData(referenceData());
+        context.getBean(CreditLoanRepository.class).deleteAll();
+        assertThat(context.getBean(CreditLoanRepository.class).count()).isZero();
+
+        PersistenceManager restarted = freshReader();
+
+        assertSameContent(jpaLoanAdapter(restarted).getLoans(), List.of(LOAN));
+    }
+
+    @Test
+    @DisplayName("DB-1041 -- reinitialisation -> la table autonome est videe")
+    void resetEmptiesCreditTable() {
+        writer.setBudgetData(referenceData());
+
+        writer.resetData();
+
+        assertThat(context.getBean(CreditLoanRepository.class).count()).isZero();
+        assertThat(jpaLoanAdapter(writer).getLoans()).isEmpty();
+    }
+
+    // =========================================================================
     // Utilitaires
     // =========================================================================
 
@@ -373,6 +438,7 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(LoanRepository.class),
                 context.getBean(ObjectifRepository.class),
                 context.getBean(GoalRepository.class),
+                context.getBean(CreditLoanRepository.class),
                 transactionManager,
                 eventPublisher);
         reader.init();
