@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.moe.myfamilybudget.api.controller.ParametresApi;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
+import com.moe.myfamilybudget.server.internal.command.SettingsCommandRouter;
 import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
@@ -21,13 +22,15 @@ import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
-import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
 
 /**
  * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
  * {@code PersistenceManager}. {@code getSettings()} lit via {@link SettingsReader},
  * {@link PatrimoineReader} (catégories d'actifs) et {@link BankReader} ; {@code saveSettings()}
  * ne lit rien et délègue déjà entièrement aux services de commande par domaine.
+ *
+ * <p>SET-020 : le routage des champs vers leur owner (Retraite, Fiscalité, Trésorerie, Objectifs, Simulation,
+ * Hypothèses économiques) est délégué à {@link SettingsCommandRouter} ; l'atomicité reste portée ici.
  *
  * <p>VT-340 : {@code saveSettings} est {@code @Transactional} — une mise à jour touchant plusieurs
  * propriétaires (Objectifs, Fiscalité/Paramètres) est appliquée en entier ou pas du tout.
@@ -43,6 +46,7 @@ public class ParametersServiceImpl implements ParametresApi {
     private final ObjectifsSettingsService objectifsSettingsService;
     private final PatrimoineCommandService patrimoineCommandService;
     private final TaxCommandService taxCommandService;
+    private final SettingsCommandRouter settingsCommandRouter;
 
     public ParametersServiceImpl(
             SettingsReader settingsReader,
@@ -51,7 +55,8 @@ public class ParametersServiceImpl implements ParametresApi {
             SettingsMapper settingsMapper,
             ObjectifsSettingsService objectifsSettingsService,
             PatrimoineCommandService patrimoineCommandService,
-            TaxCommandService taxCommandService) {
+            TaxCommandService taxCommandService,
+            SettingsCommandRouter settingsCommandRouter) {
         this.settingsReader = settingsReader;
         this.patrimoineReader = patrimoineReader;
         this.bankReader = bankReader;
@@ -59,6 +64,7 @@ public class ParametersServiceImpl implements ParametresApi {
         this.objectifsSettingsService = objectifsSettingsService;
         this.patrimoineCommandService = patrimoineCommandService;
         this.taxCommandService = taxCommandService;
+        this.settingsCommandRouter = settingsCommandRouter;
     }
 
     @Override
@@ -115,13 +121,10 @@ public class ParametersServiceImpl implements ParametresApi {
 
     /**
      * Façade unique de {@code PATCH /settings} (voir doc/architecture/12-settings.md) : chaque
-     * champ est routé vers le domaine propriétaire.
+     * champ est routé par propriété vers son owner (SET-020), via la table de routage partagée
+     * {@link SettingsCommandRouter}.
      */
     private void updateSetting(String field, Object value) {
-        if (ObjectifsSettingsService.owns(field)) {
-            objectifsSettingsService.updateField(field, value);
-        } else {
-            TaxSettingField.find(field).ifPresent(f -> taxCommandService.updateTaxSettings(f, value));
-        }
+        settingsCommandRouter.updateSetting(field, value);
     }
 }

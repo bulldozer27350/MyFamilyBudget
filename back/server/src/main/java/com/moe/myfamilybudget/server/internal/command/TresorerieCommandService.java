@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import com.moe.myfamilybudget.server.internal.port.TresorerieAdjustmentKind;
 import com.moe.myfamilybudget.server.internal.port.TresorerieLineField;
 import com.moe.myfamilybudget.server.internal.port.TresorerieList;
+import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
 import com.moe.myfamilybudget.server.internal.port.TresorerieWriter;
 
 /**
@@ -58,6 +59,15 @@ public class TresorerieCommandService {
         require(kind, "Le type de ligne a ajuster");
         require(newMonthly, "Le nouveau montant mensuel");
         tresorerieWriter.applyTresorerieAjustement(lineId, kind, newMonthly);
+    }
+
+    /**
+     * SET-020 : owner des paramètres de la famille Trésorerie exposés par {@code PATCH /settings} (pivot,
+     * solde de départ, sweep, plafonds de cash). Une valeur {@code null} reste acceptée (contrat historique).
+     */
+    public void updateTresorerieSetting(TresorerieSettingField field, Object value) {
+        require(field, "Le parametre de tresorerie");
+        tresorerieWriter.updateTresorerieSetting(field, value);
     }
 
     private static void require(Object value, String label) {

@@ -26,6 +26,7 @@ import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersis
 import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.SettingsCommandRouterTestFactory;
 
 class ParametersServiceImplTest {
 
@@ -38,14 +39,17 @@ class ParametersServiceImplTest {
         mapper = new SettingsMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
+        ObjectifsSettingsService objectifsSettingsService =
+                new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore());
         service = new ParametersServiceImpl(
                 new SettingsPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 new BankPersistenceAdapter(persistenceManager),
                 mapper,
-                new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore()),
+                objectifsSettingsService,
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
-                new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)));
+                new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)),
+                SettingsCommandRouterTestFactory.of(persistenceManager, objectifsSettingsService));
     }
 
     @Test
@@ -91,6 +95,36 @@ class ParametersServiceImplTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> settings = (Map<String, Object>) body.get("settings");
         assertEquals(new BigDecimal("0.025"), settings.get("inflationRate"));
+    }
+
+    @Test
+    @DisplayName("SET-020 : un PATCH multi-owners écrit chaque famille et GET /settings les relit toutes")
+    void testSettingsRoutedToEachOwner() {
+        service.saveSettings(Map.of("settings", Map.of(
+                "retireAge", 62,
+                "childExitAge", 23,
+                "pivotMode", "manual",
+                "simulateUntilAge", 90,
+                "inflationRate", new BigDecimal("0.03"),
+                "goalSecureHorizonMonths", 18)));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> settings = (Map<String, Object>) ((Map<String, Object>) service.getSettings().getBody())
+                .get("settings");
+        assertEquals(62, settings.get("retireAge"));
+        assertEquals(23, settings.get("childExitAge"));
+        assertEquals("manual", settings.get("pivotMode"));
+        assertEquals(90, settings.get("simulateUntilAge"));
+        assertEquals(new BigDecimal("0.03"), settings.get("inflationRate"));
+        assertEquals(18, settings.get("goalSecureHorizonMonths"));
+    }
+
+    @Test
+    @DisplayName("SET-020 : un champ inconnu est ignoré sans erreur")
+    void testUnknownSettingIsIgnored() {
+        ResponseEntity<Void> response = service.saveSettings(Map.of("field", "unknownField", "value", 1));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test

@@ -9,6 +9,7 @@ import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.port.TresorerieAdjustmentKind;
 import com.moe.myfamilybudget.server.internal.port.TresorerieLineField;
 import com.moe.myfamilybudget.server.internal.port.TresorerieList;
+import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
 import com.moe.myfamilybudget.server.internal.port.TresorerieWriter;
 
 /**
@@ -42,5 +43,14 @@ public class TresoreriePersistenceAdapter implements TresorerieWriter {
     @Override
     public void applyTresorerieAjustement(String lineId, TresorerieAdjustmentKind kind, BigDecimal newMonthly) {
         persistenceManager.write(m -> m.applyTresorerieAjustement(lineId, kind.kind(), newMonthly));
+    }
+
+    /**
+     * SET-020 : le stockage physique des paramètres reste partagé ({@code SettingsEntity}) ; la mutation de
+     * transition est la même que pour les autres familles. Sa séparation relève des patchs DB-xxx.
+     */
+    @Override
+    public void updateTresorerieSetting(TresorerieSettingField field, Object value) {
+        persistenceManager.write(m -> m.updateTaxSettings(field.key(), value));
     }
 }

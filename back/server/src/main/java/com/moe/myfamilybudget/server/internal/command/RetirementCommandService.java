@@ -3,6 +3,7 @@ package com.moe.myfamilybudget.server.internal.command;
 import org.springframework.stereotype.Service;
 
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
+import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
 import com.moe.myfamilybudget.server.internal.port.RetirementWriter;
 
 /**
@@ -27,5 +28,17 @@ public class RetirementCommandService {
             throw new IllegalArgumentException("Le modele de retraite est obligatoire");
         }
         retirementWriter.updateRetirement(retirement);
+    }
+
+    /**
+     * SET-020 : owner des paramètres de la famille Retraite exposés par {@code PATCH /settings}.
+     *
+     * @throws IllegalArgumentException si {@code field} est {@code null} (aucune ecriture n'est alors faite)
+     */
+    public void updateRetirementSetting(RetirementSettingField field, Object value) {
+        if (field == null) {
+            throw new IllegalArgumentException("Le parametre de retraite est obligatoire");
+        }
+        retirementWriter.updateRetirementSetting(field, value);
     }
 }

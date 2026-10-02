@@ -11,4 +11,10 @@ public interface RetirementWriter {
 
     /** Remplace les parametres et les personnes du domaine Retraite. */
     void updateRetirement(RetirementModel retirement);
+
+    /**
+     * SET-020 : met à jour un paramètre de la famille Retraite exposé par {@code PATCH /settings}
+     * ({@code birthYear}, {@code retireAge}, {@code pass2026}, {@code passGrowthRate}).
+     */
+    void updateRetirementSetting(RetirementSettingField field, Object value);
 }

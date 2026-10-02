@@ -17,12 +17,12 @@ import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxYearlyModel;
 import com.moe.myfamilybudget.server.internal.model.TaxResultModel;
+import com.moe.myfamilybudget.server.internal.command.SettingsCommandRouter;
 import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.RetirementReader;
-import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 import com.moe.myfamilybudget.server.internal.port.TaxReader;
 import org.springframework.http.ResponseEntity;
@@ -49,6 +49,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
     private final RetirementInputFactory retirementInputFactory;
     private final RetirementCalculationService retirementCalculationService;
     private final TaxCommandService taxCommandService;
+    private final SettingsCommandRouter settingsCommandRouter;
     private final SettingsReader settingsReader;
     private final TaxReader taxReader;
     private final BudgetReader budgetReader;
@@ -61,6 +62,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
             RetirementInputFactory retirementInputFactory,
             RetirementCalculationService retirementCalculationService,
             TaxCommandService taxCommandService,
+            SettingsCommandRouter settingsCommandRouter,
             SettingsReader settingsReader,
             TaxReader taxReader,
             BudgetReader budgetReader,
@@ -71,6 +73,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
         this.retirementInputFactory = retirementInputFactory;
         this.retirementCalculationService = retirementCalculationService;
         this.taxCommandService = taxCommandService;
+        this.settingsCommandRouter = settingsCommandRouter;
         this.settingsReader = settingsReader;
         this.taxReader = taxReader;
         this.budgetReader = budgetReader;
@@ -135,7 +138,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
                 } else if ("updateSettings".equalsIgnoreCase(action) || map.containsKey("field")) {
                     String field = String.valueOf(map.get("field"));
                     Object value = map.get("value");
-                    TaxSettingField.find(field).ifPresent(f -> taxCommandService.updateTaxSettings(f, value));
+                    settingsCommandRouter.updateSetting(field, value);
                     return ResponseEntity.ok().build();
                 }
             }

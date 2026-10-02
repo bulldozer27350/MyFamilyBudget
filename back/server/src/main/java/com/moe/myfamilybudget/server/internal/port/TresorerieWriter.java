@@ -26,4 +26,10 @@ public interface TresorerieWriter {
 
     /** Applique un nouveau montant mensuel a une ligne de charges, revenus ou placements. */
     void applyTresorerieAjustement(String lineId, TresorerieAdjustmentKind kind, BigDecimal newMonthly);
+
+    /**
+     * SET-020 : met à jour un paramètre de la famille Trésorerie exposé par {@code PATCH /settings}
+     * (pivot, solde de départ, sweep, plafonds de cash).
+     */
+    void updateTresorerieSetting(TresorerieSettingField field, Object value);
 }

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
@@ -26,7 +27,9 @@ import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePers
 import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.SettingsCommandRouterTestFactory;
 
 class ImpotsServiceImplTest {
 
@@ -44,6 +47,8 @@ class ImpotsServiceImplTest {
                 new RetirementInputFactory(),
                 new RetirementCalculationService(),
                 new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)),
+                SettingsCommandRouterTestFactory.of(persistenceManager,
+                        new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore())),
                 new SettingsPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),

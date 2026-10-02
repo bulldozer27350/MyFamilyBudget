@@ -21,10 +21,12 @@ import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.TresoreriePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.port.TresorerieAdjustmentKind;
 import com.moe.myfamilybudget.server.internal.port.TresorerieLineField;
 import com.moe.myfamilybudget.server.internal.port.TresorerieList;
+import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
 import com.moe.myfamilybudget.server.internal.port.TresorerieWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -167,6 +169,36 @@ class TresorerieCommandServiceTest {
     }
 
     // --- integration avec l'adaptateur ---
+
+    @Test
+    @DisplayName("SET-020 : un parametre de tresorerie est transmis une fois au port d'ecriture")
+    void updateTresorerieSettingDelegatesToWriter() {
+        service.updateTresorerieSetting(TresorerieSettingField.CASH_FLOOR, new BigDecimal("500"));
+
+        verify(writer).updateTresorerieSetting(TresorerieSettingField.CASH_FLOOR, new BigDecimal("500"));
+    }
+
+    @Test
+    @DisplayName("SET-020 : un parametre de tresorerie null est refuse et rien n'est ecrit")
+    void nullTresorerieSettingIsRejectedWithoutWriting() {
+        assertThatThrownBy(() -> service.updateTresorerieSetting(null, 1))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(writer);
+    }
+
+    @Test
+    @DisplayName("SET-020 : l'ecriture d'un parametre de tresorerie est relue par SettingsReader")
+    void tresorerieSettingIsReadBackThroughSettingsReader() {
+        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
+        persistenceManager.init();
+
+        new TresorerieCommandService(new TresoreriePersistenceAdapter(persistenceManager))
+                .updateTresorerieSetting(TresorerieSettingField.PIVOT_MODE, "manual");
+
+        assertThat(new SettingsPersistenceAdapter(persistenceManager).getSettings().pivotMode())
+                .isEqualTo("manual");
+    }
 
     @Test
     @DisplayName("integration adaptateur : revenus et charges relus par le lecteur Budget")

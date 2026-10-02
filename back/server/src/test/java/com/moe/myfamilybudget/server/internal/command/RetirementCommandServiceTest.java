@@ -20,6 +20,8 @@ import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
 import com.moe.myfamilybudget.server.internal.port.RetirementWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -44,6 +46,35 @@ class RetirementCommandServiceTest {
     void setUp() {
         writer = mock(RetirementWriter.class);
         service = new RetirementCommandService(writer);
+    }
+
+    @Test
+    @DisplayName("SET-020 : un parametre de retraite est transmis une fois au port d'ecriture")
+    void updateRetirementSettingDelegatesToWriter() {
+        service.updateRetirementSetting(RetirementSettingField.RETIRE_AGE, 62);
+
+        verify(writer).updateRetirementSetting(RetirementSettingField.RETIRE_AGE, 62);
+    }
+
+    @Test
+    @DisplayName("SET-020 : un parametre de retraite null est refuse et rien n'est ecrit")
+    void nullRetirementSettingIsRejectedWithoutWriting() {
+        assertThatThrownBy(() -> service.updateRetirementSetting(null, 62))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(writer);
+    }
+
+    @Test
+    @DisplayName("SET-020 : l'ecriture d'un parametre de retraite est relue par SettingsReader")
+    void retirementSettingIsReadBackThroughSettingsReader() {
+        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
+        persistenceManager.init();
+
+        new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager))
+                .updateRetirementSetting(RetirementSettingField.RETIRE_AGE, 62);
+
+        assertThat(new SettingsPersistenceAdapter(persistenceManager).getSettings().retireAge()).isEqualTo(62);
     }
 
     @Test

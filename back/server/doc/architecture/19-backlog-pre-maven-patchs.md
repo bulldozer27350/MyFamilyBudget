@@ -173,7 +173,19 @@ Avant tout patch :
 - **Parallélisation** : les contrats Retraite, Fiscalité, Trésorerie, Objectifs, Simulation/Hypothèses peuvent être préparés séparément,
   mais l'intégration du dispatcher reste un patch unique.
 - **Tests** : mise à jour d'un champ par owner ; combinaison de plusieurs owners ; rollback multi-domaines.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Terminé
+- **Livraison** : `SettingsCommandRouter` (package `command`) est la table de routage unique par propriété, utilisée par
+  `PATCH /settings` (`ParametersServiceImpl`, qui garde `@Transactional` et le verrou du budget en premier) **et** par
+  `ImpotsServiceImpl.saveImpotsConfig`. Owners : Retraite (`RetirementCommandService.updateRetirementSetting`),
+  Fiscalité (`childExitAge`, `taxAbattement` seulement), Trésorerie (`TresorerieCommandService.updateTresorerieSetting`),
+  Objectifs (inchangé), Simulation (`SimulationSettingsCommandService`), Hypothèses économiques
+  (`EconomicAssumptionsCommandService`). Nouveaux ports : `RetirementSettingField`, `TresorerieSettingField`,
+  `SimulationSettingsWriter`, `EconomicAssumptionsWriter` (+ méthodes sur `RetirementWriter` / `TresorerieWriter`).
+  Le stockage reste `SettingsEntity` : les adapters réutilisent la mutation de transition `updateTaxSettings(String, Object)`
+  (séparation relevant des `DB-xxx`). `TaxSettingField` et `TaxCommandService.updateTaxSettings` restent en place pour
+  SET-030. Changement de comportement assumé : un champ Objectifs reçu par `saveImpotsConfig` est désormais écrit
+  (il était ignoré sans erreur). `pass2026` / `passGrowthRate` : routés vers Retraite mais écrits dans la même copie
+  qu'avant (SET-040).
 
 ---
 
