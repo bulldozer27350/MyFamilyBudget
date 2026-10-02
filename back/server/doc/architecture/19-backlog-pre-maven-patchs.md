@@ -154,7 +154,7 @@ Avant tout patch :
   - Hypothèses économiques : `inflationRate`.
 - **Travaux attendus** : formaliser le tableau d'ownership et identifier les champs encore traités comme « fiscaux/généraux ».
 - **Livrable** : architecture clarifiée, sans changement nécessaire de l'URL REST.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [x] Terminé
 
 ---
 
