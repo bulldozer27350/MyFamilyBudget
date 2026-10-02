@@ -43,7 +43,14 @@
 
     <properties>
         <java.version>21</java.version>
-
+        
+        <!--
+            `spring-boot:run` lancé depuis le reactor (mvn -f back/pom.xml -pl server -am ...) s'exécute
+            sur chaque module sélectionné (parent pom inclus) : il est ignoré par défaut et réactivé
+            uniquement dans `server` (seul module avec une classe main).
+        -->
+        <spring-boot.run.skip>true</spring-boot.run.skip>
+        
         <!-- Versions des plugins -->
         <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>

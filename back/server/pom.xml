@@ -16,6 +16,11 @@
     <name>server</name>
     <description>Serveur Spring Boot Java 21 pour l'application MyFamilyBudget</description>
 
+    <properties>
+        <!-- Seul module exécutable : réactive spring-boot:run (ignoré par défaut dans le parent) -->
+        <spring-boot.run.skip>false</spring-boot.run.skip>
+    </properties>
+
     <dependencies>
         <!-- Modèles du budget de base (MAVEN-010) -->
         <dependency>

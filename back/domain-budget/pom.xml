@@ -24,9 +24,4 @@
     <packaging>jar</packaging>
     <name>domain-budget</name>
     <description>Modèles du budget de base MyFamilyBudget (domaine pur, sans dépendance)</description>
-
-    <properties>
-        <!-- Module bibliothèque : jamais lancé par `spring-boot:run` lorsque le reactor est exécuté avec -am -->
-        <spring-boot.run.skip>true</spring-boot.run.skip>
-    </properties>
 </project>
