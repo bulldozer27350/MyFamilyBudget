@@ -184,9 +184,10 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
 
     /**
      * Façade mince (RF-301) : projection annuelle déléguée à {@link PatrimoineProjectionService}.
-     * Conservée publique pour les appelants existants.
+     * CLEAN-010 : visibilité réduite au package ({@code PatrimoineServiceImplTest} est dans le même
+     * package) pour que la signature à base de {@code BudgetDataModel} ne soit plus exposée.
      */
-    public PatrimoineProjectionsModel computePatrimoineProjections(BudgetDataModel data, boolean useConstantEuros) {
+    PatrimoineProjectionsModel computePatrimoineProjections(BudgetDataModel data, boolean useConstantEuros) {
         return this.projectionService.compute(PatrimoineInputFactory.from(data), useConstantEuros);
     }
 }

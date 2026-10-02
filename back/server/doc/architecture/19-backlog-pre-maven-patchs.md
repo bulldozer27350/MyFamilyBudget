@@ -282,7 +282,14 @@ Avant tout patch :
 - **Travaux attendus** : recenser `new BudgetDataModel(...)`, `getBudgetData()` / `setBudgetData()` et les factories recevant encore le modèle global ;
   classer chaque occurrence en `SNAPSHOT-GLOBAL`, `ASSEMBLY-TEMP` ou `LOCAL-LEAK` ; supprimer les `LOCAL-LEAK`.
 - **Critère** : un nouveau use case métier ne peut plus réutiliser `BudgetDataModel` comme « DTO interne universel ».
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Terminé
+- **Livraison** : inventaire et classification dans `19-inventaire-budget-data-model.md`. Les cinq signatures `public` à base de
+  `BudgetDataModel` (`TresorerieServiceImpl#computeTresorerie`, `#buildCategoryOptions`, `#computeRealAverages`,
+  `#buildTresorerieSuggestions`, `PatrimoineServiceImpl#computePatrimoineProjections`) classées `LOCAL-LEAK` sont
+  restreintes au package `impl`. `BudgetDataModelUsageArchTest` fixe la liste blanche des consommateurs autorisés
+  (persistance, factories, mappers, updater, neuf services d'API) : un nouveau consommateur fait échouer la règle.
+  Restent des `ASSEMBLY-TEMP` documentés (`composeBudgetData()` dans sept services, assemblage en ligne dans `RetraiteServiceImpl`) jusqu'aux `DB-xxx` ; l'isolement
+  des opérations globales relève de `CLEAN-020`.
 
 ---
 

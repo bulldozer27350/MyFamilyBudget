@@ -143,9 +143,10 @@ public class TresorerieServiceImpl implements TresorerieApi {
 
     /**
      * Calcule la projection et compose le modèle de résultat complet (RF-401).
-     * Conservé public pour compatibilité avec {@code TresorerieServiceImplTest}.
+     * CLEAN-010 : visibilité réduite au package ({@code TresorerieServiceImplTest} est dans le même
+     * package) pour que la signature à base de {@code BudgetDataModel} ne soit plus exposée.
      */
-    public TresorerieResultModel computeTresorerie(BudgetDataModel data, boolean useConstantEuros) {
+    TresorerieResultModel computeTresorerie(BudgetDataModel data, boolean useConstantEuros) {
         TreasuryProjectionInput input = this.treasuryInputFactory.from(data);
         TreasuryProjection projections = this.calculationService.compute(input);
 
@@ -184,7 +185,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
         );
     }
 
-    public List<CategoryOptionModel> buildCategoryOptions(BudgetDataModel data) {
+    List<CategoryOptionModel> buildCategoryOptions(BudgetDataModel data) {
         List<CategoryOptionModel> list = new ArrayList<>();
         list.add(new CategoryOptionModel("", "— Non liée —"));
 
@@ -205,7 +206,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
         return list;
     }
 
-    public Map<String, RealAverageModel> computeRealAverages(BudgetDataModel data) {
+    Map<String, RealAverageModel> computeRealAverages(BudgetDataModel data) {
         if (data.bankImport() == null) {
             return Map.of();
         }
@@ -292,7 +293,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
         return result;
     }
 
-    public List<TresorerieSuggestionModel> buildTresorerieSuggestions(BudgetDataModel data) {
+    List<TresorerieSuggestionModel> buildTresorerieSuggestions(BudgetDataModel data) {
         Map<String, RealAverageModel> realAverages = computeRealAverages(data);
         BigDecimal inflationRate = data.settings() != null ? data.settings().getEffectiveInflationRate() : new BigDecimal("0.02");
         int currentYear = LocalDate.now().getYear();
