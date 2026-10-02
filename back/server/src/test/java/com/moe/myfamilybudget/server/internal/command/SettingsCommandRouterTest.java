@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
-import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
 import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
 
 /**

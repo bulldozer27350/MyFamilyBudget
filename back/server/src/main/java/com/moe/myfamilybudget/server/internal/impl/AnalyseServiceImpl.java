@@ -18,7 +18,7 @@ import com.moe.myfamilybudget.server.internal.port.LoanReader;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
-import com.moe.myfamilybudget.server.internal.port.TaxReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxReader;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 

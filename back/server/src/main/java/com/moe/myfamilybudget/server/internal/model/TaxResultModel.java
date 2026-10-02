@@ -1,6 +1,11 @@
 package com.moe.myfamilybudget.server.internal.model;
 
 import java.util.List;
+import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 
 /**
  * Modèle interne représentant l'ensemble des données et résultats de la section Impôts.

@@ -9,6 +9,10 @@ import com.moe.myfamilybudget.domain.budget.TransferModel;
 import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 
 public record BudgetDataModel(
     SettingsModel settings,

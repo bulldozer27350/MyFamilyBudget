@@ -27,11 +27,11 @@ import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PointageCalculator;
 import com.moe.myfamilybudget.server.internal.model.PointageModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
-import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
-import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
-import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
-import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculator;
+import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
@@ -285,6 +285,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("..internal.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
             .as("les moteurs de calcul et calculateurs purs ne doivent pas dépendre de PersistenceManager "
@@ -300,6 +301,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("..internal.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.api..")
             .as("les couches pures du domaine (calculation, model, notification.rules) ne doivent pas dépendre "

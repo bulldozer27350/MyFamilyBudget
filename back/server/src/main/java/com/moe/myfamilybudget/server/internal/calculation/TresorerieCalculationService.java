@@ -12,6 +12,7 @@ import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
 import com.moe.myfamilybudget.domain.budget.VariablePreviewCellModel;
 import com.moe.myfamilybudget.domain.budget.VariablePreviewModel;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementIncomeProjection;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxProjection;
 
 /**
  * Calcul pur de la trésorerie prévisionnelle (Trésorerie) : projections de flux annuel et aperçu

@@ -3,6 +3,7 @@ package com.moe.myfamilybudget.server.internal.calculation;
 import java.util.List;
 import java.util.Objects;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementIncomeProjection;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxProjection;
 
 /**
  * Contrat d'entrée de la projection de trésorerie (RF-400, voir

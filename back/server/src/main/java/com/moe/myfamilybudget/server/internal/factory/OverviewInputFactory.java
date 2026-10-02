@@ -18,10 +18,10 @@ import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionSe
 import com.moe.myfamilybudget.server.internal.calculation.RealEstateProjection;
 import com.moe.myfamilybudget.server.internal.calculation.RealEstateProjection.RealEstateItemProjection;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
-import com.moe.myfamilybudget.server.internal.calculation.TaxCalculationInput;
-import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
-import com.moe.myfamilybudget.server.internal.calculation.TaxProjection;
-import com.moe.myfamilybudget.server.internal.calculation.TaxSimulationPeriod;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculator;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxProjection;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.server.internal.calculation.TreasuryProjection;
 import com.moe.myfamilybudget.server.internal.calculation.TreasuryProjectionInput;
 import com.moe.myfamilybudget.server.internal.calculation.TresorerieCalculationService;
@@ -32,7 +32,7 @@ import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.model.TaxYearlyModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 
 /**
  * Construit un {@link OverviewInput} à partir de {@link BudgetDataModel} (RF-900,

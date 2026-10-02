@@ -2,7 +2,7 @@ package com.moe.myfamilybudget.server.internal.calculation.archfixture;
 
 import com.moe.myfamilybudget.server.internal.calculation.PlacementCashflowInput;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementIncomeProjection;
-import com.moe.myfamilybudget.server.internal.calculation.TaxProjection;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxProjection;
 
 /**
  * Fixture ARCH-020 conforme : Trésorerie consomme uniquement les projections explicites des autres

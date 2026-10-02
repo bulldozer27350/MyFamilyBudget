@@ -172,7 +172,8 @@ Depuis MAVEN-010, le backend est un reactor Maven (`back/pom.xml`). Les modèles
 `com.moe.myfamilybudget.domain.budget`), sans dépendance Spring/JPA/OpenAPI ; `server` en dépend.
 Le domaine Retraite (moteur de calcul, projections, modèle, ports Reader/Writer) vit de même dans
 `back/domain-retirement` (`com.moe.myfamilybudget.domain.retirement.*`) ; son bean Spring est déclaré
-par `config/DomainEngineConfig` dans `server`.
+par `config/DomainEngineConfig` dans `server`. Le domaine Fiscalité vit dans `back/domain-tax`
+(`com.moe.myfamilybudget.domain.tax.*`) et ne dépend que du contrat de projection de `domain-retirement`.
 
 ### 4.5 Le pattern "oracle JS" pour les tests d'intégration
 

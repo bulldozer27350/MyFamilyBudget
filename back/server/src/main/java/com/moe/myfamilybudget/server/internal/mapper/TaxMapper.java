@@ -13,12 +13,12 @@ import org.slf4j.LoggerFactory;
 
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
-import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
-import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
-import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxResultModel;
-import com.moe.myfamilybudget.server.internal.model.TaxYearlyModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 
 /**
  * Mapper assurant la conversion entre le Modèle Interne (Records) et la couche DTO / API Map.

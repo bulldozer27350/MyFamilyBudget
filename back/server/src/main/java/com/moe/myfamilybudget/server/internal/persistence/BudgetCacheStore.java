@@ -17,7 +17,7 @@ import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 
 /**
  * Cache mémoire du budget courant et point d'entrée unique pour toute mutation qui doit être

@@ -5,19 +5,19 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
-import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
-import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
-import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.FiscalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalBracketRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalChildRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalRateOverrideRepository;
-import com.moe.myfamilybudget.server.internal.port.TaxReader;
-import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
-import com.moe.myfamilybudget.server.internal.port.TaxWriter;
+import com.moe.myfamilybudget.domain.tax.port.TaxReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
+import com.moe.myfamilybudget.domain.tax.port.TaxWriter;
 
 /**
  * Adaptateur de persistance pour {@link TaxReader} (RF-B00) et {@link TaxWriter} (DB-021).

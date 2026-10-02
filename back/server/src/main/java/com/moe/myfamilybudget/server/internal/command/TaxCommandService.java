@@ -4,12 +4,12 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
-import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
-import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
-import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
-import com.moe.myfamilybudget.server.internal.port.TaxWriter;
+import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
+import com.moe.myfamilybudget.domain.tax.port.TaxWriter;
 
 /**
  * Service de commande du domaine Fiscalite (RF-A00, DB-021).

@@ -187,9 +187,16 @@ La stratégie retenue est :
 - **Dépendance autorisée** : contrat/projection Retraite, mais jamais l’implémentation `RetirementCalculationService`.
 - **À laisser hors module** : `TaxInputFactory`, `TaxSimulationPeriodResolver`, JPA et application.
 - **Travaux** : même méthode que MAVEN-020 ; déplacer tests avec leurs responsabilités.
+- **Décisions retenues** :
+  - module `back/domain-tax` (artifact `domain-tax`, jar) ; seule dépendance de production : `domain-retirement`, pour le contrat `AnnualTaxableRetirementIncome` (jamais `RetirementCalculationService`) ;
+  - sous-packages `com.moe.myfamilybudget.domain.tax.calculation` (`TaxCalculator`, `TaxCalculationInput`, `TaxBracket`, `TaxRateOverride`, `TaxActualOverride`, `TaxHouseholdParameters`, `TaxSimulationPeriod`, `AnnualTaxIncome`, `AnnualVariableIncome`, `TaxProjection`), `.model` (`TaxYearlyModel`, `TaxChildModel`, `TaxBracketModel`, `TaxRateOverrideModel`, `TaxActualOverrideModel`) et `.port` (`TaxReader`, `TaxWriter`, `TaxSettingField`) ;
+  - `TaxCalculator` passe de `internal.model` à `domain.tax.calculation` (c'est un moteur, pas un modèle) ; il n'avait aucune annotation Spring, aucun bean à déclarer ;
+  - restent dans `server` : `TaxResultModel` (vue composite qui embarque `SettingsModel`), `TaxInputFactory`, `TaxSimulationPeriodResolver`, `TaxMapper`, JPA, application ;
+  - `TaxCalculatorTest` est déplacé dans le module ; les tests d'usine, de service (`ImpotsServiceImplTest`) et les fixtures ArchUnit restent dans `server` ;
+  - ArchUnit : `..domain.tax..` est une couche pure ; le gate VT-600 analyse les tests de tous les modules de domaine.
 - **Critère de sortie** : Fiscalité reste indépendante de la persistance et dépend uniquement des contrats autorisés.
 - **Tests** : tests du calculateur ; ArchUnit ; scénarios `/impots` et Settings.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 # MAVEN-040 — Extraire `domain-wealth`
 

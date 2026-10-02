@@ -34,6 +34,12 @@
             <artifactId>domain-retirement</artifactId>
         </dependency>
 
+        <!-- Domaine Fiscalité : calculateur, projection, modèles et ports (MAVEN-030) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-tax</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.tax.calculation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -10,15 +10,8 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.AnnualTaxIncome;
 import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
-import com.moe.myfamilybudget.server.internal.calculation.AnnualVariableIncome;
-import com.moe.myfamilybudget.server.internal.calculation.TaxActualOverride;
-import com.moe.myfamilybudget.server.internal.calculation.TaxBracket;
-import com.moe.myfamilybudget.server.internal.calculation.TaxCalculationInput;
-import com.moe.myfamilybudget.server.internal.calculation.TaxHouseholdParameters;
-import com.moe.myfamilybudget.server.internal.calculation.TaxRateOverride;
-import com.moe.myfamilybudget.server.internal.calculation.TaxSimulationPeriod;
+import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 
 /**
  * Tests de composant du moteur fiscal (RF-203) : uniquement {@link TaxCalculationInput}, aucun

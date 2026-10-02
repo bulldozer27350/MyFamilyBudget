@@ -12,6 +12,7 @@ WORKDIR /workspace
 COPY back/pom.xml back/pom.xml
 COPY back/domain-budget/pom.xml back/domain-budget/pom.xml
 COPY back/domain-retirement/pom.xml back/domain-retirement/pom.xml
+COPY back/domain-tax/pom.xml back/domain-tax/pom.xml
 COPY back/server/pom.xml back/server/pom.xml
 
 # Telechargement des dependances en s'appuyant sur le cache persistant .m2
@@ -24,6 +25,7 @@ COPY openapi openapi
 COPY view view
 COPY back/domain-budget back/domain-budget
 COPY back/domain-retirement back/domain-retirement
+COPY back/domain-tax back/domain-tax
 COPY back/server back/server
 
 # Compilation du JAR executable avec réutilisation du cache .m2

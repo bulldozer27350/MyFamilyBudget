@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.tax.calculation;
 
 import java.util.List;
 import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;

@@ -8,21 +8,21 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.AnnualTaxIncome;
+import com.moe.myfamilybudget.domain.tax.calculation.AnnualTaxIncome;
 import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
-import com.moe.myfamilybudget.server.internal.calculation.AnnualVariableIncome;
+import com.moe.myfamilybudget.domain.tax.calculation.AnnualVariableIncome;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
-import com.moe.myfamilybudget.server.internal.calculation.TaxCalculationInput;
-import com.moe.myfamilybudget.server.internal.calculation.TaxSimulationPeriod;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
-import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
-import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
-import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 
 /**
  * RF-200 / RF-202 : vérifie la construction de {@link TaxCalculationInput} par

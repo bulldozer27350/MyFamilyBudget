@@ -3,6 +3,7 @@ package com.moe.myfamilybudget.server.internal.calculation;
 import java.util.Objects;
 
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxProjection;
 
 /**
  * Contrat d'entrée du calcul de l'aperçu financier global (RF-900, voir

@@ -24,7 +24,7 @@ import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
-import com.moe.myfamilybudget.server.internal.port.TaxReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxReader;
 
 /**
  * Point d'entrée REST du domaine Retraite.

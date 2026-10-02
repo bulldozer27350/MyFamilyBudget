@@ -1,18 +1,13 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.tax.calculation;
 
-import com.moe.myfamilybudget.server.internal.calculation.AnnualTaxIncome;
 import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
-import com.moe.myfamilybudget.server.internal.calculation.AnnualVariableIncome;
-import com.moe.myfamilybudget.server.internal.calculation.TaxActualOverride;
-import com.moe.myfamilybudget.server.internal.calculation.TaxBracket;
-import com.moe.myfamilybudget.server.internal.calculation.TaxCalculationInput;
-import com.moe.myfamilybudget.server.internal.calculation.TaxRateOverride;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 
 /**
  * Moteur de calcul domaine métier pour la fiscalité (Impôts).

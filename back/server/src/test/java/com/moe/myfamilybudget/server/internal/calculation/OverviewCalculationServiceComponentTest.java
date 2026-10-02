@@ -20,6 +20,7 @@ import com.moe.myfamilybudget.server.internal.model.OverviewResultModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxProjection;
 
 /**
  * RF-902 : tests de composant du moteur d'apercu financier global, construits uniquement avec
