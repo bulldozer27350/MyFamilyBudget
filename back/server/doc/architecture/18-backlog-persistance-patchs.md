@@ -553,7 +553,29 @@ pas les agents qui travaillent sur les autres domaines.
 
 ### Statut DB-1031 — JPA Banque — basculer l'adapter
 
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `BankPersistenceAdapter.getBankImport()` lit désormais `BankImportDocumentRepository` (table autonome
+  `bank_import_document`, colonne `TEXT`, sans `@Lob`) via `BankImportDocumentMapper`. Les écritures
+  (`updateBankImport`) restent portées par `PersistenceManager` ; `BudgetPersistenceGateway` recopie l'import bancaire
+  du modèle dans la table autonome à chaque sauvegarde, dans la même transaction (import, reset et mutations de tous
+  domaines inclus : rollback cohérent). Au chargement du cache (démarrage), la table est reconstruite depuis le hub, ce
+  qui migre les données existantes sans script. `BankImportDocumentRepository` est injecté dans `PersistenceManager`
+  (constructeur élargi ; fabrique et tests adaptés). Le format JSON reste interne à Banque.
+- **Décisions** : (1) erreur de sérialisation à la recopie : journalisée sans faire échouer la sauvegarde, comme le
+  chemin legacy (le hub subirait la même erreur) ; (2) erreur de relecture du JSON : propagée
+  (`IllegalStateException`), la table étant écrite dans la transaction de sauvegarde et reconstruite au démarrage ;
+  (3) aucun document en base : un import vide est restitué (jamais `null`), comme au chargement du cache.
+  `PersistenceManager.getBankImport` reste utilisé par le constructeur sans repository (retour arrière) et sera retiré
+  avec DB-1190.
+- **Retour arrière** : le hub (`bank_import`) reste alimenté et reste la source de chargement du cache. Le constructeur
+  `BankPersistenceAdapter(PersistenceManager)` conserve la lecture depuis le cache (tests unitaires à repositories
+  mockés) ; revenir au comportement antérieur en production consiste à revenir sur ce patch.
+- **Tests** : `PersistenceAdaptersJpaRoundTripTest` (H2) : import relu par JPA, `updateBankImport` visible (une seule
+  ligne, accents), 3 000 transactions, reconstruction de la table au démarrage, reset (import vide), document absent.
+  Constructeurs de `PersistenceManager` adaptés dans `PersistenceManagerTestFactory`, `WriteFailureKeepsMemoryTest` et
+  le round-trip.
+- **Reste** : `VT-320` (redémarrage, H2 + PostgreSQL) couvre déjà la catégorisation d'une transaction bancaire ; à
+  exécuter en CI. La suppression de la relation du hub relève de DB-1130.
 
 ## DB-1040 / DB-1041 — JPA Crédit
 

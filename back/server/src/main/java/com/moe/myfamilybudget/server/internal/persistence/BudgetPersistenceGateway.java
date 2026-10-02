@@ -27,6 +27,7 @@ import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.moe.myfamilybudget.server.internal.persistence.converter.BankImportDocumentMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.CreditLoanEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.server.internal.persistence.converter.FiscalEntityMapper;
@@ -35,6 +36,7 @@ import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntit
 import com.moe.myfamilybudget.server.internal.persistence.entity.BankImportEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCategoryRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
@@ -116,6 +118,8 @@ class BudgetPersistenceGateway {
     private final FiscalActualOverrideRepository fiscalActualOverrideRepository;
     // DB-1001 : tables autonomes du domaine Retraite, meme principe que goalRepository.
     private final PensionPlanRepository pensionPlanRepository;
+    // DB-1031 : table autonome du domaine Banque (document JSON), meme principe que goalRepository.
+    private final BankImportDocumentRepository bankImportDocumentRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -143,7 +147,8 @@ class BudgetPersistenceGateway {
                               FiscalBracketRepository fiscalBracketRepository,
                               FiscalRateOverrideRepository fiscalRateOverrideRepository,
                               FiscalActualOverrideRepository fiscalActualOverrideRepository,
-                              PensionPlanRepository pensionPlanRepository) {
+                              PensionPlanRepository pensionPlanRepository,
+                              BankImportDocumentRepository bankImportDocumentRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.incomeRepository = incomeRepository;
         this.chargeRepository = chargeRepository;
@@ -168,6 +173,7 @@ class BudgetPersistenceGateway {
         this.fiscalRateOverrideRepository = fiscalRateOverrideRepository;
         this.fiscalActualOverrideRepository = fiscalActualOverrideRepository;
         this.pensionPlanRepository = pensionPlanRepository;
+        this.bankImportDocumentRepository = bankImportDocumentRepository;
     }
 
     /**
@@ -201,6 +207,8 @@ class BudgetPersistenceGateway {
             syncFiscal(loaded);
             // DB-1001 : idem pour les tables Retraite.
             syncPension(loaded.retirement());
+            // DB-1031 : idem pour le document Banque.
+            syncBankImport(loaded.bankImport());
         }
         return loaded;
     }
@@ -273,6 +281,7 @@ class BudgetPersistenceGateway {
         syncCreditLoans(model.loans());
         syncFiscal(model);
         syncPension(model.retirement());
+        syncBankImport(model.bankImport());
         saveBankImport(model.bankImport(), entity);
     }
 
@@ -374,6 +383,25 @@ class BudgetPersistenceGateway {
             return;
         }
         pensionPlanRepository.save(PensionEntityMapper.toEntity(retirement));
+    }
+
+    /**
+     * DB-1031 : remplace le document de la table {@code bank_import_document} par l'import bancaire du modele,
+     * dans la transaction de l'appelant ({@code flush} apres la suppression, comme {@link #syncGoals}). Comme
+     * le chemin legacy ({@link #saveBankImport}), une erreur de serialisation est journalisee sans faire
+     * echouer la sauvegarde : la table reste alors vide et la lecture JPA restitue un import vide.
+     */
+    private void syncBankImport(BankImportModel bankImport) {
+        bankImportDocumentRepository.deleteAll();
+        bankImportDocumentRepository.flush();
+        if (bankImport == null) {
+            return;
+        }
+        try {
+            bankImportDocumentRepository.save(BankImportDocumentMapper.toEntity(bankImport));
+        } catch (IllegalStateException e) {
+            LOG.error("Erreur lors de la recopie de BankImport dans la table autonome: ", e);
+        }
     }
 
     private BankImportModel loadBankImport(Long budgetDataId) {

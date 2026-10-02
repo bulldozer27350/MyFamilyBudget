@@ -9,6 +9,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCategoryRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
@@ -98,6 +99,7 @@ public final class PersistenceManagerTestFactory {
                 mock(FiscalRateOverrideRepository.class),
                 mock(FiscalActualOverrideRepository.class),
                 mock(PensionPlanRepository.class),
+                mock(BankImportDocumentRepository.class),
                 mock(PlatformTransactionManager.class),
                 mock(ApplicationEventPublisher.class));
     }

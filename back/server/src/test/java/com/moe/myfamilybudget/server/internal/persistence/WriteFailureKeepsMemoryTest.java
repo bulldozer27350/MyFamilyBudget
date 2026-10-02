@@ -35,6 +35,7 @@ import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPers
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCategoryRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
@@ -133,6 +134,7 @@ class WriteFailureKeepsMemoryTest {
                 mock(FiscalRateOverrideRepository.class),
                 mock(FiscalActualOverrideRepository.class),
                 mock(PensionPlanRepository.class),
+                mock(BankImportDocumentRepository.class),
                 mock(PlatformTransactionManager.class),
                 eventPublisher);
         persistenceManager.init();
