@@ -349,7 +349,7 @@ même fixture. Les helpers communs sont donc stabilisés dans `VT-000` avant que
     rollback) quand une transaction est active ; sans transaction (tests unitaires), il est relâché au retour de l'appel.
     La restauration de la mémoire en cas de rollback (VT-340) est faite avant la libération du verrou, la mutation suivante
     repart donc toujours d'un état validé ;
-  - `lockForCurrentTransaction()` (`BudgetCacheStore` -> `PersistenceManager`, `TaxCommandService.lockBudgetForCurrentTransaction`)
+  - `lockForCurrentTransaction()` (`BudgetCacheStore` -> `PersistenceManager`, `BudgetMutationLock` (DB-061))
     est appelé en premier par `SystemeServiceImpl.importJSON` / `resetData` et `ParametersServiceImpl.saveSettings` : le verrou
     du budget est toujours pris avant les verrous de lignes de la base (Objectifs), sinon une façade qui écrit d'abord
     Objectifs et une autre qui tient le verrou du budget pouvaient s'interbloquer ;

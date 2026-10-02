@@ -18,12 +18,11 @@ import org.springframework.http.ResponseEntity;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
 import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
-import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetMutationLockAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsCommandRouterTestFactory;
@@ -48,7 +47,7 @@ class ParametersServiceImplTest {
                 mapper,
                 objectifsSettingsService,
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
-                new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)),
+                new BudgetMutationLockAdapter(persistenceManager),
                 SettingsCommandRouterTestFactory.of(persistenceManager, objectifsSettingsService));
     }
 

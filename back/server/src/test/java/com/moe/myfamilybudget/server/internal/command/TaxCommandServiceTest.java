@@ -69,15 +69,13 @@ class TaxCommandServiceTest {
     }
 
     @Test
-    @DisplayName("succes : updateTaxSettings, resetDefaultTaxBrackets et verrou sont delegues")
+    @DisplayName("succes : updateTaxSettings et resetDefaultTaxBrackets sont delegues")
     void otherCommandsDelegate() {
         service.updateTaxSettings(TaxSettingField.CHILD_EXIT_AGE, 18);
         service.resetDefaultTaxBrackets();
-        service.lockBudgetForCurrentTransaction();
 
         verify(writer).updateTaxSettings(TaxSettingField.CHILD_EXIT_AGE, 18);
         verify(writer).resetDefaultTaxBrackets();
-        verify(writer).lockBudgetForCurrentTransaction();
     }
 
     // --- validation ---

@@ -105,9 +105,4 @@ public class TaxPersistenceAdapter implements TaxReader, TaxWriter {
     public void resetDefaultTaxBrackets() {
         persistenceManager.write(m -> m.resetDefaultTaxBrackets());
     }
-
-    @Override
-    public void lockBudgetForCurrentTransaction() {
-        persistenceManager.lockForCurrentTransaction();
-    }
 }

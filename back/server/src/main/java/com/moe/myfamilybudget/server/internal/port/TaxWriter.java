@@ -23,10 +23,4 @@ public interface TaxWriter {
 
     /** Restaure le bareme par defaut ; enfants et surcharges sont conserves. */
     void resetDefaultTaxBrackets();
-
-    /**
-     * VT-350b : prend le verrou de mutation du budget pour la transaction en cours. Responsabilite
-     * transverse, a redistribuer par DB-061.
-     */
-    void lockBudgetForCurrentTransaction();
 }

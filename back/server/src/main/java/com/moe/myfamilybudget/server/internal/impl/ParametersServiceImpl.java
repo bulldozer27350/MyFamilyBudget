@@ -12,7 +12,6 @@ import com.moe.myfamilybudget.api.controller.ParametresApi;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.server.internal.command.SettingsCommandRouter;
-import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
 import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsCalculator;
@@ -20,6 +19,7 @@ import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsResultModel;
 import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.server.internal.port.BudgetMutationLock;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
@@ -31,6 +31,9 @@ import com.moe.myfamilybudget.server.internal.port.SettingsReader;
  *
  * <p>SET-020 : le routage des champs vers leur owner (Retraite, Fiscalité, Trésorerie, Objectifs, Simulation,
  * Hypothèses économiques) est délégué à {@link SettingsCommandRouter} ; l'atomicité reste portée ici.
+ *
+ * <p>DB-061 : le verrou de mutation du budget (VT-350b), pris en premier par {@code saveSettings}, passe par
+ * le port transverse {@link BudgetMutationLock} et non plus par la commande Fiscalité.
  *
  * <p>VT-340 : {@code saveSettings} est {@code @Transactional} — une mise à jour touchant plusieurs
  * propriétaires (Objectifs, Fiscalité/Paramètres) est appliquée en entier ou pas du tout.
@@ -45,7 +48,7 @@ public class ParametersServiceImpl implements ParametresApi {
     private final SettingsMapper settingsMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
     private final PatrimoineCommandService patrimoineCommandService;
-    private final TaxCommandService taxCommandService;
+    private final BudgetMutationLock budgetMutationLock;
     private final SettingsCommandRouter settingsCommandRouter;
 
     public ParametersServiceImpl(
@@ -55,7 +58,7 @@ public class ParametersServiceImpl implements ParametresApi {
             SettingsMapper settingsMapper,
             ObjectifsSettingsService objectifsSettingsService,
             PatrimoineCommandService patrimoineCommandService,
-            TaxCommandService taxCommandService,
+            BudgetMutationLock budgetMutationLock,
             SettingsCommandRouter settingsCommandRouter) {
         this.settingsReader = settingsReader;
         this.patrimoineReader = patrimoineReader;
@@ -63,7 +66,7 @@ public class ParametersServiceImpl implements ParametresApi {
         this.settingsMapper = settingsMapper;
         this.objectifsSettingsService = objectifsSettingsService;
         this.patrimoineCommandService = patrimoineCommandService;
-        this.taxCommandService = taxCommandService;
+        this.budgetMutationLock = budgetMutationLock;
         this.settingsCommandRouter = settingsCommandRouter;
     }
 
@@ -83,7 +86,7 @@ public class ParametersServiceImpl implements ParametresApi {
     @Override
     @Transactional
     public ResponseEntity<Void> saveSettings(Object body) {
-        taxCommandService.lockBudgetForCurrentTransaction();
+        budgetMutationLock.lockForCurrentTransaction();
         if (body instanceof Map<?, ?> map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> typedMap = (Map<String, Object>) map;

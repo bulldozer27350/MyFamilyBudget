@@ -32,15 +32,6 @@ public class TaxCommandService {
     }
 
     /**
-     * VT-350b : à appeler en premier par une façade transactionnelle multi-domaines (paramètres),
-     * avant toute écriture Objectifs, pour que le verrou du budget soit toujours pris avant les
-     * verrous de lignes de la base (pas d'interblocage entre deux façades).
-     */
-    public void lockBudgetForCurrentTransaction() {
-        taxWriter.lockBudgetForCurrentTransaction();
-    }
-
-    /**
      * @throws IllegalArgumentException si {@code field} est {@code null} (aucune ecriture n'est alors faite)
      */
     public void updateTaxSettings(TaxSettingField field, Object value) {

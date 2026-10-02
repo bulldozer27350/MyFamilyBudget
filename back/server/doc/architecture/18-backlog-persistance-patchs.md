@@ -166,7 +166,7 @@ Ces sept entités n'ont **aucune relation vers le hub** : elles ne sont pas conc
 | Classe | Méthodes appelées |
 |---|---|
 | `command/RetirementCommandService` | `updateRetirement` |
-| `command/TaxCommandService` | `updateTaxConfig`, `updateTaxSettings`, `resetDefaultTaxBrackets`, `lockForCurrentTransaction` |
+| `command/TaxCommandService` | `updateTaxConfig`, `updateTaxSettings`, `resetDefaultTaxBrackets` (le verrou `lockForCurrentTransaction` en est sorti : DB-061) |
 | `command/PatrimoineCommandService` | `savePatrimoineRow`, `deletePatrimoineRow`, `addAssetCategory`, `updateAssetCategory`, `removeAssetCategory`, `addPlacementHistoryEntry`, `updatePlacementHistoryEntry`, `deletePlacementHistoryEntry` |
 | `command/TresorerieCommandService` | `addTresorerieRow`, `updateTresorerieRow`, `removeTresorerieRow`, `applyTresorerieAjustement` |
 | `command/BankImportCommandService` | `updateBankImport` |
@@ -363,7 +363,24 @@ DB-031, DB-040 et DB-041 en parallèle.
 - **Objectif** : finir la distribution des champs Settings vers les owners et conserver la façade REST composite.
 - **Travaux** : Retirement/Fiscality/Treasury/Goals/Simulation/EconomicAssumptions ; transaction locale unique si
   nécessaire.
-- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : la distribution des 16 champs de `PATCH /settings` vers leurs owners (Retraite, Fiscalité, Trésorerie,
+  Objectifs, Simulation, Hypothèses économiques), la façade REST composite et l'atomicité multi-domaines (transaction
+  `@Transactional` de `ParametersServiceImpl.saveSettings`, VT-340) étaient déjà en place via `SettingsCommandRouter`
+  (SET-020) : DB-061 ne les recode pas. Reste livré ici : le verrou de mutation du budget (VT-350b), responsabilité
+  transverse que `TaxWriter` signalait « à redistribuer par DB-061 », quitte `TaxWriter`, `TaxCommandService` et
+  `TaxPersistenceAdapter` pour le port `BudgetMutationLock` (adaptateur `BudgetMutationLockAdapter`, délégué au
+  `PersistenceManager`). `ParametersServiceImpl` ne dépend plus de `TaxCommandService` : il prend ce verrou en premier,
+  avant toute écriture par un owner. Aucun changement de contrat REST ni de comportement.
+- **Hors périmètre / reste** : `SystemeServiceImpl` garde `PersistenceManager.lockForCurrentTransaction()` pour import
+  et reset (mutations transverses hors domaines, DB-1180). La mutation générique `updateTaxSettings(field, value)` et
+  `TaxSettingField` relèvent de SET-030 ; la duplication `pass2026` / `passGrowthRate` de SET-040. Le stockage reste le
+  hub (`settings`) jusqu'à la bascule JPA par domaine.
+- **Tests** : `BudgetMutationLockAdapterTest` (adaptateur hors transaction) et `ParametersServiceImplLockTest`
+  (`saveSettings` prend le verrou avant l'appel de l'owner, vérifié par `InOrder`) ; `TaxCommandServiceTest` et
+  `ParametersServiceImplTest` adaptés.
+  `MultiDomainAtomicityTest` (VT-340) et `BudgetCacheStoreConcurrencyTest` (VT-350b) couvrent inchangés l'atomicité et le
+  verrou.
 
 ---
 
