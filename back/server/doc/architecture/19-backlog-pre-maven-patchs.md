@@ -220,7 +220,20 @@ Avant tout patch :
   si les champs restent exposés dans la façade REST pour compatibilité, les considérer comme une vue composite, pas comme une seconde
   propriété métier ; adapter les tests de mapping.
 - **Point de vigilance** : ne pas casser `/budget` et les imports JSON sans migration de compatibilité.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Terminé
+- **Livraison** : `SettingsModel` ne porte plus `pass2026` / `passGrowthRate` (13 composants ; constructeurs de
+  compatibilité à 9 et 12 arguments). La source unique est `RetirementModel`. `updateRetirementSetting` écrit
+  `pass2026` / `passGrowthRate` dans la retraite (`BudgetMutationService.updateRetirementPass`) ; `birthYear` et
+  `retireAge` restent dans `SettingsModel`. Les façades REST gardent les clés `pass2026` / `passGrowthRate` dans
+  `settings` (contrat inchangé, `openapi.yaml` inchangé) comme **vue composite** relue depuis la retraite :
+  `SettingsMapper.toResponseMap(model, objectifs, retirement)` (`ParametersServiceImpl` reçoit `RetirementReader`),
+  `TaxMapper.toResponseMap(model, retirement)`, `StatementBankImportMapper.toSettingsMap(settings, retirement)`,
+  `OverviewMapper` (via `BudgetFacadeView.retirement()`) et `RetraiteMapper`. Import JSON : si la retraite d'un
+  `BudgetDataDto` ne porte pas ces valeurs, `OverviewMapper` reprend celles de `settings` (compatibilité des
+  exports antérieurs) ; la retraite reste prioritaire. Stockage : les colonnes `pass2026` / `passGrowthRate` de
+  `SettingsEntity` sont conservées mais plus lues ni écrites (écrites à `null`) ; leur suppression physique relève
+  des `DB-xxx`. Tests : `UpdateTaxSettingsMinimalBudgetTest#passParametersAreWrittenToRetirementOnly`,
+  `SettingsMapperTest#readsPassParametersFromRetirement`.
 
 ---
 

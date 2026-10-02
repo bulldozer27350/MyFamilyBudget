@@ -89,7 +89,7 @@ public final class PointageInputFactory {
         int year = parseYearFromMonthISO(monthISO);
         SettingsModel effectiveSettings = settings != null
                 ? settings
-                : new SettingsModel(null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                : new SettingsModel(null, null, null, null, null, null, null, null, null, null, null, null);
         BigDecimal inflationRate = effectiveSettings.getEffectiveInflationRate();
 
         List<BudgetLineProjection> activeLines = new ArrayList<>();

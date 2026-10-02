@@ -61,7 +61,7 @@ class OverviewServiceImplTest {
     void testBuildOverview_NominalCase() {
         // Given
         SettingsModel settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                new BigDecimal("10000"), 21, new BigDecimal("0.10"), new BigDecimal("47100"), new BigDecimal("0.015"));
+                new BigDecimal("10000"), 21, new BigDecimal("0.10"));
 
         IncomeModel income1 = new IncomeModel("inc_1", "Salaire 1", new BigDecimal("3500"), "2026-01-01", "2048-12-31",
                 new BigDecimal("0.01"), "cat_1", null);
@@ -120,7 +120,7 @@ class OverviewServiceImplTest {
     void testBuildOverview_ConstantEuros() {
         // Given
         SettingsModel settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                new BigDecimal("10000"), 21, new BigDecimal("0.10"), new BigDecimal("47100"), new BigDecimal("0.015"));
+                new BigDecimal("10000"), 21, new BigDecimal("0.10"));
 
         RealEstateModel realEstate1 = new RealEstateModel("re_1", "Appartement", "Investissement",
                 new BigDecimal("200000"), 2026, new BigDecimal("0.02"), null);
@@ -144,7 +144,7 @@ class OverviewServiceImplTest {
     void testRetirementProjection() {
         // Given
         SettingsModel settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015"));
+                BigDecimal.ZERO, 21, BigDecimal.ZERO);
 
         com.moe.myfamilybudget.server.internal.model.IncomeModel income = new com.moe.myfamilybudget.server.internal.model.IncomeModel(
                 "inc_1", "Salaire Moe", new BigDecimal("4000"), "2026-01-01", "2048-12-31", new BigDecimal("0.01"),
@@ -178,7 +178,7 @@ class OverviewServiceImplTest {
     @DisplayName("Should include loans (passif) in the data returned by /overview")
     void testBuildOverview_LoansAreReturnedInDataDto() {
         SettingsModel settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                BigDecimal.ZERO, 21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015"));
+                BigDecimal.ZERO, 21, BigDecimal.ZERO);
 
         LoanModel loan1 = new LoanModel("loan_1", "Pret RP", new BigDecimal("180000"), new BigDecimal("0.0080"),
                 new BigDecimal("950"), new BigDecimal("15"), "2020-01-01", "2045-01-01");
@@ -210,7 +210,7 @@ class OverviewServiceImplTest {
         // (pausePriority = 1) a partir de l'annee suivante.
         SettingsModel settings = new SettingsModel(
                 1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                new BigDecimal("47100"), new BigDecimal("0.015"), false, null, null
+                false, null, null
         );
 
         PlacementModel scpiEden = new PlacementModel(
@@ -272,7 +272,7 @@ class OverviewServiceImplTest {
         // doit desormais augmenter le niveau de tension.
         SettingsModel settings = new SettingsModel(
                 1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                new BigDecimal("47100"), new BigDecimal("0.015"), true, null, BigDecimal.ZERO, null
+                true, null, BigDecimal.ZERO, null
         );
 
         PlacementModel sweepAccount = new PlacementModel(
@@ -319,7 +319,7 @@ class OverviewServiceImplTest {
         // qui doit suspendre "Test Pausable" a partir de l'annee 2.
         SettingsModel settings = new SettingsModel(
                 1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                new BigDecimal("47100"), new BigDecimal("0.015"), true, null, BigDecimal.ZERO, new BigDecimal("-1000")
+                true, null, BigDecimal.ZERO, new BigDecimal("-1000")
         );
 
         PlacementModel sweepAccount = new PlacementModel(
@@ -362,7 +362,7 @@ class OverviewServiceImplTest {
     void testBuildOverview_ReturnsSweepSettingsInData() {
         SettingsModel settings = new SettingsModel(
                 1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", new BigDecimal("1000"), 21, BigDecimal.ZERO,
-                new BigDecimal("47100"), new BigDecimal("0.015"), true, new BigDecimal("7000"), new BigDecimal("5000")
+                true, new BigDecimal("7000"), new BigDecimal("5000")
         );
 
         PlacementModel livretA = new PlacementModel(

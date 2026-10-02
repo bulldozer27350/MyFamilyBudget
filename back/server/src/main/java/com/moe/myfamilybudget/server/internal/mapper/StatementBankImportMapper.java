@@ -21,6 +21,7 @@ import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PendingImportSummaryModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 
 /**
@@ -301,7 +302,7 @@ public class StatementBankImportMapper {
                     : Collections.emptyList());
 
             map.put("settings", budgetData.getEffectiveSettings() != null
-                    ? toSettingsMap(budgetData.getEffectiveSettings())
+                    ? toSettingsMap(budgetData.getEffectiveSettings(), budgetData.retirement())
                     : Collections.emptyMap());
         } else {
             map.put("charges", Collections.emptyList());
@@ -352,7 +353,7 @@ public class StatementBankImportMapper {
         return map;
     }
 
-    public Map<String, Object> toSettingsMap(SettingsModel s) {
+    public Map<String, Object> toSettingsMap(SettingsModel s, RetirementModel retirement) {
         if (s == null) return Collections.emptyMap();
         Map<String, Object> map = new HashMap<>();
         map.put("birthYear", s.birthYear());
@@ -364,8 +365,9 @@ public class StatementBankImportMapper {
         map.put("startBalance", s.startBalance());
         map.put("childExitAge", s.childExitAge());
         map.put("taxAbattement", s.taxAbattement());
-        map.put("pass2026", s.pass2026());
-        map.put("passGrowthRate", s.passGrowthRate());
+        // SET-040 : relus depuis la retraite, seule propriétaire de ces valeurs.
+        map.put("pass2026", retirement != null ? retirement.pass2026() : null);
+        map.put("passGrowthRate", retirement != null ? retirement.passGrowthRate() : null);
         map.put("sweepEnabled", s.sweepEnabled());
         map.put("cashCeiling", s.cashCeiling());
         map.put("cashFloor", s.cashFloor());

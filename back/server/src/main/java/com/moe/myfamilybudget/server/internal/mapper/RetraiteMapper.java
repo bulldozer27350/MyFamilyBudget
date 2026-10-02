@@ -95,7 +95,7 @@ public class RetraiteMapper {
         }
 
         if (model.settings() != null) {
-            response.put("settings", toSettingsDto(model.settings()));
+            response.put("settings", toSettingsDto(model.settings(), model.retirement()));
         } else {
             response.put("settings", new SettingsDto());
         }
@@ -189,7 +189,7 @@ public class RetraiteMapper {
         return dto;
     }
 
-    private SettingsDto toSettingsDto(SettingsModel model) {
+    private SettingsDto toSettingsDto(SettingsModel model, RetraiteResultModel.RetirementWithProjectionsModel retirement) {
         if (model == null) return null;
         SettingsDto dto = new SettingsDto();
         dto.setBirthYear(model.birthYear());
@@ -201,8 +201,8 @@ public class RetraiteMapper {
         dto.setStartBalance(model.startBalance());
         dto.setChildExitAge(model.childExitAge());
         dto.setTaxAbattement(model.taxAbattement());
-        dto.setPass2026(model.pass2026());
-        dto.setPassGrowthRate(model.passGrowthRate());
+        dto.setPass2026(retirement != null ? retirement.pass2026() : null);
+        dto.setPassGrowthRate(retirement != null ? retirement.passGrowthRate() : null);
         dto.setSweepEnabled(model.sweepEnabled());
         dto.setCashCeiling(model.cashCeiling());
         dto.setCashFloor(model.cashFloor());

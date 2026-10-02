@@ -14,6 +14,7 @@ import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.server.internal.command.SettingsCommandRouter;
 import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.server.internal.port.RetirementReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetMutationLock;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
@@ -32,7 +33,7 @@ class ParametersServiceImplLockTest {
         SettingsCommandRouter router = mock(SettingsCommandRouter.class);
         ParametersServiceImpl service = new ParametersServiceImpl(
                 mock(SettingsReader.class), mock(PatrimoineReader.class), mock(BankReader.class),
-                new SettingsMapper(), mock(ObjectifsSettingsService.class), mock(PatrimoineCommandService.class),
+                mock(RetirementReader.class), new SettingsMapper(), mock(ObjectifsSettingsService.class), mock(PatrimoineCommandService.class),
                 lock, router);
 
         service.saveSettings(Map.of("field", "retireAge", "value", 62));

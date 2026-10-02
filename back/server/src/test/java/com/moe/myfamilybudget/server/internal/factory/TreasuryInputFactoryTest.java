@@ -33,7 +33,7 @@ class TreasuryInputFactoryTest {
 
     private static SettingsModel settings() {
         return new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), null, "manual", new BigDecimal("1500"),
-                21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015"));
+                21, BigDecimal.ZERO);
     }
 
     private static BudgetDataModel budget(

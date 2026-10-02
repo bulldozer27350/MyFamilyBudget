@@ -330,8 +330,6 @@ class BudgetCacheStore {
                 BigDecimal.ZERO,
                 21,
                 new BigDecimal("0.10"),
-                new BigDecimal("47100"),
-                new BigDecimal("0.015"),
                 false,
                 null,
                 null

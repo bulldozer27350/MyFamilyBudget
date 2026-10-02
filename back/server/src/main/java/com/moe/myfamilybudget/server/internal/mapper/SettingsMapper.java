@@ -2,6 +2,7 @@ package com.moe.myfamilybudget.server.internal.mapper;
 
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsResultModel;
 import org.springframework.stereotype.Component;
@@ -19,11 +20,21 @@ public class SettingsMapper {
     }
 
     /**
-     * Les seuils des objectifs ne font plus partie de {@code SettingsModel} (RF-700) : ils sont
-     * fournis à part par le domaine Objectifs et réinjectés ici pour conserver le contrat
-     * {@code GET /settings} inchangé.
+     * Variante sans retraite : les clés {@code pass2026} / {@code passGrowthRate} sont alors {@code null}.
+     * Les services d'API utilisent {@link #toResponseMap(SettingsResultModel, ObjectifsParameters, RetirementModel)}.
      */
     public Map<String, Object> toResponseMap(SettingsResultModel model, ObjectifsParameters objectifs) {
+        return toResponseMap(model, objectifs, null);
+    }
+
+    /**
+     * Les seuils des objectifs ne font plus partie de {@code SettingsModel} (RF-700) : ils sont
+     * fournis à part par le domaine Objectifs et réinjectés ici pour conserver le contrat
+     * {@code GET /settings} inchangé. Il en va de même (SET-040) pour {@code pass2026} et
+     * {@code passGrowthRate}, relus depuis la retraite, seule propriétaire de ces valeurs.
+     */
+    public Map<String, Object> toResponseMap(SettingsResultModel model, ObjectifsParameters objectifs,
+                                             RetirementModel retirement) {
         ObjectifsParameters goals = objectifs != null ? objectifs : ObjectifsParameters.defaults();
         if (model == null) {
             return new HashMap<>();
@@ -43,8 +54,8 @@ public class SettingsMapper {
             sMap.put("startBalance", s.startBalance());
             sMap.put("childExitAge", s.childExitAge());
             sMap.put("taxAbattement", s.taxAbattement());
-            sMap.put("pass2026", s.pass2026());
-            sMap.put("passGrowthRate", s.passGrowthRate());
+            sMap.put("pass2026", retirement != null ? retirement.pass2026() : null);
+            sMap.put("passGrowthRate", retirement != null ? retirement.passGrowthRate() : null);
             sMap.put("sweepEnabled", s.sweepEnabled());
             sMap.put("cashCeiling", s.cashCeiling());
             sMap.put("cashFloor", s.cashFloor());

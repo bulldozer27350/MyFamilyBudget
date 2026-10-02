@@ -120,7 +120,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
                 data.getEffectiveTaxActualOverrides(),
                 data.getEffectiveSettings(),
                 taxPreview);
-        Map<String, Object> response = taxMapper.toResponseMap(resultModel);
+        Map<String, Object> response = taxMapper.toResponseMap(resultModel, data.retirement());
         return ResponseEntity.ok(response);
     }
 

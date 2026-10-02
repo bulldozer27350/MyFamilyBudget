@@ -55,7 +55,7 @@ sans recréer le couplage qu'on cherche à supprimer.
 | `startBalance` | Trésorerie | Trésorerie, Notifications, Overview, Patrimoine |
 | `childExitAge` | Fiscalité | Fiscalité |
 | `taxAbattement` | Fiscalité | Fiscalité |
-| `pass2026` | Retraite | Retraite (dupliqué aujourd'hui avec `RetirementModel` — voir ci-dessous) |
+| `pass2026` | Retraite | Retraite (source unique depuis SET-040 : `RetirementModel`) |
 | `passGrowthRate` | Retraite | idem |
 | `sweepEnabled` | Trésorerie | Trésorerie, Patrimoine |
 | `cashCeiling` | Trésorerie | Trésorerie, Patrimoine |
@@ -66,11 +66,12 @@ sans recréer le couplage qu'on cherche à supprimer.
 
 ## Cas particuliers
 
-- **`pass2026` / `passGrowthRate`** : existent aujourd'hui à la fois dans `SettingsModel` et
-  `RetirementModel`, mais les calculs observés utilisent la valeur de `RetirementModel`. Cible :
-  ces valeurs (ainsi que `agircPointValue`, `agircPointDate`, `agircPointGrowthRate`)
-  appartiennent exclusivement à `RetirementSettings`. Les DTO API qui les exposent encore comme
-  settings globaux sont un héritage de contrat à nettoyer lors du découpage OpenAPI (étape 13).
+- **`pass2026` / `passGrowthRate`** : tranchés par SET-040. Ces valeurs (ainsi que `agircPointValue`,
+  `agircPointDate`, `agircPointGrowthRate`) appartiennent exclusivement à `RetirementModel` ;
+  `SettingsModel` ne les porte plus. `SettingsDto` / la clé `settings` des réponses REST continuent de les
+  exposer, comme **vue composite** relue depuis la retraite (contrat inchangé). Le nettoyage du contrat
+  (retrait des clés de `SettingsDto`) reste un changement d'API à planifier séparément. Les colonnes
+  homonymes de `SettingsEntity` sont héritées, plus lues ni écrites (suppression : `DB-xxx`).
 - **`birthYear` / `retireAge`** : même si Overview/Trésorerie les utilisent pour un horizon, leur
   propriété métier reste Retraite. L'agrégateur reçoit un `RetirementHorizon(birthYear, retireAge,
   retireYear)` ou juste `retireYear`, jamais `SettingsModel`.
@@ -89,7 +90,7 @@ application et où l'état actuel du code s'en écarte. Elle ne change ni l'URL 
 
 | Famille | Champs (clés du contrat actuel) | Owner applicatif cible | Port d'écriture existant | État actuel de l'écriture via `PATCH /settings` |
 |---|---|---|---|---|
-| Retraite | `birthYear`, `retireAge`, `pass2026`, `passGrowthRate` (les paramètres AGIRC sont déjà portés par `RetirementModel`) | `RetirementCommandService` | `RetirementWriter` (seulement `updateRetirement(RetirementModel)`, sans commande par champ) | Routé vers Fiscalité. `birthYear` et `retireAge` n'existent que dans `SettingsModel`. `pass2026` et `passGrowthRate` ne modifient que la copie de `SettingsModel`, pas celle de `RetirementModel` (voir `SET-040`). |
+| Retraite | `birthYear`, `retireAge`, `pass2026`, `passGrowthRate` (les paramètres AGIRC sont déjà portés par `RetirementModel`) | `RetirementCommandService` | `RetirementWriter` (seulement `updateRetirement(RetirementModel)`, sans commande par champ) | Routé vers Fiscalité. `birthYear` et `retireAge` n'existent que dans `SettingsModel`. Depuis SET-040, `pass2026` et `passGrowthRate` sont écrits dans `RetirementModel` (plus de copie dans `SettingsModel`). |
 | Fiscalité | `childExitAge`, `taxAbattement` | `TaxCommandService` | `TaxWriter.updateTaxSettings` | Routage correct (seule famille légitimement traitée par Fiscalité), mais via la mutation générique `field`/`value` (voir `SET-030`). |
 | Trésorerie | `pivotDate`, `pivotMode`, `startBalance` (alias `pivotBalanceManual`), `sweepEnabled`, `cashCeiling`, `cashFloor`, `cashAlertThreshold` | `TresorerieCommandService` | `TresorerieWriter` (lignes uniquement, aucune commande de paramètres) | Routé vers Fiscalité. Commande de paramètres à introduire. |
 | Objectifs | `goalSecureHorizonMonths`, `goalLiquidHorizonMonths` | `ObjectifsSettingsService` | Table autonome (`ObjectifsSettingsStore`) | Déjà routé vers son owner par `ParametersServiceImpl`. Aucun écart. |

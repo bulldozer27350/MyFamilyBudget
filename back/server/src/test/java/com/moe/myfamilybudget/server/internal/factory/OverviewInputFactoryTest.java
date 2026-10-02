@@ -29,7 +29,7 @@ class OverviewInputFactoryTest {
 
     private static SettingsModel settings() {
         return new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", new BigDecimal("5000"),
-                21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015"));
+                21, BigDecimal.ZERO);
     }
 
     private static BudgetDataModel budget(

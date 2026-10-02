@@ -164,7 +164,6 @@ class NotificationDispatchServiceReadersTest {
 
     private static SettingsModel settingsWithStartBalance(String startBalance) {
         return new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                new BigDecimal(startBalance), 21, new BigDecimal("0.10"), new BigDecimal("47100"),
-                new BigDecimal("0.015"));
+                new BigDecimal(startBalance), 21, new BigDecimal("0.10"));
     }
 }

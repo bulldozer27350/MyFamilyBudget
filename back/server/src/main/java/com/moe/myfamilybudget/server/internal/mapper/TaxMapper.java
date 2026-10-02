@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
@@ -28,9 +29,18 @@ public class TaxMapper {
     private static final Logger LOG = LoggerFactory.getLogger(TaxMapper.class);
 
     /**
-     * Convertit un TaxResultModel (modèle interne) en une Map d'objets sérialisables JSON pour l'API.
+     * Variante sans retraite : les clés {@code pass2026} / {@code passGrowthRate} de {@code settings} sont
+     * alors {@code null}. Les services d'API utilisent {@link #toResponseMap(TaxResultModel, RetirementModel)}.
      */
     public Map<String, Object> toResponseMap(TaxResultModel model) {
+        return toResponseMap(model, null);
+    }
+
+    /**
+     * Convertit un TaxResultModel (modèle interne) en une Map d'objets sérialisables JSON pour l'API.
+     * SET-040 : {@code pass2026} / {@code passGrowthRate} de {@code settings} sont relus depuis la retraite.
+     */
+    public Map<String, Object> toResponseMap(TaxResultModel model, RetirementModel retirement) {
         Map<String, Object> response = new HashMap<>();
 
         if (model == null) {
@@ -100,8 +110,8 @@ public class TaxMapper {
             settingsMap.put("startBalance", s.startBalance());
             settingsMap.put("childExitAge", s.childExitAge());
             settingsMap.put("taxAbattement", s.taxAbattement());
-            settingsMap.put("pass2026", s.pass2026());
-            settingsMap.put("passGrowthRate", s.passGrowthRate());
+            settingsMap.put("pass2026", retirement != null ? retirement.pass2026() : null);
+            settingsMap.put("passGrowthRate", retirement != null ? retirement.passGrowthRate() : null);
             settingsMap.put("sweepEnabled", s.sweepEnabled());
             settingsMap.put("cashCeiling", s.cashCeiling());
             settingsMap.put("cashFloor", s.cashFloor());

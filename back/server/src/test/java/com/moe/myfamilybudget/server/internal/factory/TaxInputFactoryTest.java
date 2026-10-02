@@ -34,7 +34,7 @@ class TaxInputFactoryTest {
     private static BudgetDataModel budgetWithSalaryOnly() {
         SettingsModel settings = new SettingsModel(
                 1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", BigDecimal.ZERO,
-                21, new BigDecimal("0.10"), new BigDecimal("47100"), new BigDecimal("0.015"));
+                21, new BigDecimal("0.10"));
 
         List<IncomeModel> incomes = List.of(
                 new IncomeModel("inc1", "Salaire", new BigDecimal("4000"), "2026-01-01", "2026-12-31",

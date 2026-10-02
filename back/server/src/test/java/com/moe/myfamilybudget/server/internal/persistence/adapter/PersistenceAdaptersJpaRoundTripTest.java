@@ -749,8 +749,6 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(settings.startBalance()).isEqualByComparingTo(SETTINGS.startBalance());
         assertThat(settings.childExitAge()).isEqualTo(SETTINGS.childExitAge());
         assertThat(settings.taxAbattement()).isEqualByComparingTo(SETTINGS.taxAbattement());
-        assertThat(settings.pass2026()).isEqualByComparingTo(SETTINGS.pass2026());
-        assertThat(settings.passGrowthRate()).isEqualByComparingTo(SETTINGS.passGrowthRate());
     }
 
     /** compareTo ignore l'echelle ; null-safe car certains champs (ex. plafond de tranche) valent null. */
@@ -790,7 +788,7 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     private static final SettingsModel SETTINGS = new SettingsModel(1990, 62, 90, bd("0.025"), "2026-01-01",
-            "manual", bd("5000"), 23, bd("0.05"), bd("47100"), bd("0.02"), null, null, null, null);
+            "manual", bd("5000"), 23, bd("0.05"), null, null, null, null);
 
     private static final IncomeModel INCOME = new IncomeModel("inc_1", "Salaire", bd("3000"), "2026-01-01",
             "2053-12-31", bd("0.01"), "cat_salaire", "note revenu");

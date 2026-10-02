@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Objects;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
 import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
@@ -100,8 +103,7 @@ class UpdateTaxSettingsMinimalBudgetTest {
         // Budget minimal : tous les parametres de tresorerie facultatifs (sweep, cash) sont absents.
         persistenceManager.setBudgetData(persistenceManager.getBudgetData().withSettings(new SettingsModel(
                 1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "auto", BigDecimal.ZERO, 21,
-                new BigDecimal("0.10"), new BigDecimal("47100"), new BigDecimal("0.015"),
-                null, null, null, null)));
+                new BigDecimal("0.10"), null, null, null, null)));
         assertThat(settings().sweepEnabled()).isNull();
     }
 
@@ -160,6 +162,20 @@ class UpdateTaxSettingsMinimalBudgetTest {
     }
 
     @Test
+    @DisplayName("SET-040 : pass2026 et passGrowthRate sont ecrits dans la retraite, pas dans les parametres")
+    void passParametersAreWrittenToRetirementOnly() {
+        SettingsModel settingsBefore = settings();
+
+        update("pass2026", 48000);
+        update("passGrowthRate", "0.02");
+
+        RetirementModel retirement = persistenceManager.getBudgetData().retirement();
+        assertThat(retirement.pass2026()).isEqualByComparingTo("48000");
+        assertThat(retirement.passGrowthRate()).isEqualByComparingTo("0.02");
+        assertThat(settings()).isEqualTo(settingsBefore);
+    }
+
+    @Test
     @DisplayName("SET-030 : une mutation d'owner ne modifie que les champs de cet owner")
     void ownerMutationsOnlyTouchTheirOwnFields() {
         SettingsModel before = settings();
@@ -167,8 +183,7 @@ class UpdateTaxSettingsMinimalBudgetTest {
         update("retireAge", 60);
         assertThat(settings()).isEqualTo(new SettingsModel(before.birthYear(), 60, before.simulateUntilAge(),
                 before.inflationRate(), before.pivotDate(), before.pivotMode(), before.startBalance(),
-                before.childExitAge(), before.taxAbattement(), before.pass2026(), before.passGrowthRate(),
-                null, null, null, null));
+                before.childExitAge(), before.taxAbattement(), null, null, null, null));
 
         update("childExitAge", 25);
         assertThat(settings().childExitAge()).isEqualTo(25);
@@ -218,11 +233,15 @@ class UpdateTaxSettingsMinimalBudgetTest {
 
     private void assertApplied(String key, Map<String, Object> samples) {
         assertThat(samples).as("valeur d'exemple pour %s", key).containsKey(key);
-        SettingsModel before = settings();
+        BudgetDataModel before = persistenceManager.getBudgetData();
 
         update(key, samples.get(key));
 
-        assertThat(settings()).as("%s doit modifier les parametres", key).isNotEqualTo(before);
+        BudgetDataModel after = persistenceManager.getBudgetData();
+        // SET-040 : pass2026 / passGrowthRate modifient la retraite, pas les parametres.
+        boolean changed = !Objects.equals(before.settings(), after.settings())
+                || !Objects.equals(before.retirement(), after.retirement());
+        assertThat(changed).as("%s doit modifier les parametres ou la retraite", key).isTrue();
     }
 
     /** Route le champ vers la mutation de son owner, comme le fait {@code SettingsCommandRouter}. */

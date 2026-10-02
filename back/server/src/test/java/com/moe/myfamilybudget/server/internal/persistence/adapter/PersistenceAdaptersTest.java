@@ -139,8 +139,6 @@ class PersistenceAdaptersTest {
             assertThat(settings.startBalance()).isEqualByComparingTo("0");
             assertThat(settings.childExitAge()).isEqualTo(21);
             assertThat(settings.taxAbattement()).isEqualByComparingTo("0.10");
-            assertThat(settings.pass2026()).isEqualByComparingTo("47100");
-            assertThat(settings.passGrowthRate()).isEqualByComparingTo("0.015");
         }
     }
 
@@ -463,7 +461,7 @@ class PersistenceAdaptersTest {
     }
 
     private static final SettingsModel SETTINGS = new SettingsModel(1990, 62, 90, bd("0.025"), "2026-01-01",
-            "manual", bd("5000"), 23, bd("0.05"), bd("47100"), bd("0.02"), null, null, null, null);
+            "manual", bd("5000"), 23, bd("0.05"), null, null, null, null);
 
     private static final IncomeModel INCOME = new IncomeModel("inc_1", "Salaire", bd("3000"), "2026-01-01",
             "2053-12-31", bd("0.01"), "cat_salaire", "note revenu");

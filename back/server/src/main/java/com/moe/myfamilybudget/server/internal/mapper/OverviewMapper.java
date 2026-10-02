@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.mapper;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -100,7 +101,7 @@ public class OverviewMapper {
         List<ObjectifModel> objectifs = dto.getObjectifs() != null
                 ? dto.getObjectifs().stream().map(this::toObjectifModel).collect(Collectors.toList())
                 : List.of();
-        RetirementModel retirement = toRetirementModel(dto.getRetirement());
+        RetirementModel retirement = withLegacyPassFallback(toRetirementModel(dto.getRetirement()), dto.getSettings());
         List<TaxChildModel> taxChildren = dto.getTaxChildren() != null
                 ? dto.getTaxChildren().stream().map(this::toTaxChildModel).collect(Collectors.toList())
                 : List.of();
@@ -175,7 +176,7 @@ public class OverviewMapper {
                 ? view.loans().stream().map(this::toLoanDto).collect(Collectors.toList())
                 : List.of());
         dto.setRetirement(toRetirementDto(view.retirement()));
-        dto.setSettings(toSettingsDto(view.settings(), view.objectifsParameters()));
+        dto.setSettings(toSettingsDto(view.settings(), view.objectifsParameters(), view.retirement()));
         dto.setTaxChildren(view.taxChildren() != null
                 ? view.taxChildren().stream().map(this::toTaxChildDto).collect(Collectors.toList())
                 : List.of());
@@ -318,8 +319,7 @@ public class OverviewMapper {
             return null;
         return new SettingsModel(dto.getBirthYear(), dto.getRetireAge(), dto.getSimulateUntilAge(),
                 dto.getInflationRate(), dto.getPivotDate(), dto.getPivotMode(), dto.getStartBalance(),
-                dto.getChildExitAge(), dto.getTaxAbattement(), dto.getPass2026(), dto.getPassGrowthRate(),
-                dto.getSweepEnabled(), dto.getCashCeiling(), dto.getCashFloor(), dto.getCashAlertThreshold());
+                dto.getChildExitAge(), dto.getTaxAbattement(), dto.getSweepEnabled(), dto.getCashCeiling(), dto.getCashFloor(), dto.getCashAlertThreshold());
     }
 
     /**
@@ -336,7 +336,7 @@ public class OverviewMapper {
                 dto.getSettings().getGoalLiquidHorizonMonths());
     }
 
-    private SettingsDto toSettingsDto(SettingsModel model, ObjectifsParameters objectifs) {
+    private SettingsDto toSettingsDto(SettingsModel model, ObjectifsParameters objectifs, RetirementModel retirement) {
         if (model == null)
             return null;
         SettingsDto dto = new SettingsDto();
@@ -349,8 +349,8 @@ public class OverviewMapper {
         dto.setStartBalance(model.startBalance());
         dto.setChildExitAge(model.childExitAge());
         dto.setTaxAbattement(model.taxAbattement());
-        dto.setPass2026(model.pass2026());
-        dto.setPassGrowthRate(model.passGrowthRate());
+        dto.setPass2026(retirement != null ? retirement.pass2026() : null);
+        dto.setPassGrowthRate(retirement != null ? retirement.passGrowthRate() : null);
         dto.setSweepEnabled(model.sweepEnabled());
         dto.setCashCeiling(model.cashCeiling());
         dto.setCashFloor(model.cashFloor());
@@ -491,6 +491,26 @@ public class OverviewMapper {
                 : List.of();
         return new RetirementModel(people, dto.getPass2026(), dto.getPassGrowthRate(), dto.getAgircPointValue(),
                 dto.getAgircPointDateGlobal(), dto.getAgircPointGrowthRate());
+    }
+
+    /**
+     * SET-040 : compatibilité des imports JSON antérieurs, où {@code pass2026} / {@code passGrowthRate}
+     * pouvaient n'être renseignés que dans {@code settings}. La retraite reste prioritaire ; la valeur
+     * historique de {@code settings} ne sert que si la retraite n'en porte pas.
+     */
+    private RetirementModel withLegacyPassFallback(RetirementModel retirement, SettingsDto legacySettings) {
+        if (retirement == null || legacySettings == null) {
+            return retirement;
+        }
+        BigDecimal pass2026 = retirement.pass2026() != null ? retirement.pass2026() : legacySettings.getPass2026();
+        BigDecimal passGrowthRate = retirement.passGrowthRate() != null
+                ? retirement.passGrowthRate()
+                : legacySettings.getPassGrowthRate();
+        if (pass2026 == retirement.pass2026() && passGrowthRate == retirement.passGrowthRate()) {
+            return retirement;
+        }
+        return new RetirementModel(retirement.people(), pass2026, passGrowthRate, retirement.agircPointValue(),
+                retirement.agircPointDateGlobal(), retirement.agircPointGrowthRate());
     }
 
     private RetirementDto toRetirementDto(RetirementModel m) {

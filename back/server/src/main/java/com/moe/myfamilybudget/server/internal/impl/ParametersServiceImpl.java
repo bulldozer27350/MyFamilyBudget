@@ -21,6 +21,7 @@ import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetMutationLock;
 import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.server.internal.port.RetirementReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
 /**
@@ -45,6 +46,7 @@ public class ParametersServiceImpl implements ParametresApi {
     private final SettingsReader settingsReader;
     private final PatrimoineReader patrimoineReader;
     private final BankReader bankReader;
+    private final RetirementReader retirementReader;
     private final SettingsMapper settingsMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
     private final PatrimoineCommandService patrimoineCommandService;
@@ -55,6 +57,7 @@ public class ParametersServiceImpl implements ParametresApi {
             SettingsReader settingsReader,
             PatrimoineReader patrimoineReader,
             BankReader bankReader,
+            RetirementReader retirementReader,
             SettingsMapper settingsMapper,
             ObjectifsSettingsService objectifsSettingsService,
             PatrimoineCommandService patrimoineCommandService,
@@ -63,6 +66,7 @@ public class ParametersServiceImpl implements ParametresApi {
         this.settingsReader = settingsReader;
         this.patrimoineReader = patrimoineReader;
         this.bankReader = bankReader;
+        this.retirementReader = retirementReader;
         this.settingsMapper = settingsMapper;
         this.objectifsSettingsService = objectifsSettingsService;
         this.patrimoineCommandService = patrimoineCommandService;
@@ -79,7 +83,8 @@ public class ParametersServiceImpl implements ParametresApi {
                 settings, categories, bankReader.getBankImport()
         );
 
-        Map<String, Object> response = settingsMapper.toResponseMap(result, objectifsSettingsService.current());
+        Map<String, Object> response = settingsMapper.toResponseMap(
+                result, objectifsSettingsService.current(), retirementReader.getRetirement());
         return ResponseEntity.ok(response);
     }
 

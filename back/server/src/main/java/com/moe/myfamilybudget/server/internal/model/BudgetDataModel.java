@@ -116,7 +116,6 @@ public record BudgetDataModel(
         return new SettingsModel(
             1985, 64, 85, new BigDecimal("0.02"), "", "manual",
             BigDecimal.ZERO, 21, new BigDecimal("0.10"),
-            new BigDecimal("47100"), new BigDecimal("0.015"),
             null, null, null
         );
     }

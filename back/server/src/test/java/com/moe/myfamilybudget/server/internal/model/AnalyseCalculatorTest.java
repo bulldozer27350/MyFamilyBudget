@@ -20,8 +20,7 @@ class AnalyseCalculatorTest {
     @DisplayName("computeAnalyse doit calculer correctement les KPIs, catégories et lignes d'atterrissage sur le modèle interne")
     void testComputeAnalyse() {
         SettingsModel settings = new SettingsModel(
-                1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", BigDecimal.ZERO, 21, new BigDecimal("0.10"), new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+                1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", BigDecimal.ZERO, 21, new BigDecimal("0.10"));
         ChargeModel charge = new ChargeModel("c1", "Loyer", new BigDecimal("1000"), "2026-01-01", "2030-12-31", new BigDecimal("0.01"), "cat1", "");
         IncomeModel income = new IncomeModel("i1", "Salaire", new BigDecimal("3000"), "2026-01-01", "2030-12-31", BigDecimal.ZERO, "cat2", "");
         PlacementModel placement = new PlacementModel("p1", "Livret A", "Épargne", new BigDecimal("5000"), "2026-01-01", new BigDecimal("200"), "2026-01-01", "2030-12-31", new BigDecimal("0.01"), new BigDecimal("0.02"), new BigDecimal("0.03"), false, "");
@@ -77,8 +76,7 @@ class AnalyseCalculatorTest {
     @DisplayName("computeAnalyse doit ventiler correctement les dépenses par catégorie pour les transactions ventilées (splits)")
     void testComputeAnalyseWithSplits() {
         SettingsModel settings = new SettingsModel(
-                1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", BigDecimal.ZERO, 21, new BigDecimal("0.10"), new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+                1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", BigDecimal.ZERO, 21, new BigDecimal("0.10"));
         ChargeModel chargeFood = new ChargeModel("c_food", "Alimentation", new BigDecimal("400"), "2026-01-01", "2030-12-31", BigDecimal.ZERO, "cat_food", "");
         ChargeModel chargeClothes = new ChargeModel("c_clothes", "Vêtements", new BigDecimal("100"), "2026-01-01", "2030-12-31", BigDecimal.ZERO, "cat_clothes", "");
 

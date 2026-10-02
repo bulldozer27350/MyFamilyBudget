@@ -18,9 +18,7 @@ class SettingsCalculatorTest {
     void testComputeSettingsResultSuccess() {
         SettingsModel settings = new SettingsModel(
                 1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                new BigDecimal("10000.00"), 21, new BigDecimal("0.10"),
-                new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+                new BigDecimal("10000.00"), 21, new BigDecimal("0.10"));
 
         AssetCategoryModel cat1 = new AssetCategoryModel("ac1", "📁", "Cash", "cash");
         List<AssetCategoryModel> categories = List.of(cat1);
@@ -52,9 +50,7 @@ class SettingsCalculatorTest {
     void testComputeSettingsResultInvalidBirthYear() {
         SettingsModel invalidSettings = new SettingsModel(
                 1800, 64, 85, new BigDecimal("0.02"), "", "manual",
-                BigDecimal.ZERO, 21, new BigDecimal("0.10"),
-                new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+                BigDecimal.ZERO, 21, new BigDecimal("0.10"));
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -68,9 +64,7 @@ class SettingsCalculatorTest {
     void testComputeSettingsResultSimulateAgeLowerThanRetireAge() {
         SettingsModel invalidSettings = new SettingsModel(
                 1985, 64, 60, new BigDecimal("0.02"), "", "manual",
-                BigDecimal.ZERO, 21, new BigDecimal("0.10"),
-                new BigDecimal("47100"), new BigDecimal("0.015")
-        );
+                BigDecimal.ZERO, 21, new BigDecimal("0.10"));
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,

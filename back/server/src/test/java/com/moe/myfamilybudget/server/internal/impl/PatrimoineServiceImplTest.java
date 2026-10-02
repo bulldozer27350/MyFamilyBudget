@@ -583,7 +583,7 @@ class PatrimoineServiceImplTest {
 
         SettingsModel settings = new SettingsModel(
                 1985, 64, 85, BigDecimal.ZERO, "", "manual", startBalance, 21, BigDecimal.ZERO,
-                new BigDecimal("47100"), new BigDecimal("0.015"), sweepEnabled, null, cashFloor
+                sweepEnabled, null, cashFloor
         );
 
         return new BudgetDataModel(settings, List.of(), List.of(), List.of(selencia, scpiEden), List.of(), null,
@@ -647,7 +647,7 @@ class PatrimoineServiceImplTest {
         );
         SettingsModel settings = new SettingsModel(
                 1985, 64, 85, BigDecimal.ZERO, "", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                new BigDecimal("47100"), new BigDecimal("0.015"), false, null, null
+                false, null, null
         );
         BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(selencia, scpiEden), List.of(), null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
@@ -686,7 +686,7 @@ class PatrimoineServiceImplTest {
         );
         SettingsModel settings = new SettingsModel(
                 1985, 64, 85, BigDecimal.ZERO, "", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                new BigDecimal("47100"), new BigDecimal("0.015"), true, null, BigDecimal.ZERO, null
+                true, null, BigDecimal.ZERO, null
         );
         BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
@@ -722,7 +722,7 @@ class PatrimoineServiceImplTest {
         );
         SettingsModel settings = new SettingsModel(
                 1985, 64, 85, BigDecimal.ZERO, "", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                new BigDecimal("47100"), new BigDecimal("0.015"), true, null, BigDecimal.ZERO, new BigDecimal("-1000")
+                true, null, BigDecimal.ZERO, new BigDecimal("-1000")
         );
         BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);

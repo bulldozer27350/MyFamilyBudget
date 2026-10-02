@@ -597,23 +597,42 @@ class BudgetMutationService {
         });
     }
 
-    /** Paramètres Retraite de {@code /settings}. */
+    /**
+     * Paramètres Retraite de {@code /settings}. {@code birthYear} et {@code retireAge} restent portés par
+     * {@link SettingsModel} ; {@code pass2026} et {@code passGrowthRate} sont écrits dans
+     * {@link RetirementModel} (SET-040 : source unique, plus de seconde copie dans les paramètres).
+     */
     public void updateRetirementSetting(RetirementSettingField field, Object value) {
         if (field == null) return;
-        updateSettings(s -> {
-            Integer birthYear = s.birthYear();
-            Integer retireAge = s.retireAge();
-            BigDecimal pass2026 = s.pass2026();
-            BigDecimal passGrowthRate = s.passGrowthRate();
-            switch (field) {
-                case BIRTH_YEAR -> birthYear = toInteger(value, 1985);
-                case RETIRE_AGE -> retireAge = toInteger(value, 64);
-                case PASS_2026 -> pass2026 = toBigDecimal(value, new BigDecimal("47100"));
-                case PASS_GROWTH_RATE -> passGrowthRate = toBigDecimal(value, new BigDecimal("0.015"));
+        switch (field) {
+            case BIRTH_YEAR -> updateSettings(s -> new SettingsModel(toInteger(value, 1985), s.retireAge(),
+                    s.simulateUntilAge(), s.inflationRate(), s.pivotDate(), s.pivotMode(), s.startBalance(),
+                    s.childExitAge(), s.taxAbattement(), s.sweepEnabled(), s.cashCeiling(), s.cashFloor(),
+                    s.cashAlertThreshold()));
+            case RETIRE_AGE -> updateSettings(s -> new SettingsModel(s.birthYear(), toInteger(value, 64),
+                    s.simulateUntilAge(), s.inflationRate(), s.pivotDate(), s.pivotMode(), s.startBalance(),
+                    s.childExitAge(), s.taxAbattement(), s.sweepEnabled(), s.cashCeiling(), s.cashFloor(),
+                    s.cashAlertThreshold()));
+            case PASS_2026, PASS_GROWTH_RATE -> updateRetirementPass(field, value);
+        }
+    }
+
+    private void updateRetirementPass(RetirementSettingField field, Object value) {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            RetirementModel retirement = base.retirement() != null
+                    ? base.retirement()
+                    : cacheStore.createDefaultBudgetData().retirement();
+            BigDecimal pass2026 = retirement.pass2026();
+            BigDecimal passGrowthRate = retirement.passGrowthRate();
+            if (field == RetirementSettingField.PASS_2026) {
+                pass2026 = toBigDecimal(value, new BigDecimal("47100"));
+            } else if (field == RetirementSettingField.PASS_GROWTH_RATE) {
+                passGrowthRate = toBigDecimal(value, new BigDecimal("0.015"));
             }
-            return new SettingsModel(birthYear, retireAge, s.simulateUntilAge(), s.inflationRate(), s.pivotDate(),
-                    s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), pass2026, passGrowthRate,
-                    s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
+            return base.withRetirement(new RetirementModel(retirement.people(), pass2026, passGrowthRate,
+                    retirement.agircPointValue(), retirement.agircPointDateGlobal(),
+                    retirement.agircPointGrowthRate()));
         });
     }
 
@@ -638,8 +657,7 @@ class BudgetMutationService {
                 case CASH_ALERT_THRESHOLD -> cashAlertThreshold = toBigDecimal(value, null);
             }
             return new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(), s.inflationRate(),
-                    pivotDate, pivotMode, startBalance, s.childExitAge(), s.taxAbattement(), s.pass2026(),
-                    s.passGrowthRate(), sweepEnabled, cashCeiling, cashFloor, cashAlertThreshold);
+                    pivotDate, pivotMode, startBalance, s.childExitAge(), s.taxAbattement(), sweepEnabled, cashCeiling, cashFloor, cashAlertThreshold);
         });
     }
 
@@ -654,23 +672,21 @@ class BudgetMutationService {
                 case TAX_ABATTEMENT -> taxAbattement = toBigDecimal(value, new BigDecimal("0.10"));
             }
             return new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(), s.inflationRate(),
-                    s.pivotDate(), s.pivotMode(), s.startBalance(), childExitAge, taxAbattement, s.pass2026(),
-                    s.passGrowthRate(), s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
+                    s.pivotDate(), s.pivotMode(), s.startBalance(), childExitAge, taxAbattement, s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
         });
     }
 
     /** Paramètre Simulation de {@code /settings}. */
     public void updateSimulateUntilAge(Object value) {
         updateSettings(s -> new SettingsModel(s.birthYear(), s.retireAge(), toInteger(value, 85), s.inflationRate(),
-                s.pivotDate(), s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), s.pass2026(),
-                s.passGrowthRate(), s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()));
+                s.pivotDate(), s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()));
     }
 
     /** Hypothèse économique de {@code /settings}. */
     public void updateInflationRate(Object value) {
         updateSettings(s -> new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(),
                 toBigDecimal(value, new BigDecimal("0.02")), s.pivotDate(), s.pivotMode(), s.startBalance(),
-                s.childExitAge(), s.taxAbattement(), s.pass2026(), s.passGrowthRate(), s.sweepEnabled(),
+                s.childExitAge(), s.taxAbattement(), s.sweepEnabled(),
                 s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()));
     }
 

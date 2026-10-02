@@ -20,6 +20,7 @@ import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
 import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetMutationLockAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
@@ -44,6 +45,7 @@ class ParametersServiceImplTest {
                 new SettingsPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 new BankPersistenceAdapter(persistenceManager),
+                new RetirementPersistenceAdapter(persistenceManager),
                 mapper,
                 objectifsSettingsService,
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),

@@ -524,9 +524,7 @@ class TresorerieServiceImplTest {
     void computeTresorerie_withCompleteData_buildsAllFields() {
         SettingsModel settings = new SettingsModel(
                 1985, 64, 85, BigDecimal.valueOf(1000), "2026-01-01", "manual",
-                BigDecimal.valueOf(0.02), 21, BigDecimal.valueOf(0.10),
-                BigDecimal.valueOf(47100), BigDecimal.valueOf(0.015)
-        );
+                BigDecimal.valueOf(0.02), 21, BigDecimal.valueOf(0.10));
 
         IncomeModel salary = new IncomeModel(
                 "inc_1", "Salaire", BigDecimal.valueOf(3000),

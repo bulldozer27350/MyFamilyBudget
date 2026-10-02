@@ -12,8 +12,8 @@ cocher au fur et à mesure, domaine par domaine (ne pas attendre d'avoir tout co
       de chantier dans [11-domaine-overview.md](11-domaine-overview.md)).
 - [ ] Les `SettingsModel` composites ont été séparés conceptuellement (voir
       [12-settings.md](12-settings.md)).
-- [ ] Les paramètres retraite dupliqués dans Settings (`pass2026`, `passGrowthRate`) ont été
-      tranchés.
+- [x] Les paramètres retraite dupliqués dans Settings (`pass2026`, `passGrowthRate`) ont été
+      tranchés (SET-040 : `RetirementModel` est la seule source ; `SettingsDto` les expose comme vue composite).
 - [ ] Chaque modèle persistant possède un propriétaire explicite.
 
 ## Entrées

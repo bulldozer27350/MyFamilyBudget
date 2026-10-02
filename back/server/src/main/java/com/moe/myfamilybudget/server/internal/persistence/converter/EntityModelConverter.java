@@ -22,8 +22,10 @@ public class EntityModelConverter {
             model.startBalance(),
             model.childExitAge(),
             model.taxAbattement(),
-            model.pass2026(),
-            model.passGrowthRate()
+            // SET-040 : colonnes heritees de SettingsEntity, plus ecrites (source unique : la retraite).
+            // Leur suppression physique releve des patchs DB-xxx.
+            null,
+            null
         );
         entity.setSweepEnabled(model.sweepEnabled());
         entity.setCashCeiling(model.cashCeiling());
@@ -44,8 +46,6 @@ public class EntityModelConverter {
             entity.getStartBalance(),
             entity.getChildExitAge(),
             entity.getTaxAbattement(),
-            entity.getPass2026(),
-            entity.getPassGrowthRate(),
             entity.getSweepEnabled(),
             entity.getCashCeiling(),
             entity.getCashFloor(),

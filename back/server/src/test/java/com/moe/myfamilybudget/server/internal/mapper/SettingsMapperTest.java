@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsResultModel;
 
@@ -29,9 +30,13 @@ class SettingsMapperTest {
 
     private static SettingsModel settings() {
         return new SettingsModel(1990, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                new BigDecimal("5000"), 21, new BigDecimal("0.10"), new BigDecimal("47100"),
-                new BigDecimal("0.015"), true, new BigDecimal("20000"), new BigDecimal("1000"),
+                new BigDecimal("5000"), 21, new BigDecimal("0.10"), true, new BigDecimal("20000"), new BigDecimal("1000"),
                 new BigDecimal("300"));
+    }
+
+    private static RetirementModel retirement() {
+        return new RetirementModel(List.of(), new BigDecimal("47100"), new BigDecimal("0.015"),
+                new BigDecimal("1.4386"), "2025-11-01", new BigDecimal("0.01"));
     }
 
     @SuppressWarnings("unchecked")
@@ -47,13 +52,29 @@ class SettingsMapperTest {
     }
 
     @Test
+    @DisplayName("SET-040 : pass2026 / passGrowthRate sont relus depuis la retraite, null si elle est absente")
+    void readsPassParametersFromRetirement() {
+        SettingsResultModel model = new SettingsResultModel(settings(), List.of(), 2054, List.of(), null);
+
+        Map<String, Object> withRetirement = section(
+                mapper.toResponseMap(model, new ObjectifsParameters(18, 4), retirement()), "settings");
+        assertEquals(new BigDecimal("47100"), withRetirement.get("pass2026"));
+        assertEquals(new BigDecimal("0.015"), withRetirement.get("passGrowthRate"));
+
+        Map<String, Object> withoutRetirement = section(
+                mapper.toResponseMap(model, new ObjectifsParameters(18, 4), null), "settings");
+        assertNull(withoutRetirement.get("pass2026"));
+        assertNull(withoutRetirement.get("passGrowthRate"));
+    }
+
+    @Test
     @DisplayName("toResponseMap() reprend les paramètres de base et réinjecte les seuils Objectifs")
     void mapsSettingsAndGoals() {
         SettingsResultModel model = new SettingsResultModel(settings(),
                 List.of(new AssetCategoryModel("c1", "🏦", "Épargne", "liquid", "#00ff00")),
                 2054, List.of(2026, 2027), null);
 
-        Map<String, Object> response = mapper.toResponseMap(model, new ObjectifsParameters(18, 4));
+        Map<String, Object> response = mapper.toResponseMap(model, new ObjectifsParameters(18, 4), retirement());
 
         Map<String, Object> s = section(response, "settings");
         assertEquals(1990, s.get("birthYear"));

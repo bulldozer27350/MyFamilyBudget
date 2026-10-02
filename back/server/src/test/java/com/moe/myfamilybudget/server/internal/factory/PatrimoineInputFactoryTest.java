@@ -35,8 +35,7 @@ class PatrimoineInputFactoryTest {
     private static SettingsModel settings(BigDecimal cashCeiling, BigDecimal cashAlertThreshold) {
         return new SettingsModel(
                 1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", new BigDecimal("1500"),
-                21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015"),
-                Boolean.TRUE, cashCeiling, new BigDecimal("200"), cashAlertThreshold);
+                21, BigDecimal.ZERO, Boolean.TRUE, cashCeiling, new BigDecimal("200"), cashAlertThreshold);
     }
 
     private static BudgetDataModel budget(
@@ -73,8 +72,7 @@ class PatrimoineInputFactoryTest {
     void horizonFallbackWhenRetirementBeforeStart() {
         SettingsModel earlyRetirement = new SettingsModel(
                 1950, 60, 85, BigDecimal.ZERO, "2026-01-01", "manual", BigDecimal.ZERO,
-                21, BigDecimal.ZERO, new BigDecimal("47100"), new BigDecimal("0.015"),
-                null, null, null, null);
+                21, BigDecimal.ZERO, null, null, null, null);
         BudgetDataModel data = budget(earlyRetirement, List.of(), List.of(), List.of(), List.of(), List.of());
 
         PatrimoineProjectionInput input = PatrimoineInputFactory.from(data);
