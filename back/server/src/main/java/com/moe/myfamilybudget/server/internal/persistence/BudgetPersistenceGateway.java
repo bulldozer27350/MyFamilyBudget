@@ -29,6 +29,7 @@ import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 import com.moe.myfamilybudget.server.internal.persistence.converter.BankImportDocumentMapper;
+import com.moe.myfamilybudget.server.internal.persistence.converter.CashflowEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.CreditLoanEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.server.internal.persistence.converter.FiscalEntityMapper;
@@ -41,6 +42,12 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCatego
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowChargeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowIncomeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowOneOffRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowTransferRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowVariableIncomeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowVariableOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CreditLoanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalActualOverrideRepository;
@@ -130,6 +137,14 @@ class BudgetPersistenceGateway {
     private final WealthPlacementRepository wealthPlacementRepository;
     private final WealthRealEstateRepository wealthRealEstateRepository;
     private final WealthCategoryRepository wealthCategoryRepository;
+    // DB-1061 : tables autonomes du domaine Tresorerie (revenus, charges, ponctuels, virements, revenus
+    // variables et surcharges), meme principe que goalRepository.
+    private final CashflowIncomeRepository cashflowIncomeRepository;
+    private final CashflowChargeRepository cashflowChargeRepository;
+    private final CashflowOneOffRepository cashflowOneOffRepository;
+    private final CashflowTransferRepository cashflowTransferRepository;
+    private final CashflowVariableIncomeRepository cashflowVariableIncomeRepository;
+    private final CashflowVariableOverrideRepository cashflowVariableOverrideRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -161,7 +176,13 @@ class BudgetPersistenceGateway {
                               BankImportDocumentRepository bankImportDocumentRepository,
                               WealthPlacementRepository wealthPlacementRepository,
                               WealthRealEstateRepository wealthRealEstateRepository,
-                              WealthCategoryRepository wealthCategoryRepository) {
+                              WealthCategoryRepository wealthCategoryRepository,
+                              CashflowIncomeRepository cashflowIncomeRepository,
+                              CashflowChargeRepository cashflowChargeRepository,
+                              CashflowOneOffRepository cashflowOneOffRepository,
+                              CashflowTransferRepository cashflowTransferRepository,
+                              CashflowVariableIncomeRepository cashflowVariableIncomeRepository,
+                              CashflowVariableOverrideRepository cashflowVariableOverrideRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.incomeRepository = incomeRepository;
         this.chargeRepository = chargeRepository;
@@ -190,6 +211,12 @@ class BudgetPersistenceGateway {
         this.wealthPlacementRepository = wealthPlacementRepository;
         this.wealthRealEstateRepository = wealthRealEstateRepository;
         this.wealthCategoryRepository = wealthCategoryRepository;
+        this.cashflowIncomeRepository = cashflowIncomeRepository;
+        this.cashflowChargeRepository = cashflowChargeRepository;
+        this.cashflowOneOffRepository = cashflowOneOffRepository;
+        this.cashflowTransferRepository = cashflowTransferRepository;
+        this.cashflowVariableIncomeRepository = cashflowVariableIncomeRepository;
+        this.cashflowVariableOverrideRepository = cashflowVariableOverrideRepository;
     }
 
     /**
@@ -227,6 +254,8 @@ class BudgetPersistenceGateway {
             syncBankImport(loaded.bankImport());
             // DB-1051 : idem pour les tables Patrimoine.
             syncWealth(loaded);
+            // DB-1061 : idem pour les tables Tresorerie.
+            syncCashflow(loaded);
         }
         return loaded;
     }
@@ -301,6 +330,7 @@ class BudgetPersistenceGateway {
         syncPension(model.retirement());
         syncBankImport(model.bankImport());
         syncWealth(model);
+        syncCashflow(model);
         saveBankImport(model.bankImport(), entity);
     }
 
@@ -436,6 +466,35 @@ class BudgetPersistenceGateway {
         wealthPlacementRepository.saveAll(WealthEntityMapper.toPlacementEntities(model.getEffectivePlacements()));
         wealthRealEstateRepository.saveAll(WealthEntityMapper.toRealEstateEntities(model.getEffectiveRealEstate()));
         wealthCategoryRepository.saveAll(WealthEntityMapper.toCategoryEntities(model.getEffectiveAssetCategories()));
+    }
+
+    /**
+     * DB-1061 : remplace le contenu des six tables {@code cashflow_*} (revenus, charges, depenses ponctuelles,
+     * virements, revenus variables, surcharges annuelles) par les lignes du modele, dans la transaction de
+     * l'appelant ({@code flush} apres les suppressions, comme {@link #syncGoals}). Les listes sont copiees telles
+     * que le cache les expose ({@code getEffective*}) : la lecture JPA restitue donc exactement son contenu.
+     */
+    private void syncCashflow(BudgetDataModel model) {
+        cashflowIncomeRepository.deleteAll();
+        cashflowChargeRepository.deleteAll();
+        cashflowOneOffRepository.deleteAll();
+        cashflowTransferRepository.deleteAll();
+        cashflowVariableIncomeRepository.deleteAll();
+        cashflowVariableOverrideRepository.deleteAll();
+        cashflowIncomeRepository.flush();
+        cashflowChargeRepository.flush();
+        cashflowOneOffRepository.flush();
+        cashflowTransferRepository.flush();
+        cashflowVariableIncomeRepository.flush();
+        cashflowVariableOverrideRepository.flush();
+        cashflowIncomeRepository.saveAll(CashflowEntityMapper.toIncomeEntities(model.getEffectiveIncomes()));
+        cashflowChargeRepository.saveAll(CashflowEntityMapper.toChargeEntities(model.getEffectiveCharges()));
+        cashflowOneOffRepository.saveAll(CashflowEntityMapper.toOneOffEntities(model.getEffectiveOneoff()));
+        cashflowTransferRepository.saveAll(CashflowEntityMapper.toTransferEntities(model.getEffectiveTransfers()));
+        cashflowVariableIncomeRepository.saveAll(
+                CashflowEntityMapper.toVariableIncomeEntities(model.getEffectiveVariableIncomes()));
+        cashflowVariableOverrideRepository.saveAll(
+                CashflowEntityMapper.toVariableOverrideEntities(model.getEffectiveVariableOverrides()));
     }
 
     private BankImportModel loadBankImport(Long budgetDataId) {

@@ -2,6 +2,7 @@ package com.moe.myfamilybudget.server.internal.persistence.adapter;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
@@ -10,42 +11,93 @@ import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.persistence.converter.CashflowEntityMapper;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowChargeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowIncomeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowOneOffRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowVariableIncomeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowVariableOverrideRepository;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
 
 /**
  * Adaptateur de persistance pour {@link BudgetReader} (RF-B00).
+ *
+ * <p>DB-1061 : en production, la lecture des revenus, charges, depenses ponctuelles, revenus variables et
+ * surcharges annuelles passe par les repositories autonomes {@code cashflow_*} (DB-1060). Les ecritures du
+ * domaine passent par {@code TresoreriePersistenceAdapter} et le {@code PersistenceManager} : la passerelle de
+ * persistance recopie les lignes dans les tables autonomes dans la meme transaction.
+ *
+ * <p>Le constructeur sans repository conserve l'ancienne lecture depuis le cache memoire ; il sert aux tests
+ * unitaires adosses a des repositories mockes et constitue le chemin de retour arriere.
  */
 @Component
 public class BudgetPersistenceAdapter implements BudgetReader {
 
     private final PersistenceManager persistenceManager;
+    private final CashflowIncomeRepository cashflowIncomeRepository;
+    private final CashflowChargeRepository cashflowChargeRepository;
+    private final CashflowOneOffRepository cashflowOneOffRepository;
+    private final CashflowVariableIncomeRepository cashflowVariableIncomeRepository;
+    private final CashflowVariableOverrideRepository cashflowVariableOverrideRepository;
 
     public BudgetPersistenceAdapter(PersistenceManager persistenceManager) {
+        this(persistenceManager, null, null, null, null, null);
+    }
+
+    @Autowired
+    public BudgetPersistenceAdapter(PersistenceManager persistenceManager,
+                                    CashflowIncomeRepository cashflowIncomeRepository,
+                                    CashflowChargeRepository cashflowChargeRepository,
+                                    CashflowOneOffRepository cashflowOneOffRepository,
+                                    CashflowVariableIncomeRepository cashflowVariableIncomeRepository,
+                                    CashflowVariableOverrideRepository cashflowVariableOverrideRepository) {
         this.persistenceManager = persistenceManager;
+        this.cashflowIncomeRepository = cashflowIncomeRepository;
+        this.cashflowChargeRepository = cashflowChargeRepository;
+        this.cashflowOneOffRepository = cashflowOneOffRepository;
+        this.cashflowVariableIncomeRepository = cashflowVariableIncomeRepository;
+        this.cashflowVariableOverrideRepository = cashflowVariableOverrideRepository;
     }
 
     @Override
     public List<IncomeModel> getIncomes() {
-        return persistenceManager.getBudgetData().getEffectiveIncomes();
+        if (cashflowIncomeRepository == null) {
+            return persistenceManager.getBudgetData().getEffectiveIncomes();
+        }
+        return CashflowEntityMapper.toIncomeModels(cashflowIncomeRepository.findAllByOrderByPositionAsc());
     }
 
     @Override
     public List<ChargeModel> getCharges() {
-        return persistenceManager.getBudgetData().getEffectiveCharges();
+        if (cashflowChargeRepository == null) {
+            return persistenceManager.getBudgetData().getEffectiveCharges();
+        }
+        return CashflowEntityMapper.toChargeModels(cashflowChargeRepository.findAllByOrderByPositionAsc());
     }
 
     @Override
     public List<OneOffExpenseModel> getOneoffExpenses() {
-        return persistenceManager.getBudgetData().getEffectiveOneoff();
+        if (cashflowOneOffRepository == null) {
+            return persistenceManager.getBudgetData().getEffectiveOneoff();
+        }
+        return CashflowEntityMapper.toOneOffModels(cashflowOneOffRepository.findAllByOrderByPositionAsc());
     }
 
     @Override
     public List<VariableIncomeModel> getVariableIncomes() {
-        return persistenceManager.getBudgetData().getEffectiveVariableIncomes();
+        if (cashflowVariableIncomeRepository == null) {
+            return persistenceManager.getBudgetData().getEffectiveVariableIncomes();
+        }
+        return CashflowEntityMapper.toVariableIncomeModels(
+                cashflowVariableIncomeRepository.findAllByOrderByPositionAsc());
     }
 
     @Override
     public List<VariableOverrideModel> getVariableOverrides() {
-        return persistenceManager.getBudgetData().getEffectiveVariableOverrides();
+        if (cashflowVariableOverrideRepository == null) {
+            return persistenceManager.getBudgetData().getEffectiveVariableOverrides();
+        }
+        return CashflowEntityMapper.toVariableOverrideModels(
+                cashflowVariableOverrideRepository.findAllByOrderByPositionAsc());
     }
 }

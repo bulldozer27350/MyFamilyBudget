@@ -31,6 +31,12 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCatego
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowChargeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowIncomeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowOneOffRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowTransferRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowVariableIncomeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowVariableOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CreditLoanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalActualOverrideRepository;
@@ -123,6 +129,12 @@ class BankImportWriteFailureTest {
                 mock(WealthPlacementRepository.class),
                 mock(WealthRealEstateRepository.class),
                 mock(WealthCategoryRepository.class),
+                mock(CashflowIncomeRepository.class),
+                mock(CashflowChargeRepository.class),
+                mock(CashflowOneOffRepository.class),
+                mock(CashflowTransferRepository.class),
+                mock(CashflowVariableIncomeRepository.class),
+                mock(CashflowVariableOverrideRepository.class),
                 mock(PlatformTransactionManager.class),
                 eventPublisher);
         persistenceManager.init();

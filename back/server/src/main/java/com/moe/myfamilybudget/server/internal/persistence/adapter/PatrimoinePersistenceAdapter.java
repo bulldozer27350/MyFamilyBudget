@@ -11,7 +11,9 @@ import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.persistence.converter.CashflowEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.WealthEntityMapper;
+import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowTransferRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.WealthCategoryRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.WealthPlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.WealthRealEstateRepository;
@@ -26,8 +28,8 @@ import com.moe.myfamilybudget.server.internal.port.PatrimoineWriter;
  * <p>DB-1051 : en production, la lecture des placements, des biens immobiliers et des categories d'actifs
  * passe par les repositories autonomes {@code wealth_*} (DB-1050). Les ecritures passent toujours par le
  * {@code PersistenceManager} : la passerelle de persistance recopie le patrimoine dans les tables autonomes
- * dans la meme transaction. Les virements ({@link #getTransfers()}) relevent de Tresorerie et restent lus
- * depuis le cache jusqu'a DB-1061.
+ * dans la meme transaction. Les virements ({@link #getTransfers()}) relevent de Tresorerie : depuis DB-1061 ils
+ * sont lus depuis la table autonome {@code cashflow_transfer} (DB-1060).
  *
  * <p>Le constructeur sans repository conserve l'ancienne lecture depuis le cache memoire ; il sert aux tests
  * unitaires adosses a des repositories mockes et constitue le chemin de retour arriere.
@@ -39,20 +41,23 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
     private final WealthPlacementRepository wealthPlacementRepository;
     private final WealthRealEstateRepository wealthRealEstateRepository;
     private final WealthCategoryRepository wealthCategoryRepository;
+    private final CashflowTransferRepository cashflowTransferRepository;
 
     public PatrimoinePersistenceAdapter(PersistenceManager persistenceManager) {
-        this(persistenceManager, null, null, null);
+        this(persistenceManager, null, null, null, null);
     }
 
     @Autowired
     public PatrimoinePersistenceAdapter(PersistenceManager persistenceManager,
                                         WealthPlacementRepository wealthPlacementRepository,
                                         WealthRealEstateRepository wealthRealEstateRepository,
-                                        WealthCategoryRepository wealthCategoryRepository) {
+                                        WealthCategoryRepository wealthCategoryRepository,
+                                        CashflowTransferRepository cashflowTransferRepository) {
         this.persistenceManager = persistenceManager;
         this.wealthPlacementRepository = wealthPlacementRepository;
         this.wealthRealEstateRepository = wealthRealEstateRepository;
         this.wealthCategoryRepository = wealthCategoryRepository;
+        this.cashflowTransferRepository = cashflowTransferRepository;
     }
 
     @Override
@@ -81,7 +86,10 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
 
     @Override
     public List<TransferModel> getTransfers() {
-        return persistenceManager.getBudgetData().getEffectiveTransfers();
+        if (cashflowTransferRepository == null) {
+            return persistenceManager.getBudgetData().getEffectiveTransfers();
+        }
+        return CashflowEntityMapper.toTransferModels(cashflowTransferRepository.findAllByOrderByPositionAsc());
     }
 
     @Override

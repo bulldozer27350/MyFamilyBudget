@@ -739,7 +739,33 @@ pas les agents qui travaillent sur les autres domaines.
 
 ### Statut DB-1061 — JPA Trésorerie — basculer l'adapter
 
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Décision** : les lectures des lignes `cashflow_*` restent portées par les readers existants (aucun nouveau port) :
+  `BudgetPersistenceAdapter` (`BudgetReader`) lit revenus, charges, dépenses ponctuelles, revenus variables et
+  surcharges annuelles ; `PatrimoinePersistenceAdapter.getTransfers()` lit les virements (contrat `PatrimoineReader`
+  inchangé, consommé par Overview, Impôts, Patrimoine, Trésorerie et Analyse). Les écritures restent portées par
+  `TresoreriePersistenceAdapter` / `PatrimoinePersistenceAdapter` via `PersistenceManager`.
+- **Livré** : les six lectures passent par `CashflowIncomeRepository`, `CashflowChargeRepository`,
+  `CashflowOneOffRepository`, `CashflowTransferRepository`, `CashflowVariableIncomeRepository` et
+  `CashflowVariableOverrideRepository` (tables `cashflow_*`) via `CashflowEntityMapper`. `BudgetPersistenceGateway`
+  recopie les six listes du modèle dans les tables autonomes à chaque sauvegarde, dans la même transaction (import, reset
+  et mutations de tous domaines inclus : rollback cohérent), avec `deleteAll` + `flush` avant réinsertion. Au chargement
+  du cache (démarrage), les tables sont reconstruites depuis le hub, ce qui migre les données existantes sans script. Les
+  six repositories sont injectés dans `PersistenceManager` (constructeur élargi ; fabrique et tests adaptés).
+  `PatrimoinePersistenceAdapter` reçoit un cinquième paramètre (`CashflowTransferRepository`).
+- **Retour arrière** : le hub (`income`, `charge`, `one_off_expense`, `transfer`, `variable_income`, `variable_override`)
+  reste alimenté et reste la source de chargement du cache. Les constructeurs `BudgetPersistenceAdapter(PersistenceManager)`
+  et `PatrimoinePersistenceAdapter(PersistenceManager)` conservent la lecture depuis le cache (tests unitaires à
+  repositories mockés) ; revenir au comportement antérieur en production consiste à revenir sur ce patch.
+- **Tests** : `PersistenceAdaptersJpaRoundTripTest` (H2) : import relu par JPA pour les six listes, ajout / mise à jour /
+  suppression d'un revenu et d'un virement, reconstruction des tables au démarrage, reset ; les lectures Budget du test
+  (`assertReferenceState` inclus) passent par la lecture JPA. Constructeurs de `PersistenceManager` adaptés dans
+  `PersistenceManagerTestFactory`, `WriteFailureKeepsMemoryTest`, `BankImportWriteFailureTest`,
+  `UpdateTaxSettingsMinimalBudgetTest` et le round-trip.
+- **Reste** : `VT-110` (graphe Retraite → Fiscalité → Trésorerie → Overview), `VT-220` et `VT-320` (redémarrage, H2 +
+  PostgreSQL) à exécuter en CI ; la suppression des relations du hub relève de DB-1160. `DB-1070` et `DB-1080` peuvent
+  démarrer une fois DB-1051 et DB-1061 mergés.
+- **Prérequis de livraison** : ce patch s'applique après le patch DB-1051 (mêmes fichiers de câblage).
 
 ## DB-1070 — Vérifier les readers après bascule JPA
 
