@@ -431,7 +431,23 @@ pas les agents qui travaillent sur les autres domaines.
 
 ### Statut DB-1021 — JPA Objectifs — basculer l'adapter
 
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `GoalPersistenceAdapter.getGoals()` lit désormais `GoalRepository` (tables `goal` / `goal_allocation`) via
+  `GoalEntityMapper`. Les écritures (`saveGoalRow`, `deleteGoalRow`) restent portées par `PersistenceManager`, car la
+  validation des allocations dépend du cache (comptes et autres objectifs) ; `BudgetPersistenceGateway` recopie les
+  objectifs du modèle dans les tables autonomes à chaque sauvegarde, dans la même transaction (import, reset et
+  mutations de tous domaines inclus : rollback cohérent). Au chargement du cache (démarrage), les tables autonomes
+  sont reconstruites depuis le hub, ce qui migre les données existantes sans script. `GoalRepository` est injecté
+  dans `PersistenceManager` (constructeur élargi ; fabrique et tests adaptés).
+- **Retour arrière** : le hub (`objectif` / `objectif_allocation`) reste alimenté et reste la source de chargement du
+  cache ; `LegacyObjectifAllocationMigrator` continue de s'appliquer à ce chargement. Le constructeur
+  `GoalPersistenceAdapter(PersistenceManager)` conserve la lecture depuis le cache (tests unitaires à repositories
+  mockes) ; revenir au comportement antérieur en production consiste à revenir sur ce patch.
+- **Tests** : `PersistenceAdaptersJpaRoundTripTest` (H2) : objectifs d'un import relus par JPA, création / mise à jour /
+  suppression visibles via la lecture JPA, reconstruction des tables au démarrage, reset. Constructeurs de
+  `PersistenceManager` adaptés dans `PersistenceManagerTestFactory`, `WriteFailureKeepsMemoryTest` et le round-trip.
+- **Reste** : `VT-320` (redémarrage, H2 + PostgreSQL) couvre déjà `POST /patrimoine/objectifs` ; à exécuter en CI. La
+  suppression de la relation du hub relève de DB-1120.
 
 ## DB-1030 / DB-1031 — JPA Banque
 

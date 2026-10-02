@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +42,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCatego
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ObjectifRepository;
@@ -279,6 +281,69 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     // =========================================================================
+    // DB-1021 -- Objectifs lus depuis les tables autonomes
+    // =========================================================================
+
+    private GoalPersistenceAdapter jpaGoalAdapter(PersistenceManager manager) {
+        return new GoalPersistenceAdapter(manager, context.getBean(GoalRepository.class));
+    }
+
+    @Test
+    @DisplayName("DB-1021 -- import -> les objectifs sont recopies dans les tables autonomes et relus par JPA")
+    void importedGoalsAreReadFromGoalTables() {
+        writer.setBudgetData(referenceData());
+
+        assertThat(context.getBean(GoalRepository.class).count()).isEqualTo(1);
+        List<ObjectifModel> goals = jpaGoalAdapter(freshReader()).getGoals();
+        assertSameContent(goals, List.of(GOAL));
+        assertThat(goals.get(0).allocations()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("DB-1021 -- creation, mise a jour et suppression d'un objectif sont visibles via la lecture JPA")
+    void goalWritesAreVisibleThroughJpaReader() {
+        writer.setBudgetData(referenceData());
+        GoalPersistenceAdapter adapter = jpaGoalAdapter(writer);
+
+        adapter.saveGoalRow(Map.of("id", "goal_2", "label", "Voiture", "targetAmount", bd("8000"),
+                "targetDate", "2028-01-01"));
+        assertThat(adapter.getGoals()).extracting(ObjectifModel::id).containsExactlyInAnyOrder("goal_1", "goal_2");
+
+        adapter.saveGoalRow(Map.of("id", "goal_2", "label", "Voiture neuve", "targetAmount", bd("9000"),
+                "targetDate", "2028-01-01"));
+        assertThat(adapter.getGoals()).filteredOn(g -> "goal_2".equals(g.id()))
+                .singleElement()
+                .satisfies(g -> assertThat(g.label()).isEqualTo("Voiture neuve"));
+
+        adapter.deleteGoalRow("goal_1");
+        assertThat(jpaGoalAdapter(freshReader()).getGoals()).extracting(ObjectifModel::id)
+                .containsExactly("goal_2");
+    }
+
+    @Test
+    @DisplayName("DB-1021 -- tables autonomes vides au demarrage (donnees pre-existantes) -> reconstruites depuis le hub")
+    void goalTablesAreRebuiltFromHubOnStartup() {
+        writer.setBudgetData(referenceData());
+        context.getBean(GoalRepository.class).deleteAll();
+        assertThat(context.getBean(GoalRepository.class).count()).isZero();
+
+        PersistenceManager restarted = freshReader();
+
+        assertSameContent(jpaGoalAdapter(restarted).getGoals(), List.of(GOAL));
+    }
+
+    @Test
+    @DisplayName("DB-1021 -- reinitialisation -> les tables autonomes sont videes")
+    void resetEmptiesGoalTables() {
+        writer.setBudgetData(referenceData());
+
+        writer.resetData();
+
+        assertThat(context.getBean(GoalRepository.class).count()).isZero();
+        assertThat(jpaGoalAdapter(writer).getGoals()).isEmpty();
+    }
+
+    // =========================================================================
     // Utilitaires
     // =========================================================================
 
@@ -307,6 +372,7 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(BankImportRepository.class),
                 context.getBean(LoanRepository.class),
                 context.getBean(ObjectifRepository.class),
+                context.getBean(GoalRepository.class),
                 transactionManager,
                 eventPublisher);
         reader.init();

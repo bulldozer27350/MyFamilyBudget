@@ -18,8 +18,8 @@ import jakarta.persistence.Table;
  *
  * <p>Contrairement a {@link ObjectifEntity}, cette entite n'a <strong>aucune relation vers
  * {@link BudgetDataEntity}</strong> : elle est la racine de son propre agregat. Elle est additive et
- * n'est pas encore utilisee par l'adapter {@code GoalPersistenceAdapter} (bascule en DB-1021).
- * Le chemin legacy ({@code objectif} / {@code objectif_allocation}) reste inchange.
+ * est lue par {@code GoalPersistenceAdapter} depuis DB-1021. Le chemin legacy ({@code objectif} /
+ * {@code objectif_allocation}) reste alimente en parallele pour permettre un retour arriere simple.
  */
 @Entity
 @Table(name = "goal")

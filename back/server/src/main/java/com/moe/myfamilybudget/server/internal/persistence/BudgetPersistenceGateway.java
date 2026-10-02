@@ -27,12 +27,14 @@ import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
+import com.moe.myfamilybudget.server.internal.persistence.converter.GoalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BankImportEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ChargeRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ObjectifRepository;
@@ -92,6 +94,9 @@ class BudgetPersistenceGateway {
     private final BankImportRepository bankImportRepository;
     private final LoanRepository loanRepository;
     private final ObjectifRepository objectifRepository;
+    // DB-1021 : tables autonomes du domaine Objectifs, alimentees en ecriture a chaque sauvegarde du modele
+    // (le hub reste la source de chargement du cache, ce qui garde le retour arriere trivial).
+    private final GoalRepository goalRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -112,7 +117,8 @@ class BudgetPersistenceGateway {
                               AssetCategoryRepository assetCategoryRepository,
                               BankImportRepository bankImportRepository,
                               LoanRepository loanRepository,
-                              ObjectifRepository objectifRepository) {
+                              ObjectifRepository objectifRepository,
+                              GoalRepository goalRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.incomeRepository = incomeRepository;
         this.chargeRepository = chargeRepository;
@@ -130,6 +136,7 @@ class BudgetPersistenceGateway {
         this.bankImportRepository = bankImportRepository;
         this.loanRepository = loanRepository;
         this.objectifRepository = objectifRepository;
+        this.goalRepository = goalRepository;
     }
 
     /**
@@ -152,7 +159,13 @@ class BudgetPersistenceGateway {
      */
     BudgetDataModel loadExistingIfPresent() {
         Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
-        return existingData.map(this::loadCompleteBudgetData).orElse(null);
+        BudgetDataModel loaded = existingData.map(this::loadCompleteBudgetData).orElse(null);
+        if (loaded != null) {
+            // DB-1021 : re-synchronise les tables Objectifs depuis le hub (migration au premier demarrage,
+            // puis reparation idempotente a chaque chargement).
+            syncGoals(loaded.objectifs());
+        }
+        return loaded;
     }
 
     private BudgetDataModel loadCompleteBudgetData(BudgetDataEntity entity) {
@@ -219,6 +232,7 @@ class BudgetPersistenceGateway {
         saveAssetCategories(model.assetCategories(), entity);
         saveLoans(model.loans(), entity);
         saveObjectifs(model.objectifs(), entity);
+        syncGoals(model.objectifs());
         saveBankImport(model.bankImport(), entity);
     }
 
@@ -238,6 +252,29 @@ class BudgetPersistenceGateway {
                 objectifRepository.save(EntityModelConverter.toEntity(objectif, budgetData));
             }
         }
+    }
+
+    /**
+     * DB-1021 : remplace le contenu des tables {@code goal} / {@code goal_allocation} par les objectifs du
+     * modele, dans la transaction de l'appelant. Le {@code flush} apres la suppression est indispensable :
+     * Hibernate execute les insertions avant les suppressions, ce qui violerait la cle primaire (identifiant
+     * metier conserve) lors du remplacement d'un objectif existant. Un objectif sans identifiant ne peut etre
+     * adresse par aucune API : il reste dans le cache et le hub, mais n'est pas copie dans les nouvelles tables.
+     */
+    private void syncGoals(List<ObjectifModel> objectifs) {
+        goalRepository.deleteAll();
+        goalRepository.flush();
+        if (objectifs == null || objectifs.isEmpty()) {
+            return;
+        }
+        List<ObjectifModel> identified = objectifs.stream()
+                .filter(o -> o != null && o.id() != null)
+                .toList();
+        if (identified.size() != objectifs.size()) {
+            LOG.warn("{} objectif(s) sans identifiant ignore(s) lors de la synchronisation des tables Objectifs",
+                    objectifs.size() - identified.size());
+        }
+        goalRepository.saveAll(GoalEntityMapper.toEntities(identified));
     }
 
     private BankImportModel loadBankImport(Long budgetDataId) {
