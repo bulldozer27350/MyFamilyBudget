@@ -35,7 +35,7 @@ import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
-import com.moe.myfamilybudget.server.internal.model.TransferModel;
+import com.moe.myfamilybudget.domain.budget.TransferModel;
 
 @Component
 public class PatrimoineMapper {

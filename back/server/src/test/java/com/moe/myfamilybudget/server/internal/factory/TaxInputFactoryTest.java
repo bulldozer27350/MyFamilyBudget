@@ -15,7 +15,7 @@ import com.moe.myfamilybudget.server.internal.calculation.RetirementCalculationS
 import com.moe.myfamilybudget.server.internal.calculation.TaxCalculationInput;
 import com.moe.myfamilybudget.server.internal.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;

@@ -17,8 +17,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.model.ChargeModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;

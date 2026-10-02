@@ -12,12 +12,12 @@ import com.moe.myfamilybudget.server.internal.calculation.OverviewInput;
 import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjection;
 import com.moe.myfamilybudget.server.internal.calculation.RealEstateProjection;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.ChargeModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.model.TripleAmountModel;
+import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
 
 /**
  * RF-900 : vérifie la création d'{@link OverviewInput} par {@link OverviewInputFactory}

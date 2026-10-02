@@ -10,8 +10,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
-import com.moe.myfamilybudget.server.internal.model.ChargeModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PointageModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;

@@ -5,6 +5,12 @@ import com.moe.myfamilybudget.server.internal.persistence.entity.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 
 public class EntityModelConverter {
 

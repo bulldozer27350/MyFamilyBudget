@@ -58,7 +58,7 @@ echo "------------------------------------------------------------------"
 
 if [ ! -f "$APP_JAR" ]; then
     echo "[ERREUR] Impossible de trouver le fichier JAR : $APP_JAR"
-    echo "Veuillez compiler l'application : cd back/server && mvn clean package -DskipTests"
+    echo "Veuillez compiler l'application : cd back && mvn clean package -DskipTests -pl server -am"
     exit 1
 fi
 

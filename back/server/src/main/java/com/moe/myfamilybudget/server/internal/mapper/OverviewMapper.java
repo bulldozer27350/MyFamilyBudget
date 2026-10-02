@@ -48,11 +48,11 @@ import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.CashflowYearModel;
-import com.moe.myfamilybudget.server.internal.model.ChargeModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
-import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.OverviewResultModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
@@ -66,12 +66,12 @@ import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.server.internal.model.TransferModel;
+import com.moe.myfamilybudget.domain.budget.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
-import com.moe.myfamilybudget.server.internal.model.TripleAmountModel;
-import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
-import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
+import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 
 @Component
 public class OverviewMapper {

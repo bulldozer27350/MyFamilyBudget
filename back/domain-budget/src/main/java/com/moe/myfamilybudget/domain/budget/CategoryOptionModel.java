@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.budget;
 
 public record CategoryOptionModel(
     String value,

@@ -21,13 +21,13 @@ import com.moe.myfamilybudget.server.internal.calculation.PlacementHistoryPoint;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementProjectionInput;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementTransfer;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.ChargeModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
-import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.model.TransferModel;
+import com.moe.myfamilybudget.domain.budget.TransferModel;
 
 /**
  * Construit un {@link PatrimoineProjectionInput} à partir de {@link BudgetDataModel} (RF-300,

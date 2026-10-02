@@ -1,8 +1,8 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.budget;
 
 import java.math.BigDecimal;
 
-public record IncomeModel(
+public record ChargeModel(
     String id,
     String label,
     BigDecimal monthly,
@@ -16,7 +16,10 @@ public record IncomeModel(
         return monthly != null ? monthly : BigDecimal.ZERO;
     }
 
-    public BigDecimal getEffectiveGrowthRate() {
-        return growthRate != null ? growthRate : BigDecimal.ZERO;
+    public BigDecimal getEffectiveGrowthRate(BigDecimal defaultInflationRate) {
+        if (growthRate != null) {
+            return growthRate;
+        }
+        return defaultInflationRate != null ? defaultInflationRate : BigDecimal.ZERO;
     }
 }

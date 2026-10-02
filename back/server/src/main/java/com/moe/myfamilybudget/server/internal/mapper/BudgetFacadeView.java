@@ -6,11 +6,11 @@ import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.ChargeModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
-import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
@@ -19,9 +19,9 @@ import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.server.internal.model.TransferModel;
-import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
-import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 
 /**
  * Vue de façade API (RES-010) : contenu du budget réexposé tel quel dans les réponses composites

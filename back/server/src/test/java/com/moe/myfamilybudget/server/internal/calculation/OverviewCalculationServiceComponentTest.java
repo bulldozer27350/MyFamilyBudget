@@ -12,14 +12,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.model.CashflowYearModel;
+import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
 import com.moe.myfamilybudget.server.internal.model.OverviewResultModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
-import com.moe.myfamilybudget.server.internal.model.TripleAmountModel;
+import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
 
 /**
  * RF-902 : tests de composant du moteur d'apercu financier global, construits uniquement avec

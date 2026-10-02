@@ -2,8 +2,8 @@ package com.moe.myfamilybudget.server.internal.calculation;
 
 import java.util.List;
 
-import com.moe.myfamilybudget.server.internal.model.CashflowYearModel;
-import com.moe.myfamilybudget.server.internal.model.VariablePreviewModel;
+import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
+import com.moe.myfamilybudget.domain.budget.VariablePreviewModel;
 
 /**
  * Projection de flux de trésorerie (RF-401, voir doc/architecture/06-domaine-tresorerie.md et

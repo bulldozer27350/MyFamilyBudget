@@ -8,11 +8,11 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.model.CashflowYearModel;
+import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
 import com.moe.myfamilybudget.server.internal.model.OverviewResultModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
-import com.moe.myfamilybudget.server.internal.model.TripleAmountModel;
+import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
 
 /**
  * Calcul pur de l'aperçu financier global (Overview) : composition et transformation de

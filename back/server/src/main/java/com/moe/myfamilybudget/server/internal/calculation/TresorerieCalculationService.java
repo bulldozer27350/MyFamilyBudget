@@ -8,9 +8,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import com.moe.myfamilybudget.server.internal.model.CashflowYearModel;
-import com.moe.myfamilybudget.server.internal.model.VariablePreviewCellModel;
-import com.moe.myfamilybudget.server.internal.model.VariablePreviewModel;
+import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
+import com.moe.myfamilybudget.domain.budget.VariablePreviewCellModel;
+import com.moe.myfamilybudget.domain.budget.VariablePreviewModel;
 
 /**
  * Calcul pur de la trésorerie prévisionnelle (Trésorerie) : projections de flux annuel et aperçu

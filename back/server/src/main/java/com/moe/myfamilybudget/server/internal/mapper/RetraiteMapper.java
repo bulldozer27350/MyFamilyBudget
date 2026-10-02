@@ -17,7 +17,7 @@ import com.moe.myfamilybudget.api.model.RetirementDto;
 import com.moe.myfamilybudget.api.model.RetirementPersonDto;
 import com.moe.myfamilybudget.api.model.SalaryHistoryDto;
 import com.moe.myfamilybudget.api.model.SettingsDto;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.RetraitePersonWithProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;

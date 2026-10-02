@@ -19,6 +19,7 @@ const E2E_DIR = path.join(ROOT, 'tests', 'e2e');
 const WORKFLOW = path.join(ROOT, '.github', 'workflows', 'ci-cd.yml');
 const POMS = [
   path.join(ROOT, 'back', 'pom.xml'),
+  path.join(ROOT, 'back', 'domain-budget', 'pom.xml'),
   path.join(ROOT, 'back', 'server', 'pom.xml'),
 ];
 
@@ -102,7 +103,7 @@ function checkStatic() {
 
 function checkReports() {
   if (!fs.existsSync(SUREFIRE_DIR)) {
-    violations.push(rel(SUREFIRE_DIR) + ' absent : lancer `mvn -f back/server/pom.xml -B test` avant `reports`');
+    violations.push(rel(SUREFIRE_DIR) + ' absent : lancer `mvn -f back/pom.xml -B -pl server -am test` avant `reports`');
     return;
   }
   const reports = fs.readdirSync(SUREFIRE_DIR).filter(n => /^TEST-.*\.xml$/.test(n));

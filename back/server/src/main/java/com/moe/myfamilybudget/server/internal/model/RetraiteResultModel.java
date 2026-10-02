@@ -2,6 +2,7 @@ package com.moe.myfamilybudget.server.internal.model;
 
 import java.math.BigDecimal;
 import java.util.List;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 
 /**
  * Modèle de domaine représentant les données de retraite complètes avec projections.

@@ -13,6 +13,8 @@ import com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransact
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.CategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.MatchingLinkModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.MatchingModel;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 
 class AnalyseCalculatorTest {
 

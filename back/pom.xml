@@ -19,7 +19,8 @@
 
         Ce parent ne porte que des versions (properties, dependencyManagement, pluginManagement) :
         aucune dépendance ni aucun plugin n'est activé ici, pour ne rien imposer aux futurs modules.
-        Les nouveaux modules sont ajoutés à la section <modules> au fil des items MAVEN-010 à MAVEN-130.
+        Les nouveaux modules sont ajoutés à la section <modules> au fil des items MAVEN-010 à MAVEN-130
+        (MAVEN-010 : domain-budget).
     -->
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -36,6 +37,7 @@
     <description>Parent Maven (reactor) du backend MyFamilyBudget</description>
 
     <modules>
+        <module>domain-budget</module>
         <module>server</module>
     </modules>
 
@@ -63,6 +65,13 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Modules internes du reactor (versions alignées sur celle du parent) -->
+            <dependency>
+                <groupId>com.moe.myfamilybudget</groupId>
+                <artifactId>domain-budget</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>org.openapitools</groupId>
                 <artifactId>jackson-databind-nullable</artifactId>

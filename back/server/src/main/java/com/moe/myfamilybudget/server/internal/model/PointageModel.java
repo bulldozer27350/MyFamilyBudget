@@ -2,6 +2,8 @@ package com.moe.myfamilybudget.server.internal.model;
 
 import java.util.Collections;
 import java.util.List;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 
 /**
  * Modèle de lecture (ViewModel) de la réponse {@code GET /pointage} : données brutes composées par la

@@ -11,12 +11,12 @@ import org.slf4j.LoggerFactory;
 import com.moe.myfamilybudget.server.internal.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.ChargeModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
-import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.model.TransferModel;
+import com.moe.myfamilybudget.domain.budget.TransferModel;
 
 /**
  * Déduit la période de simulation fiscale à partir de {@link BudgetDataModel} (RF-202, voir

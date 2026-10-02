@@ -87,7 +87,7 @@ echo [ERREUR] Impossible de trouver le fichier JAR de l'application :
 echo "%APP_JAR%"
 echo.
 echo Si vous travaillez sur le code source, veuillez d'abord compiler avec :
-echo   cd back\server ^&^& mvn clean package -DskipTests
+echo   cd back ^&^& mvn clean package -DskipTests -pl server -am
 echo ==================================================================
 echo.
 pause

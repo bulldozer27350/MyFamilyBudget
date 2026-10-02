@@ -94,7 +94,13 @@ function kill(proc) {
   } else {
     log('setup', 'Starting Spring Boot backend...');
     const mvnCmd = process.platform === 'win32' ? 'mvn.cmd' : 'mvn';
-    backendProc = spawnProc(mvnCmd, ['spring-boot:run', '-q'], BACK_DIR, 'backend');
+    // MAVEN-010 : le serveur dépend désormais du module domain-budget -> lancement depuis le reactor (back/)
+    backendProc = spawnProc(
+      mvnCmd,
+      ['-pl', 'server', '-am', '-q', 'compile', 'org.springframework.boot:spring-boot-maven-plugin:run'],
+      path.join(ROOT, 'back'),
+      'backend'
+    );
   }
 
   // 2. Frontend Express server

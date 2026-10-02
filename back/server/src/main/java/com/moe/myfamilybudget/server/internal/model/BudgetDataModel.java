@@ -2,6 +2,12 @@ package com.moe.myfamilybudget.server.internal.model;
 
 import java.math.BigDecimal;
 import java.util.List;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 
 public record BudgetDataModel(
     SettingsModel settings,

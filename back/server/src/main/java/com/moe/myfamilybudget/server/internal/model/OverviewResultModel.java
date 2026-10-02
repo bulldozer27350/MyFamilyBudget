@@ -2,6 +2,8 @@ package com.moe.myfamilybudget.server.internal.model;
 
 import java.math.BigDecimal;
 import java.util.List;
+import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
+import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
 
 /**
  * Résultat du calcul de l'aperçu financier global (Overview).

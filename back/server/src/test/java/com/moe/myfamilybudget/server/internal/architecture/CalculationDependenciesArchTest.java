@@ -17,8 +17,8 @@ import com.moe.myfamilybudget.server.internal.model.AnalyseCalculator;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.ChargeModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
@@ -32,8 +32,8 @@ import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
 import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
-import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 /**
@@ -283,6 +283,7 @@ class CalculationDependenciesArchTest {
     static final ArchRule ENGINES_DO_NOT_DEPEND_ON_PERSISTENCE_MANAGER = noClasses()
             .that().resideInAPackage("..internal.calculation..")
             .or().resideInAPackage("..internal.model..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
             .as("les moteurs de calcul et calculateurs purs ne doivent pas dépendre de PersistenceManager "
@@ -296,6 +297,7 @@ class CalculationDependenciesArchTest {
     static final ArchRule PURE_DOMAIN_DOES_NOT_DEPEND_ON_OPENAPI_DTOS = noClasses()
             .that().resideInAPackage("..internal.calculation..")
             .or().resideInAPackage("..internal.model..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.api..")
             .as("les couches pures du domaine (calculation, model, notification.rules) ne doivent pas dépendre "

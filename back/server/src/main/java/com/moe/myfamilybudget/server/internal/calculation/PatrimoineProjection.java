@@ -7,7 +7,7 @@ import java.util.Set;
 import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
-import com.moe.myfamilybudget.server.internal.model.TripleAmountModel;
+import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
 
 /**
  * Projection patrimoniale pour l'aperçu financier (RF-900, voir

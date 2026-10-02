@@ -27,7 +27,7 @@ import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.BankImportDocumentMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;

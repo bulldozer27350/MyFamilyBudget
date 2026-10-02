@@ -118,10 +118,17 @@ La stratégie retenue est :
   - faire dépendre les modules consommateurs de `domain-budget` plutôt que de l’ancien package `internal.model` ;
   - ne pas déplacer `BudgetDataModel` dans ce module ;
   - ne pas déplacer les modèles explicitement attachés à un domaine spécialisé sans vérifier leurs consommateurs.
+- **Décisions retenues** :
+  - module `back/domain-budget` (artifact `domain-budget`, jar, aucune dépendance : JDK uniquement), package `com.moe.myfamilybudget.domain.budget` ;
+  - 12 classes déplacées, toutes des `record` publics sans dépendance : `IncomeModel`, `ChargeModel`, `OneOffExpenseModel`, `TransferModel`, `VariableIncomeModel`, `VariableOverrideModel`, `CashflowYearModel`, `TripleAmountModel`, `CategoryOptionModel`, `RealAverageModel`, `VariablePreviewModel`, `VariablePreviewCellModel` ;
+  - aucun test unitaire dédié n'existait pour ces records : ils restent couverts par les tests des consommateurs dans `server` ;
+  - `server` dépend de `domain-budget` (version gérée par `back/pom.xml`) ; `BudgetDataModel` reste dans `server` ;
+  - les règles ArchUnit `PureLayerRules`, `DomainBoundaryRules` et `CalculationDependenciesArchTest` traitent `..domain.budget..` comme une couche pure au même titre que `internal.model` ;
+  - `server` dépendant d'un module frère, `mvn -f back/server/pom.xml test` n'est plus autonome : le build passe par le reactor, `mvn -f back/pom.xml -B -pl server -am test` (CI, Dockerfile, gate VT-600, lanceur E2E et messages des scripts mis à jour). Le livrable reste `back/server/target/server-1.0.0-SNAPSHOT.jar`.
 - **Critères de sortie** : `domain-budget` ne dépend d’aucun module de persistance, API ou application.
 - **Tests** : tests unitaires du module ; compilation du reactor ; non-régression des domaines consommateurs.
 - **Parallélisation** : peut avancer avec les premières extractions métier si les agents évitent les mêmes fichiers.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 # MAVEN-020 — Extraire `domain-retirement`
 

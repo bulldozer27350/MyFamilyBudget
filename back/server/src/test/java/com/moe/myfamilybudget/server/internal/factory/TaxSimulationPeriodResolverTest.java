@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.server.internal.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 
 /**

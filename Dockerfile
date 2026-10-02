@@ -8,23 +8,25 @@ FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
 
 # Copie des pom.xml en premier pour profiter du cache de couche Docker
-# (back/pom.xml = parent Maven du reactor, requis pour résoudre back/server/pom.xml)
+# (back/pom.xml = parent Maven du reactor, requis pour résoudre les modules back/*/pom.xml)
 COPY back/pom.xml back/pom.xml
+COPY back/domain-budget/pom.xml back/domain-budget/pom.xml
 COPY back/server/pom.xml back/server/pom.xml
 
 # Telechargement des dependances en s'appuyant sur le cache persistant .m2
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -f back/server/pom.xml -q dependency:go-offline
+    mvn -f back/pom.xml -q -pl server -am dependency:go-offline -DexcludeGroupIds=com.moe.myfamilybudget
 
 # Copie du reste du projet
 COPY openapi.yaml openapi.yaml
 COPY openapi openapi
 COPY view view
+COPY back/domain-budget back/domain-budget
 COPY back/server back/server
 
 # Compilation du JAR executable avec réutilisation du cache .m2
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -f back/server/pom.xml -q clean package -DskipTests -Dassembly.skipAssembly=true
+    mvn -f back/pom.xml -q -pl server -am clean package -DskipTests -Dassembly.skipAssembly=true
 
 # =============================================================================
 # Etape 2 : Runtime - image finale, legere, sans outils de build

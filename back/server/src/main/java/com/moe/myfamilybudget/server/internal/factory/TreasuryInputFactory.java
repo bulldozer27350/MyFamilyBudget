@@ -32,17 +32,17 @@ import com.moe.myfamilybudget.server.internal.calculation.TreasurySimulationPeri
 import com.moe.myfamilybudget.server.internal.calculation.VariableIncomeProjection;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.ChargeModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
-import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TaxCalculator;
 import com.moe.myfamilybudget.server.internal.model.TaxYearlyModel;
-import com.moe.myfamilybudget.server.internal.model.TransferModel;
-import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
-import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 
 /**
  * Construit un {@link TreasuryProjectionInput} à partir de {@link BudgetDataModel} (RF-400, voir

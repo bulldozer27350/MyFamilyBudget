@@ -54,6 +54,7 @@ jobs:
           cache: maven
           cache-dependency-path: |
             back/pom.xml
+            back/domain-budget/pom.xml
             back/server/pom.xml
 
       - name: Set up Bun
@@ -69,7 +70,7 @@ jobs:
           MFB_TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/myfamilybudget
           MFB_TEST_POSTGRES_USER: myfamilybudget
           MFB_TEST_POSTGRES_PASSWORD: myfamilybudget
-        run: mvn -f back/server/pom.xml -B test
+        run: mvn -f back/pom.xml -B -pl server -am test
 
       # VT-600 : aucun test obligatoire ne doit etre ignore ou desactive (la variante PostgreSQL
       # de RestartPersistenceTest doit s'etre executee, le service postgres ci-dessus etant present).

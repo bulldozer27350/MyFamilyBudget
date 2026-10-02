@@ -166,6 +166,11 @@ back/server/src/main/java/com/moe/myfamilybudget/
         └── repository/               → interfaces Spring Data JPA
 ```
 
+Depuis MAVEN-010, le backend est un reactor Maven (`back/pom.xml`). Les modèles du budget de base
+(`IncomeModel`, `ChargeModel`, `OneOffExpenseModel`, `TransferModel`, `VariableIncomeModel`,
+`VariableOverrideModel`, ...) vivent dans le module `back/domain-budget` (package
+`com.moe.myfamilybudget.domain.budget`), sans dépendance Spring/JPA/OpenAPI ; `server` en dépend.
+
 ### 4.5 Le pattern "oracle JS" pour les tests d'intégration
 
 Les tests dans `back/server/src/test/java/.../integration/` (ex. `BusinessLogicIntegrationTest`, nommé explicitement *"Oracle JS vs Backend Java"*) chargent un jeu de données de référence (`mock-budget.json`) et vérifient que les réponses de l'API Java correspondent aux valeurs produites par `service-metier.js` / `calculations.js` côté frontend. Le JS fait foi comme définition du comportement attendu — **y compris ses éventuels comportements par défaut non idéaux** : un test qui échoue doit d'abord faire suspecter une valeur de référence incorrecte dans le test avant de suspecter un bug côté Java (c'est déjà arrivé, voir §8).
@@ -237,8 +242,8 @@ Le package `enablebanking` récupère automatiquement les transactions bancaires
 
 **Backend seul (dev)** :
 ```
-cd back/server
-mvn spring-boot:run
+cd back
+mvn -pl server -am compile org.springframework.boot:spring-boot-maven-plugin:run
 ```
 Sert l'API **et** le frontend statique sur `http://localhost:8080` (context-path `/api/v1` pour l'API).
 
@@ -250,13 +255,13 @@ Nécessite d'éditer `TARGET_SPRINGBOOT` dans `view/server.js` avec l'adresse du
 
 **Build production (JAR autonome)** :
 ```
-cd back/server
-mvn clean package -DskipTests
+cd back
+mvn clean package -DskipTests -pl server -am
 ```
 Produit `target/server-1.0.0-SNAPSHOT.jar`, lancé ensuite par `MyFamilyBudget.bat`/`.sh`.
 
 **Tests** :
-- Backend : `mvn test` (unitaires + intégration contre l'oracle JS)
+- Backend : `cd back && mvn test` (reactor complet ; unitaires + intégration contre l'oracle JS)
 - E2E : `npm run test:e2e` (Playwright, `tests/e2e/`)
 
 ---

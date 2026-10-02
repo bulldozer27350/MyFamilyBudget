@@ -17,6 +17,12 @@
     <description>Serveur Spring Boot Java 21 pour l'application MyFamilyBudget</description>
 
     <dependencies>
+        <!-- Modèles du budget de base (MAVEN-010) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-budget</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

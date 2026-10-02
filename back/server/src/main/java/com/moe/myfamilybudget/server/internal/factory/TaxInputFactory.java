@@ -22,14 +22,14 @@ import com.moe.myfamilybudget.server.internal.calculation.TaxHouseholdParameters
 import com.moe.myfamilybudget.server.internal.calculation.TaxRateOverride;
 import com.moe.myfamilybudget.server.internal.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjection;
 import com.moe.myfamilybudget.server.internal.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
-import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
-import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 
 /**
  * Construit un {@link TaxCalculationInput} à partir de {@link BudgetDataModel} (RF-200, réduit
