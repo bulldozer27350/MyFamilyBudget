@@ -52,6 +52,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepos
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ObjectifRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.OneOffExpenseRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.RetirementRepository;
@@ -499,6 +500,69 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     // =========================================================================
+    // DB-1001 -- Retraite lue depuis les tables autonomes
+    // =========================================================================
+
+    private RetirementPersistenceAdapter jpaRetirementAdapter(PersistenceManager manager) {
+        return new RetirementPersistenceAdapter(manager, context.getBean(PensionPlanRepository.class));
+    }
+
+    @Test
+    @DisplayName("DB-1001 -- import -> la retraite est recopiee dans les tables autonomes et relue par JPA")
+    void importedRetirementIsReadFromPensionTables() {
+        writer.setBudgetData(referenceData());
+
+        assertThat(context.getBean(PensionPlanRepository.class).count()).isEqualTo(1);
+        RetirementModel retirement = jpaRetirementAdapter(freshReader()).getRetirement();
+        assertSameContent(retirement, RETIREMENT);
+        assertThat(retirement.people().get(0).salaryHistory()).extracting(h -> h.year())
+                .containsExactly(2023, 2024, 2025);
+    }
+
+    @Test
+    @DisplayName("DB-1001 -- updateRetirement est visible via la lecture JPA (un seul plan, ancien contenu remplace)")
+    void retirementWritesAreVisibleThroughJpaReader() {
+        writer.setBudgetData(referenceData());
+        RetirementPersistenceAdapter adapter = jpaRetirementAdapter(writer);
+        RetirementModel updated = new RetirementModel(
+                List.of(new RetirementModel.RetirementPersonModel("p_2", "Bob", 1988, "Salaire", 120, "2025-12-31",
+                        List.of(new RetirementModel.SalaryHistoryModel(2025, bd("41000"))),
+                        bd("1800"), bd("0.00512345"), null)),
+                bd("47100"), bd("0.015"), bd("1.4386"), "2025-01-01", bd("0.01"));
+
+        adapter.updateRetirement(updated);
+
+        assertThat(context.getBean(PensionPlanRepository.class).count()).isEqualTo(1);
+        assertSameContent(adapter.getRetirement(), updated);
+        RetirementModel reread = jpaRetirementAdapter(freshReader()).getRetirement();
+        assertSameContent(reread, updated);
+        assertThat(reread.people().get(0).ratioPointsParEuro()).isEqualByComparingTo("0.00512345");
+    }
+
+    @Test
+    @DisplayName("DB-1001 -- tables autonomes videes (donnees pre-existantes) -> reconstruites depuis le hub")
+    void pensionTablesAreRebuiltFromHubOnStartup() {
+        writer.setBudgetData(referenceData());
+        context.getBean(PensionPlanRepository.class).deleteAll();
+        assertThat(context.getBean(PensionPlanRepository.class).count()).isZero();
+
+        PersistenceManager restarted = freshReader();
+
+        assertSameContent(jpaRetirementAdapter(restarted).getRetirement(), RETIREMENT);
+    }
+
+    @Test
+    @DisplayName("DB-1001 -- reinitialisation -> la retraite par defaut (sans personne) est relue par JPA")
+    void resetRestoresEmptyRetirementThroughJpa() {
+        writer.setBudgetData(referenceData());
+
+        writer.resetData();
+
+        assertThat(context.getBean(PensionPlanRepository.class).count()).isLessThanOrEqualTo(1);
+        assertThat(jpaRetirementAdapter(writer).getRetirement().people()).isEmpty();
+    }
+
+    // =========================================================================
     // Utilitaires
     // =========================================================================
 
@@ -533,6 +597,7 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(FiscalBracketRepository.class),
                 context.getBean(FiscalRateOverrideRepository.class),
                 context.getBean(FiscalActualOverrideRepository.class),
+                context.getBean(PensionPlanRepository.class),
                 transactionManager,
                 eventPublisher);
         reader.init();

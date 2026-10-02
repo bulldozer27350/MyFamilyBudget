@@ -415,7 +415,25 @@ pas les agents qui travaillent sur les autres domaines.
 - **Prérequis** : DB-1000.
 - **Objectif** : faire passer le reader/command Retraite sur les nouveaux repositories.
 - **Validation** : `VT-320` adapté au domaine + tests E2E Retraite si disponibles.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : `RetirementPersistenceAdapter.getRetirement()` lit désormais `PensionPlanRepository` (tables autonomes
+  `pension_plan` / `pension_person` / `pension_salary`) via `PensionEntityMapper`. Les écritures (`updateRetirement`)
+  restent portées par `PersistenceManager` ; `BudgetPersistenceGateway` recopie la retraite du modèle dans les tables
+  autonomes à chaque sauvegarde, dans la même transaction (import, reset et mutations de tous domaines inclus :
+  rollback cohérent). Au chargement du cache (démarrage), les tables sont reconstruites depuis le hub, ce qui migre
+  les données existantes sans script. Une retraite absente du modèle laisse les tables vides et est relue `null`,
+  comme depuis le cache. `PensionPlanRepository` est injecté dans `PersistenceManager` (constructeur élargi ;
+  fabrique et tests adaptés).
+- **Retour arrière** : le hub (`retirement` / `retirement_person` / `salary_history`) reste alimenté et reste la
+  source de chargement du cache. Le constructeur `RetirementPersistenceAdapter(PersistenceManager)` conserve la
+  lecture depuis le cache (tests unitaires à repositories mockés) ; revenir au comportement antérieur en production
+  consiste à revenir sur ce patch.
+- **Tests** : `PersistenceAdaptersJpaRoundTripTest` (H2) : retraite d'un import relue par JPA (ordre des salaires
+  conservé), `updateRetirement` visible via la lecture JPA (un seul plan, ancien contenu remplacé, ratio non arrondi),
+  reconstruction des tables au démarrage, reset. Constructeurs de `PersistenceManager` adaptés dans
+  `PersistenceManagerTestFactory`, `WriteFailureKeepsMemoryTest` et le round-trip.
+- **Reste** : `VT-320` (redémarrage, H2 + PostgreSQL) couvre déjà `PUT /retraite` ; à exécuter en CI. La suppression
+  de la relation du hub relève de DB-1100.
 
 ## DB-1010 / DB-1011 — JPA Fiscalité
 

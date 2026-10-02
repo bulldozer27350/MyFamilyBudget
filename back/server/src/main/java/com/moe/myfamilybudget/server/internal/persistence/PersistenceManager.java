@@ -49,6 +49,7 @@ public class PersistenceManager {
     private final FiscalBracketRepository fiscalBracketRepository;
     private final FiscalRateOverrideRepository fiscalRateOverrideRepository;
     private final FiscalActualOverrideRepository fiscalActualOverrideRepository;
+    private final PensionPlanRepository pensionPlanRepository;
 
     // Gestion programmatique de la transaction pour l'initialisation au démarrage.
     // Voir le commentaire dans BudgetPersistenceGateway.save() : le @Transactional de classe ne
@@ -114,6 +115,7 @@ public class PersistenceManager {
                             FiscalBracketRepository fiscalBracketRepository,
                             FiscalRateOverrideRepository fiscalRateOverrideRepository,
                             FiscalActualOverrideRepository fiscalActualOverrideRepository,
+                            PensionPlanRepository pensionPlanRepository,
                             PlatformTransactionManager transactionManager,
                             ApplicationEventPublisher eventPublisher) {
         this.budgetDataRepository = budgetDataRepository;
@@ -141,6 +143,7 @@ public class PersistenceManager {
         this.fiscalBracketRepository = fiscalBracketRepository;
         this.fiscalRateOverrideRepository = fiscalRateOverrideRepository;
         this.fiscalActualOverrideRepository = fiscalActualOverrideRepository;
+        this.pensionPlanRepository = pensionPlanRepository;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.gateway = new BudgetPersistenceGateway(
                 budgetDataRepository, incomeRepository, chargeRepository, placementRepository,
@@ -149,7 +152,7 @@ public class PersistenceManager {
                 taxBracketRepository, taxRateOverrideRepository, taxActualOverrideRepository,
                 assetCategoryRepository, bankImportRepository, loanRepository, objectifRepository,
                 goalRepository, creditLoanRepository, fiscalChildRepository, fiscalBracketRepository,
-                fiscalRateOverrideRepository, fiscalActualOverrideRepository);
+                fiscalRateOverrideRepository, fiscalActualOverrideRepository, pensionPlanRepository);
         this.cacheStore = new BudgetCacheStore(this.gateway, this.transactionTemplate);
         this.mutationService = new BudgetMutationService(this.cacheStore);
         this.eventPublisher = eventPublisher;

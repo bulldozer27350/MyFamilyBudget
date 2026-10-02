@@ -19,6 +19,7 @@ import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.server.internal.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.server.internal.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
+import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
@@ -30,6 +31,7 @@ import com.moe.myfamilybudget.server.internal.persistence.converter.CreditLoanEn
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.server.internal.persistence.converter.FiscalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.converter.GoalEntityMapper;
+import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BankImportEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCategoryRepository;
@@ -46,6 +48,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.IncomeRepos
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ObjectifRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.OneOffExpenseRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.TaxActualOverrideRepository;
@@ -111,6 +114,8 @@ class BudgetPersistenceGateway {
     private final FiscalBracketRepository fiscalBracketRepository;
     private final FiscalRateOverrideRepository fiscalRateOverrideRepository;
     private final FiscalActualOverrideRepository fiscalActualOverrideRepository;
+    // DB-1001 : tables autonomes du domaine Retraite, meme principe que goalRepository.
+    private final PensionPlanRepository pensionPlanRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -137,7 +142,8 @@ class BudgetPersistenceGateway {
                               FiscalChildRepository fiscalChildRepository,
                               FiscalBracketRepository fiscalBracketRepository,
                               FiscalRateOverrideRepository fiscalRateOverrideRepository,
-                              FiscalActualOverrideRepository fiscalActualOverrideRepository) {
+                              FiscalActualOverrideRepository fiscalActualOverrideRepository,
+                              PensionPlanRepository pensionPlanRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.incomeRepository = incomeRepository;
         this.chargeRepository = chargeRepository;
@@ -161,6 +167,7 @@ class BudgetPersistenceGateway {
         this.fiscalBracketRepository = fiscalBracketRepository;
         this.fiscalRateOverrideRepository = fiscalRateOverrideRepository;
         this.fiscalActualOverrideRepository = fiscalActualOverrideRepository;
+        this.pensionPlanRepository = pensionPlanRepository;
     }
 
     /**
@@ -192,6 +199,8 @@ class BudgetPersistenceGateway {
             syncCreditLoans(loaded.loans());
             // DB-1011 : idem pour les tables Fiscalite.
             syncFiscal(loaded);
+            // DB-1001 : idem pour les tables Retraite.
+            syncPension(loaded.retirement());
         }
         return loaded;
     }
@@ -263,6 +272,7 @@ class BudgetPersistenceGateway {
         syncGoals(model.objectifs());
         syncCreditLoans(model.loans());
         syncFiscal(model);
+        syncPension(model.retirement());
         saveBankImport(model.bankImport(), entity);
     }
 
@@ -350,6 +360,20 @@ class BudgetPersistenceGateway {
                 FiscalEntityMapper.toRateOverrideEntities(model.getEffectiveTaxRateOverrides()));
         fiscalActualOverrideRepository.saveAll(
                 FiscalEntityMapper.toActualOverrideEntities(model.getEffectiveTaxActualOverrides()));
+    }
+
+    /**
+     * DB-1001 : remplace le contenu des tables {@code pension_*} par la retraite du modele, dans la transaction de
+     * l'appelant ({@code flush} apres la suppression, comme {@link #syncGoals}). Une retraite absente du modele
+     * laisse les tables vides : la lecture JPA restitue alors {@code null}, comme le cache.
+     */
+    private void syncPension(RetirementModel retirement) {
+        pensionPlanRepository.deleteAll();
+        pensionPlanRepository.flush();
+        if (retirement == null) {
+            return;
+        }
+        pensionPlanRepository.save(PensionEntityMapper.toEntity(retirement));
     }
 
     private BankImportModel loadBankImport(Long budgetDataId) {
