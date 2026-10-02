@@ -582,6 +582,31 @@ pas les agents qui travaillent sur les autres domaines.
 - **DB-1050** : placements, immobilier, catégories et historiques nécessaires, sans suppression du hub.
 - **DB-1051** : bascule des adapters Patrimoine.
 - **Validation** : `VT-220` obligatoire après bascule : Patrimoine → Trésorerie → Overview.
+
+### Statut DB-1050 — JPA Patrimoine — entités/repositories additifs
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : entités `WealthPlacementEntity` (table `wealth_placement`) et `WealthPlacementHistoryEntity`
+  (`wealth_placement_history`, FK `placement_id`, valeur en colonne `value_amount`), `WealthRealEstateEntity`
+  (`wealth_real_estate`) et `WealthCategoryEntity` (`wealth_category`), leurs trois repositories
+  (`findAllByOrderByPositionAsc`) et `WealthEntityMapper` (`PlacementModel` / `RealEstateModel` / `AssetCategoryModel`
+  ↔ `Wealth*Entity`, sans perte, aucun défaut `getEffective*` appliqué). Clé technique générée, `uid` = identifiant
+  métier et colonne `position` : aucune hypothèse d'unicité (comme dans le chemin legacy), donc aucun risque de rejet à
+  l'import. Taux en `NUMERIC(19,8)`, montants en `NUMERIC(19,2)`, notes en 2000 caractères. Aucune relation vers
+  `BudgetDataEntity` ; `PlacementEntity`, `PlacementHistoryEntryEntity`, `RealEstateEntity`, `AssetCategoryEntity`,
+  `EntityModelConverter`, `PatrimoinePersistenceAdapter` et le hub sont **inchangés** (chemin legacy intact, aucune
+  donnée migrée). Les nouvelles tables sont créées vides par `ddl-auto` et restent inutilisées jusqu'à DB-1051. Le
+  préfixe `Wealth*` évite la collision avec les classes legacy.
+- **Tests** : `WealthJpaModelTest` (H2, `@DataJpaTest`) : aller-retour des placements avec historiques (ordre et
+  doublons d'identifiant conservés), taux non arrondis, champs optionnels à `null` (historique absent relu vide),
+  suppression des historiques orphelins au remplacement et cascade à la suppression, biens immobiliers, catégories
+  (icône emoji, couleur optionnelle), tolérance du mapper à `null`.
+- **Pour DB-1051** : reproduire le schéma de DB-1021 / DB-1041 (lecture JPA, recopie par `BudgetPersistenceGateway`
+  dans la transaction de sauvegarde, reconstruction depuis le hub au chargement du cache) ; vider les tables avec
+  `deleteAll` + `flush` avant réinsertion. Les lignes de prêts et d'objectifs ne sont pas concernées (déjà basculées).
+
+### Statut DB-1051 — JPA Patrimoine — basculer l'adapter
+
 - **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 ## DB-1060 / DB-1061 — JPA Trésorerie
