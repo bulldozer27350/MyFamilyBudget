@@ -512,6 +512,29 @@ pas les agents qui travaillent sur les autres domaines.
 - **DB-1030** : entités/repositories Banque additifs ; `BankImportEntity.jsonData` peut rester interne.
 - **DB-1031** : bascule des adapters Banque concernés, tests transaction/import/pointage.
 - **Parallèle** : Retraite/Fiscalité/Objectifs/Crédit.
+
+### Statut DB-1030 — JPA Banque — entités/repositories additifs
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : entité `BankImportDocumentEntity` (table `bank_import_document`, singleton fonctionnel, colonne
+  `json_data` en `TEXT` explicite — pas de `@Lob`, donc pas de « Large Object » PostgreSQL), `BankImportDocumentRepository`
+  (`findFirstByOrderByIdAsc`) et `BankImportDocumentMapper` (`BankImportModel` ↔ JSON ↔ entité, même configuration Jackson
+  que le chemin legacy). Le format JSON reste une décision interne à Banque : le contenu n'est pas éclaté en tables
+  relationnelles. Aucune relation vers `BudgetDataEntity` ; `BankImportEntity`, `BankImportRepository`,
+  `BudgetPersistenceGateway`, `EntityModelConverter`, `BankPersistenceAdapter` et le hub sont **inchangés** (chemin legacy
+  intact, aucune donnée migrée). La nouvelle table est créée vide par `ddl-auto` et reste inutilisée jusqu'à DB-1031.
+  Contrairement au chemin legacy (erreur journalisée puis ignorée), le mapper **propage** une erreur de
+  (dé)sérialisation (`IllegalStateException`) ; un contenu `null` ou vide est relu comme `null`.
+- **Tests** : `BankImportDocumentJpaModelTest` (H2, `@DataJpaTest`) : aller-retour d'un import complet (catégories
+  accentuées, ventilations, attentes, rapprochements), import de 3 000 transactions, import vide (valeurs par défaut du
+  modèle), remplacement du contenu (une seule ligne), tolérance du mapper à `null` / vide / propriété inconnue et refus
+  d'un JSON invalide.
+- **Pour DB-1031** : reproduire le schéma de DB-1021 / DB-1041 (lecture JPA, recopie par `BudgetPersistenceGateway` dans
+  la transaction de sauvegarde, reconstruction depuis le hub au chargement du cache) ; décider du traitement des erreurs
+  de sérialisation (le chemin legacy les ignore) et traiter `PersistenceManager.getBankImport` / `BankReader`.
+
+### Statut DB-1031 — JPA Banque — basculer l'adapter
+
 - **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 ## DB-1040 / DB-1041 — JPA Crédit
