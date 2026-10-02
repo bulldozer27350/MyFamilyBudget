@@ -2,6 +2,8 @@ package com.moe.myfamilybudget.server.internal.snapshot;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +45,13 @@ class GlobalBudgetSnapshotServiceTest {
         BudgetDataDto reset = snapshotService.reset();
 
         assertThat(reset).isNotNull();
-        assertThat(snapshotService.export()).isEqualTo(reset);
+        // reset() renvoie le modèle par défaut en mémoire (BigDecimal sans échelle, ex. 47100), alors que
+        // export() relit la base (NUMERIC avec échelle, ex. 47100.00) : equals() de BigDecimal tient compte
+        // de l'échelle, on compare donc les montants par valeur (compareTo).
+        assertThat(snapshotService.export())
+                .usingRecursiveComparison()
+                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .isEqualTo(reset);
     }
 
     @Test
