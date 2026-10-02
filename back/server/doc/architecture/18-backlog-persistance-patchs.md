@@ -406,6 +406,29 @@ pas les agents qui travaillent sur les autres domaines.
 - **DB-1010** : entités/repositories additifs, sans toucher au hub.
 - **DB-1011** : bascule de l'adapter, tests round-trip + restart.
 - **Parallèle** : toute la phase additive/bascule peut être développée en parallèle de Retraite et Objectifs.
+
+### Statut DB-1010 — JPA Fiscalité — entités/repositories additifs
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : entités `FiscalChildEntity` (`fiscal_child`), `FiscalBracketEntity` (`fiscal_bracket`, taux
+  `NUMERIC(19,8)`), `FiscalRateOverrideEntity` (`fiscal_rate_override`) et `FiscalActualOverrideEntity`
+  (`fiscal_actual_override`), leurs quatre repositories (`findAllByOrderByPositionAsc`) et `FiscalEntityMapper`
+  (`Tax*Model` ↔ `Fiscal*Entity`, sans perte). Clé technique générée et colonne `position` : aucune hypothèse
+  d'unicité sur `uid` ou sur l'année (comme dans le chemin legacy), donc aucun risque de rejet à l'import.
+  Aucune relation vers `BudgetDataEntity` ; `Tax*Entity`, `EntityModelConverter`, `TaxPersistenceAdapter` et le hub
+  sont **inchangés** (chemin legacy intact, aucune donnée migrée). Les nouvelles tables sont créées vides par
+  `ddl-auto` et restent inutilisées jusqu'à DB-1011. Les paramètres fiscaux scalaires (`taxAbattement`, etc.)
+  restent dans Settings (DB-061).
+- **Tests** : `FiscalJpaModelTest` (H2, `@DataJpaTest`) : aller-retour des quatre listes avec ordre conservé,
+  taux non arrondis, dernière tranche sans plafond, doublons d'année tolérés, remplacement du contenu
+  (suppression + `flush` + réinsertion), tolérance à `null`.
+- **Pour DB-1011** : reproduire le schéma de DB-1021 / DB-1041 (lecture JPA, recopie par `BudgetPersistenceGateway`
+  dans la transaction de sauvegarde, reconstruction depuis le hub au chargement du cache). Le barème par défaut
+  appliqué quand la liste importée est vide est porté par le chemin d'écriture existant ; la lecture JPA doit
+  restituer ce que le cache contient.
+
+### Statut DB-1011 — JPA Fiscalité — basculer l'adapter
+
 - **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 ## DB-1020 / DB-1021 — JPA Objectifs
