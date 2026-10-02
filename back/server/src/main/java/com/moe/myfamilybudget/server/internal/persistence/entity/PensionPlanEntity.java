@@ -21,7 +21,7 @@ import jakarta.persistence.Table;
 /**
  * Hypotheses et personnes du domaine Retraite, cible JPA autonome (DB-1000).
  *
- * <p>Contrairement a {@link RetirementEntity}, cette entite n'a <strong>aucune relation vers
+ * <p>Contrairement a l'ancienne entite {@code RetirementEntity} (supprimee par DB-1100), cette entite n'a <strong>aucune relation vers
  * {@link BudgetDataEntity}</strong> : elle est la racine de son propre agregat (singleton fonctionnel : une
  * seule ligne, lue par {@code findFirstByOrderByIdAsc}). Elle est additive et n'est pas encore utilisee par
  * {@code RetirementPersistenceAdapter} (bascule en DB-1001). Le chemin legacy ({@code retirement},

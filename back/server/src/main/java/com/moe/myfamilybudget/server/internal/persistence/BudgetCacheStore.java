@@ -95,7 +95,7 @@ class BudgetCacheStore {
         // Data s'exécute par défaut dans sa propre transaction, qui se termine dès qu'il
         // retourne : l'entité obtenue serait alors détachée avant même d'atteindre
         // transactionTemplate.execute(), et toute collection LAZY qu'elle porte (ex.
-        // RetirementEntity.people) échouerait au premier accès avec "could not initialize proxy -
+        // l'ancienne RetirementEntity.people) échouerait au premier accès avec "could not initialize proxy -
         // no Session", une nouvelle transaction ne rattachant pas rétroactivement une entité déjà
         // détachée d'une session précédente.
         BudgetDataModel complete = (transactionTemplate != null)

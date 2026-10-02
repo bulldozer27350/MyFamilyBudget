@@ -39,7 +39,6 @@ public class PersistenceManager {
     private final TaxRateOverrideRepository taxRateOverrideRepository;
     private final TaxActualOverrideRepository taxActualOverrideRepository;
     private final AssetCategoryRepository assetCategoryRepository;
-    private final RetirementRepository retirementRepository;
     private final BankImportRepository bankImportRepository;
     private final LoanRepository loanRepository;
     private final ObjectifRepository objectifRepository;
@@ -71,10 +70,9 @@ public class PersistenceManager {
     // Passerelle JPA (point 6 de l'audit, 1er incrément du Strangler Fig) : concentre tout
     // l'accès direct aux repositories Spring Data. Volontairement pas un bean Spring : une
     // instance est simplement construite ci-dessous, dans le constructeur, avec les mêmes
-    // repositories que ceux reçus par PersistenceManager — settingsRepository et
-    // retirementRepository ne lui sont pas transmis car ils ne sont jamais lus (settings et
-    // retirement sont rattachés à BudgetDataEntity par cascade JPA, voir le commentaire dans
-    // BudgetPersistenceGateway.save()).
+    // repositories que ceux reçus par PersistenceManager — settingsRepository ne lui
+    // est pas transmis car il n'est jamais lu (settings est rattaché à BudgetDataEntity par cascade
+    // JPA, voir le commentaire dans BudgetPersistenceGateway.save()).
     private final BudgetPersistenceGateway gateway;
 
     // Cache mémoire + point d'entrée unique de mutation (point 6 de l'audit, 2e incrément du
@@ -115,7 +113,6 @@ public class PersistenceManager {
                             TaxRateOverrideRepository taxRateOverrideRepository,
                             TaxActualOverrideRepository taxActualOverrideRepository,
                             AssetCategoryRepository assetCategoryRepository,
-                            RetirementRepository retirementRepository,
                             BankImportRepository bankImportRepository,
                             LoanRepository loanRepository,
                             ObjectifRepository objectifRepository,
@@ -153,7 +150,6 @@ public class PersistenceManager {
         this.taxRateOverrideRepository = taxRateOverrideRepository;
         this.taxActualOverrideRepository = taxActualOverrideRepository;
         this.assetCategoryRepository = assetCategoryRepository;
-        this.retirementRepository = retirementRepository;
         this.bankImportRepository = bankImportRepository;
         this.loanRepository = loanRepository;
         this.objectifRepository = objectifRepository;

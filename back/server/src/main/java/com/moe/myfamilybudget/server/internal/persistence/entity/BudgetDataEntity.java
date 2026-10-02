@@ -28,9 +28,6 @@ public class BudgetDataEntity {
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<RealEstateEntity> realEstate = new ArrayList<>();
     
-    @OneToOne(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
-    private RetirementEntity retirement;
-    
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<TaxChildEntity> taxChildren = new ArrayList<>();
     
@@ -121,14 +118,6 @@ public class BudgetDataEntity {
     
     public void setRealEstate(List<RealEstateEntity> realEstate) {
         this.realEstate = realEstate;
-    }
-    
-    public RetirementEntity getRetirement() {
-        return retirement;
-    }
-    
-    public void setRetirement(RetirementEntity retirement) {
-        this.retirement = retirement;
     }
     
     public List<TaxChildEntity> getTaxChildren() {

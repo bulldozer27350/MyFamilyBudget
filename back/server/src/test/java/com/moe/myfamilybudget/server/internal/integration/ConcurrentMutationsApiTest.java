@@ -38,7 +38,9 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.ChargeModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
+import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 
 /**
  * VT-350 -- Deux appels simultanes sur la meme ressource, de bout en bout (HTTP, Spring, H2). Les appels
@@ -70,6 +72,9 @@ class ConcurrentMutationsApiTest {
 
     @Autowired
     private BudgetDataRepository budgetDataRepository;
+
+    @Autowired
+    private PensionPlanRepository pensionPlanRepository;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -229,7 +234,9 @@ class ConcurrentMutationsApiTest {
     /** Relit la base sans passer par le cache memoire. */
     private BudgetDataModel readDatabase() {
         return new TransactionTemplate(transactionManager).execute(status ->
-                EntityModelConverter.toModel(budgetDataRepository.findFirstByOrderByIdAsc().orElseThrow()));
+                EntityModelConverter.toModel(budgetDataRepository.findFirstByOrderByIdAsc().orElseThrow())
+                        .withRetirement(PensionEntityMapper.toModel(
+                                pensionPlanRepository.findFirstByOrderByIdAsc().orElse(null))));
     }
 
     private static List<String> chargeIds(BudgetDataModel model) {

@@ -248,8 +248,6 @@ class BudgetPersistenceGateway {
             syncCreditLoans(loaded.loans());
             // DB-1011 : idem pour les tables Fiscalite.
             syncFiscal(loaded);
-            // DB-1001 : idem pour les tables Retraite.
-            syncPension(loaded.retirement());
             // DB-1031 : idem pour le document Banque.
             syncBankImport(loaded.bankImport());
             // DB-1051 : idem pour les tables Patrimoine.
@@ -263,9 +261,11 @@ class BudgetPersistenceGateway {
     private BudgetDataModel loadCompleteBudgetData(BudgetDataEntity entity) {
         BudgetDataModel loaded = EntityModelConverter.toModel(entity);
         BankImportModel bi = loadBankImport(entity.getId());
+        // DB-1100 : la retraite n'est plus portee par le hub, elle est relue depuis les tables pension_*.
+        RetirementModel retirement = PensionEntityMapper.toModel(pensionPlanRepository.findFirstByOrderByIdAsc().orElse(null));
         return new BudgetDataModel(
                 loaded.settings(), loaded.incomes(), loaded.charges(), loaded.placements(),
-                loaded.realEstate(), loaded.retirement(), loaded.taxChildren(), loaded.taxBrackets(),
+                loaded.realEstate(), retirement, loaded.taxChildren(), loaded.taxBrackets(),
                 loaded.taxRateOverrides(), loaded.taxActualOverrides(), loaded.oneoff(),
                 loaded.transfers(), loaded.variableIncomes(), loaded.variableOverrides(),
                 bi != null ? bi : new BankImportModel(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
@@ -294,8 +294,8 @@ class BudgetPersistenceGateway {
 
         BudgetDataEntity entity = EntityModelConverter.toEntity(model);
 
-        // NOTE: settings/retirement ne doivent PAS être sauvegardés séparément ici.
-        // Ils sont rattachés à `entity` (relations @OneToOne en CascadeType.ALL) et seront
+        // NOTE: settings ne doit PAS être sauvegardé séparément ici (DB-1100 : la retraite n'est plus
+        // rattachée au hub, voir syncPension). Il est rattaché à `entity` (relation @OneToOne en CascadeType.ALL) et sera
         // persistés automatiquement par le save() ci-dessous, dans la MÊME transaction/
         // persistence context. Les sauvegarder au préalable via leur propre repository
         // les détache du contexte de persistance (chaque appel de repository Spring Data
@@ -305,7 +305,7 @@ class BudgetPersistenceGateway {
         // démarrage de l'application (@PostConstruct init()), qui s'exécute hors de toute
         // transaction Spring.
 
-        // Save the main entity (cascade ALL persiste settings/retirement automatiquement)
+        // Save the main entity (cascade ALL persiste settings automatiquement)
         entity = budgetDataRepository.save(entity);
 
         // Save all child entities with proper parent references

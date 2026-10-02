@@ -544,125 +544,14 @@ public class EntityModelConverter {
         );
     }
 
-    // Retirement conversions
-    public static RetirementEntity toEntity(RetirementModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        RetirementEntity entity = new RetirementEntity(
-            model.pass2026(),
-            model.passGrowthRate(),
-            model.agircPointValue(),
-            model.agircPointDateGlobal(),
-            model.agircPointGrowthRate()
-        );
-        entity.setBudgetData(budgetData);
-        
-        // Convert people
-        List<RetirementPersonEntity> people = model.people().stream()
-            .map(person -> toEntity(person, entity))
-            .collect(Collectors.toList());
-        entity.setPeople(people);
-        
-        return entity;
-    }
-
-    public static RetirementModel toModel(RetirementEntity entity) {
-        if (entity == null) return null;
-        
-        List<RetirementModel.RetirementPersonModel> people = entity.getPeople().stream()
-            .map(EntityModelConverter::toModel)
-            .collect(Collectors.toList());
-        
-        return new RetirementModel(
-            people,
-            entity.getPass2026(),
-            entity.getPassGrowthRate(),
-            entity.getAgircPointValue(),
-            entity.getAgircPointDateGlobal(),
-            entity.getAgircPointGrowthRate()
-        );
-    }
-
-    // RetirementPerson conversions
-    public static RetirementPersonEntity toEntity(RetirementModel.RetirementPersonModel model, RetirementEntity retirement) {
-        if (model == null) return null;
-        RetirementPersonEntity entity = new RetirementPersonEntity(
-            model.id(),
-            model.name(),
-            model.birthYear(),
-            model.incomeLabel(),
-            model.trimestresValides(),
-            model.trimestresDate(),
-            model.agircPoints(),
-            model.ratioPointsParEuro(),
-            model.cadre()
-        );
-        entity.setRetirement(retirement);
-        
-        // Convert salary history
-        List<SalaryHistoryEntity> salaryHistory = model.salaryHistory().stream()
-            .map(sh -> toEntity(sh, entity))
-            .collect(Collectors.toList());
-        entity.setSalaryHistory(salaryHistory);
-        
-        return entity;
-    }
-
-    public static RetirementModel.RetirementPersonModel toModel(RetirementPersonEntity entity) {
-        if (entity == null) return null;
-        
-        List<RetirementModel.SalaryHistoryModel> salaryHistory = entity.getSalaryHistory().stream()
-            .map(EntityModelConverter::toModel)
-            .collect(Collectors.toList());
-        
-        return new RetirementModel.RetirementPersonModel(
-            entity.getUid(),
-            entity.getName(),
-            entity.getBirthYear(),
-            entity.getIncomeLabel(),
-            entity.getTrimestresValides(),
-            entity.getTrimestresDate(),
-            salaryHistory,
-            entity.getAgircPoints(),
-            entity.getRatioPointsParEuro(),
-            entity.getCadre()
-        );
-    }
-
-    // SalaryHistory conversions
-    public static SalaryHistoryEntity toEntity(RetirementModel.SalaryHistoryModel model, RetirementPersonEntity retirementPerson) {
-        if (model == null) return null;
-        SalaryHistoryEntity entity = new SalaryHistoryEntity(
-            model.year(),
-            model.salary()
-        );
-        entity.setRetirementPerson(retirementPerson);
-        return entity;
-    }
-
-    public static RetirementModel.SalaryHistoryModel toModel(SalaryHistoryEntity entity) {
-        if (entity == null) return null;
-        return new RetirementModel.SalaryHistoryModel(
-            entity.getYear(),
-            entity.getSalary()
-        );
-    }
-
     // BudgetData conversions
     public static BudgetDataEntity toEntity(BudgetDataModel model) {
         if (model == null) return null;
         
         BudgetDataEntity entity = new BudgetDataEntity();
         entity.setSettings(toEntity(model.settings()));
-        // BUG CORRIGÉ : contrairement à `settings` (rattaché juste au-dessus), `retirement`
-        // n'était jamais rattaché à `entity` ici. Résultat : entity.getRetirement() restait
-        // null, et le cascade ALL sur BudgetDataEntity#retirement (voir son annotation) ne
-        // sauvegardait donc jamais rien — malgré le commentaire de saveToDatabase() affirmant
-        // le contraire. Les données de retraite ne survivaient qu'en mémoire
-        // (PersistenceManager#currentBudget) et disparaissaient à chaque redémarrage du
-        // conteneur, dès que @PostConstruct init() relit réellement depuis la base.
-        // toEntity(RetirementModel, BudgetDataEntity) rattache aussi le FK côté propriétaire
-        // (RetirementEntity#budgetData), donc les deux sens de la relation sont cohérents.
-        entity.setRetirement(toEntity(model.retirement(), entity));
+        // DB-1100 : la retraite n'est plus rattachee au hub ; elle est stockee dans les tables autonomes
+        // pension_* (PensionPlanEntity), ecrites par BudgetPersistenceGateway#syncPension.
         
         // Lists will be set separately with proper budgetData references
         return entity;
@@ -677,7 +566,7 @@ public class EntityModelConverter {
             entity.getCharges().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             entity.getPlacements().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             entity.getRealEstate().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            toModel(entity.getRetirement()),
+            null, // Retirement - lue depuis les tables autonomes pension_* (DB-1100)
             entity.getTaxChildren().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             entity.getTaxBrackets().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             entity.getTaxRateOverrides().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),

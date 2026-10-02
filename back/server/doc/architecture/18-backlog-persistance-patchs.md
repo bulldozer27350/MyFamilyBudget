@@ -814,6 +814,31 @@ L'ordre exact est : Retraite → Fiscalité → Objectifs → Banque → Crédit
 pas une hiérarchie métier ; il minimise les risques en commençant par les domaines déjà basculés et les sous-graphes
 les plus isolés.
 
+### Statut DB-1100 — Retirer la relation hub Retraite
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Décision** : les anciennes tables sont supprimées et le schéma recréé ; les données sont réimportées depuis l'export
+  JSON (mono-utilisateur). Aucune reprise de données ni purge au démarrage dans le code (`ddl-auto: update` ne supprime
+  pas les anciennes tables ni la clé étrangère `retirement.budget_data_id`, d'où le `DROP` manuel ci-dessous). Valable pour
+  DB-1110 à DB-1160.
+- **Livré** : `BudgetDataEntity` n'a plus de relation `retirement` ; les entités legacy `RetirementEntity`,
+  `RetirementPersonEntity`, `SalaryHistoryEntity` et `RetirementRepository` sont supprimées (tables `retirement`,
+  `retirement_person`, `salary_history`). Au chargement du cache (démarrage), `BudgetPersistenceGateway` relit la retraite
+  depuis les tables autonomes `pension_*` (`PensionPlanRepository` + `PensionEntityMapper`) au lieu du hub ;
+  `EntityModelConverter` ne convertit plus la retraite (le champ du `BudgetDataModel` est renseigné par la passerelle,
+  comme l'import bancaire). `syncPension` n'est plus rejoué à la reconstruction depuis le hub : il reste appelé à chaque
+  sauvegarde (import, reset, mutations), dans la même transaction. `PersistenceManager` perd le paramètre
+  `RetirementRepository` (constructeur réduit ; fabrique et tests adaptés). Contrats REST inchangés.
+- **Procédure de déploiement** : (1) exporter les données en JSON ; (2) arrêter l'application ; (3) supprimer toutes les
+  tables du schéma (le schéma complet, pas seulement les trois tables Retraite : la clé étrangère legacy ferait échouer la
+  réinitialisation) ; (4) démarrer la nouvelle version (`ddl-auto: update` recrée le schéma) ; (5) réimporter le JSON.
+- **Tests** : `PersistenceAdaptersJpaRoundTripTest` : `retirementIsReloadedFromPensionTablesOnStartup` remplace la
+  reconstruction depuis le hub (le cache redémarré expose la retraite lue dans `pension_*`) ; les helpers `readDatabase`
+  de `MultiDomainAtomicityTest` et `ConcurrentMutationsApiTest` relisent désormais la retraite depuis `pension_*` pour
+  conserver la vérification d'atomicité ; mocks `RetirementRepository` retirés des fabriques de test.
+- **Reste** : `RestartPersistenceTest` (VT-320, H2 + PostgreSQL) couvre `PUT /retraite` ; à exécuter en CI (non exécuté
+  ici : pas de Maven dans l'environnement de rédaction).
+
 ## DB-1170 — Nettoyer `EntityModelConverter` en mappers par domaine
 
 - **Prérequis** : DB-1160, ARCH-020.

@@ -30,7 +30,9 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
+import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
+import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 
 /**
  * VT-340 -- Atomicite des mutations multi-domaines. Import, reinitialisation et sauvegarde des parametres
@@ -59,6 +61,9 @@ class MultiDomainAtomicityTest {
 
     @Autowired
     private BudgetDataRepository budgetDataRepository;
+
+    @Autowired
+    private PensionPlanRepository pensionPlanRepository;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -140,7 +145,9 @@ class MultiDomainAtomicityTest {
     /** Relit la base sans passer par le cache memoire. */
     private BudgetDataModel readDatabase() {
         return new TransactionTemplate(transactionManager).execute(status ->
-                EntityModelConverter.toModel(budgetDataRepository.findFirstByOrderByIdAsc().orElseThrow()));
+                EntityModelConverter.toModel(budgetDataRepository.findFirstByOrderByIdAsc().orElseThrow())
+                        .withRetirement(PensionEntityMapper.toModel(
+                                pensionPlanRepository.findFirstByOrderByIdAsc().orElse(null))));
     }
 
     private static List<String> ids(BudgetDataModel model) {

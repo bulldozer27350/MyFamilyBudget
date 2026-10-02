@@ -62,7 +62,6 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.OneOffExpen
 import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.RealEstateRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.RetirementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.SettingsRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.TaxActualOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.TaxBracketRepository;
@@ -551,14 +550,13 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     @Test
-    @DisplayName("DB-1001 -- tables autonomes videes (donnees pre-existantes) -> reconstruites depuis le hub")
-    void pensionTablesAreRebuiltFromHubOnStartup() {
+    @DisplayName("DB-1100 -- au demarrage, la retraite du cache est rechargee depuis les tables pension_*")
+    void retirementIsReloadedFromPensionTablesOnStartup() {
         writer.setBudgetData(referenceData());
-        context.getBean(PensionPlanRepository.class).deleteAll();
-        assertThat(context.getBean(PensionPlanRepository.class).count()).isZero();
 
         PersistenceManager restarted = freshReader();
 
+        assertSameContent(restarted.getBudgetData().retirement(), RETIREMENT);
         assertSameContent(jpaRetirementAdapter(restarted).getRetirement(), RETIREMENT);
     }
 
@@ -940,7 +938,6 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(TaxRateOverrideRepository.class),
                 context.getBean(TaxActualOverrideRepository.class),
                 context.getBean(AssetCategoryRepository.class),
-                context.getBean(RetirementRepository.class),
                 context.getBean(BankImportRepository.class),
                 context.getBean(LoanRepository.class),
                 context.getBean(ObjectifRepository.class),

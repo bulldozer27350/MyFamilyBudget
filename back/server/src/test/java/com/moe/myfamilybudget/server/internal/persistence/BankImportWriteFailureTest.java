@@ -51,7 +51,6 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.OneOffExpen
 import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.RealEstateRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.RetirementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.SettingsRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.TaxActualOverrideRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.TaxBracketRepository;
@@ -114,7 +113,6 @@ class BankImportWriteFailureTest {
                 mock(TaxRateOverrideRepository.class),
                 mock(TaxActualOverrideRepository.class),
                 mock(AssetCategoryRepository.class),
-                mock(RetirementRepository.class),
                 bankImportRepository,
                 mock(LoanRepository.class),
                 mock(ObjectifRepository.class),
