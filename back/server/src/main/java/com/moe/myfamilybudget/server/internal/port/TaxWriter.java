@@ -18,7 +18,7 @@ public interface TaxWriter {
     void updateTaxConfig(List<TaxChildModel> children, List<TaxBracketModel> brackets,
                          List<TaxRateOverrideModel> rateOverrides, List<TaxActualOverrideModel> actualOverrides);
 
-    /** Met a jour un champ des parametres historiquement portes par la fiscalite (voir 12-settings.md). */
+    /** Met a jour un parametre dont Fiscalite est owner ({@code childExitAge}, {@code taxAbattement}). */
     void updateTaxSettings(TaxSettingField field, Object value);
 
     /** Restaure le bareme par defaut ; enfants et surcharges sont conserves. */

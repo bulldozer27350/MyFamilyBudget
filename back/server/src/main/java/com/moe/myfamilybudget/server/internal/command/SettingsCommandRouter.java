@@ -1,8 +1,6 @@
 package com.moe.myfamilybudget.server.internal.command;
 
-import java.util.EnumSet;
 import java.util.Optional;
-import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
@@ -24,10 +22,6 @@ import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
  */
 @Service
 public class SettingsCommandRouter {
-
-    /** Seuls paramètres de {@link TaxSettingField} dont Fiscalité est réellement propriétaire. */
-    private static final Set<TaxSettingField> TAX_OWNED =
-            EnumSet.of(TaxSettingField.CHILD_EXIT_AGE, TaxSettingField.TAX_ABATTEMENT);
 
     static final String SIMULATE_UNTIL_AGE = "simulateUntilAge";
     static final String INFLATION_RATE = "inflationRate";
@@ -74,7 +68,7 @@ public class SettingsCommandRouter {
         if (INFLATION_RATE.equals(field)) {
             return Optional.of(SettingsOwner.HYPOTHESES_ECONOMIQUES);
         }
-        if (TaxSettingField.find(field).filter(TAX_OWNED::contains).isPresent()) {
+        if (TaxSettingField.find(field).isPresent()) {
             return Optional.of(SettingsOwner.FISCALITE);
         }
         return Optional.empty();

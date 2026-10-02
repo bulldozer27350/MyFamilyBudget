@@ -84,9 +84,13 @@ class TaxCommandServiceTest {
     @DisplayName("DB-050 : TaxSettingField.find respecte la casse et ignore les champs inconnus")
     void settingFieldFind() {
         assertThat(TaxSettingField.find("childExitAge")).contains(TaxSettingField.CHILD_EXIT_AGE);
-        assertThat(TaxSettingField.find("pivotBalanceManual")).contains(TaxSettingField.PIVOT_BALANCE_MANUAL);
+        assertThat(TaxSettingField.find("taxAbattement")).contains(TaxSettingField.TAX_ABATTEMENT);
         assertThat(TaxSettingField.find("CHILDEXITAGE")).isEmpty();
         assertThat(TaxSettingField.find("inconnu")).isEmpty();
+        // SET-030 : les parametres des autres owners ne sont plus des parametres fiscaux.
+        assertThat(TaxSettingField.find("retireAge")).isEmpty();
+        assertThat(TaxSettingField.find("pivotBalanceManual")).isEmpty();
+        assertThat(TaxSettingField.values()).containsExactly(TaxSettingField.CHILD_EXIT_AGE, TaxSettingField.TAX_ABATTEMENT);
         assertThat(TaxSettingField.find(null)).isEmpty();
     }
 

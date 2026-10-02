@@ -3,31 +3,16 @@ package com.moe.myfamilybudget.server.internal.port;
 import java.util.Optional;
 
 /**
- * Parametre ecrit par la commande {@code updateTaxSettings} (DB-050, lot 2). Remplace le nom de champ en
- * chaine dans la command, le port et l'adaptateur Fiscalite : la chaine recue par l'API n'est interpretee
- * qu'une fois, a la frontiere REST, par {@link #find(String)}.
- *
- * <p>Les cles sont celles de l'ancien contrat ({@code field} / {@code value}), comparees en respectant la
- * casse. {@code startBalance} et {@code pivotBalanceManual} ecrivent le meme parametre.
+ * Parametre de la famille Fiscalite ecrit via {@code PATCH /settings} (DB-050 lot 2, reduit par SET-030). Seuls
+ * {@code childExitAge} et {@code taxAbattement} appartiennent a Fiscalite (voir 12-settings.md) : les autres
+ * parametres ont leur propre enum chez leur owner ({@code RetirementSettingField},
+ * {@code TresorerieSettingField}). La chaine recue par l'API n'est interpretee qu'une fois, a la frontiere
+ * REST, par {@link #find(String)}, en respectant la casse.
  */
 public enum TaxSettingField {
 
-    BIRTH_YEAR("birthYear"),
-    RETIRE_AGE("retireAge"),
-    SIMULATE_UNTIL_AGE("simulateUntilAge"),
-    INFLATION_RATE("inflationRate"),
-    PIVOT_DATE("pivotDate"),
-    PIVOT_MODE("pivotMode"),
-    START_BALANCE("startBalance"),
-    PIVOT_BALANCE_MANUAL("pivotBalanceManual"),
     CHILD_EXIT_AGE("childExitAge"),
-    TAX_ABATTEMENT("taxAbattement"),
-    PASS_2026("pass2026"),
-    PASS_GROWTH_RATE("passGrowthRate"),
-    SWEEP_ENABLED("sweepEnabled"),
-    CASH_CEILING("cashCeiling"),
-    CASH_FLOOR("cashFloor"),
-    CASH_ALERT_THRESHOLD("cashAlertThreshold");
+    TAX_ABATTEMENT("taxAbattement");
 
     private final String key;
 

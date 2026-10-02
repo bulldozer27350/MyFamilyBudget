@@ -7,6 +7,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +16,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
+import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
+import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
 import com.moe.myfamilybudget.server.internal.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportRepository;
@@ -46,7 +50,8 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOve
 /**
  * FIX-020 -- Modifier un parametre ne depend plus de la presence de {@code sweepEnabled}.
  *
- * <p>{@code BudgetMutationService.updateTaxSettings} melangeait un {@code boolean} primitif et le
+ * <p>SET-030 : le dispatcher generique {@code updateTaxSettings(String, Object)} est remplace par une mutation
+ * explicite par owner ; ces tests couvrent les cinq. Avant FIX-020, la mutation melangeait un {@code boolean} primitif et le
  * {@code Boolean} nullable {@code sweepEnabled} dans une expression ternaire : l'unboxing implicite levait une
  * {@link NullPointerException} des qu'un autre champ etait modifie sur un budget dont {@code sweepEnabled}
  * n'etait pas renseigne. Ces tests partent d'un budget minimal, sans ce parametre.
@@ -154,8 +159,86 @@ class UpdateTaxSettingsMinimalBudgetTest {
         assertThat(settings().sweepEnabled()).isFalse();
     }
 
+    @Test
+    @DisplayName("SET-030 : une mutation d'owner ne modifie que les champs de cet owner")
+    void ownerMutationsOnlyTouchTheirOwnFields() {
+        SettingsModel before = settings();
+
+        update("retireAge", 60);
+        assertThat(settings()).isEqualTo(new SettingsModel(before.birthYear(), 60, before.simulateUntilAge(),
+                before.inflationRate(), before.pivotDate(), before.pivotMode(), before.startBalance(),
+                before.childExitAge(), before.taxAbattement(), before.pass2026(), before.passGrowthRate(),
+                null, null, null, null));
+
+        update("childExitAge", 25);
+        assertThat(settings().childExitAge()).isEqualTo(25);
+        assertThat(settings().retireAge()).isEqualTo(60);
+
+        update("pivotMode", "manual");
+        assertThat(settings().pivotMode()).isEqualTo("manual");
+        assertThat(settings().childExitAge()).isEqualTo(25);
+
+        update("simulateUntilAge", 90);
+        assertThat(settings().simulateUntilAge()).isEqualTo(90);
+        assertThat(settings().pivotMode()).isEqualTo("manual");
+    }
+
+    @Test
+    @DisplayName("SET-030 : startBalance et pivotBalanceManual ecrivent le meme parametre Tresorerie")
+    void startBalanceAndPivotBalanceManualShareTheSameSetting() {
+        update("startBalance", 1500);
+        assertThat(settings().startBalance()).isEqualByComparingTo("1500");
+
+        update("pivotBalanceManual", 2500);
+        assertThat(settings().startBalance()).isEqualByComparingTo("2500");
+    }
+
+    @Test
+    @DisplayName("SET-030 : chaque champ de chaque enum d'owner est effectivement applique (garde-fou switch)")
+    void everyOwnerSettingFieldIsApplied() {
+        Map<String, Object> samples = Map.ofEntries(
+                Map.entry("birthYear", 1970), Map.entry("retireAge", 61),
+                Map.entry("pass2026", 50000), Map.entry("passGrowthRate", "0.03"),
+                Map.entry("pivotDate", "2030-01-01"), Map.entry("pivotMode", "manual"),
+                Map.entry("startBalance", 777), Map.entry("pivotBalanceManual", 888),
+                Map.entry("sweepEnabled", true), Map.entry("cashCeiling", 1234),
+                Map.entry("cashFloor", 12), Map.entry("cashAlertThreshold", 34),
+                Map.entry("childExitAge", 30), Map.entry("taxAbattement", "0.20"));
+
+        for (RetirementSettingField field : RetirementSettingField.values()) {
+            assertApplied(field.key(), samples);
+        }
+        for (TresorerieSettingField field : TresorerieSettingField.values()) {
+            assertApplied(field.key(), samples);
+        }
+        for (TaxSettingField field : TaxSettingField.values()) {
+            assertApplied(field.key(), samples);
+        }
+    }
+
+    private void assertApplied(String key, Map<String, Object> samples) {
+        assertThat(samples).as("valeur d'exemple pour %s", key).containsKey(key);
+        SettingsModel before = settings();
+
+        update(key, samples.get(key));
+
+        assertThat(settings()).as("%s doit modifier les parametres", key).isNotEqualTo(before);
+    }
+
+    /** Route le champ vers la mutation de son owner, comme le fait {@code SettingsCommandRouter}. */
     private void update(String field, Object value) {
-        persistenceManager.write(m -> m.updateTaxSettings(field, value));
+        RetirementSettingField.find(field).ifPresent(
+                f -> persistenceManager.write(m -> m.updateRetirementSetting(f, value)));
+        TresorerieSettingField.find(field).ifPresent(
+                f -> persistenceManager.write(m -> m.updateTresorerieSetting(f, value)));
+        TaxSettingField.find(field).ifPresent(
+                f -> persistenceManager.write(m -> m.updateFiscalSetting(f, value)));
+        if ("simulateUntilAge".equals(field)) {
+            persistenceManager.write(m -> m.updateSimulateUntilAge(value));
+        }
+        if ("inflationRate".equals(field)) {
+            persistenceManager.write(m -> m.updateInflationRate(value));
+        }
     }
 
     private SettingsModel settings() {

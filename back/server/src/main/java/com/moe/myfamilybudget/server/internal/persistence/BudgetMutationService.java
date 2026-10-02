@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,9 @@ import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TransferModel;
 import com.moe.myfamilybudget.server.internal.model.VariableIncomeModel;
 import com.moe.myfamilybudget.server.internal.model.VariableOverrideModel;
+import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
+import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
+import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
 
 /**
  * Logique métier de toutes les mutations du budget : sections trésorerie (revenus, charges,
@@ -577,37 +581,97 @@ class BudgetMutationService {
     }
 
     /**
-     * Met à jour un paramètre lié aux impôts ou généraux dans Settings.
+     * SET-030 : une mutation explicite par owner de paramètre, en remplacement de l'ancien dispatcher générique
+     * {@code updateTaxSettings(String, Object)}. Le stockage reste {@code SettingsEntity} (séparation relevant
+     * des patchs DB-xxx) ; seul le champ ciblé est modifié, les autres sont recopiés tels quels, y compris
+     * lorsqu'ils sont absents (FIX-020 : {@code sweepEnabled} est un {@code Boolean} nullable, aucun champ ne
+     * doit être déballé pour la simple recopie, sous peine de {@link NullPointerException}).
      *
-     * FIX-020 : seul le champ ciblé est modifié, les autres paramètres sont recopiés tels quels, y compris
-     * lorsqu'ils sont absents (notamment {@code sweepEnabled}, {@code Boolean} nullable : un budget minimal
-     * ne renseigne pas forcément ce paramètre de trésorerie). Aucun champ ne doit être déballé (unboxing)
-     * pour la simple recopie, sous peine de {@link NullPointerException}.
+     * <p>Chaque {@code switch} porte sur l'enum de champs de l'owner : ajouter un paramètre à cet enum sans le
+     * traiter ici est détecté par {@code UpdateTaxSettingsMinimalBudgetTest#everyOwnerSettingFieldIsApplied}.
      */
-    public void updateTaxSettings(String field, Object value) {
-        if (field == null) return;
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
+    private void updateSettings(UnaryOperator<SettingsModel> change) {
+        cacheStore.applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            SettingsModel s = base.settings();
-            SettingsModel updatedSettings = new SettingsModel(
-                    "birthYear".equals(field) ? toInteger(value, 1985) : s.birthYear(),
-                    "retireAge".equals(field) ? toInteger(value, 64) : s.retireAge(),
-                    "simulateUntilAge".equals(field) ? toInteger(value, 85) : s.simulateUntilAge(),
-                    "inflationRate".equals(field) ? toBigDecimal(value, new BigDecimal("0.02")) : s.inflationRate(),
-                    "pivotDate".equals(field) ? (value != null ? String.valueOf(value) : "") : s.pivotDate(),
-                    "pivotMode".equals(field) ? (value != null ? String.valueOf(value) : "") : s.pivotMode(),
-                    ("startBalance".equals(field) || "pivotBalanceManual".equals(field)) ? toBigDecimal(value, BigDecimal.ZERO) : s.startBalance(),
-                    "childExitAge".equals(field) ? toInteger(value, 21) : s.childExitAge(),
-                    "taxAbattement".equals(field) ? toBigDecimal(value, new BigDecimal("0.10")) : s.taxAbattement(),
-                    "pass2026".equals(field) ? toBigDecimal(value, new BigDecimal("47100")) : s.pass2026(),
-                    "passGrowthRate".equals(field) ? toBigDecimal(value, new BigDecimal("0.015")) : s.passGrowthRate(),
-                    "sweepEnabled".equals(field) ? toBoolean(value) : s.sweepEnabled(),
-                    "cashCeiling".equals(field) ? toBigDecimal(value, null) : s.cashCeiling(),
-                    "cashFloor".equals(field) ? toBigDecimal(value, null) : s.cashFloor(),
-                    "cashAlertThreshold".equals(field) ? toBigDecimal(value, null) : s.cashAlertThreshold()
-            );
-            return base.withSettings(updatedSettings);
+            return base.withSettings(change.apply(base.settings()));
         });
+    }
+
+    /** Paramètres Retraite de {@code /settings}. */
+    public void updateRetirementSetting(RetirementSettingField field, Object value) {
+        if (field == null) return;
+        updateSettings(s -> {
+            Integer birthYear = s.birthYear();
+            Integer retireAge = s.retireAge();
+            BigDecimal pass2026 = s.pass2026();
+            BigDecimal passGrowthRate = s.passGrowthRate();
+            switch (field) {
+                case BIRTH_YEAR -> birthYear = toInteger(value, 1985);
+                case RETIRE_AGE -> retireAge = toInteger(value, 64);
+                case PASS_2026 -> pass2026 = toBigDecimal(value, new BigDecimal("47100"));
+                case PASS_GROWTH_RATE -> passGrowthRate = toBigDecimal(value, new BigDecimal("0.015"));
+            }
+            return new SettingsModel(birthYear, retireAge, s.simulateUntilAge(), s.inflationRate(), s.pivotDate(),
+                    s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), pass2026, passGrowthRate,
+                    s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
+        });
+    }
+
+    /** Paramètres Trésorerie de {@code /settings} (pivot, solde de départ, sweep, plafonds). */
+    public void updateTresorerieSetting(TresorerieSettingField field, Object value) {
+        if (field == null) return;
+        updateSettings(s -> {
+            String pivotDate = s.pivotDate();
+            String pivotMode = s.pivotMode();
+            BigDecimal startBalance = s.startBalance();
+            Boolean sweepEnabled = s.sweepEnabled();
+            BigDecimal cashCeiling = s.cashCeiling();
+            BigDecimal cashFloor = s.cashFloor();
+            BigDecimal cashAlertThreshold = s.cashAlertThreshold();
+            switch (field) {
+                case PIVOT_DATE -> pivotDate = value != null ? String.valueOf(value) : "";
+                case PIVOT_MODE -> pivotMode = value != null ? String.valueOf(value) : "";
+                case START_BALANCE, PIVOT_BALANCE_MANUAL -> startBalance = toBigDecimal(value, BigDecimal.ZERO);
+                case SWEEP_ENABLED -> sweepEnabled = toBoolean(value);
+                case CASH_CEILING -> cashCeiling = toBigDecimal(value, null);
+                case CASH_FLOOR -> cashFloor = toBigDecimal(value, null);
+                case CASH_ALERT_THRESHOLD -> cashAlertThreshold = toBigDecimal(value, null);
+            }
+            return new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(), s.inflationRate(),
+                    pivotDate, pivotMode, startBalance, s.childExitAge(), s.taxAbattement(), s.pass2026(),
+                    s.passGrowthRate(), sweepEnabled, cashCeiling, cashFloor, cashAlertThreshold);
+        });
+    }
+
+    /** Paramètres Fiscalité de {@code /settings} ({@code childExitAge}, {@code taxAbattement}). */
+    public void updateFiscalSetting(TaxSettingField field, Object value) {
+        if (field == null) return;
+        updateSettings(s -> {
+            Integer childExitAge = s.childExitAge();
+            BigDecimal taxAbattement = s.taxAbattement();
+            switch (field) {
+                case CHILD_EXIT_AGE -> childExitAge = toInteger(value, 21);
+                case TAX_ABATTEMENT -> taxAbattement = toBigDecimal(value, new BigDecimal("0.10"));
+            }
+            return new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(), s.inflationRate(),
+                    s.pivotDate(), s.pivotMode(), s.startBalance(), childExitAge, taxAbattement, s.pass2026(),
+                    s.passGrowthRate(), s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
+        });
+    }
+
+    /** Paramètre Simulation de {@code /settings}. */
+    public void updateSimulateUntilAge(Object value) {
+        updateSettings(s -> new SettingsModel(s.birthYear(), s.retireAge(), toInteger(value, 85), s.inflationRate(),
+                s.pivotDate(), s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), s.pass2026(),
+                s.passGrowthRate(), s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()));
+    }
+
+    /** Hypothèse économique de {@code /settings}. */
+    public void updateInflationRate(Object value) {
+        updateSettings(s -> new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(),
+                toBigDecimal(value, new BigDecimal("0.02")), s.pivotDate(), s.pivotMode(), s.startBalance(),
+                s.childExitAge(), s.taxAbattement(), s.pass2026(), s.passGrowthRate(), s.sweepEnabled(),
+                s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()));
     }
 
     /**

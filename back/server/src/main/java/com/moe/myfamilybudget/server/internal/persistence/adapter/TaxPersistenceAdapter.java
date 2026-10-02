@@ -98,7 +98,7 @@ public class TaxPersistenceAdapter implements TaxReader, TaxWriter {
 
     @Override
     public void updateTaxSettings(TaxSettingField field, Object value) {
-        persistenceManager.write(m -> m.updateTaxSettings(field.key(), value));
+        persistenceManager.write(m -> m.updateFiscalSetting(field, value));
     }
 
     @Override

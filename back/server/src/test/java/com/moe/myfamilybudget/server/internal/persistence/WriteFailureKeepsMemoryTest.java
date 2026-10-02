@@ -28,6 +28,7 @@ import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
+import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
@@ -245,7 +246,8 @@ class WriteFailureKeepsMemoryTest {
         mutations.put("updateRetirement", () -> persistenceManager.write(m -> m.updateRetirement(RETIREMENT_AFTER)));
         mutations.put("updateTaxConfig", () -> persistenceManager.write(m -> m.updateTaxConfig(
                 List.of(new TaxChildModel("tc_new", "Emma", 2015)), null, null, null)));
-        mutations.put("updateTaxSettings", () -> persistenceManager.write(m -> m.updateTaxSettings("retireAge", 60)));
+        mutations.put("updateRetirementSetting", () -> persistenceManager.write(m -> m.updateRetirementSetting(
+                RetirementSettingField.RETIRE_AGE, 60)));
         mutations.put("addAssetCategory", () -> persistenceManager.write(m -> m.addAssetCategory(
                 new AssetCategoryModel("cat_new", "icon", "Nouvelle categorie", "bucket", "#ffffff"))));
         mutations.put("updateBankImport", () -> persistenceManager.write(m -> m.updateBankImport(

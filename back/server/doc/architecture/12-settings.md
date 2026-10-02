@@ -114,6 +114,13 @@ Objectifs va vers Fiscalité », porté par :
   présence de `field`) route aussi tous les champs vers Fiscalité, sans le routage Objectifs de
   `ParametersServiceImpl` : un champ Objectifs reçu par ce chemin est ignoré sans erreur.
 
+### Après SET-030
+
+Le dispatcher générique `updateTaxSettings(field, value)` n'existe plus côté persistance : chaque owner a sa mutation
+explicite (`updateRetirementSetting`, `updateTresorerieSetting`, `updateFiscalSetting`, `updateSimulateUntilAge`,
+`updateInflationRate`) et `TaxSettingField` se limite à `childExitAge` et `taxAbattement`. Le constat ci-dessus décrit
+l'état avant ce patch.
+
 ### Règles pour la suite
 
 - `SET-020` dispatche par propriété vers l'owner de ce tableau, pour `PATCH /settings` **et** pour le

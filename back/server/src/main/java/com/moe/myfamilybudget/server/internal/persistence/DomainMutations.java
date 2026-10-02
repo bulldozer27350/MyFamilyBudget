@@ -13,6 +13,9 @@ import com.moe.myfamilybudget.server.internal.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.server.internal.model.TaxBracketModel;
 import com.moe.myfamilybudget.server.internal.model.TaxChildModel;
 import com.moe.myfamilybudget.server.internal.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.server.internal.port.RetirementSettingField;
+import com.moe.myfamilybudget.server.internal.port.TaxSettingField;
+import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
 
 /**
  * Mutations de domaine du budget (DB-060), extraites de {@link PersistenceManager}.
@@ -95,12 +98,34 @@ public final class DomainMutations {
         publishMutated("updateTaxConfig");
     }
 
-    /**
-     * Met à jour un paramètre lié aux impôts ou généraux dans Settings.
-     */
-    public void updateTaxSettings(String field, Object value) {
-        mutationService.updateTaxSettings(field, value);
-        publishMutated("updateTaxSettings");
+    /** SET-030 : paramètre Retraite de {@code /settings}. */
+    public void updateRetirementSetting(RetirementSettingField field, Object value) {
+        mutationService.updateRetirementSetting(field, value);
+        publishMutated("updateRetirementSetting");
+    }
+
+    /** SET-030 : paramètre Trésorerie de {@code /settings}. */
+    public void updateTresorerieSetting(TresorerieSettingField field, Object value) {
+        mutationService.updateTresorerieSetting(field, value);
+        publishMutated("updateTresorerieSetting");
+    }
+
+    /** SET-030 : paramètre Fiscalité de {@code /settings}. */
+    public void updateFiscalSetting(TaxSettingField field, Object value) {
+        mutationService.updateFiscalSetting(field, value);
+        publishMutated("updateFiscalSetting");
+    }
+
+    /** SET-030 : paramètre Simulation de {@code /settings}. */
+    public void updateSimulateUntilAge(Object value) {
+        mutationService.updateSimulateUntilAge(value);
+        publishMutated("updateSimulateUntilAge");
+    }
+
+    /** SET-030 : hypothèse économique de {@code /settings}. */
+    public void updateInflationRate(Object value) {
+        mutationService.updateInflationRate(value);
+        publishMutated("updateInflationRate");
     }
 
     /**

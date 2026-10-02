@@ -46,11 +46,11 @@ public class TresoreriePersistenceAdapter implements TresorerieWriter {
     }
 
     /**
-     * SET-020 : le stockage physique des paramètres reste partagé ({@code SettingsEntity}) ; la mutation de
-     * transition est la même que pour les autres familles. Sa séparation relève des patchs DB-xxx.
+     * SET-020 / SET-030 : le stockage physique des paramètres reste partagé ({@code SettingsEntity}) ; la
+     * mutation de transition est propre à la famille Trésorerie. Sa séparation relève des patchs DB-xxx.
      */
     @Override
     public void updateTresorerieSetting(TresorerieSettingField field, Object value) {
-        persistenceManager.write(m -> m.updateTaxSettings(field.key(), value));
+        persistenceManager.write(m -> m.updateTresorerieSetting(field, value));
     }
 }

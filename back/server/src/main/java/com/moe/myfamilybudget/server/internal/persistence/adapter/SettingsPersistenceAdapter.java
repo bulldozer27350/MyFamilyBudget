@@ -30,11 +30,11 @@ public class SettingsPersistenceAdapter
 
     @Override
     public void updateSimulateUntilAge(Object value) {
-        persistenceManager.write(m -> m.updateTaxSettings("simulateUntilAge", value));
+        persistenceManager.write(m -> m.updateSimulateUntilAge(value));
     }
 
     @Override
     public void updateInflationRate(Object value) {
-        persistenceManager.write(m -> m.updateTaxSettings("inflationRate", value));
+        persistenceManager.write(m -> m.updateInflationRate(value));
     }
 }

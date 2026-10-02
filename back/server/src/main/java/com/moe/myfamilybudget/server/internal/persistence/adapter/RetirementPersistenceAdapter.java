@@ -56,12 +56,12 @@ public class RetirementPersistenceAdapter implements RetirementReader, Retiremen
     }
 
     /**
-     * SET-020 : le stockage physique des paramètres reste partagé ({@code SettingsEntity}) ; la mutation de
-     * transition est la même que pour les autres familles. Sa séparation relève des patchs DB-xxx, la double
+     * SET-020 / SET-030 : le stockage physique des paramètres reste partagé ({@code SettingsEntity}) ; la
+     * mutation de transition est propre à la famille Retraite. Sa séparation relève des patchs DB-xxx, la double
      * écriture {@code pass2026} / {@code passGrowthRate} de SET-040.
      */
     @Override
     public void updateRetirementSetting(RetirementSettingField field, Object value) {
-        persistenceManager.write(m -> m.updateTaxSettings(field.key(), value));
+        persistenceManager.write(m -> m.updateRetirementSetting(field, value));
     }
 }

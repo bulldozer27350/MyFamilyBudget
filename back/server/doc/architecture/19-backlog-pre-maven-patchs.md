@@ -196,7 +196,18 @@ Avant tout patch :
 - **Travaux attendus** : commandes explicites par famille ; supprimer les usages applicatifs du couple `field/value` lorsque le champ
   possède un owner connu ; conserver uniquement une compatibilité explicitement documentée si réellement nécessaire.
 - **Critère de sortie** : une nouvelle propriété Settings ne doit plus avoir besoin d'être ajoutée à un dispatcher générique Fiscalité.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Terminé
+- **Livraison** : `BudgetMutationService.updateTaxSettings(String, Object)` et `DomainMutations.updateTaxSettings` sont supprimés.
+  Cinq mutations explicites, une par owner, les remplacent : `updateRetirementSetting(RetirementSettingField, Object)`,
+  `updateTresorerieSetting(TresorerieSettingField, Object)`, `updateFiscalSetting(TaxSettingField, Object)`,
+  `updateSimulateUntilAge(Object)`, `updateInflationRate(Object)` (événements `BudgetMutatedEvent` du même nom). Les adapters
+  Retraite, Trésorerie, Fiscalité et Settings appellent chacun la mutation de leur famille. `TaxSettingField` est réduit à
+  `CHILD_EXIT_AGE` et `TAX_ABATTEMENT` : Fiscalité n'expose plus que ses deux paramètres, `TaxWriter` / `TaxCommandService`
+  gardent leur signature. `SettingsCommandRouter` n'a plus de filtre `TAX_OWNED`. Ajouter une propriété Settings = l'ajouter
+  à l'enum de son owner et au `switch` de la mutation correspondante, sans toucher Fiscalité ; le test
+  `UpdateTaxSettingsMinimalBudgetTest#everyOwnerSettingFieldIsApplied` détecte l'oubli. Le stockage reste `SettingsEntity`
+  (séparation relevant des `DB-xxx`) ; `pass2026` / `passGrowthRate` restent écrits dans la même copie (SET-040). Aucun
+  changement de contrat REST ni de comportement (valeurs par défaut de conversion inchangées).
 
 ---
 

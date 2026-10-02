@@ -146,17 +146,26 @@ class SettingsCommandRouterTest {
     }
 
     @Test
-    @DisplayName("Chaque clé de TaxSettingField a exactement un owner (garde-fou pour SET-030)")
-    void everyTaxSettingFieldHasAnOwner() {
+    @DisplayName("SET-030 : chaque clé de chaque enum de champs a exactement un owner, celui de son enum")
+    void everySettingFieldKeyHasExactlyItsOwnOwner() {
         for (TaxSettingField field : TaxSettingField.values()) {
-            assertThat(SettingsCommandRouter.ownerOf(field.key()))
-                    .as("owner de %s", field.key())
-                    .isPresent();
+            assertThat(SettingsCommandRouter.ownerOf(field.key())).as("owner de %s", field.key())
+                    .contains(SettingsOwner.FISCALITE);
+        }
+        for (RetirementSettingField field : RetirementSettingField.values()) {
+            assertThat(SettingsCommandRouter.ownerOf(field.key())).as("owner de %s", field.key())
+                    .contains(SettingsOwner.RETRAITE);
+            assertThat(TaxSettingField.find(field.key())).as("%s n'est pas fiscal", field.key()).isEmpty();
+        }
+        for (TresorerieSettingField field : TresorerieSettingField.values()) {
+            assertThat(SettingsCommandRouter.ownerOf(field.key())).as("owner de %s", field.key())
+                    .contains(SettingsOwner.TRESORERIE);
+            assertThat(TaxSettingField.find(field.key())).as("%s n'est pas fiscal", field.key()).isEmpty();
         }
     }
 
     @Test
-    @DisplayName("Seuls childExitAge et taxAbattement appartiennent à Fiscalité")
+    @DisplayName("SET-030 : seuls childExitAge et taxAbattement appartiennent à Fiscalité")
     void onlyChildExitAgeAndTaxAbattementBelongToTax() {
         long fiscal = Arrays.stream(TaxSettingField.values())
                 .map(f -> SettingsCommandRouter.ownerOf(f.key()))
@@ -164,6 +173,7 @@ class SettingsCommandRouterTest {
                 .count();
 
         assertThat(fiscal).isEqualTo(2);
+        assertThat(TaxSettingField.values()).hasSize(2);
         assertThat(SettingsCommandRouter.ownerOf("childExitAge")).contains(SettingsOwner.FISCALITE);
         assertThat(SettingsCommandRouter.ownerOf("taxAbattement")).contains(SettingsOwner.FISCALITE);
     }
