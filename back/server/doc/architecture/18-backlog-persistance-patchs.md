@@ -614,6 +614,36 @@ pas les agents qui travaillent sur les autres domaines.
 - **DB-1060** : entités/repositories Trésorerie additifs.
 - **DB-1061** : bascule adapter et tests.
 - **Validation** : `VT-110` obligatoire pour protéger le graphe Retraite → Fiscalité → Trésorerie → Overview.
+
+### Statut DB-1060 — JPA Trésorerie — entités/repositories additifs
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Périmètre** : les six listes de lignes que `13-persistance.md` attribue à Trésorerie (« revenus / charges / lignes
+  de trésorerie »), aujourd'hui rattachées au hub : revenus, charges, dépenses ponctuelles, virements, règles de
+  revenus variables et surcharges annuelles.
+- **Livré** : entités `CashflowIncomeEntity` (`cashflow_income`), `CashflowChargeEntity` (`cashflow_charge`),
+  `CashflowOneOffEntity` (`cashflow_one_off`), `CashflowTransferEntity` (`cashflow_transfer`),
+  `CashflowVariableIncomeEntity` (`cashflow_variable_income`) et `CashflowVariableOverrideEntity`
+  (`cashflow_variable_override`), leurs six repositories (`findAllByOrderByPositionAsc`) et `CashflowEntityMapper`
+  (`IncomeModel`, `ChargeModel`, `OneOffExpenseModel`, `TransferModel`, `VariableIncomeModel`, `VariableOverrideModel` ↔
+  `Cashflow*Entity`, sans perte, aucun défaut `getEffective*` appliqué : un taux de croissance de charge absent reste
+  `null`). Clé technique générée, `uid` = identifiant métier et colonne `position` : aucune hypothèse d'unicité (comme
+  dans le chemin legacy). Taux en `NUMERIC(19,8)`, montants en `NUMERIC(19,2)`, notes en 2000 caractères ; les mots
+  `start`, `end`, `date`, `type` sont évités comme noms de colonnes (`start_date`, `end_date`, `entry_date`,
+  `variable_type`). Aucune relation vers `BudgetDataEntity` ; les entités legacy (`IncomeEntity`, `ChargeEntity`,
+  `OneOffExpenseEntity`, `TransferEntity`, `VariableIncomeEntity`, `VariableOverrideEntity`), `EntityModelConverter`,
+  `BudgetPersistenceAdapter`, `TresoreriePersistenceAdapter` et le hub sont **inchangés** (chemin legacy intact, aucune
+  donnée migrée). Les nouvelles tables sont créées vides par `ddl-auto` et restent inutilisées jusqu'à DB-1061.
+- **Tests** : `CashflowJpaModelTest` (H2, `@DataJpaTest`) : aller-retour des six listes (ordre et doublons conservés,
+  taux non arrondis, champs optionnels à `null`), remplacement du contenu (suppression + `flush` + réinsertion),
+  tolérance du mapper à `null`.
+- **Pour DB-1061** : les lectures de ces lignes passent par `BudgetReader` / `BudgetPersistenceAdapter` (propriétaire
+  historique « Budget de base ») et les écritures par `TresorerieWriter` : décider quel adapter lit les tables
+  `cashflow_*`, reproduire le schéma de DB-1021 / DB-1041 (recopie par `BudgetPersistenceGateway` dans la transaction de
+  sauvegarde, reconstruction depuis le hub au chargement du cache) et vider chaque table avec `deleteAll` + `flush`.
+
+### Statut DB-1061 — JPA Trésorerie — basculer l'adapter
+
 - **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 ## DB-1070 — Vérifier les readers après bascule JPA
