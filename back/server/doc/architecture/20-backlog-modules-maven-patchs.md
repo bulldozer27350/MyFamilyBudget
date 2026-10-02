@@ -85,12 +85,18 @@ La stratégie retenue est :
   - préparer les sections `modules`, `dependencyManagement` et `pluginManagement` ;
   - décider explicitement si le parent est packaging `pom` et si un module `server-app` porte l’exécutable final ;
   - ne pas introduire encore de déplacement massif de packages.
+- **Décisions retenues** :
+  - le parent est un **pom racine dédié** `back/pom.xml` (`myfamilybudget-parent`, packaging `pom`, hérite de `spring-boot-starter-parent` 3.4.2) ; `back/server/pom.xml` n'est pas transformé en parent, ce qui évite de déplacer `src/` ;
+  - `back/server` (artifact `server`) reste le seul module qui porte du code et l'exécutable (`target/server-1.0.0-SNAPSHOT.jar`) : Dockerfile, CI, lanceurs `.bat`/`.sh` et gate VT-600 restent valides ; il deviendra le composition root `server-app` à MAVEN-130 (renommage/déplacement alors) ;
+  - le parent ne porte que des versions (`properties`, `dependencyManagement`, `pluginManagement`) : aucune dépendance ni plugin activé, la configuration des plugins reste dans `server` ;
+  - les nouveaux modules s'ajoutent à la section `<modules>` de `back/pom.xml` au fil des items MAVEN-010 à MAVEN-130 ;
+  - `mvn -f back/server/pom.xml -B test` reste valide (parent résolu via `relativePath`) ; `mvn -f back/pom.xml -B test` construit le reactor complet (parent + `server`).
 - **Critères de sortie** :
   - `mvn test` reste possible depuis `back/server` ;
   - le reactor est visible avec plusieurs modules, même si un seul contient encore le code applicatif ;
   - les plugins existants ne changent pas de comportement fonctionnel.
 - **Tests** : build Maven complet ; génération OpenAPI ; packaging ; test de lancement du jar existant.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 # MAVEN-010 — Extraire `domain-budget`
 

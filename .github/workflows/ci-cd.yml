@@ -52,7 +52,9 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-          cache-dependency-path: back/server/pom.xml
+          cache-dependency-path: |
+            back/pom.xml
+            back/server/pom.xml
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2

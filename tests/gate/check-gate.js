@@ -17,7 +17,10 @@ const BACKEND_TESTS = path.join(ROOT, 'back', 'server', 'src', 'test');
 const SUREFIRE_DIR = path.join(ROOT, 'back', 'server', 'target', 'surefire-reports');
 const E2E_DIR = path.join(ROOT, 'tests', 'e2e');
 const WORKFLOW = path.join(ROOT, '.github', 'workflows', 'ci-cd.yml');
-const POM = path.join(ROOT, 'back', 'server', 'pom.xml');
+const POMS = [
+  path.join(ROOT, 'back', 'pom.xml'),
+  path.join(ROOT, 'back', 'server', 'pom.xml'),
+];
 
 // Seule exception admise : la variante PostgreSQL de VT-320, activee par variable d environnement.
 // Elle DOIT s executer dans la CI (voir checkReports, exigee quand CI ou MFB_REQUIRE_POSTGRES est defini).
@@ -86,7 +89,7 @@ function checkStatic() {
   walk(BACKEND_TESTS, '.java').forEach(f => scan(f, JAVA_FORBIDDEN, 'java', ALLOWED_CONDITIONAL));
   walk(E2E_DIR, '.js').forEach(f => scan(f, PLAYWRIGHT_FORBIDDEN, 'java'));
   if (fs.existsSync(WORKFLOW)) scan(WORKFLOW, WORKFLOW_FORBIDDEN, 'yaml');
-  if (fs.existsSync(POM)) scan(POM, POM_FORBIDDEN, 'xml');
+  POMS.forEach(pom => { if (fs.existsSync(pom)) scan(pom, POM_FORBIDDEN, 'xml'); });
 
   const config = path.join(ROOT, 'playwright.config.js');
   if (fs.existsSync(config)) {

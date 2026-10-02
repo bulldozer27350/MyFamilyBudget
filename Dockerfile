@@ -7,7 +7,9 @@ FROM maven:3.9.9-eclipse-temurin-21 AS build
 
 WORKDIR /workspace
 
-# Copie du pom.xml en premier pour profiter du cache de couche Docker
+# Copie des pom.xml en premier pour profiter du cache de couche Docker
+# (back/pom.xml = parent Maven du reactor, requis pour résoudre back/server/pom.xml)
+COPY back/pom.xml back/pom.xml
 COPY back/server/pom.xml back/server/pom.xml
 
 # Telechargement des dependances en s'appuyant sur le cache persistant .m2
