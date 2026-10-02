@@ -413,6 +413,24 @@ pas les agents qui travaillent sur les autres domaines.
 - **DB-1020** : modèle JPA additif.
 - **DB-1021** : bascule adapter + tests.
 - **Parallèle** : Retraite/Fiscalité/Banque/Crédit.
+
+### Statut DB-1020 — JPA Objectifs — entités/repositories additifs
+
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
+- **Livré** : entités `GoalEntity` (table `goal`, clé `id` = identifiant métier, `position`) et `GoalAllocationEntity`
+  (table `goal_allocation`, clé `goal_id`, `position`), `GoalRepository` (`findAllByOrderByPositionAsc`) et
+  `GoalEntityMapper` (`ObjectifModel` ↔ `GoalEntity`, sans perte, sans rejouer `LegacyObjectifAllocationMigrator`).
+  Aucune relation vers `BudgetDataEntity` ; `ObjectifEntity`, `ObjectifAllocationEntity`, `EntityModelConverter`,
+  `GoalPersistenceAdapter` et le hub sont **inchangés** (chemin legacy intact, aucune donnée migrée). Les nouvelles tables
+  sont créées vides par `ddl-auto` et restent inutilisées jusqu'à DB-1021.
+- **Tests** : `GoalJpaModelTest` (H2, `@DataJpaTest`) : aller-retour avec allocations multi-comptes et ordre conservé,
+  champs historiques et optionnels, suppression des allocations orphelines à la mise à jour, cascade à la suppression,
+  refus d'un objectif sans identifiant.
+- **Pour DB-1021** : migrer les lignes `objectif` / `objectif_allocation` vers `goal` / `goal_allocation` et décider du
+  sort du filet `LegacyObjectifAllocationMigrator`.
+
+### Statut DB-1021 — JPA Objectifs — basculer l'adapter
+
 - **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 ## DB-1030 / DB-1031 — JPA Banque
