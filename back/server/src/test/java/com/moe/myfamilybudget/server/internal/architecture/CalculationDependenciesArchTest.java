@@ -297,7 +297,7 @@ class CalculationDependenciesArchTest {
             .that().resideInAPackage("..internal.calculation..")
             .or().resideInAPackage("..internal.model..")
             .or().resideInAPackage("..internal.notification.rules..")
-            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.server.api..")
+            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.api..")
             .as("les couches pures du domaine (calculation, model, notification.rules) ne doivent pas dépendre "
                     + "des DTO/interfaces OpenAPI (com.moe.myfamilybudget.server.api..)");
 }

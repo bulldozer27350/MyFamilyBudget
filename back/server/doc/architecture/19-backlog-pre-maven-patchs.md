@@ -210,7 +210,15 @@ Avant tout patch :
 - **Contrainte importante** : les assemblers/factories applicatifs peuvent continuer à dépendre des modèles de persistance pendant la transition ;
   la règle ne doit donc pas s'appliquer à `internal.factory` de manière aveugle.
 - **Tests** : règle ArchUnit verte, avec vérification négative lors du patch.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Terminé
+- **Livraison** : `PureLayerRules` (règles), `PureLayerArchTest` (code de production) et `PureLayerRulesNegativeTest`
+  (fixtures fautives dans `internal.calculation.archfixture`). Couches pures : `internal.calculation` hors
+  `Jpa*` / `*SettingsService` / `*SettingsStore`, `internal.model`, `internal.notification.rules`. Interdits :
+  `BudgetDataModel`, `internal.persistence..`, JPA / Spring Data, OpenAPI (`com.moe.myfamilybudget.api..`), Spring hors
+  `org.springframework.stereotype`. `internal.factory` n'est pas visé. Correction nécessaire : la règle historique
+  `PURE_DOMAIN_DOES_NOT_DEPEND_ON_OPENAPI_DTOS` visait `com.moe.myfamilybudget.server.api..` (package inexistant, règle
+  sans effet) ; elle vise désormais `com.moe.myfamilybudget.api..`. Dette connue : les stores `Jpa*` et
+  `*SettingsService` restent dans `internal.calculation` (déplacement hors périmètre).
 
 ---
 
