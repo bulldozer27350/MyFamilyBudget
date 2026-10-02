@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
@@ -388,8 +389,8 @@ class BudgetPersistenceGateway {
     /**
      * DB-1031 : remplace le document de la table {@code bank_import_document} par l'import bancaire du modele,
      * dans la transaction de l'appelant ({@code flush} apres la suppression, comme {@link #syncGoals}). Comme
-     * le chemin legacy ({@link #saveBankImport}), une erreur de serialisation est journalisee sans faire
-     * echouer la sauvegarde : la table reste alors vide et la lecture JPA restitue un import vide.
+     * le chemin legacy ({@link #saveBankImport}), une erreur de serialisation ou d'ecriture est propagee a
+     * l'appelant (FIX-010) : une ecriture en echec ne doit jamais devenir une reussite en memoire.
      */
     private void syncBankImport(BankImportModel bankImport) {
         bankImportDocumentRepository.deleteAll();
@@ -397,11 +398,7 @@ class BudgetPersistenceGateway {
         if (bankImport == null) {
             return;
         }
-        try {
-            bankImportDocumentRepository.save(BankImportDocumentMapper.toEntity(bankImport));
-        } catch (IllegalStateException e) {
-            LOG.error("Erreur lors de la recopie de BankImport dans la table autonome: ", e);
-        }
+        bankImportDocumentRepository.save(BankImportDocumentMapper.toEntity(bankImport));
     }
 
     private BankImportModel loadBankImport(Long budgetDataId) {
@@ -417,18 +414,25 @@ class BudgetPersistenceGateway {
         return null;
     }
 
+    /**
+     * FIX-010 : toute erreur est propagee a l'appelant. Les exceptions du repository remontent telles quelles
+     * (non encapsulees) ; seule l'erreur de serialisation JSON, checked, est convertie en
+     * {@link IllegalStateException} avec la cause d'origine. L'appelant ({@code BudgetCacheStore}) ne publie
+     * alors aucun nouvel etat memoire.
+     */
     private void saveBankImport(BankImportModel bankImport, BudgetDataEntity budgetData) {
         if (budgetData == null) return;
         bankImportRepository.deleteByBudgetDataId(budgetData.getId());
         if (bankImport != null) {
+            String json;
             try {
-                String json = objectMapper.writeValueAsString(bankImport);
-                BankImportEntity biEntity = new BankImportEntity(json);
-                biEntity.setBudgetData(budgetData);
-                bankImportRepository.save(biEntity);
-            } catch (Exception e) {
-                LOG.error("Erreur lors de la sauvegarde de BankImport dans la base: ", e);
+                json = objectMapper.writeValueAsString(bankImport);
+            } catch (JsonProcessingException e) {
+                throw new IllegalStateException("Serialisation de l'import bancaire impossible", e);
             }
+            BankImportEntity biEntity = new BankImportEntity(json);
+            biEntity.setBudgetData(budgetData);
+            bankImportRepository.save(biEntity);
         }
     }
 

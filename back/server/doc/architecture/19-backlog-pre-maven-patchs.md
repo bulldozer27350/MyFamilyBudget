@@ -82,7 +82,7 @@ Avant tout patch :
   - ajouter/adapter le test dédié.
 - **Tests** : test unitaire de défaillance ; contrôle qu'aucun `BudgetMutatedEvent` n'est publié ; contrôle des lecteurs après échec.
 - **Limite** : ne pas refactorer ici la représentation JSON de `BankImportEntity`.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Terminé
 
 ---
 
