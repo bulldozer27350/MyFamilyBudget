@@ -99,7 +99,7 @@ Avant tout patch :
   - retirer progressivement le contournement des fixtures VT-230 / VT-340.
 - **Tests** : test unitaire de mutation ; scénario Settings backend ; rerun E2E Settings.
 - **Limite** : ne pas profiter de ce patch pour redéfinir l'ownership final des paramètres ; cela relève de `SET-*`.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Terminé
 
 ---
 

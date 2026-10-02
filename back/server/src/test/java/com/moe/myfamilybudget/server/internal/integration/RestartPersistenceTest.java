@@ -276,14 +276,12 @@ class RestartPersistenceTest {
 
     /**
      * Dataset de reference ({@code mock-budget.json}, fichier partage inchange) complete par un import bancaire
-     * avec une transaction ventilee, et par {@code sweepEnabled=false} : sans lui, la mise a jour des parametres
-     * leve une NPE (voir {@code MultiDomainAtomicityTest}).
+     * avec une transaction ventilee.
      */
     private String referenceDatasetWithBankImport() throws Exception {
         String raw = new ClassPathResource("mock-budget.json").getContentAsString(StandardCharsets.UTF_8)
                 .replace("\uFEFF", "");
         ObjectNode budget = (ObjectNode) objectMapper.readTree(raw);
-        ((ObjectNode) budget.path("settings")).put("sweepEnabled", false);
         budget.set("bankImport", objectMapper.readTree("""
                 {
                   "categories": [

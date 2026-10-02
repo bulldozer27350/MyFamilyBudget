@@ -578,6 +578,11 @@ class BudgetMutationService {
 
     /**
      * Met à jour un paramètre lié aux impôts ou généraux dans Settings.
+     *
+     * FIX-020 : seul le champ ciblé est modifié, les autres paramètres sont recopiés tels quels, y compris
+     * lorsqu'ils sont absents (notamment {@code sweepEnabled}, {@code Boolean} nullable : un budget minimal
+     * ne renseigne pas forcément ce paramètre de trésorerie). Aucun champ ne doit être déballé (unboxing)
+     * pour la simple recopie, sous peine de {@link NullPointerException}.
      */
     public void updateTaxSettings(String field, Object value) {
         if (field == null) return;
@@ -596,7 +601,7 @@ class BudgetMutationService {
                     "taxAbattement".equals(field) ? toBigDecimal(value, new BigDecimal("0.10")) : s.taxAbattement(),
                     "pass2026".equals(field) ? toBigDecimal(value, new BigDecimal("47100")) : s.pass2026(),
                     "passGrowthRate".equals(field) ? toBigDecimal(value, new BigDecimal("0.015")) : s.passGrowthRate(),
-                    "sweepEnabled".equals(field) ? (value != null && Boolean.parseBoolean(String.valueOf(value))) : s.sweepEnabled(),
+                    "sweepEnabled".equals(field) ? toBoolean(value) : s.sweepEnabled(),
                     "cashCeiling".equals(field) ? toBigDecimal(value, null) : s.cashCeiling(),
                     "cashFloor".equals(field) ? toBigDecimal(value, null) : s.cashFloor(),
                     "cashAlertThreshold".equals(field) ? toBigDecimal(value, null) : s.cashAlertThreshold()
@@ -980,6 +985,16 @@ class BudgetMutationService {
             LOG.warn("Valeur numérique décimale illisible, valeur par défaut '{}' utilisée : '{}'", fallback, val, e);
             return fallback;
         }
+    }
+
+    /**
+     * Convertit une valeur de paramètre en {@link Boolean} (jamais {@code null}). Retourne volontairement un
+     * {@code Boolean} et non un {@code boolean} : mélangé à un {@code Boolean} nullable dans une expression
+     * ternaire, un {@code boolean} primitif provoquerait un unboxing implicite (NPE si la valeur est absente).
+     */
+    private Boolean toBoolean(Object val) {
+        if (val instanceof Boolean b) return b;
+        return val != null && Boolean.parseBoolean(String.valueOf(val));
     }
 
     private Integer toInteger(Object val, Integer fallback) {
