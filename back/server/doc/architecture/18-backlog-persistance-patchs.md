@@ -363,7 +363,7 @@ DB-031, DB-040 et DB-041 en parallèle.
 - **Objectif** : finir la distribution des champs Settings vers les owners et conserver la façade REST composite.
 - **Travaux** : Retirement/Fiscality/Treasury/Goals/Simulation/EconomicAssumptions ; transaction locale unique si
   nécessaire.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 ---
 
