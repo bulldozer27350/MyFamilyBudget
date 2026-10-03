@@ -142,7 +142,7 @@ final class DomainBoundaryRules {
 
     /** Façade applicative REST : implémentations d'API, mappers, snapshot global, contrôleurs. */
     private static final DescribedPredicate<JavaClass> REST_FACADE = resideInAnyPackage(
-            "..internal.impl..", "..internal.mapper..", "..internal.controller..", "..internal.snapshot..",
+            "..internal.impl..", "..internal.mapper..", "..internal.controller..", "com.moe.myfamilybudget.application.snapshot..",
             "com.moe.myfamilybudget.application.service..", "com.moe.myfamilybudget.application.mapper..")
             .as("la façade applicative REST (internal.impl, mapper, controller, snapshot, application.service, "
                     + "application.mapper)");

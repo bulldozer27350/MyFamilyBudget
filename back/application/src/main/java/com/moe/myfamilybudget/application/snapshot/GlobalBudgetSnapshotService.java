@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.snapshot;
+package com.moe.myfamilybudget.application.snapshot;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -7,9 +7,10 @@ import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
+import com.moe.myfamilybudget.transition.port.BudgetMutationLock;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
+import com.moe.myfamilybudget.transition.port.GlobalBudgetSnapshotWriter;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
@@ -23,7 +24,9 @@ import com.moe.myfamilybudget.domain.tax.port.TaxReader;
  * reset ({@code POST /budget/reset}) et, plus généralement, sauvegarde/restauration du budget complet.
  *
  * <p>Ce composant est le <strong>seul</strong> point d'application qui assemble le snapshot à partir des
- * ports de lecture et qui appelle {@link PersistenceManager#setBudgetData} / {@link PersistenceManager#resetData}.
+ * ports de lecture et qui écrit via {@link GlobalBudgetSnapshotWriter} (import, reset) ; MAVEN-103 : le port
+ * est implémenté par {@code persistence} (qui délègue à {@code PersistenceManager}), ce qui permet à ce composant de
+ * vivre dans {@code application} sans dépendre de {@code persistence}.
  * Le contrôleur ({@code SystemeServiceImpl}) ne manipule plus ni {@code BudgetDataModel} ni
  * {@code PersistenceManager}. Aucun service métier local ne doit passer par ici.
  *
@@ -37,7 +40,8 @@ import com.moe.myfamilybudget.domain.tax.port.TaxReader;
 @Service
 public class GlobalBudgetSnapshotService {
 
-    private final PersistenceManager persistenceManager;
+    private final BudgetMutationLock budgetMutationLock;
+    private final GlobalBudgetSnapshotWriter snapshotWriter;
     private final OverviewMapper overviewMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
     private final SettingsReader settingsReader;
@@ -50,7 +54,8 @@ public class GlobalBudgetSnapshotService {
     private final GoalReader goalReader;
 
     public GlobalBudgetSnapshotService(
-            PersistenceManager persistenceManager,
+            BudgetMutationLock budgetMutationLock,
+            GlobalBudgetSnapshotWriter snapshotWriter,
             OverviewMapper overviewMapper,
             ObjectifsSettingsService objectifsSettingsService,
             SettingsReader settingsReader,
@@ -61,7 +66,8 @@ public class GlobalBudgetSnapshotService {
             BankReader bankReader,
             LoanReader loanReader,
             GoalReader goalReader) {
-        this.persistenceManager = persistenceManager;
+        this.budgetMutationLock = budgetMutationLock;
+        this.snapshotWriter = snapshotWriter;
         this.overviewMapper = overviewMapper;
         this.objectifsSettingsService = objectifsSettingsService;
         this.settingsReader = settingsReader;
@@ -86,9 +92,9 @@ public class GlobalBudgetSnapshotService {
     @Transactional
     public BudgetDataDto importSnapshot(BudgetDataDto body) {
         if (body != null) {
-            persistenceManager.lockForCurrentTransaction();
+            budgetMutationLock.lockForCurrentTransaction();
             BudgetDataModel model = overviewMapper.toInternalModel(body);
-            persistenceManager.setBudgetData(model);
+            snapshotWriter.setBudgetData(model);
             objectifsSettingsService.save(overviewMapper.toObjectifsParameters(body));
         }
         return export();
@@ -97,8 +103,8 @@ public class GlobalBudgetSnapshotService {
     /** Réinitialisation du budget complet et des paramètres Objectifs (même transaction). */
     @Transactional
     public BudgetDataDto reset() {
-        persistenceManager.lockForCurrentTransaction();
-        BudgetDataModel reset = persistenceManager.resetData();
+        budgetMutationLock.lockForCurrentTransaction();
+        BudgetDataModel reset = snapshotWriter.resetData();
         objectifsSettingsService.reset();
         return overviewMapper.toBudgetDataDto(reset, objectifsSettingsService.current());
     }

@@ -451,7 +451,7 @@ La stratégie retenue est :
 - **Reliquat et blocage** :
   - `NotificationsServiceImpl`, `NotificationsMapper`, `NotificationDispatchService`, `NotificationSettingsService`, `NotificationSettingsCodec` / `Store` et le package `internal.notification` : attendent `domain-notifications` (MAVEN-090) ; le dispatch et `NotificationsServiceImpl` utilisent `PushSubscriptionRepository`, `NotificationSentLogRepository` et `BudgetMutatedEvent` de `persistence` : définir des ports (déduplication, abonnements Web Push) implémentés par `persistence` avant de les déplacer, sans emporter Web Push ni `JpaNotificationSettingsStore` ;
   - ~~`TresorerieServiceImpl`~~ : traité par le lot A (exception déplacée dans `transition-snapshot`) ;
-  - `SystemeServiceImpl` et `GlobalBudgetSnapshotService` (`internal.snapshot`) : dépendent de `PersistenceManager` ; décider entre un port dans `transition-snapshot` implémenté par `persistence` (service dans `application`) ou le placer dans `persistence` ;
+  - ~~`SystemeServiceImpl` et `GlobalBudgetSnapshotService`~~ : traités par le lot B1 ;
   - `AnalysePretsServiceImpl`, `SuggestionsTauxServiceImpl`, `TauxMarcheServiceImpl`, `TauxMarcheMapper`, `PlacementRateSuggestion*` (+ `PlacementRateSuggestionInputFactory`), `LoanAdviceSettingsService` et `EnableBankingApiServiceImpl` : dépendent de `internal.marketdata` / `internal.enablebanking`, restés dans `server-app` tant que MAVEN-130 n'a pas statué (voir MAVEN-101 pour `PlacementRate*`) ;
   - tests des classes déjà déplacées : les rapatrier dans `back/application` quand leurs fixtures ne dépendent plus de `server`.
 - **Lot A (livré, indépendant de MAVEN-090)** :
@@ -459,7 +459,13 @@ La stratégie retenue est :
   - `TresorerieServiceImpl` → `application.service` ; `UnknownTresorerieFieldException` quitte `persistence.updater` pour le module `transition-snapshot` (`com.moe.myfamilybudget.transition.error`, exporté par son `module-info.java`), de sorte que `persistence` (qui la lève) et `application` (qui la traite) la partagent sans dépendance mutuelle ; `GlobalExceptionHandler` reste dans `server` ;
   - les tests `OverviewCalculationServiceComponentTest`, `OverviewInputFactoryTest`, `OverviewServiceImplTest` et `TresorerieServiceImplTest` suivent leur classe (packages `application.*`, sources dans `back/server/src/test`) ;
   - ArchUnit : `application.overview` rejoint `DOMAIN_LAYERS` et les couches pures (`PureLayerRules`, `CalculationDependenciesArchTest`) ; les règles Overview par nom de classe sont inchangées.
-- **Lot B (à faire, après MAVEN-090 et MAVEN-101)** : le reliquat ci-dessus.
+- **Lot B1 (livré, indépendant de MAVEN-090)** :
+  - `GlobalBudgetSnapshotService` → `application.snapshot` et `SystemeServiceImpl` → `application.service` ;
+  - nouveau port de transition `GlobalBudgetSnapshotWriter` (`transition.port`, `setBudgetData` / `resetData`) implémenté par `GlobalBudgetSnapshotWriterAdapter` dans `persistence.adapter` (délègue à `PersistenceManager`) ; le service utilise ce port et `BudgetMutationLock` au lieu de `PersistenceManager` : `application` ne dépend toujours pas de `persistence` ; le port disparaît avec `BudgetDataModel` (DB-1180) ;
+  - la transaction reste portée par le service (`@Transactional`, verrou du budget pris en premier) ; l'adaptateur rejoint la transaction ouverte ;
+  - `GlobalBudgetSnapshotServiceTest` suit sa classe (package `application.snapshot`, source dans `back/server/src/test`) ;
+  - ArchUnit : `GlobalSnapshotBoundaryArchTest` et `ReaderPersistenceBoundaryArchTest` n'autorisent plus que `persistence` à appeler `PersistenceManager` ; nouvelle règle : seul `application.snapshot` (et `persistence`) dépend de `GlobalBudgetSnapshotWriter` ; `application.snapshot` rejoint `REST_FACADE` et les consommateurs autorisés de `BudgetDataModel` ; le package `server.internal.snapshot` disparaît.
+- **Lot B2 (à faire, après MAVEN-090 et MAVEN-101)** : le reliquat ci-dessus (notifications, `PlacementRate*`, `marketdata` / `enablebanking`).
 - **Critères de sortie** : plus aucune classe dans `server.internal.impl`, `internal.mapper` ni `internal.snapshot` hors éléments explicitement réservés à `server-app` ; `application` ne dépend ni de `server` ni de `persistence` (sauf décision contraire documentée) ; aucun changement de contrat REST ; build complet vert.
 - **Tests** : tests des services, mappers et dispatch exécutés dans `application` ; ArchUnit ; E2E.
 - **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé

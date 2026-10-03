@@ -1,11 +1,11 @@
-package com.moe.myfamilybudget.server.internal.impl;
+package com.moe.myfamilybudget.application.service;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.SystemeApi;
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
-import com.moe.myfamilybudget.server.internal.snapshot.GlobalBudgetSnapshotService;
+import com.moe.myfamilybudget.application.snapshot.GlobalBudgetSnapshotService;
 
 /**
  * Façade REST des opérations transverses {@code /budget}, {@code /budget/import} et {@code /budget/reset}.

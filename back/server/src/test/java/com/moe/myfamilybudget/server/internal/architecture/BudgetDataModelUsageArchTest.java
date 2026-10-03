@@ -16,7 +16,7 @@ import com.moe.myfamilybudget.transition.model.BudgetDataModel;
  * <p>Liste blanche explicite des seuls consommateurs autorisés pendant la transition :
  * persistance (snapshot global et cache), assemblers applicatifs ({@code internal.factory}, {@code application.factory}),
  * mappers de façade ({@code internal.mapper}, {@code application.mapper}), mutation transverse ({@code persistence.updater}, module {@code persistence}),
- * opérations globales isolées par CLEAN-020 ({@code internal.snapshot}) et
+ * opérations globales isolées par CLEAN-020 ({@code application.snapshot}) et
  * les services d'API recensés dans l'inventaire (assemblage {@code ASSEMBLY-TEMP} ou opérations
  * {@code SNAPSHOT-GLOBAL}). Tout nouveau consommateur fait échouer la règle : il doit soit
  * consommer des fragments via les {@code Reader}, soit être ajouté à l'inventaire avec sa
@@ -41,7 +41,7 @@ class BudgetDataModelUsageArchTest {
                     "com.moe.myfamilybudget.application.factory..",
                     "..internal.mapper..",
                     "com.moe.myfamilybudget.application.mapper..",
-                    "..internal.snapshot..")
+                    "com.moe.myfamilybudget.application.snapshot..")
             .and().haveNameNotMatching(ALLOWED_API_SERVICES)
             .should().dependOnClassesThat().areAssignableTo(BudgetDataModel.class)
             .as("BudgetDataModel n'est consommé que par les composants listés dans l'inventaire CLEAN-010");

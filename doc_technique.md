@@ -206,7 +206,8 @@ le compilateur interdit donc d'y importer un package non exporté ou d'un module
 `server` restent sur le classpath (Spring, JPA/Hibernate, code généré), sans `module-info`.
 Les implémentations des interfaces REST générées (`application.service`), les mappers DTO ↔ modèle (`application.mapper`),
 les modèles de résultat (`application.model`) et `DataParsingException` (`application.error`) vivent aussi dans `application`.
-L'agrégateur Overview (`application.overview`, `OverviewInputFactory`, `OverviewServiceImpl`) et `TresorerieServiceImpl` y sont
+L'agrégateur Overview (`application.overview`, `OverviewInputFactory`, `OverviewServiceImpl`), `TresorerieServiceImpl` et le
+snapshot global (`application.snapshot`, qui écrit via le port `GlobalBudgetSnapshotWriter` implémenté par `persistence`) y sont
 aussi ; `UnknownTresorerieFieldException` vit dans `transition-snapshot` (`transition.error`).
 Les services liés aux notifications, à `PersistenceManager`, à `marketdata` / `enablebanking`, ainsi que les factories
 Notification / PlacementRate restent dans `server` jusqu'à MAVEN-101 et MAVEN-103 (lot B).
