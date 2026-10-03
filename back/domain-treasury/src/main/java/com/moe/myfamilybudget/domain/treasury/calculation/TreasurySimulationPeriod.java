@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.treasury.calculation;
 
 /**
  * Horizon de simulation de la projection de trésorerie, bornes incluses (RF-400, voir

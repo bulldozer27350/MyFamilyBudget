@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.treasury.model;
 
 import java.util.List;
 import com.moe.myfamilybudget.domain.budget.CashflowYearModel;

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.port;
+package com.moe.myfamilybudget.domain.treasury.port;
 
 /**
  * Liste de lignes ciblee par une commande Tresorerie (DB-050). Remplace le {@code listKey} en chaine

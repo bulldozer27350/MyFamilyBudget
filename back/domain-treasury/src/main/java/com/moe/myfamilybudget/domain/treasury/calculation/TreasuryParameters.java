@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.treasury.calculation;
 
 import java.math.BigDecimal;
 

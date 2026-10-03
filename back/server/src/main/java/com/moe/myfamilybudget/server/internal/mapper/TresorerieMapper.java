@@ -1,5 +1,7 @@
 package com.moe.myfamilybudget.server.internal.mapper;
 
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieResultModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSuggestionModel;
 import com.moe.myfamilybudget.api.model.*;
 import com.moe.myfamilybudget.server.internal.model.*;
 import org.springframework.stereotype.Component;

@@ -180,6 +180,9 @@ ses deux moteurs sont déclarés comme beans par `config/DomainEngineConfig`.
 Le domaine Banque/Pointage (modèle d'import bancaire, `BankImportCalculator`, `PointageCalculator`, contrats
 d'entrée, ports) vit dans `back/domain-bank-pointage` (`com.moe.myfamilybudget.domain.bankpointage.*`), sans
 dépendance vers un autre module du reactor ; Enable Banking, adapters JPA et contrôleurs restent dans `server`.
+Le domaine Trésorerie (`TresorerieCalculationService`, contrats d'entrée/sortie, modèles de résultat, ports Writer)
+vit dans `back/domain-treasury` (`com.moe.myfamilybudget.domain.treasury.*`) ; il ne consomme que les contrats
+publiés par `domain-budget`, `domain-retirement`, `domain-tax` et `domain-wealth`.
 
 ### 4.5 Le pattern "oracle JS" pour les tests d'intégration
 

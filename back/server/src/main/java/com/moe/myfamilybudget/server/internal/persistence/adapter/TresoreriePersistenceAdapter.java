@@ -6,11 +6,11 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
-import com.moe.myfamilybudget.server.internal.port.TresorerieAdjustmentKind;
-import com.moe.myfamilybudget.server.internal.port.TresorerieLineField;
-import com.moe.myfamilybudget.server.internal.port.TresorerieList;
-import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
-import com.moe.myfamilybudget.server.internal.port.TresorerieWriter;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieAdjustmentKind;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieLineField;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieList;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieWriter;
 
 /**
  * Adaptateur de persistance pour {@link TresorerieWriter} (DB-031). Les lectures du domaine passent

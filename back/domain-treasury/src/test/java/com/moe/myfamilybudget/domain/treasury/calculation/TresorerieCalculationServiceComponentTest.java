@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.treasury.calculation;
 
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementCashflowInput;
 import static org.assertj.core.api.Assertions.assertThat;

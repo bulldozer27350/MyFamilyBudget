@@ -15,7 +15,7 @@ import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
-import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
 
 /**
  * Mutations de domaine du budget (DB-060), extraites de {@link PersistenceManager}.

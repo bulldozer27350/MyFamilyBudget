@@ -5,11 +5,11 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
-import com.moe.myfamilybudget.server.internal.port.TresorerieAdjustmentKind;
-import com.moe.myfamilybudget.server.internal.port.TresorerieLineField;
-import com.moe.myfamilybudget.server.internal.port.TresorerieList;
-import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
-import com.moe.myfamilybudget.server.internal.port.TresorerieWriter;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieAdjustmentKind;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieLineField;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieList;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieWriter;
 
 /**
  * Service de commande du domaine Tresorerie (RF-A00, DB-031).

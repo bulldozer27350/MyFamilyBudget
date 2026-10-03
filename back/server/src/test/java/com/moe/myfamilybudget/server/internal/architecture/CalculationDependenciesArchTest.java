@@ -11,7 +11,7 @@ import com.moe.myfamilybudget.server.internal.calculation.OverviewCalculationSer
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
-import com.moe.myfamilybudget.server.internal.calculation.TresorerieCalculationService;
+import com.moe.myfamilybudget.domain.treasury.calculation.TresorerieCalculationService;
 import com.moe.myfamilybudget.server.internal.factory.AssetBucketResolver;
 import com.moe.myfamilybudget.server.internal.model.AnalyseCalculator;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
@@ -288,6 +288,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.wealth..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.bankpointage..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.treasury..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
             .as("les moteurs de calcul et calculateurs purs ne doivent pas dépendre de PersistenceManager "
@@ -306,6 +307,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.wealth..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.bankpointage..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.treasury..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.api..")
             .as("les couches pures du domaine (calculation, model, notification.rules) ne doivent pas dépendre "

@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
-import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
 
 /**
  * SET-020 : chaque paramètre de {@code /settings} est écrit par son owner, selon le tableau de

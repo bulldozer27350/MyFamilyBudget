@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.calculation;
 
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjection;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjection;
 import com.moe.myfamilybudget.domain.wealth.calculation.RealEstateProjection;
 import static org.assertj.core.api.Assertions.assertThat;

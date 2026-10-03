@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
-import com.moe.myfamilybudget.server.internal.port.TresorerieSettingField;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
 
 /**
  * Table de routage unique des paramètres de {@code /settings} vers leur owner (SET-020), partagée par

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.port;
+package com.moe.myfamilybudget.domain.treasury.port;
 
 import java.util.Optional;
 

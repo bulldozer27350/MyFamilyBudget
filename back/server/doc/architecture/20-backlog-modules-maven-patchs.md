@@ -258,8 +258,16 @@ La stratégie retenue est :
 - **Dépendances autorisées** : `domain-budget`, contrat Retraite, contrat Fiscalité, contrat Patrimoine si la composition retenue l’exige sans cycle.
 - **Travaux** : déplacer le moteur et les contrats ; laisser `TreasuryInputFactory` côté application.
 - **Critères de sortie** : aucune dépendance JPA/persistence ; aucun import de `internal.impl` ou `internal.factory`.
+- **Décisions retenues** :
+  - module `back/domain-treasury` (artifact `domain-treasury`, jar), package racine `com.moe.myfamilybudget.domain.treasury` ; dépendances de production : `domain-budget` et les seuls contrats publiés par `domain-retirement` (`RetirementIncomeProjection`), `domain-tax` (`TaxProjection`) et `domain-wealth` (`PlacementCashflowInput`, `PlacementTransfer`), jamais leurs moteurs ; aucune dépendance Spring, JPA, OpenAPI, `internal.impl` ni `internal.factory` ;
+  - sous-packages `.calculation` (`TresorerieCalculationService`, `TreasuryProjectionInput`, `TreasuryProjection`, `TreasuryParameters`, `TreasurySimulationPeriod`, `IncomeProjectionInput`, `ChargeProjectionInput`, `VariableIncomeProjection`, `OneOffCashflow`, `TransferProjection`), `.model` (`TresorerieResultModel`, `TresorerieSuggestionModel`) et `.port` (`TresorerieWriter`, `TresorerieList`, `TresorerieAdjustmentKind`, `TresorerieSettingField`, `TresorerieLineField`) ;
+  - `TaxProjection`, `RetirementIncomeProjection` et `PlacementCashflowInput` restent dans leur module propriétaire (MAVEN-030, MAVEN-020, MAVEN-040) : le module Trésorerie les consomme sans les redéfinir ;
+  - `TresorerieCalculationService` n'a pas d'annotation Spring (instancié par `new` dans `TresorerieServiceImpl` et `OverviewInputFactory`) : aucun bean à déclarer dans `DomainEngineConfig` ;
+  - restent dans `server` : `TreasuryInputFactory`, `TresorerieServiceImpl`, `TresorerieMapper`, `TresorerieCommandService`, `TresoreriePersistenceAdapter`, JPA, `OverviewCalculationService` (consommateur de `TreasuryProjection`) et les fixtures ArchUnit ;
+  - `TresorerieCalculationServiceComponentTest` est déplacé dans le module ; les tests d'usine, de service (`TresorerieServiceImplTest`), de commande et les fixtures ArchUnit restent dans `server` ;
+  - ArchUnit : `..domain.treasury..` est une couche pure (`PureLayerRules`, `DomainBoundaryRules`, `CalculationDependenciesArchTest`) ; le gate VT-600 analyse aussi les tests du module ; Dockerfile, CI et gate référencent le nouveau module.
 - **Tests** : composant Trésorerie ; scénario Overview ; tests de Settings et suggestions.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 # MAVEN-060 — Extraire `domain-bank-pointage`
 

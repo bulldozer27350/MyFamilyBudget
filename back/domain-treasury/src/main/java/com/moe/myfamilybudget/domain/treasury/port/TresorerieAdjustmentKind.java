@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.port;
+package com.moe.myfamilybudget.domain.treasury.port;
 
 /**
  * Nature de la ligne visee par un ajustement de tresorerie (DB-050). Remplace le {@code kind} en chaine
