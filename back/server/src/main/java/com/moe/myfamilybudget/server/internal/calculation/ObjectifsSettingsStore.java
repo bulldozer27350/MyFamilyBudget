@@ -1,6 +1,7 @@
 package com.moe.myfamilybudget.server.internal.calculation;
 
 import java.util.Optional;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 
 /**
  * Persistance des paramètres du domaine Objectifs (RF-700).

@@ -1,6 +1,7 @@
 package com.moe.myfamilybudget.server.internal.calculation;
 
 import org.springframework.stereotype.Service;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 
 /**
  * Paramètres du domaine Objectifs modifiables depuis l'application (RF-700). Sans enregistrement,

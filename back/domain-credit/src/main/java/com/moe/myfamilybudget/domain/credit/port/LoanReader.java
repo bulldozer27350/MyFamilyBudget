@@ -1,8 +1,8 @@
-package com.moe.myfamilybudget.server.internal.port;
+package com.moe.myfamilybudget.domain.credit.port;
 
 import java.util.List;
 
-import com.moe.myfamilybudget.server.internal.model.LoanModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 
 /**
  * Port de lecture pour le domaine Prets / Credit (RF-B00).

@@ -6,13 +6,13 @@ import java.util.List;
 
 import com.moe.myfamilybudget.server.internal.calculation.BalanceFloorInput;
 import com.moe.myfamilybudget.server.internal.calculation.DebitThresholdInput;
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifReachableInput;
-import com.moe.myfamilybudget.server.internal.calculation.PlacementBalanceSnapshot;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
+import com.moe.myfamilybudget.domain.goals.calculation.PlacementBalanceSnapshot;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.PendingOperationModel;
-import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
-import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
 /**

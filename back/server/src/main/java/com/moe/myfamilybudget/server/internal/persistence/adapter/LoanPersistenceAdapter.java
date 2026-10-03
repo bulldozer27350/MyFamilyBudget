@@ -6,12 +6,12 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.model.LoanModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.CreditLoanEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CreditLoanRepository;
-import com.moe.myfamilybudget.server.internal.port.LoanReader;
-import com.moe.myfamilybudget.server.internal.port.LoanWriter;
+import com.moe.myfamilybudget.domain.credit.port.LoanReader;
+import com.moe.myfamilybudget.domain.credit.port.LoanWriter;
 
 /**
  * Adaptateur de persistance pour {@link LoanReader} (RF-B00) et {@link LoanWriter} (DB-041).

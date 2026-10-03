@@ -3,6 +3,7 @@ package com.moe.myfamilybudget.server.internal.calculation;
 import java.math.BigDecimal;
 
 import org.springframework.stereotype.Service;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 
 /**
  * Hypothèses de l'analyse des prêts modifiables depuis l'application. Sans enregistrement, les

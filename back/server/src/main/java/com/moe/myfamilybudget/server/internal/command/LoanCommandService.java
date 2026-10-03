@@ -4,7 +4,7 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
-import com.moe.myfamilybudget.server.internal.port.LoanWriter;
+import com.moe.myfamilybudget.domain.credit.port.LoanWriter;
 
 /**
  * Service de commande du domaine Prets/Emprunts (RF-A00, DB-041).

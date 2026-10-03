@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
-import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
-import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.notification.rules.BalanceFloorRule;
@@ -28,7 +28,7 @@ import com.moe.myfamilybudget.server.internal.notification.rules.ObjectifReachab
 import com.moe.myfamilybudget.server.internal.persistence.BudgetMutatedEvent;
 import com.moe.myfamilybudget.server.internal.persistence.repository.NotificationSentLogRepository;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
-import com.moe.myfamilybudget.server.internal.port.GoalReader;
+import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 

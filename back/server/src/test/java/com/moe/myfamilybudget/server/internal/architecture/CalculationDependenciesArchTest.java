@@ -6,7 +6,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
 import com.moe.myfamilybudget.server.internal.calculation.OverviewCalculationService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
@@ -19,9 +19,9 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
-import com.moe.myfamilybudget.server.internal.model.LoanModel;
-import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
-import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculator;
@@ -290,6 +290,8 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.bankpointage..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.treasury..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.analysis..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.credit..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.goals..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
             .as("les moteurs de calcul et calculateurs purs ne doivent pas dépendre de PersistenceManager "
@@ -310,6 +312,8 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.bankpointage..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.treasury..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.analysis..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.credit..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.goals..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.api..")
             .as("les couches pures du domaine (calculation, model, notification.rules) ne doivent pas dépendre "

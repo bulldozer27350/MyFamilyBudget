@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.api.model.AnalysePretsParametresDto;
 import com.moe.myfamilybudget.api.model.AnalysePretsParametresValuesDto;
-import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 
 class AnalysePretsParametresMapperTest {
 

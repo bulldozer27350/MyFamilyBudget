@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.credit.calculation;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -9,15 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import org.springframework.stereotype.Service;
-
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.Assumptions;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.LoanItem;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RenegotiationAdvice;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RenegotiationVerdict;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RepayVerdict;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RepaymentAdvice;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.Assumptions;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.LoanItem;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RenegotiationAdvice;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RenegotiationVerdict;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RepayVerdict;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RepaymentAdvice;
 
 /**
  * Analyse des prêts en cours : faut-il les solder plus vite, les renégocier, ou les conserver ?
@@ -40,7 +38,6 @@ import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.Repaym
  * Calcul en double précision (estimation) ; les sorties sont arrondies (2 décimales pour les
  * montants, 6 pour les taux).
  */
-@Service
 public class LoanAdviceCalculationService {
 
     private static final int MAX_SIMULATION_MONTHS = 600;
@@ -269,7 +266,7 @@ public class LoanAdviceCalculationService {
      * projectLoanCrdToDate() de calculations.js (un pas par mois, du mois de référence au mois cible
      * inclus) pour que le serveur et l'affichage local restent cohérents.
      */
-    static double projectCrd(LoanInput loan, LocalDate target) {
+    public static double projectCrd(LoanInput loan, LocalDate target) {
         double crd = value(loan.crd());
         if (crd <= 0) {
             return 0;
@@ -367,7 +364,7 @@ public class LoanAdviceCalculationService {
         return (to.getYear() - from.getYear()) * 12 + (to.getMonthValue() - from.getMonthValue());
     }
 
-    static LocalDate parseDate(String text) {
+    public static LocalDate parseDate(String text) {
         if (text == null || text.isBlank()) {
             return null;
         }

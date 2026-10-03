@@ -4,7 +4,7 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
-import com.moe.myfamilybudget.server.internal.port.GoalWriter;
+import com.moe.myfamilybudget.domain.goals.port.GoalWriter;
 
 /**
  * Service de commande du domaine Objectifs (RF-A00, DB-041).

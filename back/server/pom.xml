@@ -64,6 +64,18 @@
             <artifactId>domain-analysis</artifactId>
         </dependency>
 
+        <!-- Domaine Crédit : moteur de conseil prêts, contrats, modèles et ports (MAVEN-080) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-credit</artifactId>
+        </dependency>
+
+        <!-- Domaine Objectifs : paramètres, contrats, modèles et ports (MAVEN-080) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-goals</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -17,6 +17,8 @@ import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 
 public record BudgetDataModel(
     SettingsModel settings,

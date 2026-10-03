@@ -61,6 +61,8 @@ jobs:
             back/domain-bank-pointage/pom.xml
             back/domain-treasury/pom.xml
             back/domain-analysis/pom.xml
+            back/domain-credit/pom.xml
+            back/domain-goals/pom.xml
             back/server/pom.xml
 
       - name: Set up Bun

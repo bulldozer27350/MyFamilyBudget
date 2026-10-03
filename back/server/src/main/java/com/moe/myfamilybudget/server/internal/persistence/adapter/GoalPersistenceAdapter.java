@@ -6,12 +6,12 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.GoalEntityMapper;
 import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
-import com.moe.myfamilybudget.server.internal.port.GoalReader;
-import com.moe.myfamilybudget.server.internal.port.GoalWriter;
+import com.moe.myfamilybudget.domain.goals.port.GoalReader;
+import com.moe.myfamilybudget.domain.goals.port.GoalWriter;
 
 /**
  * Adaptateur de persistance pour {@link GoalReader} (RF-B00) et {@link GoalWriter} (DB-041).

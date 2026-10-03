@@ -8,10 +8,10 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifReachableInput;
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifReachableInput.Allocation;
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifReachableInput.GoalCoverage;
-import com.moe.myfamilybudget.server.internal.calculation.PlacementBalanceSnapshot;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput.Allocation;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput.GoalCoverage;
+import com.moe.myfamilybudget.domain.goals.calculation.PlacementBalanceSnapshot;
 import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
 
 /** RF-703 : la règle « objectif atteignable » est testée avec {@link ObjectifReachableInput} seulement. */

@@ -11,12 +11,12 @@ import com.moe.myfamilybudget.api.model.AnalysePretsParametresDto;
 import com.moe.myfamilybudget.api.model.AnalysePretsParametresValuesDto;
 import com.moe.myfamilybudget.api.model.PretRemboursementDto;
 import com.moe.myfamilybudget.api.model.PretRenegociationDto;
-import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceParameters;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.Assumptions;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.LoanItem;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RenegotiationAdvice;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RepaymentAdvice;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.Assumptions;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.LoanItem;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RenegotiationAdvice;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RepaymentAdvice;
 
 /**
  * Conversion du résultat de l'analyse des prêts vers les DTOs OpenAPI (tag AnalysePrets).

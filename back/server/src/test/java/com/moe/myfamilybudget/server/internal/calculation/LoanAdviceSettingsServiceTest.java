@@ -10,6 +10,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 
 class LoanAdviceSettingsServiceTest {
 

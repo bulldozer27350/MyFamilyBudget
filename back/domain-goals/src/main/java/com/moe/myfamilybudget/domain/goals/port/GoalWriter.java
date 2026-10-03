@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.port;
+package com.moe.myfamilybudget.domain.goals.port;
 
 import java.util.Map;
 

@@ -6,13 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import com.moe.myfamilybudget.server.internal.calculation.LiquidPlacementAlternative;
-import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceInput;
-import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceParameters;
-import com.moe.myfamilybudget.server.internal.calculation.LoanInput;
+import com.moe.myfamilybudget.domain.credit.calculation.LiquidPlacementAlternative;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceInput;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanInput;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.LoanModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
 /**

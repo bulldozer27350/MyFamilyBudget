@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.goals.model;
 
 import java.math.BigDecimal;
 import java.util.List;

@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.model.LoanModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.server.internal.persistence.entity.LoanEntity;
 

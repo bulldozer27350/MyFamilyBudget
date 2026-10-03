@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.goals.calculation;
 
 import java.math.BigDecimal;
 import java.util.Collections;

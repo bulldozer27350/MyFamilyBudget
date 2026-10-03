@@ -22,7 +22,7 @@ import com.moe.myfamilybudget.server.internal.notification.rules.DebitThresholdR
 import com.moe.myfamilybudget.server.internal.notification.rules.ObjectifReachableRule;
 import com.moe.myfamilybudget.server.internal.persistence.repository.NotificationSentLogRepository;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
-import com.moe.myfamilybudget.server.internal.port.GoalReader;
+import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 

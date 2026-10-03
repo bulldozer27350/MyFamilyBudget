@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.server.internal.persistence.entity.LoanAdviceSettingsEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.LoanAdviceSettingsRepository;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 
 /**
  * Implémentation JPA de {@link LoanAdviceSettingsStore} : une seule ligne, remplacée à chaque

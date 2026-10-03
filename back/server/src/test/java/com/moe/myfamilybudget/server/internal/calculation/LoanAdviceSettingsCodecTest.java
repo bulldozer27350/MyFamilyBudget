@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 
 class LoanAdviceSettingsCodecTest {
 

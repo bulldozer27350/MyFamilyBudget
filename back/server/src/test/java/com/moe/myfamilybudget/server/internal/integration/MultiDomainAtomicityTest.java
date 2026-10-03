@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;

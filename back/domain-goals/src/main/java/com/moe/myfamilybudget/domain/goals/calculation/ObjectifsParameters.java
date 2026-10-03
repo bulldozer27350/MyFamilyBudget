@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.goals.calculation;
 
 /**
  * Paramètres propres au domaine Objectifs (RF-700, voir doc/architecture/12-settings.md) : seuils

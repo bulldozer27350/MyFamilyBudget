@@ -15,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 
 import com.moe.myfamilybudget.server.internal.persistence.entity.ObjectifsSettingsEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ObjectifsSettingsRepository;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 
 class JpaObjectifsSettingsStoreTest {
 

@@ -346,8 +346,17 @@ La stratégie retenue est :
   - décider où vit définitivement `PlacementRateSuggestion*` si son ownership reste partagé avec Patrimoine ;
   - préserver l’abstraction `PlacementBalanceSnapshot` pour éviter `Goals → Wealth internals` ;
   - déplacer les tests unitaires avec les modules.
+- **Décisions retenues** :
+  - deux modules sans aucune dépendance de production (JDK uniquement), ni Spring, JPA, OpenAPI, ni autre module du reactor : `back/domain-credit` (artifact `domain-credit`, package racine `com.moe.myfamilybudget.domain.credit`) et `back/domain-goals` (artifact `domain-goals`, package racine `com.moe.myfamilybudget.domain.goals`) ;
+  - `domain-credit` : `.calculation` (`LoanAdviceCalculationService`, `LoanAdviceInput`, `LoanAdviceParameters`, `LoanInput`, `LiquidPlacementAlternative`), `.model` (`LoanModel`, `LoanAdviceResultModel`) et `.port` (`LoanReader`, `LoanWriter`) ; `LiquidPlacementAlternative`, absent de la liste du backlog, est livré avec le module car `LoanAdviceInput` et le moteur le consomment ;
+  - `domain-goals` : `.calculation` (`ObjectifsParameters`, `ObjectifReachableInput`, `PlacementBalanceSnapshot`), `.model` (`ObjectifModel`, `ObjectifAllocationModel`) et `.port` (`GoalReader`, `GoalWriter`) ; `PlacementBalanceSnapshot` est préservé comme abstraction neutre : `domain-goals` ne dépend pas de `domain-wealth` (l'import de `PlacementModel` de `ObjectifAllocationModel`, purement documentaire, est supprimé) ;
+  - `PlacementRateSuggestion*` (`PlacementRateSuggestionInput`, `PlacementRateSuggestionService`, `PlacementRateSuggestionsModel`) **restent dans `server`** : le service consomme `internal.marketdata` (`MarketRatesView`, `RegulatedRatesQuote`, `YieldCurveQuote`), qui reste un composant d'infrastructure runtime (voir « internal.enablebanking / internal.marketdata » plus bas) ; leur ownership sera retranché lors de MAVEN-100/130, sans dépendance de `domain-credit` vers eux d'ici là ;
+  - `LoanAdviceCalculationService` perd son `@Service` pour que le module compile sans Spring : son bean est déclaré dans `server` par `config/DomainEngineConfig` (même convention que MAVEN-020 et MAVEN-040) ; `projectCrd` et `parseDate` passent de package-private à `public` car `LoanAdviceCalculationServiceTest` reste dans `server` (il s'appuie sur `LoanAdviceInputFactory`) ;
+  - restent dans `server` : `LoanAdviceInputFactory`, `AnalysePretsServiceImpl` et ses mappers, `LoanAdviceSettings*`, `Objectifs*SettingsService/Store` (`Jpa*Store` différés hors domaines), `LoanCommandService`, `GoalCommandService`, adapters JPA, `PlacementRateSuggestion*` ;
+  - `LoanAdviceCalculationServiceComponentTest` et `LoanAdviceInputTest` sont déplacés dans `domain-credit` ; les tests d'usine, de service, de paramétrage et les fixtures ArchUnit restent dans `server` ;
+  - ArchUnit : `..domain.credit..` et `..domain.goals..` sont des couches pures (`PureLayerRules`, `DomainBoundaryRules`, `CalculationDependenciesArchTest`) ; la détection du domaine Objectifs (`Objectif\w*`) reste faite par nom de classe, donc inchangée ; le gate VT-600 analyse aussi les tests des deux modules ; Dockerfile, CI et gate référencent les nouveaux modules.
 - **Tests** : tests Crédit/Suggestions ; tests Objectifs ; ArchUnit inter-domaines.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 # MAVEN-090 — Extraire `domain-notifications`
 

@@ -1,12 +1,11 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.goals.model;
 
-import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import java.math.BigDecimal;
 
 /**
  * Une part d'un objectif d'épargne alimentée par un compte donné : {@code placementId} référence
- * un {@link PlacementModel} (vue Patrimoine), {@code amount} est le montant de ce compte réservé à
- * l'objectif.
+ * un placement (vue Patrimoine, simple identifiant : aucune dépendance vers {@code domain-wealth}),
+ * {@code amount} est le montant de ce compte réservé à l'objectif.
  *
  * Un objectif peut regrouper plusieurs allocations (un même objectif alimenté par plusieurs
  * comptes), et un même compte peut être référencé par plusieurs objectifs différents ; c'est la

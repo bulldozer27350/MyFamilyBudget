@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.server.internal.persistence.entity.ObjectifsSettingsEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.ObjectifsSettingsRepository;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 
 /**
  * Implémentation JPA de {@link ObjectifsSettingsStore} : une seule ligne, remplacée à chaque

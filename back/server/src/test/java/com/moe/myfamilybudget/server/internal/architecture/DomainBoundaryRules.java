@@ -127,6 +127,8 @@ final class DomainBoundaryRules {
             "com.moe.myfamilybudget.domain.bankpointage..",
             "com.moe.myfamilybudget.domain.treasury..",
             "com.moe.myfamilybudget.domain.analysis..",
+            "com.moe.myfamilybudget.domain.credit..",
+            "com.moe.myfamilybudget.domain.goals..",
             "..internal.notification..",
             "..internal.factory..", "..internal.port..", "..internal.command..",
             "..internal.persistence..", "..internal.updater..", "..internal.marketdata..",

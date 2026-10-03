@@ -1,6 +1,6 @@
 package com.moe.myfamilybudget.server.internal.mapper;
 
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifsParameters;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;

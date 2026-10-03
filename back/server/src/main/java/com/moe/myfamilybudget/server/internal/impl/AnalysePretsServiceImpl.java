@@ -12,8 +12,8 @@ import com.moe.myfamilybudget.api.controller.AnalysePretsApi;
 import com.moe.myfamilybudget.api.model.AnalysePretsDto;
 import com.moe.myfamilybudget.api.model.AnalysePretsParametresDto;
 import com.moe.myfamilybudget.api.model.AnalysePretsParametresValuesDto;
-import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceCalculationService;
-import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceSettingsService;
 import com.moe.myfamilybudget.server.internal.factory.LoanAdviceInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.AnalysePretsMapper;
@@ -22,8 +22,8 @@ import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
 import com.moe.myfamilybudget.server.internal.marketdata.MortgageRateQuote;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
-import com.moe.myfamilybudget.server.internal.port.LoanReader;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel;
+import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 
 /**

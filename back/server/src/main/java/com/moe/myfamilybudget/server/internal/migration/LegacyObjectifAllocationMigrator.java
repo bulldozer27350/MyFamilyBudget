@@ -4,8 +4,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
-import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 
 /**
  * Classe de transition, volontairement temporaire : convertit à la lecture les objectifs

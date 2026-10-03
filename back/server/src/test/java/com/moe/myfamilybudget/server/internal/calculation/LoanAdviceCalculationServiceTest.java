@@ -14,12 +14,15 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.server.internal.factory.LoanAdviceInputFactory;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.LoanItem;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RenegotiationVerdict;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RepayVerdict;
-import com.moe.myfamilybudget.server.internal.model.LoanModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.LoanItem;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RenegotiationVerdict;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RepayVerdict;
+import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceInput;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 
 /**
  * Les valeurs attendues ont été calculées indépendamment (script Python reproduisant

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.credit.calculation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -11,9 +11,9 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.LoanItem;
-import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel.RepayVerdict;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.LoanItem;
+import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RepayVerdict;
 
 /**
  * Tests de composant du moteur d'analyse des prêts (RF-803) : construits uniquement avec

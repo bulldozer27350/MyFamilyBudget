@@ -11,7 +11,7 @@ import java.time.YearMonth;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 import com.moe.myfamilybudget.server.internal.impl.AnalysePretsServiceImpl.ResolvedMarketRate;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
 import com.moe.myfamilybudget.server.internal.marketdata.MortgageRateQuote;

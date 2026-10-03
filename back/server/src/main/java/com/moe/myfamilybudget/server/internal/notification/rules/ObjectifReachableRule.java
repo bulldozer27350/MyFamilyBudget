@@ -8,8 +8,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifReachableInput;
-import com.moe.myfamilybudget.server.internal.calculation.PlacementBalanceSnapshot;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
+import com.moe.myfamilybudget.domain.goals.calculation.PlacementBalanceSnapshot;
 import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
 import com.moe.myfamilybudget.server.internal.notification.NotificationRule;
 

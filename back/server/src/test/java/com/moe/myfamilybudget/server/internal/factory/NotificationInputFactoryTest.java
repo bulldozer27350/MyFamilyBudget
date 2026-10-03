@@ -11,12 +11,12 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.server.internal.calculation.BalanceFloorInput;
 import com.moe.myfamilybudget.server.internal.calculation.DebitThresholdInput;
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifReachableInput;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.PendingOperationModel;
-import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
-import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
 import com.moe.myfamilybudget.server.internal.notification.rules.BalanceFloorRule;

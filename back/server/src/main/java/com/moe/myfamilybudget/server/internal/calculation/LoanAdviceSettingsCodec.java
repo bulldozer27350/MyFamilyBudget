@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 
 /**
  * Sérialisation JSON explicite des hypothèses de l'analyse des prêts (montants et taux en

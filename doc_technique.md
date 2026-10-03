@@ -186,6 +186,12 @@ publiés par `domain-budget`, `domain-retirement`, `domain-tax` et `domain-wealt
 Le domaine Analyse (`AnalyseCalculator`, contrat d'entrée `AnalyseInput`, modèles de résultat) vit dans
 `back/domain-analysis` (`com.moe.myfamilybudget.domain.analysis.*`) ; consommateur final, il ne dépend que de
 `domain-budget` et `domain-bank-pointage`.
+Le domaine Crédit (`LoanAdviceCalculationService`, contrats `LoanAdviceInput`/`LoanInput`, modèles de prêt et de
+résultat, ports `LoanReader`/`LoanWriter`) vit dans `back/domain-credit` (`com.moe.myfamilybudget.domain.credit.*`) ;
+le domaine Objectifs (paramètres, contrats `ObjectifReachableInput`/`PlacementBalanceSnapshot`, modèles d'objectif,
+ports `GoalReader`/`GoalWriter`) vit dans `back/domain-goals` (`com.moe.myfamilybudget.domain.goals.*`). Les deux
+modules n'ont aucune dépendance vers un autre module du reactor ; le moteur Crédit est déclaré comme bean par
+`config/DomainEngineConfig`.
 
 ### 4.5 Le pattern "oracle JS" pour les tests d'intégration
 

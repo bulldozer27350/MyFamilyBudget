@@ -9,6 +9,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
+import com.moe.myfamilybudget.domain.goals.calculation.PlacementBalanceSnapshot;
 
 class ObjectifsSettingsServiceTest {
 
