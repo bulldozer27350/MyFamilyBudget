@@ -20,10 +20,10 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.TresoreriePersistenceAdapter;
+import com.moe.myfamilybudget.persistence.PersistenceManager;
+import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.TresoreriePersistenceAdapter;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieAdjustmentKind;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieLineField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieList;

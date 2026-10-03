@@ -32,15 +32,15 @@ import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.GoalPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.LoanPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.PersistenceManager;
+import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.GoalPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.LoanPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
 
 @SpringBootTest
 @AutoConfigureMockMvc

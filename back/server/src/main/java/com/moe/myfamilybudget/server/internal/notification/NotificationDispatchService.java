@@ -15,12 +15,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.moe.myfamilybudget.server.internal.factory.NotificationInputFactory;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.persistence.BudgetMutatedEvent;
-import com.moe.myfamilybudget.server.internal.persistence.entity.NotificationSentLogEntity;
+import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
+import com.moe.myfamilybudget.persistence.entity.NotificationSentLogEntity;
 import com.moe.myfamilybudget.server.internal.notification.rules.BalanceFloorRule;
 import com.moe.myfamilybudget.server.internal.notification.rules.DebitThresholdRule;
 import com.moe.myfamilybudget.server.internal.notification.rules.ObjectifReachableRule;
-import com.moe.myfamilybudget.server.internal.persistence.repository.NotificationSentLogRepository;
+import com.moe.myfamilybudget.persistence.repository.NotificationSentLogRepository;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;

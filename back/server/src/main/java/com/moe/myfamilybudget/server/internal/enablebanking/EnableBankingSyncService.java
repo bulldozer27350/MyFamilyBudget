@@ -17,8 +17,8 @@ import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculat
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
-import com.moe.myfamilybudget.server.internal.persistence.entity.EnableBankingSyncStateEntity;
-import com.moe.myfamilybudget.server.internal.persistence.repository.EnableBankingSyncStateRepository;
+import com.moe.myfamilybudget.persistence.entity.EnableBankingSyncStateEntity;
+import com.moe.myfamilybudget.persistence.repository.EnableBankingSyncStateRepository;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 
 /**

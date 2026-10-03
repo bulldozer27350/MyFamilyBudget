@@ -8,7 +8,7 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.moe.myfamilybudget.server.internal.impl.SystemeServiceImpl;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.persistence.PersistenceManager;
 
 /**
  * Garde-fou CLEAN-020 (voir doc/architecture/19-backlog-pre-maven-patchs.md) : les opérations qui
@@ -20,13 +20,13 @@ class GlobalSnapshotBoundaryArchTest {
 
     @ArchTest
     static final ArchRule ONLY_SNAPSHOT_COMPONENT_REPLACES_THE_GLOBAL_SNAPSHOT = noClasses()
-            .that().resideOutsideOfPackages("..internal.persistence..", "..internal.snapshot..")
+            .that().resideOutsideOfPackages("com.moe.myfamilybudget.persistence..", "..internal.snapshot..")
             .should().callMethod(PersistenceManager.class, "setBudgetData", BudgetDataModel.class)
             .as("seul internal.snapshot remplace le snapshot global via setBudgetData (CLEAN-020)");
 
     @ArchTest
     static final ArchRule ONLY_SNAPSHOT_COMPONENT_RESETS_THE_GLOBAL_SNAPSHOT = noClasses()
-            .that().resideOutsideOfPackages("..internal.persistence..", "..internal.snapshot..")
+            .that().resideOutsideOfPackages("com.moe.myfamilybudget.persistence..", "..internal.snapshot..")
             .should().callMethod(PersistenceManager.class, "resetData")
             .as("seul internal.snapshot réinitialise le snapshot global via resetData (CLEAN-020)");
 

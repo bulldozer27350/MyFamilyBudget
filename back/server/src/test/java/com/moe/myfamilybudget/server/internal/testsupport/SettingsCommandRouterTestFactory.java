@@ -7,11 +7,11 @@ import com.moe.myfamilybudget.application.command.SettingsCommandRouter;
 import com.moe.myfamilybudget.application.command.SimulationSettingsCommandService;
 import com.moe.myfamilybudget.application.command.TaxCommandService;
 import com.moe.myfamilybudget.application.command.TresorerieCommandService;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.TaxPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.TresoreriePersistenceAdapter;
+import com.moe.myfamilybudget.persistence.PersistenceManager;
+import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.TresoreriePersistenceAdapter;
 
 /** SET-020 : assemble un {@link SettingsCommandRouter} adossé aux adapters d'un {@link PersistenceManager} de test. */
 public final class SettingsCommandRouterTestFactory {

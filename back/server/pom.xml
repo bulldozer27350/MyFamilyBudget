@@ -88,6 +88,12 @@
             <artifactId>application</artifactId>
         </dependency>
 
+        <!-- Infrastructure de persistance : entités JPA, repositories, adapters, PersistenceManager, cache et mutations (MAVEN-120) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>persistence</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

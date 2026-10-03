@@ -11,7 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.persistence.PersistenceManager;
 
 /**
  * CLEAN-020 -- Opérations globales isolées dans {@link GlobalBudgetSnapshotService} : export, import

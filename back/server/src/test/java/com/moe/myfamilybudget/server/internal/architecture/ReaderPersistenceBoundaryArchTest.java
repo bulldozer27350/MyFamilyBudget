@@ -6,7 +6,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.persistence.PersistenceManager;
 
 /**
  * Garde-fou DB-1070 (voir doc/architecture/18-backlog-persistance-patchs.md) : apres la bascule JPA des
@@ -22,7 +22,7 @@ class ReaderPersistenceBoundaryArchTest {
 
     /** Composants internes du hub, hors {@code PersistenceManager} (traite par la regle suivante). */
     private static final String HUB_INTERNALS =
-            ".*\\.internal\\.persistence\\.("
+            "com\\.moe\\.myfamilybudget\\.persistence\\.("
                     + "BudgetCacheStore|BudgetPersistenceGateway|BudgetMutationService|DomainMutations"
                     + "|entity\\.BudgetDataEntity|repository\\.BudgetDataRepository"
                     + "|converter\\.EntityModelConverter"
@@ -30,19 +30,19 @@ class ReaderPersistenceBoundaryArchTest {
 
     @ArchTest
     static final ArchRule ONLY_PERSISTENCE_USES_THE_HUB_INTERNALS = noClasses()
-            .that().resideOutsideOfPackages("..internal.persistence..")
+            .that().resideOutsideOfPackages("com.moe.myfamilybudget.persistence..")
             .should().dependOnClassesThat().haveNameMatching(HUB_INTERNALS)
-            .as("seul internal.persistence depend du cache, de la passerelle, des mutations et du hub (DB-1070)");
+            .as("seul le module persistence depend du cache, de la passerelle, des mutations et du hub (DB-1070)");
 
     @ArchTest
     static final ArchRule ONLY_PERSISTENCE_AND_SNAPSHOT_USE_PERSISTENCE_MANAGER = noClasses()
-            .that().resideOutsideOfPackages("..internal.persistence..", "..internal.snapshot..")
+            .that().resideOutsideOfPackages("com.moe.myfamilybudget.persistence..", "..internal.snapshot..")
             .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
-            .as("seuls internal.persistence et internal.snapshot dependent de PersistenceManager (DB-1070)");
+            .as("seuls le module persistence et internal.snapshot dependent de PersistenceManager (DB-1070)");
 
     @ArchTest
     static final ArchRule NOBODY_OUTSIDE_PERSISTENCE_READS_THE_GLOBAL_BUDGET = noClasses()
-            .that().resideOutsideOfPackages("..internal.persistence..")
+            .that().resideOutsideOfPackages("com.moe.myfamilybudget.persistence..")
             .should().callMethod(PersistenceManager.class, "getBudgetData")
             .orShould().callMethod(PersistenceManager.class, "getBankImport")
             .as("aucune lecture du budget global via PersistenceManager hors persistance : passer par les Reader (DB-1070)");

@@ -132,10 +132,10 @@ final class DomainBoundaryRules {
             "..internal.notification..",
             "..internal.factory..", "..internal.port..", "..internal.command..",
             "com.moe.myfamilybudget.application..", "com.moe.myfamilybudget.transition..",
-            "..internal.persistence..", "..internal.updater..", "..internal.marketdata..",
+            "com.moe.myfamilybudget.persistence..", "..internal.marketdata..",
             "..internal.enablebanking..")
             .as("les couches de domaine (calcul, modèle, notification, factory, port, command, "
-                    + "persistence, updater, marketdata, enablebanking)");
+                    + "persistence (module persistence, updater inclus), marketdata, enablebanking)");
 
     /** Façade applicative REST : implémentations d'API, mappers, snapshot global, contrôleurs. */
     private static final DescribedPredicate<JavaClass> REST_FACADE = resideInAnyPackage(

@@ -17,8 +17,8 @@ import com.moe.myfamilybudget.server.internal.mapper.NotificationsMapper;
 import com.moe.myfamilybudget.server.internal.notification.NotificationDispatchService;
 import com.moe.myfamilybudget.server.internal.notification.NotificationSettingsParameters;
 import com.moe.myfamilybudget.server.internal.notification.NotificationSettingsService;
-import com.moe.myfamilybudget.server.internal.persistence.entity.PushSubscriptionEntity;
-import com.moe.myfamilybudget.server.internal.persistence.repository.PushSubscriptionRepository;
+import com.moe.myfamilybudget.persistence.entity.PushSubscriptionEntity;
+import com.moe.myfamilybudget.persistence.repository.PushSubscriptionRepository;
 
 /**
  * Contrôleur REST implémentant le contrat OpenAPI NotificationsApi (tag Notifications) : façade

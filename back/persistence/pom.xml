@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        MAVEN-120 (doc/architecture/20-backlog-modules-maven-patchs.md) : module d'infrastructure de persistance
+        (entités, repositories Spring Data, converters, adapters Reader/Writer, PersistenceManager, cache,
+        passerelle et mutations).
+
+        Dépendances de production : les modules de domaine dont il persiste les modèles, `transition-snapshot`
+        (BudgetDataModel, SettingsModel et ports transverses), Spring Boot Data JPA (JPA/Hibernate, transactions,
+        stéréotypes Spring) et Jackson (blob JSON de l'import bancaire).
+        Aucune dépendance vers `application`, `server`, OpenAPI ni spring-web.
+        Aucun domaine pur et ni `application` ne dépendent de ce module (sens unique :
+        server -> persistence -> transition-snapshot -> domaines).
+
+        Les tests (JPA, adapters, cache, ArchUnit) restent dans `server` : ils s'appuient sur le contexte
+        Spring complet (@SpringBootTest), sur `testsupport` et sur des fixtures de BudgetDataModel.
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>persistence</artifactId>
+    <packaging>jar</packaging>
+    <name>persistence</name>
+    <description>Infrastructure de persistance MyFamilyBudget (JPA, adapters, cache, mutations), sans application ni OpenAPI</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>transition-snapshot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-budget</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-retirement</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-tax</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-wealth</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-bank-pointage</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-treasury</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-credit</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-goals</artifactId>
+        </dependency>
+
+        <!-- JPA/Hibernate, Spring Data JPA, transactions, stéréotypes, jakarta.annotation, slf4j -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <!-- BankImportDocumentMapper : sérialisation JSON du document d'import bancaire -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+    </dependencies>
+</project>

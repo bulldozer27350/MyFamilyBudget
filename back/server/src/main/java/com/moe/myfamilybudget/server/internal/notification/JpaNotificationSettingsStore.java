@@ -8,8 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.moe.myfamilybudget.server.internal.persistence.entity.NotificationSettingsEntity;
-import com.moe.myfamilybudget.server.internal.persistence.repository.NotificationSettingsRepository;
+import com.moe.myfamilybudget.persistence.entity.NotificationSettingsEntity;
+import com.moe.myfamilybudget.persistence.repository.NotificationSettingsRepository;
 
 /**
  * Implémentation JPA de {@link NotificationSettingsStore} : une seule ligne, remplacée à chaque

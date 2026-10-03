@@ -15,7 +15,7 @@ import com.moe.myfamilybudget.transition.model.BudgetDataModel;
  *
  * <p>Liste blanche explicite des seuls consommateurs autorisés pendant la transition :
  * persistance (snapshot global et cache), assemblers applicatifs ({@code internal.factory}),
- * mappers de façade ({@code internal.mapper}), mutation transverse ({@code internal.updater}),
+ * mappers de façade ({@code internal.mapper}), mutation transverse ({@code persistence.updater}, module {@code persistence}),
  * opérations globales isolées par CLEAN-020 ({@code internal.snapshot}) et
  * les services d'API recensés dans l'inventaire (assemblage {@code ASSEMBLY-TEMP} ou opérations
  * {@code SNAPSHOT-GLOBAL}). Tout nouveau consommateur fait échouer la règle : il doit soit
@@ -36,11 +36,10 @@ class BudgetDataModelUsageArchTest {
     static final ArchRule BUDGET_DATA_MODEL_IS_ONLY_USED_BY_ALLOWED_CONSUMERS = noClasses()
             .that().areNotAssignableTo(BudgetDataModel.class)
             .and().resideOutsideOfPackages(
-                    "..internal.persistence..",
+                    "com.moe.myfamilybudget.persistence..",
                     "..internal.factory..",
                     "com.moe.myfamilybudget.application.factory..",
                     "..internal.mapper..",
-                    "..internal.updater..",
                     "..internal.snapshot..")
             .and().haveNameNotMatching(ALLOWED_API_SERVICES)
             .should().dependOnClassesThat().areAssignableTo(BudgetDataModel.class)

@@ -36,20 +36,20 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
-import com.moe.myfamilybudget.server.internal.persistence.converter.BankImportDocumentMapper;
-import com.moe.myfamilybudget.server.internal.persistence.converter.EntityModelConverter;
-import com.moe.myfamilybudget.server.internal.persistence.converter.FiscalEntityMapper;
-import com.moe.myfamilybudget.server.internal.persistence.converter.GoalEntityMapper;
-import com.moe.myfamilybudget.server.internal.persistence.converter.PensionEntityMapper;
-import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.BudgetDataRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalActualOverrideRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalBracketRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalChildRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.FiscalRateOverrideRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.GoalRepository;
-import com.moe.myfamilybudget.server.internal.persistence.repository.PensionPlanRepository;
+import com.moe.myfamilybudget.persistence.PersistenceManager;
+import com.moe.myfamilybudget.persistence.converter.BankImportDocumentMapper;
+import com.moe.myfamilybudget.persistence.converter.EntityModelConverter;
+import com.moe.myfamilybudget.persistence.converter.FiscalEntityMapper;
+import com.moe.myfamilybudget.persistence.converter.GoalEntityMapper;
+import com.moe.myfamilybudget.persistence.converter.PensionEntityMapper;
+import com.moe.myfamilybudget.persistence.repository.BankImportDocumentRepository;
+import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
+import com.moe.myfamilybudget.persistence.repository.FiscalActualOverrideRepository;
+import com.moe.myfamilybudget.persistence.repository.FiscalBracketRepository;
+import com.moe.myfamilybudget.persistence.repository.FiscalChildRepository;
+import com.moe.myfamilybudget.persistence.repository.FiscalRateOverrideRepository;
+import com.moe.myfamilybudget.persistence.repository.GoalRepository;
+import com.moe.myfamilybudget.persistence.repository.PensionPlanRepository;
 
 /**
  * VT-350 -- Deux appels simultanes sur la meme ressource, de bout en bout (HTTP, Spring, H2). Les appels

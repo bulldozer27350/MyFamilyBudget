@@ -7,8 +7,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.moe.myfamilybudget.server.internal.persistence.entity.MarketSnapshotEntity;
-import com.moe.myfamilybudget.server.internal.persistence.repository.MarketSnapshotRepository;
+import com.moe.myfamilybudget.persistence.entity.MarketSnapshotEntity;
+import com.moe.myfamilybudget.persistence.repository.MarketSnapshotRepository;
 
 /**
  * Implémentation JPA de {@link MarketSnapshotStore} : une seule ligne, remplacée à chaque

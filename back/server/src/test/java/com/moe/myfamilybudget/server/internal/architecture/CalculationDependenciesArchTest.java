@@ -34,7 +34,7 @@ import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
+import com.moe.myfamilybudget.persistence.PersistenceManager;
 
 /**
  * Garde-fou d'architecture RF-001 (voir doc/architecture/00-principes.md, section

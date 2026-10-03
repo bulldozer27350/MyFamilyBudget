@@ -197,6 +197,10 @@ Le snapshot global de transition (`BudgetDataModel`, `SettingsModel`) et les por
 `back/transition-snapshot` (`com.moe.myfamilybudget.transition.*`) ; aucun domaine n'en dépend. La couche applicative
 (commands, factories d'Input, `ObjectifsSettingsService`) vit dans `back/application`
 (`com.moe.myfamilybudget.application.*`) ; elle dépend des domaines et de `transition-snapshot`, jamais de `server`.
+L'infrastructure de persistance (`PersistenceManager`, cache, passerelle, mutations, entités JPA, repositories, converters,
+adapters `Reader`/`Writer`, `persistence.updater`) vit dans `back/persistence` (`com.moe.myfamilybudget.persistence.*`) ; elle dépend
+de `transition-snapshot` et des domaines qu'elle persiste, jamais de `application` ni de `server`. Les `Jpa*Store` restent dans `server`
+avec les ports qu'ils implémentent.
 Les services `internal.impl`, les mappers et les factories Overview / Notification / PlacementRate restent dans `server`
 jusqu'à MAVEN-101 et MAVEN-102.
 

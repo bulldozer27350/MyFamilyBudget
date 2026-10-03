@@ -40,12 +40,12 @@ import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 import com.moe.myfamilybudget.domain.budget.VariablePreviewCellModel;
 import com.moe.myfamilybudget.domain.budget.VariablePreviewModel;
 import com.moe.myfamilybudget.application.command.TresorerieCommandService;
-import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.persistence.adapter.TresoreriePersistenceAdapter;
+import com.moe.myfamilybudget.persistence.PersistenceManager;
+import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.TresoreriePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class TresorerieServiceImplTest {
@@ -391,14 +391,14 @@ class TresorerieServiceImplTest {
         UpdateTresorerieLigneRequestDto unknownField = new UpdateTresorerieLigneRequestDto();
         unknownField.setField("inconnu");
         unknownField.setValue("x");
-        assertThrows(com.moe.myfamilybudget.server.internal.updater.UnknownTresorerieFieldException.class,
+        assertThrows(com.moe.myfamilybudget.persistence.updater.UnknownTresorerieFieldException.class,
                 () -> service.updateTresorerieLigne("charges", id, unknownField));
 
         // champ connu mais sans objet pour la liste visee : toujours refuse par les updaters
         UpdateTresorerieLigneRequestDto wrongList = new UpdateTresorerieLigneRequestDto();
         wrongList.setField("ratePess");
         wrongList.setValue(new BigDecimal("0.03"));
-        assertThrows(com.moe.myfamilybudget.server.internal.updater.UnknownTresorerieFieldException.class,
+        assertThrows(com.moe.myfamilybudget.persistence.updater.UnknownTresorerieFieldException.class,
                 () -> service.updateTresorerieLigne("charges", id, wrongList));
 
         UpdateTresorerieLigneRequestDto ok = new UpdateTresorerieLigneRequestDto();

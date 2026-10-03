@@ -15,8 +15,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.server.internal.notification.NotificationChannel;
 import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
-import com.moe.myfamilybudget.server.internal.persistence.entity.PushSubscriptionEntity;
-import com.moe.myfamilybudget.server.internal.persistence.repository.PushSubscriptionRepository;
+import com.moe.myfamilybudget.persistence.entity.PushSubscriptionEntity;
+import com.moe.myfamilybudget.persistence.repository.PushSubscriptionRepository;
 
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;

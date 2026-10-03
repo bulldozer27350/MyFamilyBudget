@@ -32,6 +32,7 @@ const POMS = [
   path.join(ROOT, 'back', 'domain-goals', 'pom.xml'),
   path.join(ROOT, 'back', 'transition-snapshot', 'pom.xml'),
   path.join(ROOT, 'back', 'application', 'pom.xml'),
+  path.join(ROOT, 'back', 'persistence', 'pom.xml'),
   path.join(ROOT, 'back', 'server', 'pom.xml'),
 ];
 

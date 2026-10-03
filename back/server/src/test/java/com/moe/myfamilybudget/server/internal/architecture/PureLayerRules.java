@@ -70,9 +70,9 @@ final class PureLayerRules {
 
     static final ArchRule NO_PERSISTENCE = noClasses()
             .that(PURE_LAYER)
-            .should().dependOnClassesThat().resideInAPackage("..internal.persistence..")
+            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.persistence..")
             .as("les couches pures ne doivent dépendre ni de PersistenceManager, ni des entités JPA, "
-                    + "ni des repositories, ni des adapters (internal.persistence) (ARCH-010)");
+                    + "ni des repositories, ni des adapters (module persistence) (ARCH-010)");
 
     static final ArchRule NO_JPA_API = noClasses()
             .that(PURE_LAYER)
