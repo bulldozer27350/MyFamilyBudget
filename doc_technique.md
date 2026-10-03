@@ -183,6 +183,9 @@ dépendance vers un autre module du reactor ; Enable Banking, adapters JPA et co
 Le domaine Trésorerie (`TresorerieCalculationService`, contrats d'entrée/sortie, modèles de résultat, ports Writer)
 vit dans `back/domain-treasury` (`com.moe.myfamilybudget.domain.treasury.*`) ; il ne consomme que les contrats
 publiés par `domain-budget`, `domain-retirement`, `domain-tax` et `domain-wealth`.
+Le domaine Analyse (`AnalyseCalculator`, contrat d'entrée `AnalyseInput`, modèles de résultat) vit dans
+`back/domain-analysis` (`com.moe.myfamilybudget.domain.analysis.*`) ; consommateur final, il ne dépend que de
+`domain-budget` et `domain-bank-pointage`.
 
 ### 4.5 Le pattern "oracle JS" pour les tests d'intégration
 

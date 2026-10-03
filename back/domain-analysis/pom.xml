@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        MAVEN-070 (doc/architecture/20-backlog-modules-maven-patchs.md) : domaine Analyse
+        (calculateur Réel vs Prévisionnel, contrat d'entrée AnalyseInput, modèles de résultat).
+
+        Consommateur final : dépend uniquement des contrats publiés par domain-bank-pointage
+        (BankImportModel, PointageCalculator, BudgetLineProjection) et domain-budget (RealAverageModel).
+        Aucune dépendance vers Spring, JPA, OpenAPI, PersistenceManager, BudgetDataModel ni vers un
+        autre moteur de domaine (retraite, fiscalité, patrimoine, trésorerie).
+        Dépendances de test uniquement : JUnit 5 et AssertJ.
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>domain-analysis</artifactId>
+    <packaging>jar</packaging>
+    <name>domain-analysis</name>
+    <description>Domaine Analyse MyFamilyBudget (calculateur pur, sans Spring ni JPA)</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-budget</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-bank-pointage</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

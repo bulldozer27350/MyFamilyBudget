@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.analysis.calculation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,11 +11,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.AnalyseInput;
-import com.moe.myfamilybudget.server.internal.calculation.AnalysisPeriod;
-import com.moe.myfamilybudget.server.internal.calculation.BudgetLineKind;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
-import com.moe.myfamilybudget.server.internal.calculation.MonthlyBudgetLines;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseDriftRowModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseLandingRowModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseMonthlyCompareModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseCategorySummaryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionSplitModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.CategoryModel;

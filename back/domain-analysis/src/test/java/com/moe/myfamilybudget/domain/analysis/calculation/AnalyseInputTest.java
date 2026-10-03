@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.analysis.calculation;
 
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
 import static org.assertj.core.api.Assertions.assertThat;

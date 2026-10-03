@@ -8,11 +8,11 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.calculation.AnalyseInput;
-import com.moe.myfamilybudget.server.internal.calculation.AnalysisPeriod;
-import com.moe.myfamilybudget.server.internal.calculation.BudgetLineKind;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseInput;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisPeriod;
+import com.moe.myfamilybudget.domain.analysis.calculation.BudgetLineKind;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
-import com.moe.myfamilybudget.server.internal.calculation.MonthlyBudgetLines;
+import com.moe.myfamilybudget.domain.analysis.calculation.MonthlyBudgetLines;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
@@ -23,7 +23,7 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
  * Factory construisant un {@link AnalyseInput} a partir de {@link BudgetDataModel}
  * et {@link BankImportModel} (RF-601, voir doc/architecture/08-domaine-analyse.md).
  *
- * <p>Isole {@link com.moe.myfamilybudget.server.internal.model.AnalyseCalculator} de toute dependance
+ * <p>Isole {@link com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator} de toute dependance
  * aux modeles de persistance et aux reglages du budget.
  */
 @Component

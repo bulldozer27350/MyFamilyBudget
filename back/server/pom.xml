@@ -58,6 +58,12 @@
             <artifactId>domain-treasury</artifactId>
         </dependency>
 
+        <!-- Domaine Analyse : calculateur Réel vs Prévisionnel, contrat d'entrée et modèles de résultat (MAVEN-070) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-analysis</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

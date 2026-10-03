@@ -10,6 +10,10 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseCategorySummaryModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseLandingRowModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
 import com.moe.myfamilybudget.server.internal.factory.AnalyseInputFactory;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.CategoryModel;

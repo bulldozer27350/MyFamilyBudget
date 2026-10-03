@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.analysis.calculation;
 
 /**
  * Nature (charge, revenu ou placement) d'une ligne budgétaire, y compris hors de sa période active

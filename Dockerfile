@@ -16,6 +16,7 @@ COPY back/domain-tax/pom.xml back/domain-tax/pom.xml
 COPY back/domain-wealth/pom.xml back/domain-wealth/pom.xml
 COPY back/domain-bank-pointage/pom.xml back/domain-bank-pointage/pom.xml
 COPY back/domain-treasury/pom.xml back/domain-treasury/pom.xml
+COPY back/domain-analysis/pom.xml back/domain-analysis/pom.xml
 COPY back/server/pom.xml back/server/pom.xml
 
 # Telechargement des dependances en s'appuyant sur le cache persistant .m2
@@ -32,6 +33,7 @@ COPY back/domain-tax back/domain-tax
 COPY back/domain-wealth back/domain-wealth
 COPY back/domain-bank-pointage back/domain-bank-pointage
 COPY back/domain-treasury back/domain-treasury
+COPY back/domain-analysis back/domain-analysis
 COPY back/server back/server
 
 # Compilation du JAR executable avec réutilisation du cache .m2

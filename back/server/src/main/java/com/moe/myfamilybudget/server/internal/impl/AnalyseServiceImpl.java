@@ -2,13 +2,13 @@ package com.moe.myfamilybudget.server.internal.impl;
 
 import com.moe.myfamilybudget.api.controller.AnalyseApi;
 import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
-import com.moe.myfamilybudget.server.internal.calculation.AnalyseInput;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseInput;
 import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.factory.AnalyseInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.AnalyseMapper;
 import com.moe.myfamilybudget.server.internal.mapper.BudgetFacadeView;
-import com.moe.myfamilybudget.server.internal.model.AnalyseCalculator;
-import com.moe.myfamilybudget.server.internal.model.AnalyseResultModel;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;

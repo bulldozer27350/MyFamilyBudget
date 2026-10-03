@@ -312,8 +312,16 @@ La stratégie retenue est :
 - **Dépendances autorisées** : `domain-bank`, `domain-budget`.
 - **À laisser hors module** : `AnalyseInputFactory`, `AnalyseServiceImpl`, mapper REST.
 - **Travaux** : déplacer le calculateur et ses tests ; garantir l’absence de dépendance aux modèles persistants.
+- **Décisions retenues** :
+  - module `back/domain-analysis` (artifact `domain-analysis`, jar), package racine `com.moe.myfamilybudget.domain.analysis` ; dépendances de production : `domain-budget` (`RealAverageModel`) et `domain-bank-pointage` (`BankImportModel`, `PointageCalculator`, `BudgetLineProjection`), sans Spring, JPA, OpenAPI, ni dépendance vers un autre moteur de domaine ; la dépendance `domain-bank` du backlog désigne `domain-bank-pointage` ;
+  - sous-packages `.calculation` (`AnalyseCalculator`, `AnalyseInput`, `AnalysisPeriod`, `MonthlyBudgetLines`, `BudgetLineKind`) et `.model` (`AnalyseResultModel`, `AnalyseKpiModel`, `AnalyseDriftRowModel`, `AnalyseLandingRowModel`, `AnalyseMonthlyCompareModel`, `AnalyseCategorySummaryModel`) ;
+  - `AnalyseCalculator` passe de `internal.model` à `domain.analysis.calculation` (c'est un moteur, comme `TaxCalculator` ou `PointageCalculator`) ; classe utilitaire statique, aucun bean à déclarer dans `DomainEngineConfig` ;
+  - `BudgetLineProjection` reste dans `domain-bank-pointage` (MAVEN-060) : `domain-analysis` dépend de `domain-bank-pointage`, jamais l'inverse ;
+  - restent dans `server` : `AnalyseInputFactory`, `AnalyseServiceImpl`, `AnalyseMapper`, `PointageInputFactory` (composition amont des lignes budgétaires), `AnalysePretsServiceImpl` et ses mappers (domaine Crédit, hors périmètre) ;
+  - `AnalyseCalculatorComponentTest` et `AnalyseInputTest` sont déplacés dans le module ; `AnalyseCalculatorTest` (qui s'appuie sur `AnalyseInputFactory` et `BudgetDataModel`), `AnalyseServiceImplTest`, `BankPointageAnalyseScenarioTest`, `BudgetFacadeViewMapperTest` et les fixtures ArchUnit restent dans `server` ;
+  - ArchUnit : `..domain.analysis..` est une couche pure (`PureLayerRules`, `DomainBoundaryRules`, `CalculationDependenciesArchTest`) ; la détection du domaine Analyse (`ANALYSE_IS_A_CONSUMER_ONLY`) reste faite par nom de classe, donc inchangée ; le gate VT-600 analyse aussi les tests du module ; Dockerfile, CI et gate référencent le nouveau module.
 - **Tests** : tests de composant Analyse ; E2E Analyse ; ArchUnit.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 # MAVEN-080 — Extraire `domain-credit` et `domain-goals`
 

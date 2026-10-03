@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.analysis.calculation;
 
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculator;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
@@ -16,12 +16,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.moe.myfamilybudget.server.internal.calculation.AnalyseInput;
-import com.moe.myfamilybudget.server.internal.calculation.AnalysisPeriod;
-import com.moe.myfamilybudget.server.internal.calculation.BudgetLineKind;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
-import com.moe.myfamilybudget.server.internal.calculation.MonthlyBudgetLines;
 import com.moe.myfamilybudget.domain.budget.RealAverageModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseKpiModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseDriftRowModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseLandingRowModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseMonthlyCompareModel;
+import com.moe.myfamilybudget.domain.analysis.model.AnalyseCategorySummaryModel;
 
 /**
  * Calculateur metier pour l'analyse Reel vs Previsionnel et derives (RF-601).

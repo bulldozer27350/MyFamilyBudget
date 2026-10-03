@@ -13,7 +13,7 @@ import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionServic
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
 import com.moe.myfamilybudget.domain.treasury.calculation.TresorerieCalculationService;
 import com.moe.myfamilybudget.server.internal.factory.AssetBucketResolver;
-import com.moe.myfamilybudget.server.internal.model.AnalyseCalculator;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
@@ -289,6 +289,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.wealth..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.bankpointage..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.treasury..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.analysis..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
             .as("les moteurs de calcul et calculateurs purs ne doivent pas dépendre de PersistenceManager "
@@ -308,6 +309,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.wealth..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.bankpointage..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.treasury..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.analysis..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.api..")
             .as("les couches pures du domaine (calculation, model, notification.rules) ne doivent pas dépendre "
