@@ -376,7 +376,7 @@ La stratégie retenue est :
   - s’assurer que le module ne dépend d’aucun autre module de domaine sauf les contrats strictement nécessaires ;
   - laisser l’orchestration et la lecture des `Reader` dans `application`.
 - **Tests** : tests des règles ; ArchUnit ; test du dispatch dans la couche application.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 # MAVEN-100 — Extraire `application`
 
@@ -452,7 +452,7 @@ La stratégie retenue est :
   - stabiliser le bundling OpenAPI indépendamment de l’application.
 - **Attention** : ne pas mettre de logique de mapping métier dans `api`.
 - **Tests** : génération OpenAPI ; compilation des mappers applicatifs ; vérification d’absence de dépendance inverse `api → domain` si le module est conçu comme contrat pur.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 # MAVEN-120 — Extraire `persistence`
 
