@@ -5,12 +5,16 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!--
-        MAVEN-100 (doc/architecture/20-backlog-modules-maven-patchs.md) : module d'orchestration applicative
-        (`application.command`, `application.factory`, `application.settings`).
+        MAVEN-100 / MAVEN-102 (doc/architecture/20-backlog-modules-maven-patchs.md) : module d'orchestration
+        applicative (`application.command`, `application.factory`, `application.settings` ; MAVEN-102 :
+        `application.service` (implémentations des interfaces REST générées), `application.mapper`,
+        `application.model` (modèles de résultat) et `application.error`).
 
         Dépendances de production : les modules de domaine, `transition-snapshot` (BudgetDataModel, SettingsModel
-        et ports transverses), `spring-context` (stéréotypes @Service/@Component uniquement) et `slf4j-api`.
-        Aucune dépendance vers JPA, OpenAPI, spring-web, PersistenceManager ni vers le module `server`.
+        et ports transverses), `api` (contrat REST généré, MAVEN-110 : DTO et interfaces `*Api` implémentées par
+        les services ; apporte spring-web et Jakarta Validation), `spring-context` et `spring-tx`
+        (stéréotypes, @Transactional), `poi-ooxml` (lecture Excel de l'import bancaire) et `slf4j-api`.
+        Aucune dépendance vers JPA, PersistenceManager, `persistence` ni vers le module `server`.
         Aucun domaine pur ne dépend de ce module.
     -->
     <parent>
@@ -67,9 +71,33 @@
             <artifactId>domain-goals</artifactId>
         </dependency>
 
+        <!-- Contrat REST généré : DTO et interfaces *Api implémentées par application.service (MAVEN-102) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+        </dependency>
+
+        <!-- Apache POI — Lecture fichiers Excel (.xls et .xlsx) (ExcelToCsvService) -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

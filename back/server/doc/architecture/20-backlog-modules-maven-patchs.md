@@ -66,11 +66,12 @@ La stratégie retenue est :
 | MAVEN-090 | Extraire `domain-notifications` | MAVEN-060, MAVEN-080 | MAVEN-100 | Non |
 | MAVEN-100 | Extraire `application` (commands, factories, `transition-snapshot`) | MAVEN-020 à MAVEN-080 | MAVEN-090, MAVEN-110 | Oui |
 | MAVEN-101 | Finaliser `application` : factories Overview / Notification / PlacementRate | MAVEN-090, MAVEN-100 | MAVEN-110, MAVEN-120 | Oui |
-| MAVEN-102 | Déplacer `internal.impl`, `internal.mapper` et `NotificationDispatchService` dans `application` | MAVEN-100, MAVEN-110 | MAVEN-101, MAVEN-120 | Oui |
+| MAVEN-102 | Déplacer les services REST, mappers et modèles de résultat dans `application` (partiel) | MAVEN-100, MAVEN-110 | MAVEN-101, MAVEN-120 | Oui |
+| MAVEN-103 | Solder le reliquat de MAVEN-102 (services, mappers et snapshot encore dans `server`) | MAVEN-090, MAVEN-101, MAVEN-102 | MAVEN-130 | Oui |
 | MAVEN-110 | Extraire `api` / OpenAPI généré | MAVEN-100 | aucun | Oui |
 | MAVEN-120 | Extraire `persistence` | MAVEN-100 | MAVEN-110, DB-xxx | Oui |
-| MAVEN-130 | Extraire `server-app` / composition root | MAVEN-100, MAVEN-101, MAVEN-102, MAVEN-110, MAVEN-120 | MAVEN-140 | Oui |
-| MAVEN-140 | Stabiliser le graphe et ajouter les garde-fous Maven | MAVEN-100 à MAVEN-130 (dont MAVEN-101 et MAVEN-102) | DB-xxx | Oui |
+| MAVEN-130 | Extraire `server-app` / composition root | MAVEN-100, MAVEN-101, MAVEN-102, MAVEN-103, MAVEN-110, MAVEN-120 | MAVEN-140 | Oui |
+| MAVEN-140 | Stabiliser le graphe et ajouter les garde-fous Maven | MAVEN-100 à MAVEN-130 (dont MAVEN-101, MAVEN-102 et MAVEN-103) | DB-xxx | Oui |
 | MAVEN-150 | CI sélective par sous-graphe Maven | MAVEN-140 | DB-xxx | Non |
 | MAVEN-160 | Revue de candidatures au multi-repo | MAVEN-150 + DB-1180 | aucun | — |
 | MAVEN-JPMS-010 | `module-info.java` sur les modules purs (hors du chemin critique) | MAVEN-100 | MAVEN-090, MAVEN-110 | Non |
@@ -413,7 +414,7 @@ La stratégie retenue est :
 - **Objectif** : terminer le déplacement de `internal.factory` dans `application`, reporté par MAVEN-100.
 - **Travaux** :
   - déplacer `NotificationInputFactory` dans `application.factory` une fois MAVEN-090 livré (ses entrées `DebitThresholdInput` / `BalanceFloorInput` doivent alors vivre dans `domain-notifications`) ;
-  - déplacer `OverviewInputFactory` ; décider où vivent `OverviewInput`, `OverviewParameters`, `OverviewCalculationService` et `OverviewResultModel` (agrégateur pur sans module dédié : `application` ou petit `domain-overview`) et adapter les règles ArchUnit Overview (`DomainBoundaryRules.OVERVIEW`, `CalculationDependenciesArchTest`) ;
+  - déplacer `OverviewInputFactory` ; décider où vivent `OverviewInput`, `OverviewParameters` et `OverviewCalculationService` (agrégateur pur sans module dédié : `application` ou petit `domain-overview` ; `OverviewResultModel` et `OverviewMapper` sont déjà dans `application.model` / `application.mapper` depuis MAVEN-102) et adapter les règles ArchUnit Overview (`DomainBoundaryRules.OVERVIEW`, `CalculationDependenciesArchTest`) ;
   - déplacer `PlacementRateSuggestionInputFactory` : trancher l'ownership de `PlacementRateSuggestion*` et de `internal.marketdata` (voir MAVEN-080) pour éviter une dépendance `application → server` ;
   - déplacer dans `application` les tests de composant des commands et factories dont les fixtures ne dépendent plus de `server` (`testsupport`) ;
   - supprimer le package `internal.factory` ; vérifier que `internal.model` ne contient plus que des modèles à répartir ailleurs (voir « `internal.model` »).
@@ -421,7 +422,7 @@ La stratégie retenue est :
 - **Tests** : tests des factories et commands exécutés dans `application` ; ArchUnit ; scénarios d'intégration.
 - **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
-# MAVEN-102 — Déplacer `internal.impl`, `internal.mapper` et `NotificationDispatchService` dans `application`
+# MAVEN-102 — Déplacer les services REST, mappers et modèles de résultat dans `application`
 
 - **Prérequis** : MAVEN-100 et MAVEN-110 (les services `impl` et les mappers consomment les DTO et interfaces générés `api.model` / `api.controller`).
 - **Objectif** : terminer l'extraction de la couche applicative, reportée par MAVEN-100 (option C).
@@ -434,7 +435,30 @@ La stratégie retenue est :
   - mettre à jour `BudgetDataModelUsageArchTest` (`ALLOWED_API_SERVICES`) et `DomainBoundaryRules.REST_FACADE`.
 - **Critères de sortie** : plus aucune classe dans `server.internal.impl` ni `server.internal.mapper` hors éléments explicitement réservés à `server-app` ; build complet vert ; aucun changement de contrat REST.
 - **Tests** : tests des services applicatifs, mappers et dispatch ; ArchUnit ; E2E.
+- **Décisions retenues** (périmètre partiel : seules les classes dont toutes les dépendances sont déjà hors de `server` bougent ; le reste est tracé dans **MAVEN-103**) :
+  - `internal.impl` → `application.service` : `AnalyseServiceImpl`, `ExcelToCsvService`, `ImpotsServiceImpl`, `ParametersServiceImpl`, `PatrimoineServiceImpl`, `PendingOperationsServiceImpl`, `PointageServiceImpl`, `RetraiteServiceImpl`, `StatementBankImportServiceImpl` ;
+  - `internal.mapper` → `application.mapper` : `AnalyseMapper`, `AnalysePretsMapper`, `BudgetFacadeView`, `OverviewMapper`, `PatrimoineMapper`, `PointageMapper`, `RetraiteMapper`, `SettingsMapper`, `StatementBankImportMapper`, `SuggestionsTauxMapper`, `TaxMapper`, `TresorerieMapper` (aucun mapper JPA ↔ modèle ne restait dans `server` : ils ont rejoint `persistence` en MAVEN-120) ;
+  - `internal.model` → `application.model` : les modèles de résultat `OverviewResultModel`, `TaxResultModel`, `SettingsResultModel`, `SettingsCalculator`, `PointageModel`, `RetraitePersonWithProjectionModel`, `RetraiteResultModel`, `PlacementRateSuggestionsModel` (le package `server.internal.model` disparaît) ; `internal.error.DataParsingException` → `application.error` (`GlobalExceptionHandler` et `ApiErrorResponse` restent dans `server`) ;
+  - `application` dépend désormais de `api` (interfaces `*Api` et DTO), `spring-tx` (`@Transactional`), `spring-web`, `jakarta.validation-api` et `poi-ooxml` (déplacée depuis `server`, seul `ExcelToCsvService` l'utilise) ; toujours aucune dépendance vers `persistence`, JPA ni `server` ;
+  - ArchUnit : `DOMAIN_LAYERS` ne contient plus `application..` en bloc mais `application.command`, `.factory`, `.settings` et `.model` ; `application.service` et `application.mapper` rejoignent `REST_FACADE` (ils portent les DTO OpenAPI) ; `application.model` rejoint les couches pures (`PureLayerRules`, `CalculationDependenciesArchTest`, `ResultModelsArchTest`) ; `ALLOWED_API_SERVICES` accepte `application.service` et `application.mapper` rejoint les consommateurs autorisés de `BudgetDataModel` ;
+  - les tests des classes déplacées suivent leur classe dans les packages `com.moe.myfamilybudget.application.*` mais restent dans `back/server/src/test` (ils s'appuient sur `testsupport`, les fixtures et le contexte Spring) ; leur déplacement dans `back/application` relève de MAVEN-103.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé (périmètre partiel ; reliquat : MAVEN-103)
+
+# MAVEN-103 — Solder le reliquat de MAVEN-102
+
+- **Prérequis** : MAVEN-090 (`domain-notifications`), MAVEN-101 et MAVEN-102.
+- **Objectif** : vider `server.internal.impl`, `internal.mapper`, `internal.snapshot` et `internal.notification` des classes que MAVEN-102 n'a pas pu déplacer sans créer de dépendance `application → server`.
+- **Reliquat et blocage** :
+  - `OverviewServiceImpl` : attend `OverviewInputFactory`, `OverviewInput` et `OverviewCalculationService` (MAVEN-101) ;
+  - `NotificationsServiceImpl`, `NotificationsMapper`, `NotificationDispatchService`, `NotificationSettingsService`, `NotificationSettingsCodec` / `Store` et le package `internal.notification` : attendent `domain-notifications` (MAVEN-090) ; le dispatch et `NotificationsServiceImpl` utilisent `PushSubscriptionRepository`, `NotificationSentLogRepository` et `BudgetMutatedEvent` de `persistence` : définir des ports (déduplication, abonnements Web Push) implémentés par `persistence` avant de les déplacer, sans emporter Web Push ni `JpaNotificationSettingsStore` ;
+  - `TresorerieServiceImpl` : lève `persistence.updater.UnknownTresorerieFieldException` (aussi traitée par `GlobalExceptionHandler`) ; placer cette exception dans un module que `application` peut consommer (`domain-budget` ou `transition-snapshot`) puis déplacer le service ;
+  - `SystemeServiceImpl` et `GlobalBudgetSnapshotService` (`internal.snapshot`) : dépendent de `PersistenceManager` ; décider entre un port dans `transition-snapshot` implémenté par `persistence` (service dans `application`) ou le placer dans `persistence` ;
+  - `AnalysePretsServiceImpl`, `SuggestionsTauxServiceImpl`, `TauxMarcheServiceImpl`, `TauxMarcheMapper`, `PlacementRateSuggestion*` (+ `PlacementRateSuggestionInputFactory`), `LoanAdviceSettingsService` et `EnableBankingApiServiceImpl` : dépendent de `internal.marketdata` / `internal.enablebanking`, restés dans `server-app` tant que MAVEN-130 n'a pas statué (voir MAVEN-101 pour `PlacementRate*`) ;
+  - tests des classes déjà déplacées : les rapatrier dans `back/application` quand leurs fixtures ne dépendent plus de `server`.
+- **Critères de sortie** : plus aucune classe dans `server.internal.impl`, `internal.mapper` ni `internal.snapshot` hors éléments explicitement réservés à `server-app` ; `application` ne dépend ni de `server` ni de `persistence` (sauf décision contraire documentée) ; aucun changement de contrat REST ; build complet vert.
+- **Tests** : tests des services, mappers et dispatch exécutés dans `application` ; ArchUnit ; E2E.
 - **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
 
 # MAVEN-110 — Extraire `api` / OpenAPI généré
 
@@ -504,7 +528,7 @@ La stratégie retenue est :
 
 # MAVEN-130 — Extraire `server-app` / composition root
 
-- **Prérequis** : MAVEN-100, MAVEN-101, MAVEN-102, MAVEN-110, MAVEN-120.
+- **Prérequis** : MAVEN-100, MAVEN-101, MAVEN-102, MAVEN-103, MAVEN-110, MAVEN-120.
 - **Objectif** : faire du dernier module un runtime exécutable et un composition root Spring mince.
 - **Contenu cible** :
   - `ServerApplication` ;
@@ -524,7 +548,7 @@ La stratégie retenue est :
 
 # MAVEN-140 — Stabiliser le graphe et ajouter les garde-fous Maven
 
-- **Prérequis** : MAVEN-100, MAVEN-101, MAVEN-102, MAVEN-110, MAVEN-120, MAVEN-130.
+- **Prérequis** : MAVEN-100, MAVEN-101, MAVEN-102, MAVEN-103, MAVEN-110, MAVEN-120, MAVEN-130.
 - **Objectif** : vérifier que le graphe Maven matérialise les règles d’architecture et ne repose plus uniquement sur ArchUnit.
 - **Travaux** :
   - produire la matrice des dépendances entre modules ;
@@ -796,7 +820,7 @@ et vérifier en plus :
 - dépendances inter-modules conformes au graphe documenté ;
 - aucune dépendance d’un domaine pur vers `persistence`, JPA, OpenAPI ou Spring interdit ;
 - `BudgetDataModel` absent des contrats de domaine (il vit dans `transition-snapshot`, jamais en dépendance d'un domaine) ;
-- plus aucune classe résiduelle dans `server.internal.factory`, `internal.command`, `internal.impl` et `internal.mapper` (MAVEN-101, MAVEN-102) ;
+- plus aucune classe résiduelle dans `server.internal.factory`, `internal.command`, `internal.impl` et `internal.mapper` (MAVEN-101, MAVEN-102, MAVEN-103) ;
 - `PersistenceManager` absent des domaines ;
 - `api` sans logique métier ;
 - `server-app` reste le seul module produisant le livrable Spring Boot exécutable ;

@@ -153,12 +153,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Apache POI — Lecture fichiers Excel (.xls et .xlsx) -->
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml</artifactId>
-        </dependency>
-
         <!--
             Web Push (notifications push mobile via PWA, RFC 8291/8292) — voir
             WebPushNotificationChannel. bcprov-jdk18on est une dépendance requise par web-push

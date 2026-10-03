@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.error;
 
+import com.moe.myfamilybudget.application.error.DataParsingException;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;

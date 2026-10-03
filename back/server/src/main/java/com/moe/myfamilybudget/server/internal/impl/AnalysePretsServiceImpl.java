@@ -16,7 +16,7 @@ import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationSer
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceSettingsService;
 import com.moe.myfamilybudget.application.factory.LoanAdviceInputFactory;
-import com.moe.myfamilybudget.server.internal.mapper.AnalysePretsMapper;
+import com.moe.myfamilybudget.application.mapper.AnalysePretsMapper;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketDataService;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
 import com.moe.myfamilybudget.server.internal.marketdata.MortgageRateQuote;

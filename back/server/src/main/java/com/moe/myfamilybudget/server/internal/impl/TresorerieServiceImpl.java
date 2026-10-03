@@ -24,7 +24,7 @@ import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjection;
 import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjectionInput;
 import com.moe.myfamilybudget.domain.treasury.calculation.TresorerieCalculationService;
 import com.moe.myfamilybudget.application.factory.TreasuryInputFactory;
-import com.moe.myfamilybudget.server.internal.mapper.TresorerieMapper;
+import com.moe.myfamilybudget.application.mapper.TresorerieMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.CategoryOptionModel;

@@ -6,7 +6,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import com.moe.myfamilybudget.server.internal.mapper.AnalyseMapper;
+import com.moe.myfamilybudget.application.mapper.AnalyseMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 
 /**
@@ -24,7 +24,7 @@ class ResultModelsArchTest {
 
     @ArchTest
     static final ArchRule RESULT_MODELS_DO_NOT_DEPEND_ON_BUDGET_DATA_MODEL = noClasses()
-            .that().resideInAPackage("..internal.model..")
+            .that().resideInAnyPackage("..internal.model..", "com.moe.myfamilybudget.application.model..")
             .and().haveSimpleNameEndingWith("ResultModel")
             .should().dependOnClassesThat().areAssignableTo(BudgetDataModel.class)
             .as("aucun ResultModel métier ne doit dépendre de BudgetDataModel (RES-010)");

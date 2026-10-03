@@ -5,7 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
-import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
+import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;

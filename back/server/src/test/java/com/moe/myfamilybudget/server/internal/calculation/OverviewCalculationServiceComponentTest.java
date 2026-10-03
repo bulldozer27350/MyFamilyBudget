@@ -19,7 +19,7 @@ import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineYearModel;
-import com.moe.myfamilybudget.server.internal.model.OverviewResultModel;
+import com.moe.myfamilybudget.application.model.OverviewResultModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.domain.budget.TripleAmountModel;

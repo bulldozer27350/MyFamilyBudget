@@ -24,7 +24,7 @@ import com.moe.myfamilybudget.api.model.TresorerieResponseDto;
 import com.moe.myfamilybudget.api.model.UpdateTresorerieLigneRequestDto;
 import com.moe.myfamilybudget.api.model.VariableIncomeDto;
 import com.moe.myfamilybudget.api.model.VariableOverrideDto;
-import com.moe.myfamilybudget.server.internal.mapper.TresorerieMapper;
+import com.moe.myfamilybudget.application.mapper.TresorerieMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.CategoryOptionModel;

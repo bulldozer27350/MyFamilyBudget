@@ -1,0 +1,138 @@
+package com.moe.myfamilybudget.application.service;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.moe.myfamilybudget.api.controller.ParametresApi;
+import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
+import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
+import com.moe.myfamilybudget.application.command.SettingsCommandRouter;
+import com.moe.myfamilybudget.application.mapper.SettingsMapper;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
+import com.moe.myfamilybudget.application.model.SettingsCalculator;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.model.SettingsResultModel;
+import com.moe.myfamilybudget.domain.wealth.port.AssetCategoryField;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
+import com.moe.myfamilybudget.transition.port.BudgetMutationLock;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
+import com.moe.myfamilybudget.transition.port.SettingsReader;
+
+/**
+ * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
+ * {@code PersistenceManager}. {@code getSettings()} lit via {@link SettingsReader},
+ * {@link PatrimoineReader} (catégories d'actifs) et {@link BankReader} ; {@code saveSettings()}
+ * ne lit rien et délègue déjà entièrement aux services de commande par domaine.
+ *
+ * <p>SET-020 : le routage des champs vers leur owner (Retraite, Fiscalité, Trésorerie, Objectifs, Simulation,
+ * Hypothèses économiques) est délégué à {@link SettingsCommandRouter} ; l'atomicité reste portée ici.
+ *
+ * <p>DB-061 : le verrou de mutation du budget (VT-350b), pris en premier par {@code saveSettings}, passe par
+ * le port transverse {@link BudgetMutationLock} et non plus par la commande Fiscalité.
+ *
+ * <p>VT-340 : {@code saveSettings} est {@code @Transactional} — une mise à jour touchant plusieurs
+ * propriétaires (Objectifs, Fiscalité/Paramètres) est appliquée en entier ou pas du tout.
+ */
+@Service
+@RestController
+public class ParametersServiceImpl implements ParametresApi {
+
+    private final SettingsReader settingsReader;
+    private final PatrimoineReader patrimoineReader;
+    private final BankReader bankReader;
+    private final RetirementReader retirementReader;
+    private final SettingsMapper settingsMapper;
+    private final ObjectifsSettingsService objectifsSettingsService;
+    private final PatrimoineCommandService patrimoineCommandService;
+    private final BudgetMutationLock budgetMutationLock;
+    private final SettingsCommandRouter settingsCommandRouter;
+
+    public ParametersServiceImpl(
+            SettingsReader settingsReader,
+            PatrimoineReader patrimoineReader,
+            BankReader bankReader,
+            RetirementReader retirementReader,
+            SettingsMapper settingsMapper,
+            ObjectifsSettingsService objectifsSettingsService,
+            PatrimoineCommandService patrimoineCommandService,
+            BudgetMutationLock budgetMutationLock,
+            SettingsCommandRouter settingsCommandRouter) {
+        this.settingsReader = settingsReader;
+        this.patrimoineReader = patrimoineReader;
+        this.bankReader = bankReader;
+        this.retirementReader = retirementReader;
+        this.settingsMapper = settingsMapper;
+        this.objectifsSettingsService = objectifsSettingsService;
+        this.patrimoineCommandService = patrimoineCommandService;
+        this.budgetMutationLock = budgetMutationLock;
+        this.settingsCommandRouter = settingsCommandRouter;
+    }
+
+    @Override
+    public ResponseEntity<Object> getSettings() {
+        SettingsModel settings = settingsReader.getSettings();
+        List<AssetCategoryModel> categories = patrimoineReader.getAssetCategories();
+
+        SettingsResultModel result = SettingsCalculator.computeSettingsResult(
+                settings, categories, bankReader.getBankImport()
+        );
+
+        Map<String, Object> response = settingsMapper.toResponseMap(
+                result, objectifsSettingsService.current(), retirementReader.getRetirement());
+        return ResponseEntity.ok(response);
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<Void> saveSettings(Object body) {
+        budgetMutationLock.lockForCurrentTransaction();
+        if (body instanceof Map<?, ?> map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> typedMap = (Map<String, Object>) map;
+
+            String action = typedMap.get("action") != null ? String.valueOf(typedMap.get("action")) : null;
+
+            if ("updateAssetCategory".equals(action) || (typedMap.containsKey("assetCategoryId") && typedMap.containsKey("field"))) {
+                String id = typedMap.get("id") != null ? String.valueOf(typedMap.get("id")) : String.valueOf(typedMap.get("assetCategoryId"));
+                String field = String.valueOf(typedMap.get("field"));
+                Object value = typedMap.get("value");
+                AssetCategoryField.find(field)
+                        .ifPresent(f -> patrimoineCommandService.updateAssetCategory(id, f, value));
+            } else if ("addAssetCategory".equals(action)) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> rowMap = (Map<String, Object>) typedMap.get("row");
+                AssetCategoryModel category = settingsMapper.toAssetCategoryModel(rowMap);
+                patrimoineCommandService.addAssetCategory(category);
+            } else if ("removeAssetCategory".equals(action)) {
+                String id = String.valueOf(typedMap.get("id"));
+                patrimoineCommandService.removeAssetCategory(id);
+            } else if (typedMap.containsKey("field") && typedMap.get("field") != null) {
+                String field = String.valueOf(typedMap.get("field"));
+                Object value = typedMap.get("value");
+                updateSetting(field, value);
+            } else if (typedMap.containsKey("settings") && typedMap.get("settings") instanceof Map<?, ?> sMap) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> typedSMap = (Map<String, Object>) sMap;
+                for (Map.Entry<String, Object> entry : typedSMap.entrySet()) {
+                    updateSetting(entry.getKey(), entry.getValue());
+                }
+            }
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Façade unique de {@code PATCH /settings} (voir doc/architecture/12-settings.md) : chaque
+     * champ est routé par propriété vers son owner (SET-020), via la table de routage partagée
+     * {@link SettingsCommandRouter}.
+     */
+    private void updateSetting(String field, Object value) {
+        settingsCommandRouter.updateSetting(field, value);
+    }
+}

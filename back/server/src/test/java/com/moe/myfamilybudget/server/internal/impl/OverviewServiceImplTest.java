@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.api.model.CashflowYearDto;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
-import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
+import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;

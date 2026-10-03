@@ -14,8 +14,8 @@ import com.moe.myfamilybudget.transition.model.BudgetDataModel;
  * global, pas un « DTO interne universel ».
  *
  * <p>Liste blanche explicite des seuls consommateurs autorisés pendant la transition :
- * persistance (snapshot global et cache), assemblers applicatifs ({@code internal.factory}),
- * mappers de façade ({@code internal.mapper}), mutation transverse ({@code persistence.updater}, module {@code persistence}),
+ * persistance (snapshot global et cache), assemblers applicatifs ({@code internal.factory}, {@code application.factory}),
+ * mappers de façade ({@code internal.mapper}, {@code application.mapper}), mutation transverse ({@code persistence.updater}, module {@code persistence}),
  * opérations globales isolées par CLEAN-020 ({@code internal.snapshot}) et
  * les services d'API recensés dans l'inventaire (assemblage {@code ASSEMBLY-TEMP} ou opérations
  * {@code SNAPSHOT-GLOBAL}). Tout nouveau consommateur fait échouer la règle : il doit soit
@@ -26,7 +26,7 @@ import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 class BudgetDataModelUsageArchTest {
 
     private static final String ALLOWED_API_SERVICES =
-            ".*\\.internal\\.impl\\.("
+            ".*\\.(internal\\.impl|application\\.service)\\.("
                     + "AnalysePretsServiceImpl|AnalyseServiceImpl|ImpotsServiceImpl|OverviewServiceImpl"
                     + "|PatrimoineServiceImpl|PendingOperationsServiceImpl|RetraiteServiceImpl"
                     + "|TresorerieServiceImpl"
@@ -40,6 +40,7 @@ class BudgetDataModelUsageArchTest {
                     "..internal.factory..",
                     "com.moe.myfamilybudget.application.factory..",
                     "..internal.mapper..",
+                    "com.moe.myfamilybudget.application.mapper..",
                     "..internal.snapshot..")
             .and().haveNameNotMatching(ALLOWED_API_SERVICES)
             .should().dependOnClassesThat().areAssignableTo(BudgetDataModel.class)

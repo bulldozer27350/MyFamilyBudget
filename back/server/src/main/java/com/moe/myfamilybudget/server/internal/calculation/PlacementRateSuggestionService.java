@@ -17,9 +17,9 @@ import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRatesQuote;
 import com.moe.myfamilybudget.server.internal.marketdata.YieldCurveQuote;
-import com.moe.myfamilybudget.server.internal.model.PlacementRateSuggestionsModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementRateSuggestionsModel.Item;
-import com.moe.myfamilybudget.server.internal.model.PlacementRateSuggestionsModel.Kind;
+import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel;
+import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel.Item;
+import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel.Kind;
 
 /**
  * Suggestions de taux pessimiste / correct / optimiste pour les placements, à partir de données

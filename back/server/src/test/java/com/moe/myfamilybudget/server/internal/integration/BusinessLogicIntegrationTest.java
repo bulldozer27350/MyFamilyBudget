@@ -28,7 +28,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.server.internal.impl.OverviewServiceImpl;
-import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
+import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;

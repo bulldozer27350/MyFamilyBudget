@@ -1,0 +1,21 @@
+package com.moe.myfamilybudget.application.model;
+
+import com.moe.myfamilybudget.transition.model.SettingsModel;
+import java.util.List;
+import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
+
+/**
+ * Modèle interne représentant l'ensemble des données et résultats de la section Impôts.
+ */
+public record TaxResultModel(
+    List<TaxChildModel> taxChildren,
+    List<TaxBracketModel> taxBrackets,
+    List<TaxRateOverrideModel> taxRateOverrides,
+    List<TaxActualOverrideModel> taxActualOverrides,
+    SettingsModel settings,
+    List<TaxYearlyModel> taxPreview
+) {}

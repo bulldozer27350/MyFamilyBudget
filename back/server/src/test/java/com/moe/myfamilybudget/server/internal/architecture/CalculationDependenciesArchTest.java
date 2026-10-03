@@ -25,7 +25,7 @@ import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculator;
-import com.moe.myfamilybudget.server.internal.model.PointageModel;
+import com.moe.myfamilybudget.application.model.PointageModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
@@ -284,6 +284,7 @@ class CalculationDependenciesArchTest {
             .that().resideInAPackage("..internal.calculation..")
             .or().resideInAPackage("..internal.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.transition.model..")
+            .or().resideInAPackage("com.moe.myfamilybudget.application.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
@@ -307,6 +308,7 @@ class CalculationDependenciesArchTest {
             .that().resideInAPackage("..internal.calculation..")
             .or().resideInAPackage("..internal.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.transition.model..")
+            .or().resideInAPackage("com.moe.myfamilybudget.application.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
