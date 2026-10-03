@@ -14,10 +14,10 @@ import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceCalculationS
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceInput;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceParameters;
 import com.moe.myfamilybudget.server.internal.calculation.LoanInput;
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
 class LoanAdviceInputFactoryTest {
 

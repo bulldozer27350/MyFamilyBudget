@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.calculation;
 
+import com.moe.myfamilybudget.domain.wealth.calculation.PlacementTransfer;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 

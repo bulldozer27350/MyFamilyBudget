@@ -10,10 +10,10 @@ import com.moe.myfamilybudget.server.internal.calculation.LiquidPlacementAlterna
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceInput;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceParameters;
 import com.moe.myfamilybudget.server.internal.calculation.LoanInput;
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
 /**
  * Construit un {@link LoanAdviceInput} (RF-801, voir doc/architecture/10-domaine-prets-suggestions.md).

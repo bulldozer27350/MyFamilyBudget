@@ -5,10 +5,10 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
-import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.persistence.entity.WealthCategoryEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.WealthPlacementEntity;
 import com.moe.myfamilybudget.server.internal.persistence.entity.WealthPlacementHistoryEntity;

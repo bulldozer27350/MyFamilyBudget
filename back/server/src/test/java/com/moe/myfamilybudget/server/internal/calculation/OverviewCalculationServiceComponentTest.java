@@ -1,5 +1,7 @@
 package com.moe.myfamilybudget.server.internal.calculation;
 
+import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjection;
+import com.moe.myfamilybudget.domain.wealth.calculation.RealEstateProjection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
@@ -13,9 +15,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
-import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
-import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
-import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoinePerPlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineYearModel;
 import com.moe.myfamilybudget.server.internal.model.OverviewResultModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;

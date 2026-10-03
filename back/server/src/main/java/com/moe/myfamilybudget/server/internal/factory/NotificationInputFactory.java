@@ -13,7 +13,7 @@ import com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransact
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.PendingOperationModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
 /**
  * Construit les trois entrées de notification (RF-702, voir

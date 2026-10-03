@@ -12,7 +12,7 @@ import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
 import com.moe.myfamilybudget.server.internal.port.GoalReader;
 import com.moe.myfamilybudget.server.internal.port.LoanReader;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxReader;

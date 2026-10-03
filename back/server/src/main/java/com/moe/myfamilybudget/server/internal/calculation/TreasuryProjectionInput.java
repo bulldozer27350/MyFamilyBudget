@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.calculation;
 
+import com.moe.myfamilybudget.domain.wealth.calculation.PlacementCashflowInput;
 import java.util.List;
 import java.util.Objects;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementIncomeProjection;

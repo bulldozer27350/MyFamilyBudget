@@ -23,7 +23,7 @@ import com.moe.myfamilybudget.server.internal.notification.rules.ObjectifReachab
 import com.moe.myfamilybudget.server.internal.persistence.repository.NotificationSentLogRepository;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.GoalReader;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
 /**

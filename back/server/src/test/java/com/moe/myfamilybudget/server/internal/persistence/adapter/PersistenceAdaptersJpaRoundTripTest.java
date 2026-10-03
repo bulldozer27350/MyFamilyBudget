@@ -16,7 +16,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
@@ -25,9 +25,9 @@ import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
-import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
@@ -67,7 +67,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.VariableOve
 import com.moe.myfamilybudget.server.internal.persistence.repository.WealthCategoryRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.WealthPlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.WealthRealEstateRepository;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineList;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
 
 /**
  * DB-010 -- Round-trip des adaptateurs de lecture contre une vraie base (H2 en memoire, vrais repositories

@@ -24,7 +24,7 @@ import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.LoanAdviceResultModel;
 import com.moe.myfamilybudget.server.internal.port.LoanReader;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 
 /**
  * Contrôleur REST implémentant le contrat OpenAPI AnalysePretsApi (Tag: AnalysePrets) : façade

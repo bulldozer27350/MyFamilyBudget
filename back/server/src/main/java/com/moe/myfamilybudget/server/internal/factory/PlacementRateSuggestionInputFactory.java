@@ -9,9 +9,9 @@ import java.util.Objects;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput.PlacementRateInput;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
 /**
  * Construit un {@link PlacementRateSuggestionInput} (RF-802, voir

@@ -4,10 +4,10 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
-import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineList;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineWriter;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.port.AssetCategoryField;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineWriter;
 
 /**
  * Service de commande du domaine Patrimoine (RF-A00, DB-030).

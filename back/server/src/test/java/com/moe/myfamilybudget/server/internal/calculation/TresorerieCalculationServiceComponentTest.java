@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.calculation;
 
+import com.moe.myfamilybudget.domain.wealth.calculation.PlacementCashflowInput;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;

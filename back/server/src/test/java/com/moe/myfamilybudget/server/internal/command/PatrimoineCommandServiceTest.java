@@ -17,13 +17,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.PatrimoinePersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineList;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineWriter;
+import com.moe.myfamilybudget.domain.wealth.port.AssetCategoryField;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 /**

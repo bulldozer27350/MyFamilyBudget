@@ -8,13 +8,13 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.moe.myfamilybudget.server.internal.calculation.LoanAdviceCalculationService;
 import com.moe.myfamilybudget.server.internal.calculation.OverviewCalculationService;
-import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionService;
-import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionService;
+import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
+import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
 import com.moe.myfamilybudget.server.internal.calculation.TresorerieCalculationService;
 import com.moe.myfamilybudget.server.internal.factory.AssetBucketResolver;
 import com.moe.myfamilybudget.server.internal.model.AnalyseCalculator;
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
@@ -22,8 +22,8 @@ import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PointageCalculator;
 import com.moe.myfamilybudget.server.internal.model.PointageModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
@@ -286,6 +286,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.wealth..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
             .as("les moteurs de calcul et calculateurs purs ne doivent pas dépendre de PersistenceManager "
@@ -302,6 +303,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.wealth..")
             .or().resideInAPackage("..internal.notification.rules..")
             .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.api..")
             .as("les couches pures du domaine (calculation, model, notification.rules) ne doivent pas dépendre "

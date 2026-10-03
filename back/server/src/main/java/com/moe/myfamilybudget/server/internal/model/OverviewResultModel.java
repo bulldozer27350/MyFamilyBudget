@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.model;
 
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import java.math.BigDecimal;
 import java.util.List;
 import com.moe.myfamilybudget.domain.budget.CashflowYearModel;

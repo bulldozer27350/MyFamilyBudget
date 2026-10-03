@@ -57,6 +57,7 @@ jobs:
             back/domain-budget/pom.xml
             back/domain-retirement/pom.xml
             back/domain-tax/pom.xml
+            back/domain-wealth/pom.xml
             back/server/pom.xml
 
       - name: Set up Bun

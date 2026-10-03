@@ -1,5 +1,9 @@
 package com.moe.myfamilybudget.server.internal.persistence.converter;
 
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.server.internal.model.*;
 import com.moe.myfamilybudget.server.internal.persistence.entity.*;
 

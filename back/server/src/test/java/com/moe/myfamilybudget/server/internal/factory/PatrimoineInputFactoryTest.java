@@ -10,18 +10,18 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.AnnualCashflow;
-import com.moe.myfamilybudget.server.internal.calculation.PatrimoineProjectionInput;
-import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolutionInput;
-import com.moe.myfamilybudget.server.internal.calculation.PlacementHistoryPoint;
-import com.moe.myfamilybudget.server.internal.calculation.PlacementProjectionInput;
-import com.moe.myfamilybudget.server.internal.calculation.PlacementTransfer;
+import com.moe.myfamilybudget.domain.wealth.calculation.AnnualCashflow;
+import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionInput;
+import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionInput;
+import com.moe.myfamilybudget.domain.wealth.calculation.PlacementHistoryPoint;
+import com.moe.myfamilybudget.domain.wealth.calculation.PlacementProjectionInput;
+import com.moe.myfamilybudget.domain.wealth.calculation.PlacementTransfer;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.domain.budget.TransferModel;
 

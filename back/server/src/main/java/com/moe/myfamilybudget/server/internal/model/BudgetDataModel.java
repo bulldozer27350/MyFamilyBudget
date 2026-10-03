@@ -1,5 +1,8 @@
 package com.moe.myfamilybudget.server.internal.model;
 
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import java.math.BigDecimal;
 import java.util.List;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;

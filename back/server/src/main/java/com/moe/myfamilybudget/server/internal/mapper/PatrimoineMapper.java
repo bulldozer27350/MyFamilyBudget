@@ -24,17 +24,17 @@ import com.moe.myfamilybudget.api.model.PlacementEvolutionPointDto;
 import com.moe.myfamilybudget.api.model.PlacementHistoryEntryDto;
 import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
-import com.moe.myfamilybudget.server.internal.calculation.PlacementEvolution;
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolution;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.model.LoanModel;
-import com.moe.myfamilybudget.server.internal.model.PatrimoinePerPlacementModel;
-import com.moe.myfamilybudget.server.internal.model.PatrimoineProjectionsModel;
-import com.moe.myfamilybudget.server.internal.model.PatrimoineYearModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementHistoryEntryModel;
-import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoinePerPlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineYearModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
+import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.budget.TransferModel;
 
 @Component

@@ -1,5 +1,7 @@
 package com.moe.myfamilybudget.server.internal.calculation;
 
+import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjection;
+import com.moe.myfamilybudget.domain.wealth.calculation.RealEstateProjection;
 import java.util.Objects;
 
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;

@@ -19,8 +19,8 @@ import com.moe.myfamilybudget.server.internal.factory.PlacementRateSuggestionInp
 import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness.Status;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRatesQuote;
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
 class SuggestionsTauxMapperTest {
 

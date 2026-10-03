@@ -20,7 +20,7 @@ import com.moe.myfamilybudget.server.internal.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.server.internal.model.ObjectifModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.notification.rules.BalanceFloorRule;
 import com.moe.myfamilybudget.server.internal.notification.rules.DebitThresholdRule;
@@ -29,7 +29,7 @@ import com.moe.myfamilybudget.server.internal.persistence.BudgetMutatedEvent;
 import com.moe.myfamilybudget.server.internal.persistence.repository.NotificationSentLogRepository;
 import com.moe.myfamilybudget.server.internal.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.GoalReader;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
 /**

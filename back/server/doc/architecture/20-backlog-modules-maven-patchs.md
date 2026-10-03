@@ -222,8 +222,18 @@ La stratégie retenue est :
 - **À laisser hors module** : `PatrimoineInputFactory`, `AssetBucketResolver` si utilisé aussi par Crédit, adapters JPA, mappers REST.
 - **Règle** : aucun retour Patrimoine → Trésorerie.
 - **Travaux** : extraire le module et remplacer les dépendances par les projections/records déjà créés.
+- **Décisions retenues** :
+  - module `back/domain-wealth` (artifact `domain-wealth`, jar) ; seule dépendance de production : `domain-budget` (`TripleAmountModel`, `TransferModel`), sans Spring, JPA, OpenAPI ni autre module du reactor ;
+  - sous-packages `com.moe.myfamilybudget.domain.wealth.calculation` (17 classes : `PatrimoineProjectionService`, `PatrimoineProjectionInput`, `PatrimoineProjectionParameters`, `PatrimoineProjection`, `PlacementEvolutionService`, `PlacementEvolutionInput`, `PlacementEvolutionParameters`, `PlacementEvolution`, `PlacementProjectionInput`, `PlacementCashflowInput`, `PlacementHistoryPoint`, `PlacementTransfer`, `ContributionPauseRules`, `PauseState`, `RealEstateProjection`, `CashflowProjection`, `AnnualCashflow`), `.model` (`PlacementModel`, `PlacementHistoryEntryModel`, `RealEstateModel`, `AssetCategoryModel`, `PatrimoineYearModel`, `PatrimoinePerPlacementModel`, `PatrimoineProjectionsModel`) et `.port` (`PatrimoineReader`, `PatrimoineWriter`, `PatrimoineList`, `AssetCategoryField`) ;
+  - `PatrimoineProjectionService` et `PlacementEvolutionService` perdent leur `@Component` pour que le module compile sans Spring : leurs beans sont déclarés dans `server` par `config/DomainEngineConfig` (même convention que MAVEN-020) ;
+  - `PlacementCashflowInput` (projection publiée consommée par Trésorerie) est livré par `domain-wealth` : `domain-treasury` (MAVEN-050) dépendra de `domain-wealth`, jamais l'inverse ;
+  - restent dans `server` : `PatrimoineInputFactory` et `AssetBucketResolver` (assemblage applicatif, aussi consommé par Crédit), `PatrimoineServiceImpl`, `PatrimoineMapper`, `PatrimoineCommandService`, `PatrimoinePersistenceAdapter`, entités/repositories JPA ;
+  - `PatrimoineProjectionServiceTest` et `PlacementEvolutionServiceTest` sont déplacés dans le module ; les tests d'usine, de service et les fixtures ArchUnit restent dans `server` ;
+  - ArchUnit : `..domain.wealth..` est une couche pure (`PureLayerRules`, `DomainBoundaryRules`, `CalculationDependenciesArchTest`) ; la détection des domaines reste faite par nom de classe, donc inchangée ; le gate VT-600 analyse aussi les tests du module ;
+  - Dockerfile, CI et gate référencent le nouveau module.
+- **Critères de sortie** : aucun retour Patrimoine → Trésorerie ; aucune dépendance vers `internal.persistence`, `api`, `PersistenceManager` ou `BudgetDataModel`.
 - **Tests** : tests des deux moteurs patrimoniaux ; scénarios patrimoine → trésorerie → overview ; ArchUnit.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 # MAVEN-050 — Extraire `domain-treasury`
 

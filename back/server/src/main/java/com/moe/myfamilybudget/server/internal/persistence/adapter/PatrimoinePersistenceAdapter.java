@@ -6,9 +6,9 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.model.AssetCategoryModel;
-import com.moe.myfamilybudget.server.internal.model.PlacementModel;
-import com.moe.myfamilybudget.server.internal.model.RealEstateModel;
+import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.budget.TransferModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.CashflowEntityMapper;
@@ -17,10 +17,10 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowTra
 import com.moe.myfamilybudget.server.internal.persistence.repository.WealthCategoryRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.WealthPlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.WealthRealEstateRepository;
-import com.moe.myfamilybudget.server.internal.port.AssetCategoryField;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineList;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineWriter;
+import com.moe.myfamilybudget.domain.wealth.port.AssetCategoryField;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineWriter;
 
 /**
  * Adaptateur de persistance pour {@link PatrimoineReader} (RF-B00) et {@link PatrimoineWriter} (DB-030).

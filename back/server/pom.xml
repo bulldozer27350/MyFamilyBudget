@@ -40,6 +40,12 @@
             <artifactId>domain-tax</artifactId>
         </dependency>
 
+        <!-- Domaine Patrimoine : moteurs de projection, modèles et ports (MAVEN-040) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-wealth</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

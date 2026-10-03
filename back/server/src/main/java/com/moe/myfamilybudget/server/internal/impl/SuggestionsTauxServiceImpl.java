@@ -12,7 +12,7 @@ import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestio
 import com.moe.myfamilybudget.server.internal.factory.PlacementRateSuggestionInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.SuggestionsTauxMapper;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketDataService;
-import com.moe.myfamilybudget.server.internal.port.PatrimoineReader;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 
 /**
  * Contrôleur REST implémentant le contrat OpenAPI SuggestionsTauxApi (Tag: SuggestionsTaux) :
