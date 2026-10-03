@@ -56,7 +56,7 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
  * pour le domaine Pointage depuis RF-502 : aucune violation Pointage dans le store gelé (le moteur
  * vit dans {@code internal.model}), désormais protégé par
  * {@link #POINTAGE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée. Et pour le domaine
- * Notifications depuis RF-703 : les règles ({@code internal.notification.rules}) n'avaient plus
+ * Notifications depuis RF-703 : les règles ({@code domain.notifications}, module {@code domain-notifications}) n'avaient plus
  * de dépendance au budget depuis RF-702, le domaine est protégé par
  * {@link #NOTIFICATION_RULES_DO_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée (le
  * {@code NotificationDispatchService}, qui assemble les entrées, n'est pas concerné : sa lecture du
@@ -144,7 +144,7 @@ class CalculationDependenciesArchTest {
      */
     @ArchTest
     static final ArchRule NOTIFICATION_RULES_DO_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
-            .that().resideInAPackage("..internal.notification.rules..")
+            .that().resideInAPackage("com.moe.myfamilybudget.domain.notifications..")
             .should().dependOnClassesThat().belongToAnyOf(
                     BudgetDataModel.class,
                     BankImportModel.class,
@@ -295,7 +295,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.analysis..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.credit..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.goals..")
-            .or().resideInAPackage("..internal.notification.rules..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.notifications..")
             .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
             .as("les moteurs de calcul et calculateurs purs ne doivent pas dépendre de PersistenceManager "
                     + "(doc/architecture/00-principes.md)");
@@ -320,8 +320,8 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.analysis..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.credit..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.goals..")
-            .or().resideInAPackage("..internal.notification.rules..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.notifications..")
             .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.api..")
-            .as("les couches pures du domaine (calculation, model, notification.rules) ne doivent pas dépendre "
+            .as("les couches pures du domaine (calculation, model, domain.notifications) ne doivent pas dépendre "
                     + "des DTO/interfaces OpenAPI (com.moe.myfamilybudget.server.api..)");
 }

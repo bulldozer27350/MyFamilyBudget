@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.notification;
 
+import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
 import org.springframework.stereotype.Service;
 
 /**

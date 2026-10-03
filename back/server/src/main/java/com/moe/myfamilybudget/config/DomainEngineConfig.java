@@ -4,12 +4,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.domain.notifications.rules.BalanceFloorRule;
+import com.moe.myfamilybudget.domain.notifications.rules.DebitThresholdRule;
+import com.moe.myfamilybudget.domain.notifications.rules.ObjectifReachableRule;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
 
 /**
- * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080).
+ * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080, MAVEN-090).
  *
  * <p>Les modules de domaine sont volontairement indépendants de Spring : leurs moteurs ne portent
  * plus {@code @Component}, c'est le composition root qui les expose comme beans.
@@ -35,5 +38,20 @@ public class DomainEngineConfig {
     @Bean
     public LoanAdviceCalculationService loanAdviceCalculationService() {
         return new LoanAdviceCalculationService();
+    }
+
+    @Bean
+    public DebitThresholdRule debitThresholdRule() {
+        return new DebitThresholdRule();
+    }
+
+    @Bean
+    public BalanceFloorRule balanceFloorRule() {
+        return new BalanceFloorRule();
+    }
+
+    @Bean
+    public ObjectifReachableRule objectifReachableRule() {
+        return new ObjectifReachableRule();
     }
 }

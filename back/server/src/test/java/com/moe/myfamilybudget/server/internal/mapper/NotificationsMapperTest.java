@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.api.model.NotificationParametresDto;
 import com.moe.myfamilybudget.api.model.NotificationParametresValuesDto;
-import com.moe.myfamilybudget.server.internal.notification.NotificationSettingsParameters;
+import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
 
 /**
  * VT-300 : conversion paramètres de notification <-> DTO OpenAPI, sans Spring.

@@ -4,8 +4,8 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.moe.myfamilybudget.server.internal.calculation.BalanceFloorInput;
-import com.moe.myfamilybudget.server.internal.calculation.DebitThresholdInput;
+import com.moe.myfamilybudget.domain.notifications.calculation.BalanceFloorInput;
+import com.moe.myfamilybudget.domain.notifications.calculation.DebitThresholdInput;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
 import com.moe.myfamilybudget.domain.goals.calculation.PlacementBalanceSnapshot;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;

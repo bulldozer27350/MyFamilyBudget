@@ -1,12 +1,12 @@
-package com.moe.myfamilybudget.server.internal.notification;
+package com.moe.myfamilybudget.domain.notifications.rules;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 
-import com.moe.myfamilybudget.server.internal.notification.rules.BalanceFloorRule;
-import com.moe.myfamilybudget.server.internal.notification.rules.DebitThresholdRule;
-import com.moe.myfamilybudget.server.internal.notification.rules.ObjectifReachableRule;
+import com.moe.myfamilybudget.domain.notifications.rules.BalanceFloorRule;
+import com.moe.myfamilybudget.domain.notifications.rules.DebitThresholdRule;
+import com.moe.myfamilybudget.domain.notifications.rules.ObjectifReachableRule;
 
 /**
  * Paramètres de notification modifiables depuis l'onglet "Notifications" des paramètres. Sans

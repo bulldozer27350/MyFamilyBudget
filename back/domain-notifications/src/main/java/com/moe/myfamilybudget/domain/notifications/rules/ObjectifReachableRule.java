@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification.rules;
+package com.moe.myfamilybudget.domain.notifications.rules;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -6,12 +6,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
 import com.moe.myfamilybudget.domain.goals.calculation.PlacementBalanceSnapshot;
-import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
-import com.moe.myfamilybudget.server.internal.notification.NotificationRule;
+import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
+import com.moe.myfamilybudget.domain.notifications.model.NotificationRule;
 
 /**
  * Signale chaque objectif dont le montant visé est désormais couvert par ses allocations
@@ -28,7 +27,6 @@ import com.moe.myfamilybudget.server.internal.notification.NotificationRule;
  * objectif nouvellement couvert redevient positif à chaque contrôle tant qu'il reste couvert, la
  * déduplication (24h) évitant le spam.
  */
-@Component
 public class ObjectifReachableRule implements NotificationRule<ObjectifReachableInput> {
 
     public static final String KEY = "objectif-reachable";

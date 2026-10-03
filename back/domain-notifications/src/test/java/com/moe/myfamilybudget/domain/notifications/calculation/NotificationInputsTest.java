@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.notifications.calculation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

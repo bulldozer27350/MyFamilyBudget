@@ -9,8 +9,8 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.BalanceFloorInput;
-import com.moe.myfamilybudget.server.internal.calculation.DebitThresholdInput;
+import com.moe.myfamilybudget.domain.notifications.calculation.BalanceFloorInput;
+import com.moe.myfamilybudget.domain.notifications.calculation.DebitThresholdInput;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
@@ -18,10 +18,10 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.PendingO
 import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
-import com.moe.myfamilybudget.server.internal.notification.rules.BalanceFloorRule;
-import com.moe.myfamilybudget.server.internal.notification.rules.DebitThresholdRule;
-import com.moe.myfamilybudget.server.internal.notification.rules.ObjectifReachableRule;
+import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
+import com.moe.myfamilybudget.domain.notifications.rules.BalanceFloorRule;
+import com.moe.myfamilybudget.domain.notifications.rules.DebitThresholdRule;
+import com.moe.myfamilybudget.domain.notifications.rules.ObjectifReachableRule;
 
 /**
  * RF-702 : vérifie l'assemblage des trois entrées de notification et leur évaluation par les

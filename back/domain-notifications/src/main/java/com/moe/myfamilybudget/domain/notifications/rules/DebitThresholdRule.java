@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification.rules;
+package com.moe.myfamilybudget.domain.notifications.rules;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -6,11 +6,10 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.calculation.DebitThresholdInput;
-import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
-import com.moe.myfamilybudget.server.internal.notification.NotificationRule;
+import com.moe.myfamilybudget.domain.notifications.calculation.DebitThresholdInput;
+import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
+import com.moe.myfamilybudget.domain.notifications.model.NotificationRule;
 
 /**
  * Signale toute transaction bancaire de débit (montant négatif) dont la valeur absolue dépasse le
@@ -21,7 +20,6 @@ import com.moe.myfamilybudget.server.internal.notification.NotificationRule;
  * {@code NotificationDispatchService}) garantit qu'une même transaction n'est signalée qu'une
  * fois par 24h, quel que soit le nombre de contrôles déclenchés entre-temps.
  */
-@Component
 public class DebitThresholdRule implements NotificationRule<DebitThresholdInput> {
 
     public static final String KEY = "debit-threshold";

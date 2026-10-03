@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification.rules;
+package com.moe.myfamilybudget.domain.notifications.rules;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -8,10 +8,10 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.BalanceFloorInput;
-import com.moe.myfamilybudget.server.internal.calculation.BalanceFloorInput.AccountTransactionAmount;
-import com.moe.myfamilybudget.server.internal.calculation.BalanceFloorInput.PendingAmount;
-import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
+import com.moe.myfamilybudget.domain.notifications.calculation.BalanceFloorInput;
+import com.moe.myfamilybudget.domain.notifications.calculation.BalanceFloorInput.AccountTransactionAmount;
+import com.moe.myfamilybudget.domain.notifications.calculation.BalanceFloorInput.PendingAmount;
+import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
 
 /** RF-703 : la règle « solde sous le seuil » est testée avec {@link BalanceFloorInput} seulement. */
 class BalanceFloorRuleTest {

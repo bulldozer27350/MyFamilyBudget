@@ -15,7 +15,7 @@ import com.moe.myfamilybudget.api.model.PushPublicKeyDto;
 import com.moe.myfamilybudget.api.model.PushSubscriptionDto;
 import com.moe.myfamilybudget.server.internal.mapper.NotificationsMapper;
 import com.moe.myfamilybudget.server.internal.notification.NotificationDispatchService;
-import com.moe.myfamilybudget.server.internal.notification.NotificationSettingsParameters;
+import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
 import com.moe.myfamilybudget.server.internal.notification.NotificationSettingsService;
 import com.moe.myfamilybudget.persistence.entity.PushSubscriptionEntity;
 import com.moe.myfamilybudget.persistence.repository.PushSubscriptionRepository;

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification;
+package com.moe.myfamilybudget.domain.notifications.model;
 
 /**
  * Contenu à transmettre pour une occurrence positive d'une {@link NotificationRule}.
@@ -13,7 +13,7 @@ package com.moe.myfamilybudget.server.internal.notification;
  */
 public record NotificationMessage(String ruleKey, String entityId, String title, String body) {
 
-    /** Clé de déduplication (24h) utilisée par {@link NotificationDispatchService}. */
+    /** Clé de déduplication (24h) utilisée par {@code NotificationDispatchService}. */
     public String dedupKey() {
         return (entityId == null || entityId.isBlank()) ? ruleKey : ruleKey + ":" + entityId;
     }

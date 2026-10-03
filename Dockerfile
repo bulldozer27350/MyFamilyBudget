@@ -19,6 +19,7 @@ COPY back/domain-treasury/pom.xml back/domain-treasury/pom.xml
 COPY back/domain-analysis/pom.xml back/domain-analysis/pom.xml
 COPY back/domain-credit/pom.xml back/domain-credit/pom.xml
 COPY back/domain-goals/pom.xml back/domain-goals/pom.xml
+COPY back/domain-notifications/pom.xml back/domain-notifications/pom.xml
 COPY back/api/pom.xml back/api/pom.xml
 COPY back/transition-snapshot/pom.xml back/transition-snapshot/pom.xml
 COPY back/application/pom.xml back/application/pom.xml
@@ -42,6 +43,7 @@ COPY back/domain-treasury back/domain-treasury
 COPY back/domain-analysis back/domain-analysis
 COPY back/domain-credit back/domain-credit
 COPY back/domain-goals back/domain-goals
+COPY back/domain-notifications back/domain-notifications
 COPY back/api back/api
 COPY back/transition-snapshot back/transition-snapshot
 COPY back/application back/application

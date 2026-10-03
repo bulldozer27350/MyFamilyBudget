@@ -1,5 +1,7 @@
 package com.moe.myfamilybudget.server.internal.notification;
 
+import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
+import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -22,9 +24,9 @@ import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.notification.rules.BalanceFloorRule;
-import com.moe.myfamilybudget.server.internal.notification.rules.DebitThresholdRule;
-import com.moe.myfamilybudget.server.internal.notification.rules.ObjectifReachableRule;
+import com.moe.myfamilybudget.domain.notifications.rules.BalanceFloorRule;
+import com.moe.myfamilybudget.domain.notifications.rules.DebitThresholdRule;
+import com.moe.myfamilybudget.domain.notifications.rules.ObjectifReachableRule;
 import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
 import com.moe.myfamilybudget.persistence.repository.NotificationSentLogRepository;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification.rules;
+package com.moe.myfamilybudget.domain.notifications.rules;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,7 +12,7 @@ import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput.Allocation;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput.GoalCoverage;
 import com.moe.myfamilybudget.domain.goals.calculation.PlacementBalanceSnapshot;
-import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
+import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
 
 /** RF-703 : la règle « objectif atteignable » est testée avec {@link ObjectifReachableInput} seulement. */
 class ObjectifReachableRuleTest {

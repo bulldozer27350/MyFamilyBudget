@@ -192,6 +192,11 @@ le domaine Objectifs (paramètres, contrats `ObjectifReachableInput`/`PlacementB
 ports `GoalReader`/`GoalWriter`) vit dans `back/domain-goals` (`com.moe.myfamilybudget.domain.goals.*`). Les deux
 modules n'ont aucune dépendance vers un autre module du reactor ; le moteur Crédit est déclaré comme bean par
 `config/DomainEngineConfig`.
+Le domaine Notifications (contrat `NotificationRule`/`NotificationMessage`, `NotificationSettingsParameters`, règles pures
+`DebitThresholdRule`/`BalanceFloorRule`/`ObjectifReachableRule` et leurs entrées) vit dans `back/domain-notifications`
+(`com.moe.myfamilybudget.domain.notifications.*`) ; sa seule dépendance est `domain-goals` et ses trois règles sont
+déclarées comme beans par `config/DomainEngineConfig`. Le dispatch, la dédup, les canaux (Web Push) et la persistance des
+paramètres restent dans `server`.
 Le snapshot global de transition (`BudgetDataModel`, `SettingsModel`) et les ports transverses (`BudgetReader`,
 `SettingsReader`, `BudgetMutationLock`, `EconomicAssumptionsWriter`, `SimulationSettingsWriter`) vivent dans
 `back/transition-snapshot` (`com.moe.myfamilybudget.transition.*`) ; aucun domaine n'en dépend. La couche applicative

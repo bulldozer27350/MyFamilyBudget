@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.api.model.NotificationParametresDto;
 import com.moe.myfamilybudget.api.model.NotificationParametresValuesDto;
-import com.moe.myfamilybudget.server.internal.notification.NotificationSettingsParameters;
+import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
 
 @Component
 public class NotificationsMapper {

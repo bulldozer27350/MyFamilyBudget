@@ -16,7 +16,7 @@ import com.moe.myfamilybudget.transition.model.BudgetDataModel;
  * Règles ARCH-010 (voir doc/architecture/19-backlog-pre-maven-patchs.md) : interdictions explicites
  * pour les « couches pures », c'est-à-dire les moteurs de calcul ({@code internal.calculation}), les
  * calculateurs et modèles de résultat ({@code internal.model}) et les règles de notification
- * ({@code internal.notification.rules}).
+ * ({@code domain.notifications}, module {@code domain-notifications}).
  *
  * <p>Les règles sont définies ici pour être exécutées par {@link PureLayerArchTest} sur le code de
  * production et par {@link PureLayerRulesNegativeTest} sur des fixtures volontairement fautives
@@ -60,9 +60,9 @@ final class PureLayerRules {
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.analysis.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.credit.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.goals.."))
-                    .or(resideInAPackage("..internal.notification.rules.."))
+                    .or(resideInAPackage("com.moe.myfamilybudget.domain.notifications.."))
                     .as("les couches pures (internal.calculation hors infra de paramétrage, "
-                            + "internal.model, transition.model, application.model, application.overview, domain.budget, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, internal.notification.rules)");
+                            + "internal.model, transition.model, application.model, application.overview, domain.budget, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, domain.notifications)");
 
     static final ArchRule NO_BUDGET_DATA_MODEL = noClasses()
             .that(PURE_LAYER)

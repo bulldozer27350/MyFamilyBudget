@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.server.internal.notification.NotificationChannel;
-import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
+import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
 import com.moe.myfamilybudget.persistence.entity.PushSubscriptionEntity;
 import com.moe.myfamilybudget.persistence.repository.PushSubscriptionRepository;
 

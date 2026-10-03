@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification;
+package com.moe.myfamilybudget.domain.notifications.model;
 
 import java.util.List;
 
@@ -9,16 +9,16 @@ import java.util.List;
  * Depuis RF-702, chaque règle est typée par sa propre entrée minimale ({@code DebitThresholdInput},
  * {@code BalanceFloorInput}, {@code ObjectifReachableInput}) : il n'existe volontairement aucune
  * entrée d'évaluation commune, et une règle ne connaît plus {@code BudgetDataModel}. L'assemblage
- * des entrées est fait en amont, par {@link NotificationDispatchService} (via
+ * des entrées est fait en amont, par {@code NotificationDispatchService} (via
  * {@code NotificationInputFactory}).
  *
- * Chaque implémentation est un {@code @org.springframework.stereotype.Component} injecté par type
- * dans {@link NotificationDispatchService}.
+ * Chaque implémentation est déclarée comme bean par {@code config/DomainEngineConfig} (le module
+ * reste indépendant de Spring) et injectée par type dans {@code NotificationDispatchService}.
  *
  * {@link #key()} sert de clé stable à deux usages : l'activation individuelle de la règle
- * (bascule on/off dans les paramètres de notification, voir {@link NotificationSettingsParameters})
+ * (bascule on/off dans les paramètres de notification, voir {@code NotificationSettingsParameters})
  * et, combinée à {@link NotificationMessage#entityId()}, la déduplication (24h) gérée par
- * {@link NotificationDispatchService}.
+ * {@code NotificationDispatchService}.
  *
  * @param <I> type d'entrée propre à la règle
  */
@@ -36,7 +36,7 @@ public interface NotificationRule<I> {
      * déduplication (24h) évitant le spam.
      *
      * Ne doit jamais lever d'exception pour un état de données incomplet ou inattendu :
-     * {@link NotificationDispatchService} journalise et ignore une règle en erreur plutôt que de
+     * {@code NotificationDispatchService} journalise et ignore une règle en erreur plutôt que de
      * bloquer le contrôle des autres règles, mais une implémentation robuste évite d'en dépendre.
      */
     List<NotificationMessage> check(I input);

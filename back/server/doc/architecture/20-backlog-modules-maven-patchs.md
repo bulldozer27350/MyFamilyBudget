@@ -377,8 +377,16 @@ La stratégie retenue est :
   - déplacer les règles pures ;
   - s’assurer que le module ne dépend d’aucun autre module de domaine sauf les contrats strictement nécessaires ;
   - laisser l’orchestration et la lecture des `Reader` dans `application`.
+- **Décisions retenues** :
+  - module `back/domain-notifications` (artifact `domain-notifications`, jar), package racine `com.moe.myfamilybudget.domain.notifications` ; seule dépendance de production : `domain-goals` (`ObjectifReachableInput`, `PlacementBalanceSnapshot`), exposée en `requires transitive` dans le `module-info.java` car ces types apparaissent dans l'API publique d'`ObjectifReachableRule` ; aucune dépendance Spring, JPA, Web Push, OpenAPI, `persistence`, `application` ni `BudgetDataModel` ;
+  - sous-packages `.calculation` (`BalanceFloorInput`, `DebitThresholdInput`), `.model` (`NotificationRule`, `NotificationMessage`) et `.rules` (`DebitThresholdRule`, `BalanceFloorRule`, `ObjectifReachableRule`, `NotificationSettingsParameters`) ; `NotificationSettingsParameters` est rangé avec les règles (et non dans `.model`) parce qu'il référence leurs constantes `KEY` : cela évite un cycle de packages `model` ↔ `rules` ;
+  - les trois règles perdent `@Component` pour que le module compile sans Spring : leurs beans sont déclarés par `config/DomainEngineConfig` (même convention que MAVEN-020/040/080) ; elles sont injectées par type dans `NotificationDispatchService` comme avant ;
+  - restent dans `server`, conformément à « À laisser hors module » : `NotificationDispatchService`, `NotificationChannel`, `WebPushNotificationChannel`, `JpaNotificationSettingsStore`, `NotificationSettingsStore` / `NotificationSettingsCodec` / `NotificationSettingsService`, `NotificationInputFactory`, `NotificationsServiceImpl`, `NotificationsMapper`, les entités/repositories de dédup et d'abonnement Push (module `persistence`) ; leur déplacement dans `application` est traité par MAVEN-101 / MAVEN-103 ;
+  - `BalanceFloorRuleTest`, `DebitThresholdRuleTest`, `ObjectifReachableRuleTest` et `NotificationInputsTest` sont déplacés dans le module ; `NotificationInputFactoryTest`, `NotificationDispatchServiceReadersTest`, `NotificationsMapperTest` et la fixture ArchUnit `RetirementWithNotificationsFixture` restent dans `server` ;
+  - ArchUnit : `..domain.notifications..` remplace `..internal.notification.rules..` comme couche pure (`PureLayerRules`, `CalculationDependenciesArchTest`, dont la règle « les règles ne dépendent d'aucun modèle du budget ») et rejoint `DOMAIN_LAYERS` et `NOTIFICATIONS_FAMILY` de `DomainBoundaryRules` (aucun autre domaine ne dépend de Notifications) ; le gate VT-600 analyse aussi les tests du module ; Dockerfile, CI et gate référencent le nouveau module ; `module-info.java` ajouté dans la continuité de MAVEN-JPMS-010.
+- **Critères de sortie** : le module ne dépend que de `domain-goals` ; aucun retour vers `application`, `persistence` ou `server`.
 - **Tests** : tests des règles ; ArchUnit ; test du dispatch dans la couche application.
-- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 # MAVEN-100 — Extraire `application`
 

@@ -76,6 +76,12 @@
             <artifactId>domain-goals</artifactId>
         </dependency>
 
+        <!-- Domaine Notifications : règles pures, contrats et paramètres métier (MAVEN-090) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-notifications</artifactId>
+        </dependency>
+
         <!-- Snapshot global de transition : BudgetDataModel, SettingsModel et ports transverses (MAVEN-100) -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>

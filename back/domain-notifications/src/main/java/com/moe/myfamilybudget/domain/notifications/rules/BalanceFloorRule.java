@@ -1,14 +1,13 @@
-package com.moe.myfamilybudget.server.internal.notification.rules;
+package com.moe.myfamilybudget.domain.notifications.rules;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 
-import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.calculation.BalanceFloorInput;
-import com.moe.myfamilybudget.server.internal.notification.NotificationMessage;
-import com.moe.myfamilybudget.server.internal.notification.NotificationRule;
+import com.moe.myfamilybudget.domain.notifications.calculation.BalanceFloorInput;
+import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
+import com.moe.myfamilybudget.domain.notifications.model.NotificationRule;
 
 /**
  * Signale un solde du compte courant passé sous le seuil configuré.
@@ -25,7 +24,6 @@ import com.moe.myfamilybudget.server.internal.notification.NotificationRule;
  * Règle globale sans sous-entité : un seul message possible par contrôle, clé de déduplication
  * = "balance-floor" (voir {@link NotificationMessage#dedupKey()}).
  */
-@Component
 public class BalanceFloorRule implements NotificationRule<BalanceFloorInput> {
 
     public static final String KEY = "balance-floor";

@@ -129,6 +129,7 @@ final class DomainBoundaryRules {
             "com.moe.myfamilybudget.domain.analysis..",
             "com.moe.myfamilybudget.domain.credit..",
             "com.moe.myfamilybudget.domain.goals..",
+            "com.moe.myfamilybudget.domain.notifications..",
             "..internal.notification..",
             "..internal.factory..", "..internal.port..", "..internal.command..",
             "com.moe.myfamilybudget.application.command..", "com.moe.myfamilybudget.application.factory..",
@@ -153,6 +154,7 @@ final class DomainBoundaryRules {
 
     private static final DescribedPredicate<JavaClass> NOTIFICATIONS_FAMILY =
             resideInAPackage("..internal.notification..")
+                    .or(resideInAPackage("com.moe.myfamilybudget.domain.notifications.."))
                     .or(topLevelNameMatching("NotificationInputFactory", "NotificationInputFactory"))
                     .as("le domaine Notifications");
 

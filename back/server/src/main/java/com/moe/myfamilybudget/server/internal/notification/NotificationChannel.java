@@ -1,5 +1,7 @@
 package com.moe.myfamilybudget.server.internal.notification;
 
+import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
+
 /**
  * Un canal de transmission d'une notification déjà décidée par une {@link NotificationRule}.
  *
