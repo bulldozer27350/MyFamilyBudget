@@ -201,6 +201,9 @@ L'infrastructure de persistance (`PersistenceManager`, cache, passerelle, mutati
 adapters `Reader`/`Writer`, `persistence.updater`) vit dans `back/persistence` (`com.moe.myfamilybudget.persistence.*`) ; elle dépend
 de `transition-snapshot` et des domaines qu'elle persiste, jamais de `application` ni de `server`. Les `Jpa*Store` restent dans `server`
 avec les ports qu'ils implémentent.
+Les dix modules purs (domaines et `transition-snapshot`) déclarent un `module-info.java` (nom du module = package racine) :
+le compilateur interdit donc d'y importer un package non exporté ou d'un module non déclaré. `application`, `persistence` et
+`server` restent sur le classpath (Spring, JPA/Hibernate), sans `module-info`.
 Les services `internal.impl`, les mappers et les factories Overview / Notification / PlacementRate restent dans `server`
 jusqu'à MAVEN-101 et MAVEN-102.
 

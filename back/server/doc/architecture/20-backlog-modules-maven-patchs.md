@@ -73,6 +73,7 @@ La stratégie retenue est :
 | MAVEN-140 | Stabiliser le graphe et ajouter les garde-fous Maven | MAVEN-100 à MAVEN-130 (dont MAVEN-101 et MAVEN-102) | DB-xxx | Oui |
 | MAVEN-150 | CI sélective par sous-graphe Maven | MAVEN-140 | DB-xxx | Non |
 | MAVEN-160 | Revue de candidatures au multi-repo | MAVEN-150 + DB-1180 | aucun | — |
+| MAVEN-JPMS-010 | `module-info.java` sur les modules purs (hors du chemin critique) | MAVEN-100 | MAVEN-090, MAVEN-110 | Non |
 
 ---
 
@@ -570,6 +571,25 @@ La stratégie retenue est :
   - ne pas transformer tous les modules Maven en repositories par principe.
 - **Livrable** : décision documentée module par module, avec dépendances et stratégie de versioning.
 - **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+---
+
+# MAVEN-JPMS-010 — `module-info.java` sur les modules purs
+
+- **Prérequis** : MAVEN-100 (les dix modules purs existent).
+- **Objectif** : faire respecter par le compilateur (et non plus seulement par Maven et ArchUnit) l'isolation des modules sans Spring ni JPA : un module ne voit que les packages exportés des modules qu'il déclare.
+- **Décisions retenues** :
+  - un `module-info.java` dans les dix modules purs : `domain-budget`, `domain-retirement`, `domain-tax`, `domain-wealth`, `domain-bank-pointage`, `domain-treasury`, `domain-analysis`, `domain-credit`, `domain-goals` et `transition-snapshot` ;
+  - nom du module JPMS = package racine du module (`com.moe.myfamilybudget.domain.budget`, `...domain.bankpointage`, `...transition`, etc.) ; chaque module exporte tous ses packages (`calculation`, `model`, `port`, ou `transition.model`/`transition.port`) ;
+  - `requires` calqué sur les dépendances des poms ; `requires transitive` partout où un type d'un autre module apparaît dans l'API publique (`domain-tax` → `domain-retirement`, `domain-wealth` → `domain-budget`, `domain-treasury` → budget/retirement/tax/wealth, `domain-analysis` → `domain-bank-pointage`, `transition-snapshot` → les sept domaines qu'il agrège), contrôlé par `javac -Xlint:exports` sans aucun avertissement ; les autres dépendances restent des `requires` simples ;
+  - `domain-bank-pointage` déclare `requires org.slf4j` (seule dépendance externe des modules purs) ;
+  - aucun renommage de package : il n'existait aucun package éclaté entre modules (condition nécessaire à JPMS), et les packages respectent déjà la convention `<racine>.<module>.{calculation,model,port}` ; `domain-budget`, qui ne porte que des records, garde son package unique `domain.budget` ;
+  - **hors périmètre** : `application`, `persistence` et `server`. Ils restent classpath-only : ils dépendent de Spring, de JPA/Hibernate et de Spring Data (réflexion, proxies, `opens` à Hibernate/Spring, jars de modules automatiques), et le Spring Boot fat-jar s'exécute de toute façon sur le classpath. Les `module-info.class` des modules purs y sont ignorés (les exports ne s'appliquent qu'en mode module), ce qui garde le comportement d'exécution et les tests ArchUnit inchangés ;
+  - les tests unitaires des modules restent dans les modules ; Surefire les exécute en mode « patch-module » (classes de test patchées dans le module, JUnit/AssertJ sur le classpath avec `--add-reads <module>=ALL-UNNAMED`) ;
+  - vérifié avec `javac` 21 en mode module, dans l'ordre du graphe (compilation de production sans avertissement, compilation des tests par `--patch-module`) ; 140 tests unitaires des sept modules de domaine qui en ont exécutés avec JUnit Platform en mode module (retirement 18, tax 14, wealth 11, bank-pointage 46, treasury 30, analysis 11, credit 10), tous verts ; Maven non exécuté dans Claude, à confirmer en CI.
+- **Critères de sortie** : tout import d'un package non exporté ou d'un module non déclaré dans les dix modules purs est une erreur de compilation.
+- **Tests** : `mvn -f back/pom.xml -B -pl server -am test` ; tests unitaires des modules en mode module ; ArchUnit inchangé.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 ---
 
