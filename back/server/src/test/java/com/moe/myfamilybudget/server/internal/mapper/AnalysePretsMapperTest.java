@@ -14,7 +14,7 @@ import com.moe.myfamilybudget.api.model.AnalysePretDto;
 import com.moe.myfamilybudget.api.model.AnalysePretsDto;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
-import com.moe.myfamilybudget.server.internal.factory.LoanAdviceInputFactory;
+import com.moe.myfamilybudget.application.factory.LoanAdviceInputFactory;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 

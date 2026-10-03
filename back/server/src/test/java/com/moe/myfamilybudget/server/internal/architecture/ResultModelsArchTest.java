@@ -7,7 +7,7 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.moe.myfamilybudget.server.internal.mapper.AnalyseMapper;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 
 /**
  * Garde-fou RES-010 (voir doc/architecture/19-backlog-pre-maven-patchs.md) : le

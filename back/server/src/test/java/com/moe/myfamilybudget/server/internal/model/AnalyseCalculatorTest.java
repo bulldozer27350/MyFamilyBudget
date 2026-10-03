@@ -1,5 +1,7 @@
 package com.moe.myfamilybudget.server.internal.model;
 
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -14,7 +16,7 @@ import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseCategorySummaryModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseLandingRowModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
-import com.moe.myfamilybudget.server.internal.factory.AnalyseInputFactory;
+import com.moe.myfamilybudget.application.factory.AnalyseInputFactory;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.CategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingLinkModel;

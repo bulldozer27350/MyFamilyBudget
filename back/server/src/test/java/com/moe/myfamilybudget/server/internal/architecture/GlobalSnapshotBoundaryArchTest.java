@@ -7,7 +7,7 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.moe.myfamilybudget.server.internal.impl.SystemeServiceImpl;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 
 /**

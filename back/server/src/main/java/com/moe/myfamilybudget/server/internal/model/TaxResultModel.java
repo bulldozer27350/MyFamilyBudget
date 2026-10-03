@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.model;
 
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 import java.util.List;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;

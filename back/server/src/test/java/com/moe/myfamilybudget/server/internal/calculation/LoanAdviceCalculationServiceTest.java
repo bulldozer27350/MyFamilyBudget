@@ -12,7 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.factory.LoanAdviceInputFactory;
+import com.moe.myfamilybudget.application.factory.LoanAdviceInputFactory;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.LoanItem;

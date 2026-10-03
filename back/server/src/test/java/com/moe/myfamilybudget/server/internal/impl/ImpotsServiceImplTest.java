@@ -15,10 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
+import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
-import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
-import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
+import com.moe.myfamilybudget.application.command.TaxCommandService;
+import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.TaxMapper;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;

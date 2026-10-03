@@ -24,9 +24,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsStore;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
+import com.moe.myfamilybudget.application.settings.ObjectifsSettingsStore;
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.BankImportDocumentMapper;

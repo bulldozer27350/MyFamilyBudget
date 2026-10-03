@@ -14,7 +14,7 @@ import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.server.internal.model.PointageModel;
-import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 
 /**
  * Mapper assurant la conversion entre les structures de transfert (Maps / DTOs)

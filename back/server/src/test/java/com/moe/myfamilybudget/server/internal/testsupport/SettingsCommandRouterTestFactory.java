@@ -1,12 +1,12 @@
 package com.moe.myfamilybudget.server.internal.testsupport;
 
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
-import com.moe.myfamilybudget.server.internal.command.EconomicAssumptionsCommandService;
-import com.moe.myfamilybudget.server.internal.command.RetirementCommandService;
-import com.moe.myfamilybudget.server.internal.command.SettingsCommandRouter;
-import com.moe.myfamilybudget.server.internal.command.SimulationSettingsCommandService;
-import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
-import com.moe.myfamilybudget.server.internal.command.TresorerieCommandService;
+import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
+import com.moe.myfamilybudget.application.command.EconomicAssumptionsCommandService;
+import com.moe.myfamilybudget.application.command.RetirementCommandService;
+import com.moe.myfamilybudget.application.command.SettingsCommandRouter;
+import com.moe.myfamilybudget.application.command.SimulationSettingsCommandService;
+import com.moe.myfamilybudget.application.command.TaxCommandService;
+import com.moe.myfamilybudget.application.command.TresorerieCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;

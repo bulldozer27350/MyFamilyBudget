@@ -131,6 +131,7 @@ final class DomainBoundaryRules {
             "com.moe.myfamilybudget.domain.goals..",
             "..internal.notification..",
             "..internal.factory..", "..internal.port..", "..internal.command..",
+            "com.moe.myfamilybudget.application..", "com.moe.myfamilybudget.transition..",
             "..internal.persistence..", "..internal.updater..", "..internal.marketdata..",
             "..internal.enablebanking..")
             .as("les couches de domaine (calcul, modèle, notification, factory, port, command, "

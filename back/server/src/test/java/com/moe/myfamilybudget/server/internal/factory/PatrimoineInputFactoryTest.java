@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.factory;
 
+import com.moe.myfamilybudget.application.factory.PatrimoineInputFactory;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
@@ -16,13 +17,13 @@ import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionInput;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementHistoryPoint;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementProjectionInput;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementTransfer;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.budget.TransferModel;
 
 /**

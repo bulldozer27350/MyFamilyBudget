@@ -64,11 +64,13 @@ La stratégie retenue est :
 | MAVEN-070 | Extraire `domain-analysis` | MAVEN-010, MAVEN-060 | MAVEN-080 | Non |
 | MAVEN-080 | Extraire `domain-credit` et `domain-goals` | MAVEN-010, MAVEN-040 | MAVEN-090 | Non |
 | MAVEN-090 | Extraire `domain-notifications` | MAVEN-060, MAVEN-080 | MAVEN-100 | Non |
-| MAVEN-100 | Extraire `application` | MAVEN-020 à MAVEN-090 | MAVEN-110 | Oui |
+| MAVEN-100 | Extraire `application` (commands, factories, `transition-snapshot`) | MAVEN-020 à MAVEN-080 | MAVEN-090, MAVEN-110 | Oui |
+| MAVEN-101 | Finaliser `application` : factories Overview / Notification / PlacementRate | MAVEN-090, MAVEN-100 | MAVEN-110, MAVEN-120 | Oui |
+| MAVEN-102 | Déplacer `internal.impl`, `internal.mapper` et `NotificationDispatchService` dans `application` | MAVEN-100, MAVEN-110 | MAVEN-101, MAVEN-120 | Oui |
 | MAVEN-110 | Extraire `api` / OpenAPI généré | MAVEN-100 | aucun | Oui |
 | MAVEN-120 | Extraire `persistence` | MAVEN-100 | MAVEN-110, DB-xxx | Oui |
-| MAVEN-130 | Extraire `server-app` / composition root | MAVEN-100, MAVEN-110, MAVEN-120 | MAVEN-140 | Oui |
-| MAVEN-140 | Stabiliser le graphe et ajouter les garde-fous Maven | MAVEN-100 à MAVEN-130 | DB-xxx | Oui |
+| MAVEN-130 | Extraire `server-app` / composition root | MAVEN-100, MAVEN-101, MAVEN-102, MAVEN-110, MAVEN-120 | MAVEN-140 | Oui |
+| MAVEN-140 | Stabiliser le graphe et ajouter les garde-fous Maven | MAVEN-100 à MAVEN-130 (dont MAVEN-101 et MAVEN-102) | DB-xxx | Oui |
 | MAVEN-150 | CI sélective par sous-graphe Maven | MAVEN-140 | DB-xxx | Non |
 | MAVEN-160 | Revue de candidatures au multi-repo | MAVEN-150 + DB-1180 | aucun | — |
 
@@ -378,7 +380,7 @@ La stratégie retenue est :
 
 # MAVEN-100 — Extraire `application`
 
-- **Prérequis** : MAVEN-020 à MAVEN-090.
+- **Prérequis** : MAVEN-020 à MAVEN-080 (le périmètre livré ne touche pas aux éléments de MAVEN-090 ; ceux-ci sont reportés en MAVEN-101).
 - **Objectif** : regrouper l’orchestration applicative et les assemblers sans la confondre avec les domaines purs.
 - **Contenu cible** :
   - `internal.command.*` : services de commandes et routage Settings ;
@@ -395,6 +397,42 @@ La stratégie retenue est :
 - **Point critique** : les factories peuvent encore lire/assembler à partir de plusieurs domaines ; elles constituent la zone d’assemblage légitime.
 - **Tests** : tests de services applicatifs, tests de commands, scénarios d’intégration.
 - **Critère de sortie** : aucun domaine pur ne dépend de `application`.
+- **Décisions retenues** (option B + C, validée par l'utilisateur) :
+  - **B — module de transition `back/transition-snapshot`** (artifact `transition-snapshot`, packages `com.moe.myfamilybudget.transition.model` et `.port`) : il porte `BudgetDataModel`, `SettingsModel` et les ports transverses `BudgetReader`, `SettingsReader`, `BudgetMutationLock`, `EconomicAssumptionsWriter`, `SimulationSettingsWriter` (un contrat transversal de lecture justifie ici une petite bibliothèque d'abstractions distincte, voir « `internal.port` » plus bas ; ce n'est pas un module `ports` générique). Il dépend des seuls modules de domaine dont il agrège les modèles (JDK uniquement en production, ni Spring, ni JPA, ni OpenAPI) ; aucun domaine ne dépend de lui. Sens unique : `application` et (à terme) `persistence` → `transition-snapshot` → domaines. Il disparaît ou se réduit avec `DB-1180` ;
+  - **`application`** (`back/application`, artifact `application`, package racine `com.moe.myfamilybudget.application`) : `.command` (les 11 classes de `internal.command`, dont `SettingsCommandRouter` et `SettingsOwner`), `.factory` (`AnalyseInputFactory`, `AssetBucketResolver`, `LoanAdviceInputFactory`, `PatrimoineInputFactory`, `PointageInputFactory`, `RetirementInputFactory`, `TaxInputFactory`, `TaxSimulationPeriodResolver`, `TreasuryInputFactory`) et `.settings` (`ObjectifsSettingsService` et son port `ObjectifsSettingsStore`, requis par `SettingsCommandRouter` et `GoalCommandService` ; l'implémentation `JpaObjectifsSettingsStore` reste dans `server`). Dépendances de production : modules de domaine, `transition-snapshot`, `spring-context` (stéréotypes seuls) et `slf4j-api` ; aucune dépendance vers JPA, OpenAPI, spring-web, `PersistenceManager` ni `server` ;
+  - **C — périmètre réduit** : `internal.impl` n'est **pas** déplacé (il consomme les DTO et interfaces générés `api.model` / `api.controller`, donc dépend de MAVEN-110) ; les trois factories qui dépendent encore de composants restés dans `server` sont également reportées : `OverviewInputFactory` (avec `OverviewInput`, `OverviewParameters`, `OverviewCalculationService`, `OverviewResultModel`), `NotificationInputFactory` (liée à MAVEN-090, en cours) et `PlacementRateSuggestionInputFactory` (dépend de `internal.marketdata`). Ce reliquat est tracé par **MAVEN-101** et **MAVEN-102** ci-dessous : il ne doit pas être oublié avant MAVEN-130 ;
+  - les classes déplacées changent de package sans modification de comportement ; les tests (commands, factories, `ObjectifsSettingsService`, ArchUnit) restent dans `server` (ils s'appuient sur `testsupport`, les fixtures de `BudgetDataModel` et le contexte Spring) et sont rebranchés par simple changement d'imports ; leur déplacement est prévu en MAVEN-101 ;
+  - ArchUnit : `com.moe.myfamilybudget.application..` et `com.moe.myfamilybudget.transition..` rejoignent `DOMAIN_LAYERS` (`DomainBoundaryRules`) ; `transition.model` rejoint les couches pures (`PureLayerRules`, `CalculationDependenciesArchTest`) ; `application.factory` est ajouté aux consommateurs autorisés de `BudgetDataModel` (`BudgetDataModelUsageArchTest`) ;
+  - le reactor, `server/pom.xml`, le Dockerfile, la CI et le gate VT-600 référencent les deux nouveaux modules.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé (périmètre B + C ; reliquat : MAVEN-101 et MAVEN-102)
+
+# MAVEN-101 — Finaliser `application` : factories Overview / Notification / PlacementRate
+
+- **Prérequis** : MAVEN-090 (`domain-notifications` terminé) et MAVEN-100.
+- **Objectif** : terminer le déplacement de `internal.factory` dans `application`, reporté par MAVEN-100.
+- **Travaux** :
+  - déplacer `NotificationInputFactory` dans `application.factory` une fois MAVEN-090 livré (ses entrées `DebitThresholdInput` / `BalanceFloorInput` doivent alors vivre dans `domain-notifications`) ;
+  - déplacer `OverviewInputFactory` ; décider où vivent `OverviewInput`, `OverviewParameters`, `OverviewCalculationService` et `OverviewResultModel` (agrégateur pur sans module dédié : `application` ou petit `domain-overview`) et adapter les règles ArchUnit Overview (`DomainBoundaryRules.OVERVIEW`, `CalculationDependenciesArchTest`) ;
+  - déplacer `PlacementRateSuggestionInputFactory` : trancher l'ownership de `PlacementRateSuggestion*` et de `internal.marketdata` (voir MAVEN-080) pour éviter une dépendance `application → server` ;
+  - déplacer dans `application` les tests de composant des commands et factories dont les fixtures ne dépendent plus de `server` (`testsupport`) ;
+  - supprimer le package `internal.factory` ; vérifier que `internal.model` ne contient plus que des modèles à répartir ailleurs (voir « `internal.model` »).
+- **Critères de sortie** : plus aucune classe dans `server.internal.factory` ni `server.internal.command` ; `application` ne dépend pas de `server` ; aucun domaine pur ne dépend de `application` ; build complet vert.
+- **Tests** : tests des factories et commands exécutés dans `application` ; ArchUnit ; scénarios d'intégration.
+- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+
+# MAVEN-102 — Déplacer `internal.impl`, `internal.mapper` et `NotificationDispatchService` dans `application`
+
+- **Prérequis** : MAVEN-100 et MAVEN-110 (les services `impl` et les mappers consomment les DTO et interfaces générés `api.model` / `api.controller`).
+- **Objectif** : terminer l'extraction de la couche applicative, reportée par MAVEN-100 (option C).
+- **Travaux** :
+  - déplacer les services `internal.impl.*` dans `application.service` (renommage du package ; `internal.impl` ne doit pas rester une frontière finale) ;
+  - répartir `internal.mapper` selon la règle « `internal.mapper` » plus bas (`BudgetFacadeView` et mappers OpenAPI → `application`, mappers JPA ↔ modèle → `persistence`) ;
+  - déplacer `NotificationDispatchService` (et sa lecture des `Reader`) sans emporter Web Push, `JpaNotificationSettingsStore` ni les repositories de déduplication ;
+  - décider du sort de `GlobalBudgetSnapshotService` (`internal.snapshot`) : `application` ou `persistence` selon sa dépendance à `PersistenceManager` ;
+  - laisser `EnableBankingApiServiceImpl`, `TauxMarcheServiceImpl` et leurs dépendances runtime dans `server-app` tant que MAVEN-130 n'a pas statué sur `internal.enablebanking` / `internal.marketdata` ;
+  - mettre à jour `BudgetDataModelUsageArchTest` (`ALLOWED_API_SERVICES`) et `DomainBoundaryRules.REST_FACADE`.
+- **Critères de sortie** : plus aucune classe dans `server.internal.impl` ni `server.internal.mapper` hors éléments explicitement réservés à `server-app` ; build complet vert ; aucun changement de contrat REST.
+- **Tests** : tests des services applicatifs, mappers et dispatch ; ArchUnit ; E2E.
 - **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 # MAVEN-110 — Extraire `api` / OpenAPI généré
@@ -438,6 +476,7 @@ La stratégie retenue est :
   - rendre explicites les dépendances vers les domaines qu’il persiste ;
   - déplacer progressivement les repositories/entities sans imposer la fin de `DB-1100..1180` ;
   - conserver les adapters comme implémentations des Reader/Writer de leurs domaines ;
+  - dépendre de `transition-snapshot` (BudgetDataModel, SettingsModel, ports transverses, MAVEN-100) et non de `application` ;
   - éviter que `persistence` expose des classes JPA au module application lorsqu’un port suffit.
 - **Parallélisation** : peut avancer pendant `DB-xxx`, en particulier pendant le nettoyage des entités et converters.
 - **Tests** : tous les tests JPA/repository/adapter ; PostgreSQL ; rollback ; concurrence ; redémarrage Spring.
@@ -446,7 +485,7 @@ La stratégie retenue est :
 
 # MAVEN-130 — Extraire `server-app` / composition root
 
-- **Prérequis** : MAVEN-100, MAVEN-110, MAVEN-120.
+- **Prérequis** : MAVEN-100, MAVEN-101, MAVEN-102, MAVEN-110, MAVEN-120.
 - **Objectif** : faire du dernier module un runtime exécutable et un composition root Spring mince.
 - **Contenu cible** :
   - `ServerApplication` ;
@@ -466,7 +505,7 @@ La stratégie retenue est :
 
 # MAVEN-140 — Stabiliser le graphe et ajouter les garde-fous Maven
 
-- **Prérequis** : MAVEN-100, MAVEN-110, MAVEN-120, MAVEN-130.
+- **Prérequis** : MAVEN-100, MAVEN-101, MAVEN-102, MAVEN-110, MAVEN-120, MAVEN-130.
 - **Objectif** : vérifier que le graphe Maven matérialise les règles d’architecture et ne repose plus uniquement sur ArchUnit.
 - **Travaux** :
   - produire la matrice des dépendances entre modules ;
@@ -581,6 +620,10 @@ Cas volontairement différés hors domaines :
 Les ports doivent rejoindre le **module qui possède le contrat**, sauf si un contrat transversal de lecture impose une
 bibliothèque d’abstractions distincte. Ne pas créer un énorme module `ports` uniquement pour reproduire le package historique.
 
+Décision MAVEN-100 : les cinq ports transverses restants (`BudgetReader`, `SettingsReader`, `BudgetMutationLock`,
+`EconomicAssumptionsWriter`, `SimulationSettingsWriter`) vivent dans le module de transition `transition-snapshot`
+avec `BudgetDataModel` et `SettingsModel` ; le package `internal.port` est vide.
+
 ### `internal.factory`
 
 À déplacer dans `application`, car ces classes font l’assemblage de données entre domaines et Readers.
@@ -646,11 +689,13 @@ peuvent avancer avec une coordination minimale sur les contrats partagés.
 Une fois les domaines extraits :
 
 ```text
-MAVEN-090
-    ↓
-MAVEN-100
-    ├── MAVEN-110
+MAVEN-090 ─┐
+            ├── MAVEN-101
+MAVEN-100 ──┤
+    ├── MAVEN-110 ── MAVEN-102
     └── MAVEN-120
+
+MAVEN-101 + MAVEN-102 + MAVEN-120
              ↓
          MAVEN-130
 ```
@@ -712,7 +757,8 @@ et vérifier en plus :
 - reactor Maven sans cycle ;
 - dépendances inter-modules conformes au graphe documenté ;
 - aucune dépendance d’un domaine pur vers `persistence`, JPA, OpenAPI ou Spring interdit ;
-- `BudgetDataModel` absent des contrats de domaine ;
+- `BudgetDataModel` absent des contrats de domaine (il vit dans `transition-snapshot`, jamais en dépendance d'un domaine) ;
+- plus aucune classe résiduelle dans `server.internal.factory`, `internal.command`, `internal.impl` et `internal.mapper` (MAVEN-101, MAVEN-102) ;
 - `PersistenceManager` absent des domaines ;
 - `api` sans logique métier ;
 - `server-app` reste le seul module produisant le livrable Spring Boot exécutable ;

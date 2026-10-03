@@ -1,0 +1,18 @@
+package com.moe.myfamilybudget.application.settings;
+
+import java.util.Optional;
+import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
+
+/**
+ * Persistance des paramètres du domaine Objectifs (RF-700).
+ */
+public interface ObjectifsSettingsStore {
+
+    /** Paramètres enregistrés, ou vide s'il n'y en a pas. */
+    Optional<ObjectifsParameters> load();
+
+    void save(ObjectifsParameters parameters);
+
+    /** Supprime les paramètres enregistrés (retour aux valeurs par défaut). */
+    void clear();
+}

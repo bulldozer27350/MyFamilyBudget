@@ -8,15 +8,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.PointageApi;
-import com.moe.myfamilybudget.server.internal.command.BankImportCommandService;
+import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.server.internal.mapper.PointageMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculator;
 import com.moe.myfamilybudget.server.internal.model.PointageModel;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
-import com.moe.myfamilybudget.server.internal.port.BudgetReader;
+import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.server.internal.port.SettingsReader;
+import com.moe.myfamilybudget.transition.port.SettingsReader;
 
 /**
  * Service et Contrôleur REST implémentant le contrat OpenAPI PointageApi (Tag: Pointage).

@@ -192,6 +192,13 @@ le domaine Objectifs (paramètres, contrats `ObjectifReachableInput`/`PlacementB
 ports `GoalReader`/`GoalWriter`) vit dans `back/domain-goals` (`com.moe.myfamilybudget.domain.goals.*`). Les deux
 modules n'ont aucune dépendance vers un autre module du reactor ; le moteur Crédit est déclaré comme bean par
 `config/DomainEngineConfig`.
+Le snapshot global de transition (`BudgetDataModel`, `SettingsModel`) et les ports transverses (`BudgetReader`,
+`SettingsReader`, `BudgetMutationLock`, `EconomicAssumptionsWriter`, `SimulationSettingsWriter`) vivent dans
+`back/transition-snapshot` (`com.moe.myfamilybudget.transition.*`) ; aucun domaine n'en dépend. La couche applicative
+(commands, factories d'Input, `ObjectifsSettingsService`) vit dans `back/application`
+(`com.moe.myfamilybudget.application.*`) ; elle dépend des domaines et de `transition-snapshot`, jamais de `server`.
+Les services `internal.impl`, les mappers et les factories Overview / Notification / PlacementRate restent dans `server`
+jusqu'à MAVEN-101 et MAVEN-102.
 
 ### 4.5 Le pattern "oracle JS" pour les tests d'intégration
 

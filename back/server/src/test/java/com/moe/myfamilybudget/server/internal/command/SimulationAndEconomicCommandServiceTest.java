@@ -1,5 +1,7 @@
 package com.moe.myfamilybudget.server.internal.command;
 
+import com.moe.myfamilybudget.application.command.EconomicAssumptionsCommandService;
+import com.moe.myfamilybudget.application.command.SimulationSettingsCommandService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -11,8 +13,8 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.port.EconomicAssumptionsWriter;
-import com.moe.myfamilybudget.server.internal.port.SimulationSettingsWriter;
+import com.moe.myfamilybudget.transition.port.EconomicAssumptionsWriter;
+import com.moe.myfamilybudget.transition.port.SimulationSettingsWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 /** SET-020 : owners minimaux Simulation ({@code simulateUntilAge}) et Hypothèses économiques ({@code inflationRate}). */

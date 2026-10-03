@@ -14,7 +14,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.moe.myfamilybudget.server.internal.factory.NotificationInputFactory;
-import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.persistence.BudgetMutatedEvent;
 import com.moe.myfamilybudget.server.internal.persistence.entity.NotificationSentLogEntity;
 import com.moe.myfamilybudget.server.internal.notification.rules.BalanceFloorRule;
@@ -24,7 +24,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.Notificatio
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.server.internal.port.SettingsReader;
+import com.moe.myfamilybudget.transition.port.SettingsReader;
 
 /**
  * Croise les {@link NotificationRule} actives avec la liste des {@link NotificationChannel}, et

@@ -3,7 +3,7 @@ package com.moe.myfamilybudget.server.internal.persistence.adapter;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
-import com.moe.myfamilybudget.server.internal.port.BudgetMutationLock;
+import com.moe.myfamilybudget.transition.port.BudgetMutationLock;
 
 /**
  * Adaptateur de persistance pour {@link BudgetMutationLock} (DB-061) : delegue au verrou de mutation du

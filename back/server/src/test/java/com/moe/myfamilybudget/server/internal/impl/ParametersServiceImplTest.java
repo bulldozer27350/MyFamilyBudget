@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
+import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
-import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
+import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;

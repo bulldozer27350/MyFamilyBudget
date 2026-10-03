@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.factory;
 
+import com.moe.myfamilybudget.application.factory.AssetBucketResolver;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 

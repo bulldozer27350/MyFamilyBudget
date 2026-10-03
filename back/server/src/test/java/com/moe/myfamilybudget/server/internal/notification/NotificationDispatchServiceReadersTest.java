@@ -21,7 +21,7 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTran
 import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.notification.rules.BalanceFloorRule;
 import com.moe.myfamilybudget.server.internal.notification.rules.DebitThresholdRule;
 import com.moe.myfamilybudget.server.internal.notification.rules.ObjectifReachableRule;
@@ -30,7 +30,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.Notificatio
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.server.internal.port.SettingsReader;
+import com.moe.myfamilybudget.transition.port.SettingsReader;
 
 /**
  * NOTIF-010 : {@code NotificationDispatchService} lit le budget uniquement via les ports de lecture, et

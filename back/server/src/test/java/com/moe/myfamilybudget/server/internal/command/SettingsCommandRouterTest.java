@@ -1,5 +1,12 @@
 package com.moe.myfamilybudget.server.internal.command;
 
+import com.moe.myfamilybudget.application.command.EconomicAssumptionsCommandService;
+import com.moe.myfamilybudget.application.command.RetirementCommandService;
+import com.moe.myfamilybudget.application.command.SettingsCommandRouter;
+import com.moe.myfamilybudget.application.command.SettingsOwner;
+import com.moe.myfamilybudget.application.command.SimulationSettingsCommandService;
+import com.moe.myfamilybudget.application.command.TaxCommandService;
+import com.moe.myfamilybudget.application.command.TresorerieCommandService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -13,7 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
+import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;

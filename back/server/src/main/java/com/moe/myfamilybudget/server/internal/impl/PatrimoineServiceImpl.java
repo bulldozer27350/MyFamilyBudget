@@ -16,20 +16,20 @@ import com.moe.myfamilybudget.api.model.PlacementHistoryEntryDto;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolution;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
-import com.moe.myfamilybudget.server.internal.factory.PatrimoineInputFactory;
+import com.moe.myfamilybudget.application.factory.PatrimoineInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.PatrimoineMapper;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.server.internal.command.GoalCommandService;
-import com.moe.myfamilybudget.server.internal.command.LoanCommandService;
-import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
+import com.moe.myfamilybudget.application.command.GoalCommandService;
+import com.moe.myfamilybudget.application.command.LoanCommandService;
+import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
-import com.moe.myfamilybudget.server.internal.port.BudgetReader;
+import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.server.internal.port.SettingsReader;
+import com.moe.myfamilybudget.transition.port.SettingsReader;
 
 /**
  * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à

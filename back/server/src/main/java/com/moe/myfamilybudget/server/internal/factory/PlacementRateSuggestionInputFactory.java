@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.factory;
 
+import com.moe.myfamilybudget.application.factory.AssetBucketResolver;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -10,7 +11,7 @@ import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestio
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput.PlacementRateInput;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
 /**

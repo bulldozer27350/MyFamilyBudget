@@ -9,15 +9,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
-import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsService;
-import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
-import com.moe.myfamilybudget.server.internal.command.SettingsCommandRouter;
+import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
+import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
+import com.moe.myfamilybudget.application.command.SettingsCommandRouter;
 import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
-import com.moe.myfamilybudget.server.internal.port.BudgetMutationLock;
+import com.moe.myfamilybudget.transition.port.BudgetMutationLock;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.server.internal.port.SettingsReader;
+import com.moe.myfamilybudget.transition.port.SettingsReader;
 
 /**
  * DB-061 -- {@code saveSettings} prend le verrou de mutation du budget (port {@link BudgetMutationLock}, VT-350b)

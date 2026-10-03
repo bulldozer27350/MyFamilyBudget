@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.factory;
 
+import com.moe.myfamilybudget.application.factory.LoanAdviceInputFactory;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;

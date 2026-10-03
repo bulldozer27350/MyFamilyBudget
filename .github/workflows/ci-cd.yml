@@ -63,6 +63,8 @@ jobs:
             back/domain-analysis/pom.xml
             back/domain-credit/pom.xml
             back/domain-goals/pom.xml
+            back/transition-snapshot/pom.xml
+            back/application/pom.xml
             back/server/pom.xml
 
       - name: Set up Bun

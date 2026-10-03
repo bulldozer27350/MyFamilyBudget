@@ -22,7 +22,7 @@ import com.moe.myfamilybudget.server.internal.model.RetraitePersonWithProjection
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
-import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 
 @Component
 public class RetraiteMapper {

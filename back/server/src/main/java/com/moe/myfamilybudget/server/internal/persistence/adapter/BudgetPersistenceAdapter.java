@@ -17,7 +17,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowInc
 import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowOneOffRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowVariableIncomeRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.CashflowVariableOverrideRepository;
-import com.moe.myfamilybudget.server.internal.port.BudgetReader;
+import com.moe.myfamilybudget.transition.port.BudgetReader;
 
 /**
  * Adaptateur de persistance pour {@link BudgetReader} (RF-B00).

@@ -2,11 +2,11 @@ package com.moe.myfamilybudget.server.internal.persistence.adapter;
 
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
-import com.moe.myfamilybudget.server.internal.port.EconomicAssumptionsWriter;
-import com.moe.myfamilybudget.server.internal.port.SettingsReader;
-import com.moe.myfamilybudget.server.internal.port.SimulationSettingsWriter;
+import com.moe.myfamilybudget.transition.port.EconomicAssumptionsWriter;
+import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.transition.port.SimulationSettingsWriter;
 
 /**
  * Adaptateur de persistance pour {@link SettingsReader} (RF-B00), {@link SimulationSettingsWriter} et

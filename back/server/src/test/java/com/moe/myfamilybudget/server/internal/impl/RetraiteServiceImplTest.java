@@ -22,11 +22,11 @@ import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculatio
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementParameters;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementPersonInput;
-import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
+import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.RetraiteMapper;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
-import com.moe.myfamilybudget.server.internal.command.RetirementCommandService;
+import com.moe.myfamilybudget.application.command.RetirementCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.RetirementPersistenceAdapter;

@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.model;
 
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import java.util.List;

@@ -12,11 +12,11 @@ import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionServ
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
 import com.moe.myfamilybudget.domain.treasury.calculation.TresorerieCalculationService;
-import com.moe.myfamilybudget.server.internal.factory.AssetBucketResolver;
+import com.moe.myfamilybudget.application.factory.AssetBucketResolver;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
@@ -26,7 +26,7 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculator;
 import com.moe.myfamilybudget.server.internal.model.PointageModel;
-import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculator;
@@ -283,6 +283,7 @@ class CalculationDependenciesArchTest {
     static final ArchRule ENGINES_DO_NOT_DEPEND_ON_PERSISTENCE_MANAGER = noClasses()
             .that().resideInAPackage("..internal.calculation..")
             .or().resideInAPackage("..internal.model..")
+            .or().resideInAPackage("com.moe.myfamilybudget.transition.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
@@ -305,6 +306,7 @@ class CalculationDependenciesArchTest {
     static final ArchRule PURE_DOMAIN_DOES_NOT_DEPEND_ON_OPENAPI_DTOS = noClasses()
             .that().resideInAPackage("..internal.calculation..")
             .or().resideInAPackage("..internal.model..")
+            .or().resideInAPackage("com.moe.myfamilybudget.transition.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")

@@ -11,19 +11,19 @@ import org.springframework.web.bind.annotation.RestController;
 import com.moe.myfamilybudget.api.controller.RetraiteApi;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationInput;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
-import com.moe.myfamilybudget.server.internal.command.RetirementCommandService;
-import com.moe.myfamilybudget.server.internal.factory.RetirementInputFactory;
+import com.moe.myfamilybudget.application.command.RetirementCommandService;
+import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.server.internal.mapper.RetraiteMapper;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraitePersonWithProjectionModel;
 import com.moe.myfamilybudget.server.internal.model.RetraiteResultModel;
-import com.moe.myfamilybudget.server.internal.model.SettingsModel;
-import com.moe.myfamilybudget.server.internal.port.BudgetReader;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
-import com.moe.myfamilybudget.server.internal.port.SettingsReader;
+import com.moe.myfamilybudget.transition.port.SettingsReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxReader;
 
 /**

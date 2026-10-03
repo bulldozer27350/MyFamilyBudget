@@ -6,7 +6,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 
 /**
  * Garde-fou CLEAN-010 (voir doc/architecture/19-backlog-pre-maven-patchs.md et
@@ -38,6 +38,7 @@ class BudgetDataModelUsageArchTest {
             .and().resideOutsideOfPackages(
                     "..internal.persistence..",
                     "..internal.factory..",
+                    "com.moe.myfamilybudget.application.factory..",
                     "..internal.mapper..",
                     "..internal.updater..",
                     "..internal.snapshot..")

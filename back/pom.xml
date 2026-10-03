@@ -20,7 +20,7 @@
         Ce parent ne porte que des versions (properties, dependencyManagement, pluginManagement) :
         aucune dépendance ni aucun plugin n'est activé ici, pour ne rien imposer aux futurs modules.
         Les nouveaux modules sont ajoutés à la section <modules> au fil des items MAVEN-010 à MAVEN-130
-        (MAVEN-010 : domain-budget ; MAVEN-020 : domain-retirement ; MAVEN-030 : domain-tax ; MAVEN-040 : domain-wealth ; MAVEN-060 : domain-bank-pointage ; MAVEN-050 : domain-treasury ; MAVEN-070 : domain-analysis ; MAVEN-080 : domain-credit, domain-goals).
+        (MAVEN-010 : domain-budget ; MAVEN-020 : domain-retirement ; MAVEN-030 : domain-tax ; MAVEN-040 : domain-wealth ; MAVEN-060 : domain-bank-pointage ; MAVEN-050 : domain-treasury ; MAVEN-070 : domain-analysis ; MAVEN-080 : domain-credit, domain-goals ; MAVEN-100 : transition-snapshot, application).
     -->
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -46,6 +46,8 @@
         <module>domain-analysis</module>
         <module>domain-credit</module>
         <module>domain-goals</module>
+        <module>transition-snapshot</module>
+        <module>application</module>
         <module>server</module>
     </modules>
 
@@ -124,6 +126,16 @@
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>domain-goals</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moe.myfamilybudget</groupId>
+                <artifactId>transition-snapshot</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moe.myfamilybudget</groupId>
+                <artifactId>application</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

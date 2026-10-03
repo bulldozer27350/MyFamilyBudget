@@ -11,12 +11,12 @@ import org.junit.jupiter.api.Test;
 import com.moe.myfamilybudget.server.internal.calculation.OverviewInput;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjection;
 import com.moe.myfamilybudget.domain.wealth.calculation.RealEstateProjection;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.server.internal.model.SettingsModel;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
 
 /**

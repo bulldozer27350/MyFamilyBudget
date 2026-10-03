@@ -33,7 +33,7 @@ import com.moe.myfamilybudget.server.internal.persistence.repository.WealthCateg
 import com.moe.myfamilybudget.server.internal.persistence.repository.WealthPlacementRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.WealthRealEstateRepository;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
-import com.moe.myfamilybudget.server.internal.port.BudgetReader;
+import com.moe.myfamilybudget.transition.port.BudgetReader;
 
 /**
  * DB-1070 -- Preuve d'execution que les readers bascules sur JPA (Budget/Tresorerie, Patrimoine, Fiscalite,

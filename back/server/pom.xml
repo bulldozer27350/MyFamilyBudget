@@ -76,6 +76,18 @@
             <artifactId>domain-goals</artifactId>
         </dependency>
 
+        <!-- Snapshot global de transition : BudgetDataModel, SettingsModel et ports transverses (MAVEN-100) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>transition-snapshot</artifactId>
+        </dependency>
+
+        <!-- Couche applicative : commands, factories d'Input, settings Objectifs (MAVEN-100) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>application</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -10,7 +10,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchRule;
-import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 
 /**
  * Règles ARCH-010 (voir doc/architecture/19-backlog-pre-maven-patchs.md) : interdictions explicites
@@ -48,6 +48,7 @@ final class PureLayerRules {
     static final DescribedPredicate<JavaClass> PURE_LAYER =
             resideInAPackage("..internal.calculation..").and(not(SETTINGS_INFRASTRUCTURE))
                     .or(resideInAPackage("..internal.model.."))
+                    .or(resideInAPackage("com.moe.myfamilybudget.transition.model.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.budget.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.retirement.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.tax.."))
@@ -59,7 +60,7 @@ final class PureLayerRules {
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.goals.."))
                     .or(resideInAPackage("..internal.notification.rules.."))
                     .as("les couches pures (internal.calculation hors infra de paramétrage, "
-                            + "internal.model, domain.budget, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, internal.notification.rules)");
+                            + "internal.model, transition.model, domain.budget, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, internal.notification.rules)");
 
     static final ArchRule NO_BUDGET_DATA_MODEL = noClasses()
             .that(PURE_LAYER)
