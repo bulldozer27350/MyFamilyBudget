@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.application.overview;
 
 import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjection;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjection;

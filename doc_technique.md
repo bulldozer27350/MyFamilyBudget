@@ -206,8 +206,10 @@ le compilateur interdit donc d'y importer un package non exporté ou d'un module
 `server` restent sur le classpath (Spring, JPA/Hibernate, code généré), sans `module-info`.
 Les implémentations des interfaces REST générées (`application.service`), les mappers DTO ↔ modèle (`application.mapper`),
 les modèles de résultat (`application.model`) et `DataParsingException` (`application.error`) vivent aussi dans `application`.
+L'agrégateur Overview (`application.overview`, `OverviewInputFactory`, `OverviewServiceImpl`) et `TresorerieServiceImpl` y sont
+aussi ; `UnknownTresorerieFieldException` vit dans `transition-snapshot` (`transition.error`).
 Les services liés aux notifications, à `PersistenceManager`, à `marketdata` / `enablebanking`, ainsi que les factories
-Overview / Notification / PlacementRate restent dans `server` jusqu'à MAVEN-101 et MAVEN-103.
+Notification / PlacementRate restent dans `server` jusqu'à MAVEN-101 et MAVEN-103 (lot B).
 Le contrat REST généré (DTO et interfaces Spring, packages `com.moe.myfamilybudget.api.*`) et l'outillage de bundle
 OpenAPI (`package.json`, Redocly) vivent dans `back/api` ; la spécification (`openapi.yaml`, `openapi/domains/*.yaml`)
 reste à la racine du dépôt. Seul `server` dépend de `api`.

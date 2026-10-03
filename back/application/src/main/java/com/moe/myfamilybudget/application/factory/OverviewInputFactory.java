@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.factory;
+package com.moe.myfamilybudget.application.factory;
 
 import com.moe.myfamilybudget.application.factory.PatrimoineInputFactory;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
@@ -14,8 +14,8 @@ import java.util.Set;
 
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.calculation.OverviewInput;
-import com.moe.myfamilybudget.server.internal.calculation.OverviewParameters;
+import com.moe.myfamilybudget.application.overview.OverviewInput;
+import com.moe.myfamilybudget.application.overview.OverviewParameters;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjection;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionInput;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;

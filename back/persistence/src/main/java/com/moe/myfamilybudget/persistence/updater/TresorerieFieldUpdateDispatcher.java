@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.persistence.updater;
 
+import com.moe.myfamilybudget.transition.error.UnknownTresorerieFieldException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;

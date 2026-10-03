@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.updater;
+package com.moe.myfamilybudget.transition.error;
 
 /**
  * Levée lorsqu'un appel à updateTresorerieRow référence un {@code listKey} ou un {@code field}

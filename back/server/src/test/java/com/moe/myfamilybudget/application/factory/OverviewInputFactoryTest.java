@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.factory;
+package com.moe.myfamilybudget.application.factory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -8,7 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.OverviewInput;
+import com.moe.myfamilybudget.application.overview.OverviewInput;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjection;
 import com.moe.myfamilybudget.domain.wealth.calculation.RealEstateProjection;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;

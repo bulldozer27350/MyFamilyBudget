@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.impl;
+package com.moe.myfamilybudget.application.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -45,7 +45,7 @@ import com.moe.myfamilybudget.transition.port.SettingsReader;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieAdjustmentKind;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieLineField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieList;
-import com.moe.myfamilybudget.persistence.updater.UnknownTresorerieFieldException;
+import com.moe.myfamilybudget.transition.error.UnknownTresorerieFieldException;
 
 /**
  * Contrôleur REST de la trésorerie prévisionnelle (Trésorerie) : orchestration HTTP uniquement

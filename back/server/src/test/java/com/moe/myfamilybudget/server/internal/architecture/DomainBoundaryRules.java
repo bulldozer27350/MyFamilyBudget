@@ -133,6 +133,7 @@ final class DomainBoundaryRules {
             "..internal.factory..", "..internal.port..", "..internal.command..",
             "com.moe.myfamilybudget.application.command..", "com.moe.myfamilybudget.application.factory..",
             "com.moe.myfamilybudget.application.settings..", "com.moe.myfamilybudget.application.model..",
+            "com.moe.myfamilybudget.application.overview..",
             "com.moe.myfamilybudget.transition..",
             "com.moe.myfamilybudget.persistence..", "..internal.marketdata..",
             "..internal.enablebanking..")

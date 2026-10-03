@@ -414,13 +414,13 @@ La stratégie retenue est :
 - **Objectif** : terminer le déplacement de `internal.factory` dans `application`, reporté par MAVEN-100.
 - **Travaux** :
   - déplacer `NotificationInputFactory` dans `application.factory` une fois MAVEN-090 livré (ses entrées `DebitThresholdInput` / `BalanceFloorInput` doivent alors vivre dans `domain-notifications`) ;
-  - déplacer `OverviewInputFactory` ; décider où vivent `OverviewInput`, `OverviewParameters` et `OverviewCalculationService` (agrégateur pur sans module dédié : `application` ou petit `domain-overview` ; `OverviewResultModel` et `OverviewMapper` sont déjà dans `application.model` / `application.mapper` depuis MAVEN-102) et adapter les règles ArchUnit Overview (`DomainBoundaryRules.OVERVIEW`, `CalculationDependenciesArchTest`) ;
+  - ~~Overview~~ : `OverviewInputFactory`, `OverviewInput`, `OverviewParameters` et `OverviewCalculationService` sont déjà dans `application` (lot A de MAVEN-103) ; il ne reste ici que `NotificationInputFactory` et `PlacementRateSuggestionInputFactory` ;
   - déplacer `PlacementRateSuggestionInputFactory` : trancher l'ownership de `PlacementRateSuggestion*` et de `internal.marketdata` (voir MAVEN-080) pour éviter une dépendance `application → server` ;
   - déplacer dans `application` les tests de composant des commands et factories dont les fixtures ne dépendent plus de `server` (`testsupport`) ;
   - supprimer le package `internal.factory` ; vérifier que `internal.model` ne contient plus que des modèles à répartir ailleurs (voir « `internal.model` »).
 - **Critères de sortie** : plus aucune classe dans `server.internal.factory` ni `server.internal.command` ; `application` ne dépend pas de `server` ; aucun domaine pur ne dépend de `application` ; build complet vert.
 - **Tests** : tests des factories et commands exécutés dans `application` ; ArchUnit ; scénarios d'intégration.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 # MAVEN-102 — Déplacer les services REST, mappers et modèles de résultat dans `application`
 
@@ -449,15 +449,20 @@ La stratégie retenue est :
 - **Prérequis** : MAVEN-090 (`domain-notifications`), MAVEN-101 et MAVEN-102.
 - **Objectif** : vider `server.internal.impl`, `internal.mapper`, `internal.snapshot` et `internal.notification` des classes que MAVEN-102 n'a pas pu déplacer sans créer de dépendance `application → server`.
 - **Reliquat et blocage** :
-  - `OverviewServiceImpl` : attend `OverviewInputFactory`, `OverviewInput` et `OverviewCalculationService` (MAVEN-101) ;
   - `NotificationsServiceImpl`, `NotificationsMapper`, `NotificationDispatchService`, `NotificationSettingsService`, `NotificationSettingsCodec` / `Store` et le package `internal.notification` : attendent `domain-notifications` (MAVEN-090) ; le dispatch et `NotificationsServiceImpl` utilisent `PushSubscriptionRepository`, `NotificationSentLogRepository` et `BudgetMutatedEvent` de `persistence` : définir des ports (déduplication, abonnements Web Push) implémentés par `persistence` avant de les déplacer, sans emporter Web Push ni `JpaNotificationSettingsStore` ;
-  - `TresorerieServiceImpl` : lève `persistence.updater.UnknownTresorerieFieldException` (aussi traitée par `GlobalExceptionHandler`) ; placer cette exception dans un module que `application` peut consommer (`domain-budget` ou `transition-snapshot`) puis déplacer le service ;
+  - ~~`TresorerieServiceImpl`~~ : traité par le lot A (exception déplacée dans `transition-snapshot`) ;
   - `SystemeServiceImpl` et `GlobalBudgetSnapshotService` (`internal.snapshot`) : dépendent de `PersistenceManager` ; décider entre un port dans `transition-snapshot` implémenté par `persistence` (service dans `application`) ou le placer dans `persistence` ;
   - `AnalysePretsServiceImpl`, `SuggestionsTauxServiceImpl`, `TauxMarcheServiceImpl`, `TauxMarcheMapper`, `PlacementRateSuggestion*` (+ `PlacementRateSuggestionInputFactory`), `LoanAdviceSettingsService` et `EnableBankingApiServiceImpl` : dépendent de `internal.marketdata` / `internal.enablebanking`, restés dans `server-app` tant que MAVEN-130 n'a pas statué (voir MAVEN-101 pour `PlacementRate*`) ;
   - tests des classes déjà déplacées : les rapatrier dans `back/application` quand leurs fixtures ne dépendent plus de `server`.
+- **Lot A (livré, indépendant de MAVEN-090)** :
+  - chaîne Overview → `application` : `OverviewInput`, `OverviewParameters`, `OverviewCalculationService` dans `application.overview` (agrégateur pur : pas de module `domain-overview` dédié), `OverviewInputFactory` dans `application.factory`, `OverviewServiceImpl` dans `application.service` ; `OverviewResultModel` et `OverviewMapper` étaient déjà dans `application` (MAVEN-102) ;
+  - `TresorerieServiceImpl` → `application.service` ; `UnknownTresorerieFieldException` quitte `persistence.updater` pour le module `transition-snapshot` (`com.moe.myfamilybudget.transition.error`, exporté par son `module-info.java`), de sorte que `persistence` (qui la lève) et `application` (qui la traite) la partagent sans dépendance mutuelle ; `GlobalExceptionHandler` reste dans `server` ;
+  - les tests `OverviewCalculationServiceComponentTest`, `OverviewInputFactoryTest`, `OverviewServiceImplTest` et `TresorerieServiceImplTest` suivent leur classe (packages `application.*`, sources dans `back/server/src/test`) ;
+  - ArchUnit : `application.overview` rejoint `DOMAIN_LAYERS` et les couches pures (`PureLayerRules`, `CalculationDependenciesArchTest`) ; les règles Overview par nom de classe sont inchangées.
+- **Lot B (à faire, après MAVEN-090 et MAVEN-101)** : le reliquat ci-dessus.
 - **Critères de sortie** : plus aucune classe dans `server.internal.impl`, `internal.mapper` ni `internal.snapshot` hors éléments explicitement réservés à `server-app` ; `application` ne dépend ni de `server` ni de `persistence` (sauf décision contraire documentée) ; aucun changement de contrat REST ; build complet vert.
 - **Tests** : tests des services, mappers et dispatch exécutés dans `application` ; ArchUnit ; E2E.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
 
 
 # MAVEN-110 — Extraire `api` / OpenAPI généré

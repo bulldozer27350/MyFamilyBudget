@@ -11,7 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.moe.myfamilybudget.persistence.updater.UnknownTresorerieFieldException;
+import com.moe.myfamilybudget.transition.error.UnknownTresorerieFieldException;
 
 import jakarta.servlet.http.HttpServletRequest;
 

@@ -7,7 +7,7 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
-import com.moe.myfamilybudget.server.internal.calculation.OverviewCalculationService;
+import com.moe.myfamilybudget.application.overview.OverviewCalculationService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
@@ -285,6 +285,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("..internal.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.transition.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.application.model..")
+            .or().resideInAPackage("com.moe.myfamilybudget.application.overview..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
@@ -309,6 +310,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("..internal.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.transition.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.application.model..")
+            .or().resideInAPackage("com.moe.myfamilybudget.application.overview..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
