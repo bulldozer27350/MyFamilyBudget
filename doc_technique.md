@@ -113,12 +113,12 @@ React / ReactDOM / Chart.js (CDN)
 
 ### 4.1 Génération de l'API depuis `openapi.yaml`
 
-Le contrat d'API est défini une seule fois, à la racine du dépôt : `openapi.yaml`. Le plugin `openapi-generator-maven-plugin` (configuré dans `back/server/pom.xml`) génère à la compilation :
+Le contrat d'API est défini une seule fois, à la racine du dépôt : `openapi.yaml`. Le plugin `openapi-generator-maven-plugin` (configuré dans `back/api/pom.xml`, module `api`) génère à la compilation :
 
 - des interfaces Java (`com.moe.myfamilybudget.api.controller.*Api`, ex. `PatrimoineApi`), que les `*ServiceImpl` implémentent,
 - des DTOs (`com.moe.myfamilybudget.api.model.*Dto`).
 
-**Conséquence pratique** : ces classes générées n'existent pas dans le code source versionné — elles apparaissent seulement après `mvn compile` (généralement dans `target/generated-sources`). Si un IDE affiche des erreurs "classe introuvable" sur `PatrimoineApi` ou consorts, il faut d'abord compiler une fois.
+**Conséquence pratique** : ces classes générées n'existent pas dans le code source versionné — elles apparaissent seulement après `mvn compile` du module `api` (dans `back/api/target/generated-sources`). Si un IDE affiche des erreurs "classe introuvable" sur `PatrimoineApi` ou consorts, il faut d'abord compiler une fois.
 
 **Pour ajouter ou modifier un endpoint** : toujours commencer par éditer `openapi.yaml`, recompiler, puis adapter le `*ServiceImpl` concerné — jamais l'inverse.
 
@@ -202,10 +202,13 @@ adapters `Reader`/`Writer`, `persistence.updater`) vit dans `back/persistence` (
 de `transition-snapshot` et des domaines qu'elle persiste, jamais de `application` ni de `server`. Les `Jpa*Store` restent dans `server`
 avec les ports qu'ils implémentent.
 Les dix modules purs (domaines et `transition-snapshot`) déclarent un `module-info.java` (nom du module = package racine) :
-le compilateur interdit donc d'y importer un package non exporté ou d'un module non déclaré. `application`, `persistence` et
-`server` restent sur le classpath (Spring, JPA/Hibernate), sans `module-info`.
+le compilateur interdit donc d'y importer un package non exporté ou d'un module non déclaré. `application`, `persistence`, `api` et
+`server` restent sur le classpath (Spring, JPA/Hibernate, code généré), sans `module-info`.
 Les services `internal.impl`, les mappers et les factories Overview / Notification / PlacementRate restent dans `server`
 jusqu'à MAVEN-101 et MAVEN-102.
+Le contrat REST généré (DTO et interfaces Spring, packages `com.moe.myfamilybudget.api.*`) et l'outillage de bundle
+OpenAPI (`package.json`, Redocly) vivent dans `back/api` ; la spécification (`openapi.yaml`, `openapi/domains/*.yaml`)
+reste à la racine du dépôt. Seul `server` dépend de `api`.
 
 ### 4.5 Le pattern "oracle JS" pour les tests d'intégration
 

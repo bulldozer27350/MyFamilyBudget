@@ -453,7 +453,15 @@ La stratégie retenue est :
   - stabiliser le bundling OpenAPI indépendamment de l’application.
 - **Attention** : ne pas mettre de logique de mapping métier dans `api`.
 - **Tests** : génération OpenAPI ; compilation des mappers applicatifs ; vérification d’absence de dépendance inverse `api → domain` si le module est conçu comme contrat pur.
-- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Décisions retenues** :
+  - nouveau module `back/api` (artifact `api`, packages générés inchangés : `com.moe.myfamilybudget.api.controller` et `com.moe.myfamilybudget.api.model`) ; il produit **le jar de contrat complet** : DTO (records) **et** interfaces Spring générées (`interfaceOnly`, `useTags`, `skipDefaultInterface`), avec exactement la configuration `openapi-generator-maven-plugin` précédemment portée par `server` (aucun changement de code généré) ;
+  - l'outillage de bundle (`frontend-maven-plugin`, `package.json`, `package-lock.json`, script `openapi:bundle`) et `build-helper-maven-plugin` migrent de `back/server` vers `back/api` ; la génération des DTO partagés reste unique (spécification fusionnée en un seul document avant génération) ;
+  - la spécification reste à la **racine du dépôt** (`openapi.yaml`, `openapi/domains/*.yaml`) : les références relatives entre fichiers, le Dockerfile et la documentation en dépendent ; `back/api` est à la même profondeur que l'ancien `back/server`, donc `../../openapi.yaml` est inchangé. Un éventuel déplacement de la spécification dans le module sera traité à part ;
+  - dépendances de production d'`api` : `spring-boot-starter-web`, `spring-boot-starter-validation`, `jackson-databind-nullable`, `swagger-annotations` (ce qu'exige le code généré) ; aucune dépendance vers un domaine, `application`, `transition-snapshot` ou `server` ; aucun domaine, `application` ni `transition-snapshot` ne dépend d'`api` (seul `server` la consomme, jusqu'à MAVEN-102) ;
+  - `server` déclare `api` ; `jackson-databind-nullable` et `swagger-annotations` n'y sont plus déclarées directement (transitives via `api`) ;
+  - réduction éventuelle des starters Spring d'`api` à `spring-web` + `jakarta.validation-api` : à examiner en MAVEN-140 ;
+  - reactor, Dockerfile, CI (cache Maven) et gate VT-600 référencent `back/api` ; `.gitignore` conserve le lockfile npm à son nouvel emplacement (`/back/api/package-lock.json`).
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 # MAVEN-120 — Extraire `persistence`
 

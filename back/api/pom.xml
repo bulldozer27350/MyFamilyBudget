@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        MAVEN-110 (doc/architecture/20-backlog-modules-maven-patchs.md) : contrat REST généré.
+
+        Ce module porte la génération des DTO (`com.moe.myfamilybudget.api.model`, records) et des interfaces
+        Spring (`com.moe.myfamilybudget.api.controller`, interfaceOnly) à partir de la spécification OpenAPI
+        multi-fichiers, ainsi que l'outillage de bundle Redocly (package.json / package-lock.json) qui
+        fusionne la spécification avant génération (voir le commentaire du plugin frontend-maven-plugin).
+        Il ne contient aucun code écrit à la main ni aucune logique métier.
+
+        La spécification reste à la racine du dépôt (`openapi.yaml` et `openapi/domains/*.yaml`) : les références
+        relatives entre fichiers, le Dockerfile et la documentation en dépendent ; ce module la référence par
+        `../../openapi.yaml` (même profondeur que l'ancien emplacement dans back/server).
+
+        Dépendances de production : uniquement ce qu'exige le code généré (Spring Web, Jakarta Validation,
+        Jackson, annotations Swagger). Aucune dépendance vers un module de domaine, `application`,
+        `transition-snapshot` ni `server` : le contrat est pur (api ne dépend d'aucun domaine, et aucun domaine
+        ne dépend d'api).
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>api</artifactId>
+    <packaging>jar</packaging>
+    <name>api</name>
+    <description>Contrat REST MyFamilyBudget (DTO et interfaces Spring générés depuis OpenAPI)</description>
+
+    <dependencies>
+        <!-- Code généré : annotations Spring Web (interfaces), ResponseEntity, MultipartFile -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- Code généré : annotations Jakarta Validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Jackson & Swagger annotations for OpenAPI generation -->
+        <dependency>
+            <groupId>org.openapitools</groupId>
+            <artifactId>jackson-databind-nullable</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+                openapi.yaml eclate ses chemins vers openapi/domains/*.yaml (RF-C00), qui a leur
+                tour referencent en retour des schemas partages d'openapi.yaml via des chemins
+                relatifs ('../../openapi.yaml#/components/schemas/...'). La resolution multi-fichiers
+                interne a openapi-generator-maven-plugin (io.swagger:swagger-parser) ne deduplique
+                pas un schema atteint par deux chemins de reference differents (local depuis la
+                racine, relatif depuis un fichier externe) : elle lui attribue un suffixe numerique
+                (comportement documente de OpenAPIResolver/ExternalRefProcessor pour les collisions de
+                nom), generant deux classes Java distinctes pour un seul et meme schema (ex.
+                BudgetDataDto et BudgetDataDto1), cause d'echecs de compilation dans les mappers qui
+                utilisent l'une ou l'autre. Ce plugin installe un Node local au module (isole de tout
+                Node/npm/Bun deja present sur la machine, pas besoin de dependance globale sur le
+                poste de dev ni en CI) puis fusionne (bundle) la specification multi-fichiers en un
+                unique document sans reference externe (back/server/package.json, script
+                "openapi:bundle", io.swagger.parser n'est plus mis en cause), sur lequel
+                openapi-generator-maven-plugin est ensuite execute : un schema n'existe alors plus
+                qu'une fois, quel que soit le chemin d'origine qui y menait avant fusion.
+            -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <configuration>
+                    <installDirectory>${project.basedir}/target</installDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-for-openapi-bundle</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <configuration>
+                            <nodeVersion>${node.version}</nodeVersion>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-install-openapi-bundle-tool</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>ci</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>bundle-openapi-spec</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>run openapi:bundle</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- OpenAPI Generator Maven Plugin -->
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${project.basedir}/target/generated-openapi/openapi.yaml</inputSpec>
+                            <generatorName>spring</generatorName>
+                            <apiPackage>com.moe.myfamilybudget.api.controller</apiPackage>
+                            <modelPackage>com.moe.myfamilybudget.api.model</modelPackage>
+                            <configOptions>
+                                <interfaceOnly>true</interfaceOnly>
+                                <useSpringBoot3>true</useSpringBoot3>
+                                <recordDataModels>true</recordDataModels>
+                                <useTags>true</useTags>
+                                <skipDefaultInterface>true</skipDefaultInterface>
+                                <openApiNullable>false</openApiNullable>
+                                <useEnumCaseInsensitive>true</useEnumCaseInsensitive>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Build Helper Plugin to ensure generated sources are seen by IDEs -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/openapi/src/main/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+
+        <pluginManagement>
+            <plugins>
+                <!-- Eclipse m2e lifecycle mapping -->
+                <plugin>
+                    <groupId>org.eclipse.m2e</groupId>
+                    <artifactId>lifecycle-mapping</artifactId>
+                    <version>1.0.0</version>
+                    <configuration>
+                        <lifecycleMappingMetadata>
+                            <pluginExecutions>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.openapitools</groupId>
+                                        <artifactId>openapi-generator-maven-plugin</artifactId>
+                                        <versionRange>[0.0.0,)</versionRange>
+                                        <goals>
+                                            <goal>generate</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <execute>
+                                            <runOnIncremental>true</runOnIncremental>
+                                        </execute>
+                                    </action>
+                                </pluginExecution>
+                            </pluginExecutions>
+                        </lifecycleMappingMetadata>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

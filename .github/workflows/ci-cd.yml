@@ -63,6 +63,7 @@ jobs:
             back/domain-analysis/pom.xml
             back/domain-credit/pom.xml
             back/domain-goals/pom.xml
+            back/api/pom.xml
             back/transition-snapshot/pom.xml
             back/application/pom.xml
             back/persistence/pom.xml
