@@ -13,13 +13,13 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.moe.myfamilybudget.server.internal.enablebanking.EnableBankingSyncResult.AccountResult;
-import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportSummaryModel;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculator;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
 import com.moe.myfamilybudget.server.internal.command.BankImportCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.entity.EnableBankingSyncStateEntity;
 import com.moe.myfamilybudget.server.internal.persistence.repository.EnableBankingSyncStateRepository;
-import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 
 /**
  * Récupère les transactions bancaires via Enable Banking (DSP2) et les importe, en réutilisant

@@ -124,22 +124,22 @@ class ExcelToCsvServiceTest {
                 xlsxBytes);
 
         String csv = service.convert(file, "releve.xlsx");
-        java.util.List<java.util.List<String>> rows = com.moe.myfamilybudget.server.internal.model.BankImportCalculator.parseCSVText(csv, ";");
+        java.util.List<java.util.List<String>> rows = com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculator.parseCSVText(csv, ";");
         java.util.List<java.util.List<String>> dataRows = rows.subList(1, rows.size());
 
         // Existing transactions in DB (with date "2026-01-15" and "2026-01-16")
-        com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransactionModel existingTx =
-                new com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransactionModel(
+        com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel existingTx =
+                new com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel(
                         "tx_1", "2026-01-15", "Achat Leclerc; Drive", "CB", new java.math.BigDecimal("-45.50"), ""
                 );
 
-        com.moe.myfamilybudget.server.internal.model.BankImportModel.BankColumnMappingModel mapping =
-                new com.moe.myfamilybudget.server.internal.model.BankImportModel.BankColumnMappingModel(
+        com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankColumnMappingModel mapping =
+                new com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankColumnMappingModel(
                         ";", "DD/MM/YYYY", true, 0, 1, 3, 2
                 );
 
-        com.moe.myfamilybudget.server.internal.model.BankImportSummaryModel summary =
-                com.moe.myfamilybudget.server.internal.model.BankImportCalculator.importTransactions(
+        com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel summary =
+                com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculator.importTransactions(
                         dataRows,
                         java.util.List.of("date", "label", "amount", "type"),
                         mapping,

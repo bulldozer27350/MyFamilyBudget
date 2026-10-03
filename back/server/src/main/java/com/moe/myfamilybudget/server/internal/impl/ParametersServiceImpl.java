@@ -18,7 +18,7 @@ import com.moe.myfamilybudget.server.internal.model.SettingsCalculator;
 import com.moe.myfamilybudget.server.internal.model.SettingsModel;
 import com.moe.myfamilybudget.server.internal.model.SettingsResultModel;
 import com.moe.myfamilybudget.domain.wealth.port.AssetCategoryField;
-import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetMutationLock;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;

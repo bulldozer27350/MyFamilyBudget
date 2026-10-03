@@ -1,5 +1,7 @@
 package com.moe.myfamilybudget.server.internal.model;
 
+import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculator;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -17,7 +19,7 @@ import java.util.stream.Collectors;
 import com.moe.myfamilybudget.server.internal.calculation.AnalyseInput;
 import com.moe.myfamilybudget.server.internal.calculation.AnalysisPeriod;
 import com.moe.myfamilybudget.server.internal.calculation.BudgetLineKind;
-import com.moe.myfamilybudget.server.internal.calculation.BudgetLineProjection;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
 import com.moe.myfamilybudget.server.internal.calculation.MonthlyBudgetLines;
 import com.moe.myfamilybudget.domain.budget.RealAverageModel;
 

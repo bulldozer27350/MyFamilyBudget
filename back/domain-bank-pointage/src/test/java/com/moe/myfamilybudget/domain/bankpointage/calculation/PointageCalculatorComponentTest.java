@@ -1,5 +1,8 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.bankpointage.calculation;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.PointageLineStatusModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.PointageMonthSummaryModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
@@ -10,9 +13,9 @@ import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.BudgetLineProjection;
-import com.moe.myfamilybudget.server.internal.calculation.PointageInput;
-import com.moe.myfamilybudget.server.internal.calculation.PointagePeriod;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageInput;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.PointagePeriod;
 
 /**
  * RF-502 : tests de composant du moteur de pointage, construits uniquement avec

@@ -13,7 +13,7 @@ import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsServi
 import com.moe.myfamilybudget.server.internal.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.server.internal.command.SettingsCommandRouter;
 import com.moe.myfamilybudget.server.internal.mapper.SettingsMapper;
-import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetMutationLock;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;

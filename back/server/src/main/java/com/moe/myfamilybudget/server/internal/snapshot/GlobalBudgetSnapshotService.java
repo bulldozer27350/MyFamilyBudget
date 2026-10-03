@@ -8,7 +8,7 @@ import com.moe.myfamilybudget.server.internal.calculation.ObjectifsSettingsServi
 import com.moe.myfamilybudget.server.internal.mapper.OverviewMapper;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
-import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
 import com.moe.myfamilybudget.server.internal.port.GoalReader;
 import com.moe.myfamilybudget.server.internal.port.LoanReader;

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.bankpointage.calculation;
 
 /**
  * Période de pointage : un mois calendaire au format {@code YYYY-MM} (voir {@link PointageInput}).

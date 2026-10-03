@@ -30,7 +30,7 @@ import com.moe.myfamilybudget.server.internal.calculation.TreasuryParameters;
 import com.moe.myfamilybudget.server.internal.calculation.TreasuryProjectionInput;
 import com.moe.myfamilybudget.server.internal.calculation.TreasurySimulationPeriod;
 import com.moe.myfamilybudget.server.internal.calculation.VariableIncomeProjection;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;

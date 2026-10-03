@@ -19,7 +19,7 @@ import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 import com.moe.myfamilybudget.server.internal.model.TaxResultModel;
 import com.moe.myfamilybudget.server.internal.command.SettingsCommandRouter;
 import com.moe.myfamilybudget.server.internal.command.TaxCommandService;
-import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;

@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.model;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -10,10 +11,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.server.internal.factory.AnalyseInputFactory;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransactionModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel.CategoryModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel.MatchingLinkModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel.MatchingModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.CategoryModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingLinkModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 

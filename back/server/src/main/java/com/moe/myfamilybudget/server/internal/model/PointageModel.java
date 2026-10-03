@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.model;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import java.util.Collections;
 import java.util.List;
@@ -12,7 +13,7 @@ import com.moe.myfamilybudget.domain.budget.IncomeModel;
  *
  * <p>Depuis RF-501, ce n'est plus une entrée de calcul : aucun calculateur ne le consomme. Le moteur
  * de pointage ({@link PointageCalculator}) travaille sur
- * {@link com.moe.myfamilybudget.server.internal.calculation.PointageInput}, qui ne porte ni charges,
+ * {@link com.moe.myfamilybudget.domain.bankpointage.calculation.PointageInput}, qui ne porte ni charges,
  * ni revenus, ni placements, ni paramètres. Ce modèle ne peut disparaître qu'avec une évolution du
  * contrat {@code GET /pointage}, hors périmètre de RF-501.
  */

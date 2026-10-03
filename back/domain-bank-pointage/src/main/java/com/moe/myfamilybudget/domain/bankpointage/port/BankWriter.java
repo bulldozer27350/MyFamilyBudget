@@ -1,6 +1,6 @@
-package com.moe.myfamilybudget.server.internal.port;
+package com.moe.myfamilybudget.domain.bankpointage.port;
 
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 
 /**
  * Port d'ecriture pour le domaine Banque / Import (DB-040). Seul le command service du domaine

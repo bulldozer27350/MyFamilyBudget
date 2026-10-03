@@ -1,5 +1,10 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.bankpointage.calculation;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.AutoMatchResultModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.DuplicateCandidateModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.PendingImportSummaryModel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

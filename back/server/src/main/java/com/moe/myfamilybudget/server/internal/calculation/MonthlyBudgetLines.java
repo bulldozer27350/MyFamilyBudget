@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.calculation;
 
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
 import java.util.Collections;
 import java.util.List;
 

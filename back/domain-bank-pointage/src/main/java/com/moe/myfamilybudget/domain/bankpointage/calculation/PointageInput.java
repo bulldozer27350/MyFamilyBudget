@@ -1,9 +1,9 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.bankpointage.calculation;
 
 import java.util.Collections;
 import java.util.List;
 
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 
 /**
  * Contrat d'entrée du domaine Pointage (RF-500, voir doc/architecture/07-domaine-banque-pointage.md).

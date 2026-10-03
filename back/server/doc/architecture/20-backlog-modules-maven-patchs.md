@@ -276,8 +276,17 @@ La stratégie retenue est :
   - décider et documenter la frontière exacte entre Banque et Pointage ;
   - éviter de déplacer `BankImportModel` dans plusieurs modules ;
   - préserver la règle « pas de modèle global artificiel ».
+- **Décisions retenues** :
+  - module `back/domain-bank-pointage` (artifact `domain-bank-pointage`, jar), package racine `com.moe.myfamilybudget.domain.bankpointage` ; aucune dépendance vers un autre module du reactor ni vers Spring/JPA/OpenAPI ; seule dépendance de production : `slf4j-api` (journalisation des deux calculateurs, version gérée par le BOM du parent) ;
+  - frontière Banque/Pointage : un seul module, `BankImportModel` n'existe qu'une fois (pas de duplication) ; `PointageInput` réutilise ses types de transaction et de lien comme avant ;
+  - sous-packages `.calculation` (`BankImportCalculator`, `PointageCalculator`, `PointageInput`, `PointagePeriod`, `BudgetLineProjection`), `.model` (`BankImportModel`, `BankImportSummaryModel`, `CategorizeResultModel`, `DuplicateCandidateModel`, `AutoMatchResultModel`, `PendingImportSummaryModel`, `PointageLineStatusModel`, `PointageMonthSummaryModel`) et `.port` (`BankReader`, `BankWriter`) ;
+  - `BankImportCalculator` et `PointageCalculator` passent de `internal.model` à `domain.bankpointage.calculation` (ce sont des moteurs, comme `TaxCalculator`) ;
+  - `BudgetLineProjection` (type partagé Pointage/Analyse) est livré par ce module : `domain-analysis` (MAVEN-070) dépendra de `domain-bank-pointage`, jamais l'inverse ; `BudgetLineKind` et `MonthlyBudgetLines` restent côté Analyse ;
+  - restent dans `server` : `PointageModel` (vue `GET /pointage` qui embarque `SettingsModel`, `ChargeModel`, `IncomeModel`, `PlacementModel`), `PointageInputFactory`, `PointageServiceImpl`, `StatementBankImportServiceImpl`, `BankImportCommandService`, `PointageMapper`, `StatementBankImportMapper`, `BankPersistenceAdapter`, `BankImportDocumentMapper`, entités/repositories JPA, `enablebanking/*`, contrôleurs ;
+  - `BankImportCalculatorTest`, `PointageCalculatorTest`, `PointageCalculatorComponentTest` et `PointageInputTest` sont déplacés dans le module ; les tests d'usine, de service, de scénario (`BankPointageAnalyseScenarioTest`) et de persistance restent dans `server` ;
+  - ArchUnit : `..domain.bankpointage..` est une couche pure (`PureLayerRules`, `DomainBoundaryRules`, `CalculationDependenciesArchTest`) ; le gate VT-600 analyse aussi les tests du module ; Dockerfile, CI et gate référencent le nouveau module.
 - **Tests** : calcul Banque, calcul Pointage, caractérisation des endpoints bancaires, ArchUnit.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [x] Terminé
 
 # MAVEN-070 — Extraire `domain-analysis`
 

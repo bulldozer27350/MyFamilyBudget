@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
 import com.moe.myfamilybudget.server.internal.mapper.PointageMapper;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.command.BankImportCommandService;
 import com.moe.myfamilybudget.server.internal.persistence.adapter.BankPersistenceAdapter;

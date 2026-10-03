@@ -1,6 +1,6 @@
-package com.moe.myfamilybudget.server.internal.port;
+package com.moe.myfamilybudget.domain.bankpointage.port;
 
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 
 /**
  * Port de lecture pour le domaine Banque / Import (RF-B00).

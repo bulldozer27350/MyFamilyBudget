@@ -10,10 +10,10 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.moe.myfamilybudget.server.internal.calculation.BudgetLineProjection;
-import com.moe.myfamilybudget.server.internal.calculation.PointageInput;
-import com.moe.myfamilybudget.server.internal.calculation.PointagePeriod;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageInput;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.PointagePeriod;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;

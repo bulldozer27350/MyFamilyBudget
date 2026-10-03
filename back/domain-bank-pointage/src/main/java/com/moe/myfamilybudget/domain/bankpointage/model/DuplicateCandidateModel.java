@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.bankpointage.model;
 
 import java.util.Collections;
 import java.util.List;

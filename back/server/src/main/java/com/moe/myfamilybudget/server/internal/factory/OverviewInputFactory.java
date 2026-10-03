@@ -25,7 +25,7 @@ import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.server.internal.calculation.TreasuryProjection;
 import com.moe.myfamilybudget.server.internal.calculation.TreasuryProjectionInput;
 import com.moe.myfamilybudget.server.internal.calculation.TresorerieCalculationService;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;

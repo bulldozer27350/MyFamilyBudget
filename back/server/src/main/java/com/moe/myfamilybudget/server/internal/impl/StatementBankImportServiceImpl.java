@@ -23,11 +23,11 @@ import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.server.internal.error.DataParsingException;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
-import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportSummaryModel;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculator;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
 import com.moe.myfamilybudget.server.internal.command.BankImportCommandService;
-import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 
 import jakarta.validation.Valid;
 

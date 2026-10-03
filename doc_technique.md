@@ -177,6 +177,9 @@ par `config/DomainEngineConfig` dans `server`. Le domaine Fiscalité vit dans `b
 Le domaine Patrimoine (moteurs de projection patrimoniale et d'évolution des placements, modèles, ports)
 vit dans `back/domain-wealth` (`com.moe.myfamilybudget.domain.wealth.*`) et ne dépend que de `domain-budget` ;
 ses deux moteurs sont déclarés comme beans par `config/DomainEngineConfig`.
+Le domaine Banque/Pointage (modèle d'import bancaire, `BankImportCalculator`, `PointageCalculator`, contrats
+d'entrée, ports) vit dans `back/domain-bank-pointage` (`com.moe.myfamilybudget.domain.bankpointage.*`), sans
+dépendance vers un autre module du reactor ; Enable Banking, adapters JPA et contrôleurs restent dans `server`.
 
 ### 4.5 Le pattern "oracle JS" pour les tests d'intégration
 

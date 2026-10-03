@@ -46,6 +46,12 @@
             <artifactId>domain-wealth</artifactId>
         </dependency>
 
+        <!-- Domaine Banque/Pointage : import bancaire, pointage, ports (MAVEN-060) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-bank-pointage</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

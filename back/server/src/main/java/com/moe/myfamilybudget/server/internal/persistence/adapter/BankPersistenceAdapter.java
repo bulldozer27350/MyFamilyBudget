@@ -5,12 +5,12 @@ import java.util.Collections;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.persistence.converter.BankImportDocumentMapper;
 import com.moe.myfamilybudget.server.internal.persistence.repository.BankImportDocumentRepository;
-import com.moe.myfamilybudget.server.internal.port.BankReader;
-import com.moe.myfamilybudget.server.internal.port.BankWriter;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
 
 /**
  * Adaptateur de persistance pour {@link BankReader} (RF-B00) et {@link BankWriter} (DB-040).

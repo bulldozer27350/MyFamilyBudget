@@ -14,14 +14,14 @@ import org.junit.jupiter.api.Test;
 import com.moe.myfamilybudget.server.internal.calculation.AnalyseInput;
 import com.moe.myfamilybudget.server.internal.calculation.AnalysisPeriod;
 import com.moe.myfamilybudget.server.internal.calculation.BudgetLineKind;
-import com.moe.myfamilybudget.server.internal.calculation.BudgetLineProjection;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
 import com.moe.myfamilybudget.server.internal.calculation.MonthlyBudgetLines;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransactionModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel.BankTransactionSplitModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel.CategoryModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel.MatchingLinkModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel.MatchingModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel.PendingOperationModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionSplitModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.CategoryModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingLinkModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.PendingOperationModel;
 
 /**
  * RF-602 : tests de composant pour {@link AnalyseCalculator}, construits uniquement avec

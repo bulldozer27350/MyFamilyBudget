@@ -13,11 +13,11 @@ import com.moe.myfamilybudget.api.controller.OperationsEnCoursApi;
 import com.moe.myfamilybudget.api.model.ReconcilePendingOperations200Response;
 import com.moe.myfamilybudget.server.internal.command.BankImportCommandService;
 import com.moe.myfamilybudget.server.internal.mapper.StatementBankImportMapper;
-import com.moe.myfamilybudget.server.internal.model.AutoMatchResultModel;
-import com.moe.myfamilybudget.server.internal.model.BankImportCalculator;
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.AutoMatchResultModel;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculator;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.server.internal.model.BudgetDataModel;
-import com.moe.myfamilybudget.server.internal.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.server.internal.port.BudgetReader;
 import com.moe.myfamilybudget.server.internal.port.SettingsReader;
 
@@ -144,7 +144,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         boolean usePurchaseDate = Boolean.parseBoolean(String.valueOf(configMap.getOrDefault("usePurchaseDate", map.getOrDefault("usePurchaseDate", false))));
 
         BankImportModel current = bankReader.getBankImport();
-        com.moe.myfamilybudget.server.internal.model.PendingImportSummaryModel summary = BankImportCalculator.importPendingCB(
+        com.moe.myfamilybudget.domain.bankpointage.model.PendingImportSummaryModel summary = BankImportCalculator.importPendingCB(
                 rawRows,
                 colRoles,
                 dateFormat,

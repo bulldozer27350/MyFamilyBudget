@@ -3,7 +3,7 @@ package com.moe.myfamilybudget.server.internal.calculation;
 import java.util.Collections;
 import java.util.List;
 
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 
 /**
  * Contrat d'entrée du domaine Analyse (RF-600, voir doc/architecture/08-domaine-analyse.md).

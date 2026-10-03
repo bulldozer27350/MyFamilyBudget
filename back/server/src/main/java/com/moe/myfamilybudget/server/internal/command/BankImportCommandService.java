@@ -2,8 +2,8 @@ package com.moe.myfamilybudget.server.internal.command;
 
 import org.springframework.stereotype.Service;
 
-import com.moe.myfamilybudget.server.internal.model.BankImportModel;
-import com.moe.myfamilybudget.server.internal.port.BankWriter;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
 
 /**
  * Service de commande du domaine Import Bancaire / Rapprochement (RF-A00, DB-040).

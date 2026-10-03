@@ -1,5 +1,8 @@
-package com.moe.myfamilybudget.server.internal.model;
+package com.moe.myfamilybudget.domain.bankpointage.calculation;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.PointageLineStatusModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.PointageMonthSummaryModel;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -14,8 +17,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.moe.myfamilybudget.server.internal.calculation.BudgetLineProjection;
-import com.moe.myfamilybudget.server.internal.calculation.PointageInput;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageInput;
 
 /**
  * Calculateur métier pour le domaine du pointage mensuel.
