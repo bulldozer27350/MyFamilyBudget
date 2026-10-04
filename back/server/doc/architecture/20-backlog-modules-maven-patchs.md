@@ -2,6 +2,8 @@
 
 Statut : 🟡 à exécuter depuis `main` courant
 
+> **Mise à jour du 4 octobre 2026** : les patchs MAVEN-120 (périmètre), MAVEN-130, MAVEN-140, MAVEN-150 et MAVEN-160 sont repris ou remplacés par [`21-plan-silotage.md`](21-plan-silotage.md).
+
 Document établi à partir de l’état du dépôt au **2 octobre 2026** et des travaux d’architecture déjà réalisés.
 
 ## Objet

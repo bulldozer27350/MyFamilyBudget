@@ -2,6 +2,8 @@
 
 Statut : 🟡 à valider
 
+> **Mise à jour du 4 octobre 2026** : l'objectif a évolué (suppression totale de `BudgetDataModel`, persistance par silo, application ≠ web). O3, R3 et C1 de ce document sont à réviser ; voir [`21-plan-silotage.md`](21-plan-silotage.md).
+
 ## Pourquoi ce fichier existe
 
 La séparation Maven n'a de valeur que si les frontières logiques préparées dans le code correspondent à des

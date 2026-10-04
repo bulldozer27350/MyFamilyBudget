@@ -53,6 +53,7 @@ implémentation (patch) sans attendre les autres. Statut affiché en tête de ch
 | [13-persistance.md](13-persistance.md) | Persistance — ce qui est obligatoire vs optionnel avant Maven | 🟡 |
 | [14-checklist-maven.md](14-checklist-maven.md) | Checklist de passage aux modules Maven | 🟡 |
 | [15-backlog-patchs.md](15-backlog-patchs.md) | Liste ordonnée de patchs (avec statut et prérequis) à distribuer à des agents | 🟡 |
+| [21-plan-silotage.md](21-plan-silotage.md) | Plan de travail du silotage complet : suppression de `BudgetDataModel`, persistance par silo, séparation application/web | 🟡 |
 
 ## Ce qui a changé par rapport au document source
 
