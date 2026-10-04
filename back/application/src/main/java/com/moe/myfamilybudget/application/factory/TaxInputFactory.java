@@ -13,7 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.moe.myfamilybudget.domain.tax.calculation.AnnualTaxIncome;
-import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxablePensionIncome;
 import com.moe.myfamilybudget.domain.tax.calculation.AnnualVariableIncome;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxActualOverride;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxBracket;
@@ -102,13 +102,13 @@ public final class TaxInputFactory {
 
         List<AnnualTaxIncome> incomes = new ArrayList<>();
         List<AnnualVariableIncome> variableIncomes = new ArrayList<>();
-        List<AnnualTaxableRetirementIncome> retirementIncome = new ArrayList<>();
+        List<TaxablePensionIncome> retirementIncome = new ArrayList<>();
         for (int year = period.startYear(); year <= period.endYear(); year++) {
             incomes.add(new AnnualTaxIncome(year, sumAnnual(regularIncomes, year)));
             variableIncomes.add(new AnnualVariableIncome(year,
                     variableTaxableForYear(regularIncomes, orEmpty(sources.variableIncomes()),
                             orEmpty(sources.variableOverrides()), year)));
-            retirementIncome.add(new AnnualTaxableRetirementIncome(year,
+            retirementIncome.add(new TaxablePensionIncome(year,
                     annualPension(monthlyPensions, retireYear, period.endYear(), inflationRate, year)));
         }
 

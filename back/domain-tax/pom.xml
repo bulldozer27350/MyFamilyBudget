@@ -8,8 +8,8 @@
         MAVEN-030 (doc/architecture/20-backlog-modules-maven-patchs.md) : domaine Fiscalité
         (calculateur, entrée/paramètres, projection TaxProjection, modèles fiscaux, ports Reader/Writer).
 
-        Dépendance autorisée : domain-retirement, uniquement pour le contrat de projection
-        AnnualTaxableRetirementIncome (jamais l'implémentation RetirementCalculationService).
+        SILO-130 (D1) : aucune dépendance vers un autre domaine ; la pension imposable est portée par le
+        contrat propre TaxablePensionIncome, traduit par la couche application.
         Aucune dépendance vers Spring, JPA, OpenAPI, PersistenceManager ou BudgetDataModel.
         Dépendances de test uniquement : JUnit 5 et AssertJ (versions gérées par le BOM du parent).
     -->
@@ -26,11 +26,6 @@
     <description>Domaine Fiscalité MyFamilyBudget (calculateur pur, sans Spring ni JPA)</description>
 
     <dependencies>
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-retirement</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

@@ -29,7 +29,7 @@ public record TaxCalculationInput(
     List<TaxBracket> brackets,
     List<TaxRateOverride> rateOverrides,
     List<TaxActualOverride> actualOverrides,
-    List<AnnualTaxableRetirementIncome> retirementIncome
+    List<TaxablePensionIncome> retirementIncome
 ) {}
 
 public record TaxSimulationPeriod(int startYear, int endYear) {}
@@ -50,8 +50,11 @@ etc.).
 Chaîne cible pour la pension imposable :
 
 ```text
-RetirementCalculationService → AnnualTaxableRetirementIncome → TaxCalculationService
+RetirementCalculationService → TaxablePensionIncome → TaxCalculationService
 ```
+
+SILO-130 (décision D1) : `TaxablePensionIncome` appartient au domaine Fiscalité ; `TaxInputFactory` (application) traduit la projection de
+`RetirementCalculationService` et `domain-tax` ne dépend plus de `domain-retirement`.
 
 ## Dépendances qui doivent disparaître de `TaxCalculationInput`
 

@@ -1,7 +1,5 @@
 package com.moe.myfamilybudget.domain.tax.calculation;
 
-import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -56,7 +54,7 @@ public class TaxCalculator {
         Map<Integer, BigDecimal> retirementIncomes = input.retirementIncome() == null
                 ? Map.of()
                 : input.retirementIncome().stream().collect(java.util.stream.Collectors.toMap(
-                        AnnualTaxableRetirementIncome::year, AnnualTaxableRetirementIncome::amount, BigDecimal::add));
+                        TaxablePensionIncome::year, TaxablePensionIncome::amount, BigDecimal::add));
         Map<Integer, BigDecimal> rateOverrides = input.rateOverrides() == null
                 ? Map.of()
                 : input.rateOverrides().stream().collect(java.util.stream.Collectors.toMap(

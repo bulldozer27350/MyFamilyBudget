@@ -1,15 +1,14 @@
 package com.moe.myfamilybudget.domain.tax.calculation;
 
 import java.util.List;
-import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
 
 /**
  * Contrat d'entrée du domaine Fiscalité (RF-200, voir doc/architecture/04-domaine-fiscalite.md).
  *
  * <p>Depuis RF-202, {@code period} est calculé en amont par la couche application (voir
  * {@code TaxSimulationPeriodResolver}) et {@code retirementIncome} provient de
- * {@code RetirementCalculationService} (RF-102) via {@code TaxInputFactory} : le moteur fiscal ne
- * recalcule ni horizon ni pension.
+ * {@code RetirementCalculationService} (RF-102) via {@code TaxInputFactory}, qui le traduit en
+ * {@link TaxablePensionIncome} : le moteur fiscal ne recalcule ni horizon ni pension.
  *
  * @param period            horizon de simulation (années incluses, bornes comprises)
  * @param household         paramètres du foyer nécessaires au calcul (parts, décote, abattement)
@@ -30,5 +29,5 @@ public record TaxCalculationInput(
         List<TaxBracket> brackets,
         List<TaxRateOverride> rateOverrides,
         List<TaxActualOverride> actualOverrides,
-        List<AnnualTaxableRetirementIncome> retirementIncome) {
+        List<TaxablePensionIncome> retirementIncome) {
 }

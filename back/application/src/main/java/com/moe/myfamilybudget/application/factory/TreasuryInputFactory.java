@@ -21,7 +21,7 @@ import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.tax.calculation.AnnualTaxIncome;
-import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxablePensionIncome;
 import com.moe.myfamilybudget.domain.tax.calculation.AnnualVariableIncome;
 import com.moe.myfamilybudget.domain.treasury.calculation.ChargeProjectionInput;
 import com.moe.myfamilybudget.domain.treasury.calculation.IncomeProjectionInput;
@@ -164,7 +164,7 @@ public final class TreasuryInputFactory {
         Map<Integer, BigDecimal> varIncomes = taxInput.variableIncomes().stream()
                 .collect(Collectors.toMap(AnnualVariableIncome::year, AnnualVariableIncome::taxableAmount, BigDecimal::add));
         Map<Integer, BigDecimal> retIncomes = taxInput.retirementIncome().stream()
-                .collect(Collectors.toMap(AnnualTaxableRetirementIncome::year, AnnualTaxableRetirementIncome::amount, BigDecimal::add));
+                .collect(Collectors.toMap(TaxablePensionIncome::year, TaxablePensionIncome::amount, BigDecimal::add));
 
         TaxProjection taxProjection = new TaxProjection(taxYearly.stream()
                 .map(t -> {

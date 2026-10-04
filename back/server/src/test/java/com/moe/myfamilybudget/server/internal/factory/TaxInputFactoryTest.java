@@ -13,7 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.tax.calculation.AnnualTaxIncome;
-import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxablePensionIncome;
 import com.moe.myfamilybudget.domain.tax.calculation.AnnualVariableIncome;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
@@ -102,7 +102,7 @@ class TaxInputFactoryTest {
 
         TaxCalculationInput input = TaxInputFactory.from(data, period, projection);
 
-        assertThat(input.retirementIncome()).extracting(AnnualTaxableRetirementIncome::year)
+        assertThat(input.retirementIncome()).extracting(TaxablePensionIncome::year)
                 .containsExactly(retireYear - 1, retireYear, retireYear + 1);
         assertThat(input.retirementIncome().get(0).amount()).isEqualByComparingTo("0");
         // (1500 + 500) * 12, inflation 2 % appliquée dès l'année suivante
@@ -119,9 +119,9 @@ class TaxInputFactoryTest {
         TaxCalculationInput zero = TaxInputFactory.from(budgetWithSalaryOnly(), period,
                 new RetirementProjection(List.of(pension("0"))));
 
-        assertThat(none.retirementIncome()).extracting(AnnualTaxableRetirementIncome::amount)
+        assertThat(none.retirementIncome()).extracting(TaxablePensionIncome::amount)
                 .allSatisfy(a -> assertThat(a).isEqualByComparingTo(BigDecimal.ZERO));
-        assertThat(zero.retirementIncome()).extracting(AnnualTaxableRetirementIncome::amount)
+        assertThat(zero.retirementIncome()).extracting(TaxablePensionIncome::amount)
                 .allSatisfy(a -> assertThat(a).isEqualByComparingTo(BigDecimal.ZERO));
     }
 
@@ -166,7 +166,7 @@ class TaxInputFactoryTest {
         TaxCalculationInput input = build(budgetWithSalaryOnly());
 
         assertThat(input.retirementIncome())
-                .extracting(AnnualTaxableRetirementIncome::amount)
+                .extracting(TaxablePensionIncome::amount)
                 .allSatisfy(amount -> assertThat(amount).isEqualByComparingTo(BigDecimal.ZERO));
     }
 

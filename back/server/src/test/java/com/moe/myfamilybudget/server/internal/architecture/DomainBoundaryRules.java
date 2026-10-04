@@ -66,8 +66,7 @@ final class DomainBoundaryRules {
 
     /** Membres du domaine Retraite, y compris ses projections publiées. */
     static final DescribedPredicate<JavaClass> RETRAITE = topLevelNameMatching("le domaine Retraite",
-            "Retirement\\w*|Retraite\\w*|AnnualSalaryProjection|SalaryHistoryEntry"
-                    + "|AnnualTaxableRetirementIncome|PauseState");
+            "Retirement\\w*|Retraite\\w*|AnnualSalaryProjection|SalaryHistoryEntry|PauseState");
 
     /** Implémentation Retraite : ce qui ne doit pas être consommé par les autres domaines. */
     static final DescribedPredicate<JavaClass> RETRAITE_INTERNALS = topLevelNameMatching(
@@ -171,8 +170,8 @@ final class DomainBoundaryRules {
     static final ArchRule FISCALITE_CONSUMES_RETIREMENT_PROJECTION_ONLY = noClasses()
             .that(PureLayerRules.PURE_LAYER).and(FISCALITE)
             .should().dependOnClassesThat(RETRAITE_INTERNALS)
-            .as("Fiscalité consomme la projection retraite (AnnualTaxableRetirementIncome), "
-                    + "pas l'implémentation Retraite (ARCH-020)");
+            .as("Fiscalité porte son propre contrat de pension (TaxablePensionIncome) et ne dépend pas "
+                    + "de l'implémentation Retraite (ARCH-020, SILO-130)");
 
     static final ArchRule FISCALITE_DOES_NOT_DEPEND_ON_TRESORERIE = noClasses()
             .that(PureLayerRules.PURE_LAYER).and(FISCALITE)

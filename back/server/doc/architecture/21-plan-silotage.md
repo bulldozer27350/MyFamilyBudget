@@ -293,7 +293,8 @@ un patch qui rencontre un arbitrage non tranché devient un patch « bloqué » 
 - **Objectif** : un silo ne référence plus de type d'un autre silo.
 - **Travaux** : le consommateur définit ses entrées (ex. Trésorerie : sorties fiscales, revenus de retraite, flux de placements), l'application traduit à partir des sorties des autres silos. Cinq patchs : Tax←Retirement ; Wealth←Budget ; Treasury←Retirement, Tax, Wealth ; Analysis←Bank, Budget ; Notifications←Goals.
 - **Sortie** : `requires` croisés supprimés des `module-info` ; tests de composant inchangés.
-- **Statut** : [x] Non commencé
+- **Livré (SILO-130, Tax←Retirement)** : `domain-tax` définit `TaxablePensionIncome` (année, montant) et `TaxCalculationInput.retirementIncome` l'utilise ; `AnnualTaxableRetirementIncome` est supprimé de `domain-retirement` ; `TaxInputFactory` traduit la projection Retraite, `TreasuryInputFactory` lit le nouveau type ; dépendance Maven et `requires` vers `domain-retirement` retirés de `domain-tax` ; dérogation `domain-tax → domain-retirement` retirée de `MavenModuleGraphExceptions` (9 → 8). Reste : SILO-131 à SILO-134.
+- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente de réponse / [ ] Annulé / [ ] Terminé (SILO-130 livré ; SILO-131 à SILO-134 restants)
 
 ### SILO-140 : Dissoudre `domain-budget`
 - **Travaux** : revenus, charges, ponctuels, transferts et variables rejoignent le silo Trésorerie ; les autres silos utilisent leurs types ; éventuel module minimal de valeurs pures (D2).

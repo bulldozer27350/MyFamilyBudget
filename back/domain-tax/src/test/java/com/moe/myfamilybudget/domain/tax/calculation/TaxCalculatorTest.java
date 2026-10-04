@@ -10,7 +10,6 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
 import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 
 /**
@@ -34,7 +33,7 @@ class TaxCalculatorTest {
             List<TaxBracket> brackets,
             List<AnnualTaxIncome> incomes,
             List<AnnualVariableIncome> variableIncomes,
-            List<AnnualTaxableRetirementIncome> retirementIncome,
+            List<TaxablePensionIncome> retirementIncome,
             List<TaxRateOverride> rateOverrides,
             List<TaxActualOverride> actualOverrides) {
         return new TaxCalculationInput(
@@ -102,7 +101,7 @@ class TaxCalculatorTest {
                 standardBrackets(),
                 List.of(new AnnualTaxIncome(YEAR, new BigDecimal("30000"))),
                 List.of(new AnnualVariableIncome(YEAR, new BigDecimal("5000"))),
-                List.of(new AnnualTaxableRetirementIncome(YEAR, new BigDecimal("10000"))),
+                List.of(new TaxablePensionIncome(YEAR, new BigDecimal("10000"))),
                 List.of(), List.of());
 
         TaxYearlyModel y = only(TaxCalculator.computeTaxYearly(input));
