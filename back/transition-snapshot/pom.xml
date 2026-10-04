@@ -30,7 +30,7 @@
     <dependencies>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-budget</artifactId>
+            <artifactId>domain-treasury</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>

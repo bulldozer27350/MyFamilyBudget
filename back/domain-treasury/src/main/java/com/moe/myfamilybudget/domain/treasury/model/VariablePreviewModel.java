@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.budget;
+package com.moe.myfamilybudget.domain.treasury.model;
 
 import java.util.List;
 

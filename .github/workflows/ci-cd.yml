@@ -54,7 +54,6 @@ jobs:
           cache: maven
           cache-dependency-path: |
             back/pom.xml
-            back/domain-budget/pom.xml
             back/domain-retirement/pom.xml
             back/domain-tax/pom.xml
             back/domain-wealth/pom.xml

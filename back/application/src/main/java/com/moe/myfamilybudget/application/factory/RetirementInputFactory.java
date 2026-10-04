@@ -12,7 +12,7 @@ import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculatio
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementParameters;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementPersonInput;
 import com.moe.myfamilybudget.domain.retirement.calculation.SalaryHistoryEntry;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 

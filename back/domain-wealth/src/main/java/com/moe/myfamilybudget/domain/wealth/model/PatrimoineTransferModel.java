@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 /**
  * Virement vers un placement, tel que le silo Patrimoine le lit et l'importe (SILO-131). Type propre au
- * silo : {@code domain-wealth} ne référence plus aucun type de {@code domain-budget} (décision D1).
+ * silo : {@code domain-wealth} ne référence aucun type d'un autre silo (décision D1).
  */
 public record PatrimoineTransferModel(
     String id,

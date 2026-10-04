@@ -23,10 +23,6 @@
 
     <dependencies>
         <!-- Modèles du budget de base (MAVEN-010) -->
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-budget</artifactId>
-        </dependency>
 
         <!-- Domaine Retraite : moteur, projections, modèle et ports (MAVEN-020) -->
         <dependency>

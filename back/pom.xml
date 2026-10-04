@@ -37,7 +37,6 @@
     <description>Parent Maven (reactor) du backend MyFamilyBudget</description>
 
     <modules>
-        <module>domain-budget</module>
         <module>domain-retirement</module>
         <module>domain-tax</module>
         <module>domain-wealth</module>
@@ -86,11 +85,6 @@
     <dependencyManagement>
         <dependencies>
             <!-- Modules internes du reactor (versions alignées sur celle du parent) -->
-            <dependency>
-                <groupId>com.moe.myfamilybudget</groupId>
-                <artifactId>domain-budget</artifactId>
-                <version>${project.version}</version>
-            </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>domain-retirement</artifactId>

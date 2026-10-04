@@ -7,12 +7,12 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
-import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 
 /**
  * Remplace l'unique gros bloc if/else de PersistenceManager.updateTresorerieRow.

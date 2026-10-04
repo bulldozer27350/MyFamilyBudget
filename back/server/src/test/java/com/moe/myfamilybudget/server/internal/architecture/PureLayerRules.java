@@ -51,7 +51,6 @@ final class PureLayerRules {
                     .or(resideInAPackage("com.moe.myfamilybudget.transition.model.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.application.model.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.application.overview.."))
-                    .or(resideInAPackage("com.moe.myfamilybudget.domain.budget.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.retirement.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.tax.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.wealth.."))
@@ -62,7 +61,7 @@ final class PureLayerRules {
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.goals.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.notifications.."))
                     .as("les couches pures (internal.calculation hors infra de paramétrage, "
-                            + "internal.model, transition.model, application.model, application.overview, domain.budget, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, domain.notifications)");
+                            + "internal.model, transition.model, application.model, application.overview, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, domain.notifications)");
 
     static final ArchRule NO_BUDGET_DATA_MODEL = noClasses()
             .that(PURE_LAYER)

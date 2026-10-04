@@ -9,7 +9,7 @@
         (moteurs de projection patrimoniale et d'évolution des placements, règles de pause des
         versements, contrats d'entrée/sortie, modèles patrimoniaux, ports Reader/Writer).
 
-        SILO-131 (décision D1) : aucune dépendance vers un autre silo, ni vers domain-budget ; le silo
+        SILO-131 (décision D1) : aucune dépendance vers un autre silo (domain-budget a été dissous par SILO-140) ; le silo
         définit ses propres types (PatrimoineTransferModel, ScenarioAmountsModel). Aucune dépendance vers
         Spring, JPA, OpenAPI, PersistenceManager ou BudgetDataModel, et aucun retour vers Trésorerie.
         Dépendances de test uniquement : JUnit 5 et AssertJ (versions gérées par le BOM du parent).

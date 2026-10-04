@@ -2,14 +2,13 @@ package com.moe.myfamilybudget.application.mapper;
 
 import java.util.List;
 
-import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 
 /**
  * SILO-131 : traduction des virements entre le type propre au silo Patrimoine
- * ({@link PatrimoineTransferModel}) et le type de {@code domain-budget} ({@link TransferModel}) encore
- * consommé par les autres silos et par la façade (jusqu'à SILO-132, SILO-133 et SILO-140). Une liste
- * {@code null} reste {@code null}.
+ * ({@link PatrimoineTransferModel}) et le type de Trésorerie ({@link TransferModel}, SILO-140) consommé
+ * par la façade et les autres services d'application. Une liste {@code null} reste {@code null}.
  */
 public final class PatrimoineTransferConverter {
 

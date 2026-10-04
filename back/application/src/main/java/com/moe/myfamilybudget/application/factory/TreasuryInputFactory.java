@@ -39,17 +39,17 @@ import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjectionInpu
 import com.moe.myfamilybudget.domain.treasury.calculation.TreasurySimulationPeriod;
 import com.moe.myfamilybudget.domain.treasury.calculation.VariableIncomeProjection;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
-import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculator;
 import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
-import com.moe.myfamilybudget.domain.budget.TransferModel;
-import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 
 /**
  * Construit un {@link TreasuryProjectionInput} à partir de fragments lus chez leurs propriétaires

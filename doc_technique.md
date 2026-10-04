@@ -168,24 +168,26 @@ back/server/src/main/java/com/moe/myfamilybudget/
 
 Depuis MAVEN-010, le backend est un reactor Maven (`back/pom.xml`). Les modèles du budget de base
 (`IncomeModel`, `ChargeModel`, `OneOffExpenseModel`, `TransferModel`, `VariableIncomeModel`,
-`VariableOverrideModel`, ...) vivent dans le module `back/domain-budget` (package
-`com.moe.myfamilybudget.domain.budget`), sans dépendance Spring/JPA/OpenAPI ; `server` en dépend.
+`VariableOverrideModel`, ...) vivent dans le module `back/domain-treasury` (package
+`com.moe.myfamilybudget.domain.treasury.model`, `domain-budget` ayant été dissous par SILO-140), sans
+dépendance Spring/JPA/OpenAPI ; `server` en dépend.
 Le domaine Retraite (moteur de calcul, projections, modèle, ports Reader/Writer) vit de même dans
 `back/domain-retirement` (`com.moe.myfamilybudget.domain.retirement.*`) ; son bean Spring est déclaré
 par `config/DomainEngineConfig` dans `server`. Le domaine Fiscalité vit dans `back/domain-tax`
 (`com.moe.myfamilybudget.domain.tax.*`) et ne dépend que du contrat de projection de `domain-retirement`.
 Le domaine Patrimoine (moteurs de projection patrimoniale et d'évolution des placements, modèles, ports)
-vit dans `back/domain-wealth` (`com.moe.myfamilybudget.domain.wealth.*`) et ne dépend que de `domain-budget` ;
+vit dans `back/domain-wealth` (`com.moe.myfamilybudget.domain.wealth.*`) et ne dépend d'aucun autre module du reactor ;
 ses deux moteurs sont déclarés comme beans par `config/DomainEngineConfig`.
 Le domaine Banque/Pointage (modèle d'import bancaire, `BankImportCalculator`, `PointageCalculator`, contrats
 d'entrée, ports) vit dans `back/domain-bank-pointage` (`com.moe.myfamilybudget.domain.bankpointage.*`), sans
 dépendance vers un autre module du reactor ; Enable Banking, adapters JPA et contrôleurs restent dans `server`.
 Le domaine Trésorerie (`TresorerieCalculationService`, contrats d'entrée/sortie, modèles de résultat, ports Writer)
-vit dans `back/domain-treasury` (`com.moe.myfamilybudget.domain.treasury.*`) ; il ne consomme que les contrats
-publiés par `domain-budget`, `domain-retirement`, `domain-tax` et `domain-wealth`.
+vit dans `back/domain-treasury` (`com.moe.myfamilybudget.domain.treasury.*`) ; il ne dépend d'aucun autre module du reactor
+et porte ses propres contrats d'entrée (`TreasuryTaxProjection`, `TreasuryPensionProjection`,
+`TreasuryPlacementCashflow`), traduits par `application`.
 Le domaine Analyse (`AnalyseCalculator`, contrat d'entrée `AnalyseInput`, modèles de résultat) vit dans
-`back/domain-analysis` (`com.moe.myfamilybudget.domain.analysis.*`) ; consommateur final, il ne dépend que de
-`domain-budget` et `domain-bank-pointage`.
+`back/domain-analysis` (`com.moe.myfamilybudget.domain.analysis.*`) ; consommateur final, il ne dépend d'aucun
+autre module du reactor et porte ses propres types d'entrée.
 Le domaine Crédit (`LoanAdviceCalculationService`, contrats `LoanAdviceInput`/`LoanInput`, modèles de prêt et de
 résultat, ports `LoanReader`/`LoanWriter`) vit dans `back/domain-credit` (`com.moe.myfamilybudget.domain.credit.*`) ;
 le domaine Objectifs (paramètres, modèles d'objectif, ports `GoalReader`/`GoalWriter`) vit dans `back/domain-goals`

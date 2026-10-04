@@ -14,8 +14,8 @@ import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
@@ -147,7 +147,7 @@ class OverviewServiceImplTest {
         SettingsModel settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
                 BigDecimal.ZERO, 21, BigDecimal.ZERO);
 
-        com.moe.myfamilybudget.domain.budget.IncomeModel income = new com.moe.myfamilybudget.domain.budget.IncomeModel(
+        com.moe.myfamilybudget.domain.treasury.model.IncomeModel income = new com.moe.myfamilybudget.domain.treasury.model.IncomeModel(
                 "inc_1", "Salaire Moe", new BigDecimal("4000"), "2026-01-01", "2048-12-31", new BigDecimal("0.01"),
                 "cat_1", null);
 

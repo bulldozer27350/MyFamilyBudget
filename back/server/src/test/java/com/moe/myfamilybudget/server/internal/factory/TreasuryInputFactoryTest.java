@@ -15,16 +15,16 @@ import com.moe.myfamilybudget.domain.treasury.calculation.IncomeProjectionInput;
 import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryPlacementCashflow;
 import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjectionInput;
 import com.moe.myfamilybudget.domain.treasury.calculation.VariableIncomeProjection;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
-import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 
 /**
  * RF-400 / SILO-113 : vérifie la traduction {@code Sources → TreasuryProjectionInput} réalisée par

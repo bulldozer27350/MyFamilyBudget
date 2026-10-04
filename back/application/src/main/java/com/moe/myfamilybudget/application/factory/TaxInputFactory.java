@@ -21,7 +21,7 @@ import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxHouseholdParameters;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxRateOverride;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
@@ -30,8 +30,8 @@ import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
-import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 
 /**
  * Construit un {@link TaxCalculationInput} à partir de fragments lus chez leurs propriétaires

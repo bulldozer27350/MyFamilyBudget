@@ -12,11 +12,11 @@ import com.moe.myfamilybudget.domain.treasury.port.TresorerieList;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieWriter;
 import java.util.List;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
-import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
-import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSnapshotWriter;
 

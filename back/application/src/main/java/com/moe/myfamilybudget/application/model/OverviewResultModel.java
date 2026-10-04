@@ -3,8 +3,8 @@ package com.moe.myfamilybudget.application.model;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import java.math.BigDecimal;
 import java.util.List;
-import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
-import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
+import com.moe.myfamilybudget.domain.treasury.model.CashflowYearModel;
+import com.moe.myfamilybudget.domain.treasury.model.TripleAmountModel;
 
 /**
  * Résultat du calcul de l'aperçu financier global (Overview).

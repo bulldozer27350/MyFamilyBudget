@@ -10,7 +10,7 @@ import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.persistence.converter.CashflowEntityMapper;
 import com.moe.myfamilybudget.persistence.converter.WealthEntityMapper;
@@ -144,7 +144,7 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
                 assetCategories));
     }
 
-    /** SILO-131 : les virements restent stockés avec le type de {@code domain-budget} (jusqu'à SILO-140). */
+    /** SILO-131 : les virements restent stockés avec le type de Trésorerie ({@code TransferModel}, SILO-140). */
     private static List<PatrimoineTransferModel> toWealth(List<TransferModel> transfers) {
         return transfers.stream()
                 .map(t -> new PatrimoineTransferModel(t.id(), t.placement(), t.date(), t.amount(), t.notes()))

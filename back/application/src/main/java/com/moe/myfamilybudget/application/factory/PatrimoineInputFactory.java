@@ -20,9 +20,9 @@ import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionParame
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementHistoryPoint;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementProjectionInput;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementTransfer;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
-import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;

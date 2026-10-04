@@ -22,8 +22,8 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTran
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.CategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingLinkModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingModel;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 
 class AnalyseCalculatorTest {
 

@@ -11,12 +11,12 @@ import org.slf4j.LoggerFactory;
 
 import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
-import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 
 /**

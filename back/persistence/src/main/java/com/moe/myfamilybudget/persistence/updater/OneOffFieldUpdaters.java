@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 
 import static com.moe.myfamilybudget.persistence.updater.FieldValueConverter.toBigDecimal;
 import static com.moe.myfamilybudget.persistence.updater.FieldValueConverter.toStringOrEmpty;

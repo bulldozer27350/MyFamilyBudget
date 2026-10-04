@@ -35,7 +35,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.persistence.converter.BankImportDocumentMapper;
 import com.moe.myfamilybudget.persistence.converter.EntityModelConverter;

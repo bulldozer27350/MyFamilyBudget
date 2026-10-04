@@ -22,7 +22,7 @@ import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.application.factory.TreasuryInputFactory;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import java.math.BigDecimal;
 import com.moe.myfamilybudget.application.model.OverviewResultModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;

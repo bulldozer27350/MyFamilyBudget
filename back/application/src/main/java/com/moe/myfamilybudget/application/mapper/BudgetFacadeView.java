@@ -5,11 +5,11 @@ import java.util.List;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
-import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
@@ -18,9 +18,9 @@ import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.domain.budget.TransferModel;
-import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 
 /**
  * Vue de façade API (RES-010) : contenu du budget réexposé tel quel dans les réponses composites

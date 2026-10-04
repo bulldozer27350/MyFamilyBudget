@@ -17,14 +17,13 @@ final class MavenModuleGraphExceptions {
     static final String FROZEN_ON = "2026-10-04";
 
     /** Taille maximale de la liste à la date de gel ; à abaisser à chaque suppression d'entrée. */
-    static final int FROZEN_SIZE = 1;
+    static final int FROZEN_SIZE = 0;
 
     /** Dérogation : arête tolérée et patch qui la supprime. */
     record Tolerated(Edge edge, String removedBy) {}
 
-    static final List<Tolerated> ENTRIES = List.of(
-            // D2 : domain-budget rejoint Trésorerie (SILO-140)
-            new Tolerated(new Edge("domain-treasury", "domain-budget"), "SILO-140"));
+    /** Liste vide depuis SILO-140 : plus aucune arête interdite tolérée entre modules. */
+    static final List<Tolerated> ENTRIES = List.of();
 
     private MavenModuleGraphExceptions() {}
 }

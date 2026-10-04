@@ -24,7 +24,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;

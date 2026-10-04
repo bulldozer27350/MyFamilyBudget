@@ -17,8 +17,8 @@ import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
@@ -32,8 +32,8 @@ import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculator;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 
 /**
@@ -286,7 +286,6 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.transition.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.application.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.application.overview..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.wealth..")
@@ -311,7 +310,6 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.transition.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.application.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.application.overview..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.budget..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.wealth..")

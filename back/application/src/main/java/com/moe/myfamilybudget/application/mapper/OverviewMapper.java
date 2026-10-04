@@ -52,11 +52,11 @@ import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
 import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
-import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.CashflowYearModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
-import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.application.model.OverviewResultModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
@@ -70,12 +70,12 @@ import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
-import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
-import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.treasury.model.TripleAmountModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 
 @Component
 public class OverviewMapper {

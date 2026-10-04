@@ -8,15 +8,15 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
-import com.moe.myfamilybudget.domain.budget.CategoryOptionModel;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
-import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
-import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
-import com.moe.myfamilybudget.domain.budget.VariablePreviewCellModel;
-import com.moe.myfamilybudget.domain.budget.VariablePreviewModel;
+import com.moe.myfamilybudget.domain.treasury.model.CashflowYearModel;
+import com.moe.myfamilybudget.domain.treasury.model.CategoryOptionModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewCellModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
 
 @Component
 public class TresorerieMapper {

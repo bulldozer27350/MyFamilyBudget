@@ -14,8 +14,8 @@ import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjecti
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageInput;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointagePeriod;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.domain.budget.ChargeModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
 /**

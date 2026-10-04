@@ -38,10 +38,6 @@
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-budget</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>domain-retirement</artifactId>
         </dependency>
         <dependency>

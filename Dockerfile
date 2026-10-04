@@ -10,7 +10,6 @@ WORKDIR /workspace
 # Copie des pom.xml en premier pour profiter du cache de couche Docker
 # (back/pom.xml = parent Maven du reactor, requis pour résoudre les modules back/*/pom.xml)
 COPY back/pom.xml back/pom.xml
-COPY back/domain-budget/pom.xml back/domain-budget/pom.xml
 COPY back/domain-retirement/pom.xml back/domain-retirement/pom.xml
 COPY back/domain-tax/pom.xml back/domain-tax/pom.xml
 COPY back/domain-wealth/pom.xml back/domain-wealth/pom.xml
@@ -34,7 +33,6 @@ RUN --mount=type=cache,target=/root/.m2 \
 COPY openapi.yaml openapi.yaml
 COPY openapi openapi
 COPY view view
-COPY back/domain-budget back/domain-budget
 COPY back/domain-retirement back/domain-retirement
 COPY back/domain-tax back/domain-tax
 COPY back/domain-wealth back/domain-wealth

@@ -19,7 +19,7 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.application.model.RetraitePersonWithProjectionModel;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.application.model.RetraiteResultModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.transition.port.BudgetReader;

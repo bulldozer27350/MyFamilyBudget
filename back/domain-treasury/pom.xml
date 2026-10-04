@@ -9,9 +9,9 @@
         (moteur de projection, contrats d'entrée/sortie, modèles de résultat, ports Writer et
         énumérations de champs).
 
-        Dépendance autorisée : domain-budget uniquement (sa dissolution est portée par SILO-140).
-        SILO-132 : aucune dépendance vers domain-retirement, domain-tax ni domain-wealth ; Trésorerie
-        définit ses propres entrées (TreasuryPensionProjection, TreasuryTaxProjection,
+        SILO-140 : domain-budget est dissous, ses modèles (revenus, charges, ponctuels, virements, revenus
+        variables, résultats de flux) rejoignent le package treasury.model. SILO-132 : aucune dépendance
+        vers un autre module du reactor ; Trésorerie définit ses propres entrées (TreasuryPensionProjection, TreasuryTaxProjection,
         TreasuryPlacementCashflow) et l'application traduit.
         Aucune dépendance vers Spring, JPA, OpenAPI, PersistenceManager, BudgetDataModel,
         internal.impl ni internal.factory. Dépendances de test uniquement : JUnit 5 et AssertJ.
@@ -29,11 +29,6 @@
     <description>Domaine Trésorerie MyFamilyBudget (moteur pur, sans Spring ni JPA)</description>
 
     <dependencies>
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-budget</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

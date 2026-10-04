@@ -118,7 +118,7 @@ final class DomainBoundaryRules {
 
     /** Toutes les couches de domaine : tout {@code internal} sauf la façade applicative. */
     static final DescribedPredicate<JavaClass> DOMAIN_LAYERS = resideInAnyPackage(
-            "..internal.calculation..", "..internal.model..", "com.moe.myfamilybudget.domain.budget..",
+            "..internal.calculation..", "..internal.model..",
             "com.moe.myfamilybudget.domain.retirement..",
             "com.moe.myfamilybudget.domain.tax..",
             "com.moe.myfamilybudget.domain.wealth..",

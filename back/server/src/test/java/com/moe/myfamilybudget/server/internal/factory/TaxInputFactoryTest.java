@@ -18,7 +18,7 @@ import com.moe.myfamilybudget.domain.tax.calculation.AnnualVariableIncome;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
-import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;

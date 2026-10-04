@@ -10,9 +10,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
-import com.moe.myfamilybudget.domain.budget.VariablePreviewCellModel;
-import com.moe.myfamilybudget.domain.budget.VariablePreviewModel;
+import com.moe.myfamilybudget.domain.treasury.model.CashflowYearModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewCellModel;
+import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
 
 /**
  * RF-402 : tests de composant du moteur de trésorerie, construits uniquement avec
