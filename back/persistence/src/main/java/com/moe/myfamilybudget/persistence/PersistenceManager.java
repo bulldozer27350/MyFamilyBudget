@@ -5,6 +5,7 @@ import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import jakarta.annotation.PostConstruct;
  * Les données sont conservées dans une base de données H2 et persistent entre les redémarrages du serveur.
  */
 @Component
+@DependsOn("legacySchemaCleanup")
 @Transactional
 public class PersistenceManager {
 
