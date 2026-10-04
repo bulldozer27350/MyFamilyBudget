@@ -27,7 +27,7 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 
 /**
  * Construit un {@link PatrimoineProjectionInput} à partir de fragments lus chez leurs propriétaires
@@ -65,7 +65,7 @@ public final class PatrimoineInputFactory {
             List<ChargeModel> charges,
             List<PlacementModel> placements,
             List<OneOffExpenseModel> oneoff,
-            List<TransferModel> transfers) {
+            List<PatrimoineTransferModel> transfers) {
 
         BigDecimal effectiveInflationRate() {
             return inflationRate != null ? inflationRate : BigDecimal.ZERO;
@@ -134,7 +134,7 @@ public final class PatrimoineInputFactory {
 
     private static List<PlacementTransfer> toTransfers(Sources data) {
         List<PlacementTransfer> transfers = new ArrayList<>();
-        for (TransferModel transfer : orEmpty(data.transfers())) {
+        for (PatrimoineTransferModel transfer : orEmpty(data.transfers())) {
             LocalDate date = parseDate(transfer.date());
             if (transfer.placement() == null || date == null) {
                 continue;
@@ -248,7 +248,7 @@ public final class PatrimoineInputFactory {
             if (p.balanceDate() != null) dates.add(p.balanceDate());
         }
         for (OneOffExpenseModel o : orEmpty(data.oneoff())) if (o.date() != null) dates.add(o.date());
-        for (TransferModel t : orEmpty(data.transfers())) if (t.date() != null) dates.add(t.date());
+        for (PatrimoineTransferModel t : orEmpty(data.transfers())) if (t.date() != null) dates.add(t.date());
         if (data.tresorerieSettings().pivotDate() != null) dates.add(data.tresorerieSettings().pivotDate());
 
         int earliestYear = 2026;

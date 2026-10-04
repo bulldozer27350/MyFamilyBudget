@@ -9,9 +9,9 @@
         (moteurs de projection patrimoniale et d'évolution des placements, règles de pause des
         versements, contrats d'entrée/sortie, modèles patrimoniaux, ports Reader/Writer).
 
-        Dépendance autorisée : domain-budget, uniquement pour les records de budget de base
-        (TripleAmountModel, TransferModel). Aucune dépendance vers Spring, JPA, OpenAPI,
-        PersistenceManager ou BudgetDataModel, et aucun retour vers Trésorerie.
+        SILO-131 (décision D1) : aucune dépendance vers un autre silo, ni vers domain-budget ; le silo
+        définit ses propres types (PatrimoineTransferModel, ScenarioAmountsModel). Aucune dépendance vers
+        Spring, JPA, OpenAPI, PersistenceManager ou BudgetDataModel, et aucun retour vers Trésorerie.
         Dépendances de test uniquement : JUnit 5 et AssertJ (versions gérées par le BOM du parent).
     -->
     <parent>
@@ -27,11 +27,6 @@
     <description>Domaine Patrimoine MyFamilyBudget (moteurs purs, sans Spring ni JPA)</description>
 
     <dependencies>
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-budget</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

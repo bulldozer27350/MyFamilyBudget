@@ -17,14 +17,13 @@ final class MavenModuleGraphExceptions {
     static final String FROZEN_ON = "2026-10-04";
 
     /** Taille maximale de la liste à la date de gel ; à abaisser à chaque suppression d'entrée. */
-    static final int FROZEN_SIZE = 8;
+    static final int FROZEN_SIZE = 7;
 
     /** Dérogation : arête tolérée et patch qui la supprime. */
     record Tolerated(Edge edge, String removedBy) {}
 
     static final List<Tolerated> ENTRIES = List.of(
             // D1 : contrats propres au consommateur (SILO-130 à SILO-134)
-            new Tolerated(new Edge("domain-wealth", "domain-budget"), "SILO-131"),
             new Tolerated(new Edge("domain-treasury", "domain-retirement"), "SILO-132"),
             new Tolerated(new Edge("domain-treasury", "domain-tax"), "SILO-132"),
             new Tolerated(new Edge("domain-treasury", "domain-wealth"), "SILO-132"),

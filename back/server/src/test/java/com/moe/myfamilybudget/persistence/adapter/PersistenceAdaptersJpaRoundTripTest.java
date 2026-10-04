@@ -35,6 +35,7 @@ import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
@@ -827,7 +828,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(budget.getOneoffExpenses(), List.of(ONEOFF));
         assertSameContent(budget.getVariableIncomes(), List.of(VARIABLE_INCOME));
         assertSameContent(budget.getVariableOverrides(), List.of(VARIABLE_OVERRIDE));
-        assertSameContent(jpaPatrimoineAdapter(reader).getTransfers(), List.of(TRANSFER));
+        assertSameContent(jpaPatrimoineAdapter(reader).getTransfers(), List.of(WEALTH_TRANSFER));
     }
 
     @Test
@@ -856,11 +857,11 @@ class PersistenceAdaptersJpaRoundTripTest {
         writer.setBudgetData(referenceData());
 
         writer.write(m -> m.savePatrimoineRow("transfers", Map.of("id", "tr_2", "amount", bd("250"))));
-        assertThat(jpaPatrimoineAdapter(freshReader()).getTransfers()).extracting(TransferModel::id)
+        assertThat(jpaPatrimoineAdapter(freshReader()).getTransfers()).extracting(PatrimoineTransferModel::id)
                 .containsExactlyInAnyOrder("tr_1", "tr_2");
 
         writer.write(m -> m.deletePatrimoineRow("transfers", "tr_1"));
-        assertThat(jpaPatrimoineAdapter(freshReader()).getTransfers()).extracting(TransferModel::id)
+        assertThat(jpaPatrimoineAdapter(freshReader()).getTransfers()).extracting(PatrimoineTransferModel::id)
                 .containsExactly("tr_2");
     }
 
@@ -885,7 +886,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(budget.getOneoffExpenses(), List.of(ONEOFF));
         assertSameContent(budget.getVariableIncomes(), List.of(VARIABLE_INCOME));
         assertSameContent(budget.getVariableOverrides(), List.of(VARIABLE_OVERRIDE));
-        assertSameContent(jpaPatrimoineAdapter(restarted).getTransfers(), List.of(TRANSFER));
+        assertSameContent(jpaPatrimoineAdapter(restarted).getTransfers(), List.of(WEALTH_TRANSFER));
     }
 
     @Test
@@ -965,7 +966,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(patrimoine.getPlacements().get(0).history()).hasSize(1);
         assertSameContent(patrimoine.getRealEstate(), List.of(REAL_ESTATE));
         assertSameContent(patrimoine.getAssetCategories(), List.of(ASSET_CATEGORY));
-        assertSameContent(patrimoine.getTransfers(), List.of(TRANSFER));
+        assertSameContent(patrimoine.getTransfers(), List.of(WEALTH_TRANSFER));
 
         RetirementModel retirement = new RetirementPersistenceAdapter(reader).getRetirement();
         assertSameContent(retirement, RETIREMENT);
@@ -1067,6 +1068,8 @@ class PersistenceAdaptersJpaRoundTripTest {
             "immobilier", "#ff0000");
 
     private static final TransferModel TRANSFER = new TransferModel("tr_1", "PEA", "2026-03-01", bd("500"), "");
+    private static final PatrimoineTransferModel WEALTH_TRANSFER =
+            new PatrimoineTransferModel("tr_1", "PEA", "2026-03-01", bd("500"), "");
 
     private static final RetirementModel RETIREMENT = new RetirementModel(
             List.of(new RetirementModel.RetirementPersonModel("p_1", "Alice", 1990, "Salaire", 140, "2025-12-31",

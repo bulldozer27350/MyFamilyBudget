@@ -34,7 +34,7 @@ import com.moe.myfamilybudget.domain.wealth.model.PatrimoineYearModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 
 @Component
 public class PatrimoineMapper {
@@ -116,7 +116,7 @@ public class PatrimoineMapper {
         );
     }
 
-    public TransferDto toTransferDto(TransferModel m) {
+    public TransferDto toTransferDto(PatrimoineTransferModel m) {
         if (m == null) return null;
         TransferDto dto = new TransferDto();
         dto.setId(m.id());
@@ -127,9 +127,9 @@ public class PatrimoineMapper {
         return dto;
     }
 
-    public TransferModel toTransferModel(TransferDto dto) {
+    public PatrimoineTransferModel toTransferModel(TransferDto dto) {
         if (dto == null) return null;
-        return new TransferModel(
+        return new PatrimoineTransferModel(
                 dto.getId(),
                 dto.getPlacement(),
                 dto.getDate(),
@@ -276,7 +276,7 @@ public class PatrimoineMapper {
      */
     public PatrimoineResponseDto toPatrimoineResponseDto(
             List<PlacementModel> placementModels,
-            List<TransferModel> transferModels,
+            List<PatrimoineTransferModel> transferModels,
             List<RealEstateModel> realEstateModels,
             List<LoanModel> loanModels,
             List<AssetCategoryModel> assetCategoryModels,

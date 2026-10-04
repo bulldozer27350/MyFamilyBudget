@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.application.factory;
 
+import com.moe.myfamilybudget.application.mapper.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.application.factory.PatrimoineInputFactory;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
@@ -232,6 +233,6 @@ public final class OverviewInputFactory {
                 t.charges(),
                 t.placements(),
                 t.oneoff(),
-                t.transfers());
+                PatrimoineTransferConverter.toWealth(t.transfers()));
     }
 }

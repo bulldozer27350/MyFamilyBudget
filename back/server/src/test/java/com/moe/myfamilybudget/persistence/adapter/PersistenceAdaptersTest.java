@@ -29,6 +29,7 @@ import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
@@ -177,7 +178,7 @@ class PersistenceAdaptersTest {
             assertThat(adapter.getPlacements().get(0).balance()).isEqualByComparingTo("10000");
             assertThat(adapter.getRealEstate()).containsExactly(REAL_ESTATE);
             assertThat(adapter.getAssetCategories()).containsExactly(ASSET_CATEGORY);
-            assertThat(adapter.getTransfers()).containsExactly(TRANSFER);
+            assertThat(adapter.getTransfers()).containsExactly(WEALTH_TRANSFER);
         }
 
         @Test
@@ -492,6 +493,8 @@ class PersistenceAdaptersTest {
             "immobilier", "#ff0000");
 
     private static final TransferModel TRANSFER = new TransferModel("tr_1", "PEA", "2026-03-01", bd("500"), "");
+    private static final PatrimoineTransferModel WEALTH_TRANSFER =
+            new PatrimoineTransferModel("tr_1", "PEA", "2026-03-01", bd("500"), "");
 
     private static final RetirementModel RETIREMENT = new RetirementModel(
             List.of(new RetirementModel.RetirementPersonModel("p_1", "Alice", 1990, "Salaire", 140, "2025-12-31",

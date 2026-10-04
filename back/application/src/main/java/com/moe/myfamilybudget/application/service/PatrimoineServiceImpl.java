@@ -21,7 +21,7 @@ import com.moe.myfamilybudget.application.factory.PatrimoineInputFactory;
 import com.moe.myfamilybudget.application.mapper.PatrimoineMapper;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 import com.moe.myfamilybudget.application.command.GoalCommandService;
 import com.moe.myfamilybudget.application.command.LoanCommandService;
 import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
@@ -88,7 +88,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         this.bankReader = bankReader;
     }
 
-    private PatrimoineInputFactory.Sources readSources(List<PlacementModel> placements, List<TransferModel> transfers) {
+    private PatrimoineInputFactory.Sources readSources(List<PlacementModel> placements, List<PatrimoineTransferModel> transfers) {
         return new PatrimoineInputFactory.Sources(
                 retirementSettingsReader.getRetirementSettings(),
                 tresorerieSettingsReader.getTresorerieSettings(),
@@ -103,7 +103,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
     @Override
     public ResponseEntity<PatrimoineResponseDto> getPatrimoine(Boolean useConstantEuros) {
         List<PlacementModel> placements = patrimoineReader.getPlacements();
-        List<TransferModel> transfers = patrimoineReader.getTransfers();
+        List<PatrimoineTransferModel> transfers = patrimoineReader.getTransfers();
         PatrimoineProjectionsModel projections = this.projectionService.compute(
                 PatrimoineInputFactory.from(readSources(placements, transfers)),
                 Boolean.TRUE.equals(useConstantEuros));

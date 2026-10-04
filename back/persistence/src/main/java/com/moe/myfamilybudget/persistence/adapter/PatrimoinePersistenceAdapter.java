@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.budget.TransferModel;
@@ -86,11 +87,11 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
     }
 
     @Override
-    public List<TransferModel> getTransfers() {
+    public List<PatrimoineTransferModel> getTransfers() {
         if (cashflowTransferRepository == null) {
-            return persistenceManager.getBudgetData().getEffectiveTransfers();
+            return toWealth(persistenceManager.getBudgetData().getEffectiveTransfers());
         }
-        return CashflowEntityMapper.toTransferModels(cashflowTransferRepository.findAllByOrderByPositionAsc());
+        return toWealth(CashflowEntityMapper.toTransferModels(cashflowTransferRepository.findAllByOrderByPositionAsc()));
     }
 
     @Override
@@ -137,9 +138,26 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
     /** SILO-119 (lot B1) : import du silo Patrimoine. */
     @Override
     public void replace(List<PlacementModel> placements, List<RealEstateModel> realEstate,
-                        List<TransferModel> transfers, List<AssetCategoryModel> assetCategories) {
-        persistenceManager.write(m -> m.replacePatrimoineSnapshot(placements, realEstate, transfers,
+                        List<PatrimoineTransferModel> transfers, List<AssetCategoryModel> assetCategories) {
+        List<TransferModel> budgetTransfers = toBudget(transfers);
+        persistenceManager.write(m -> m.replacePatrimoineSnapshot(placements, realEstate, budgetTransfers,
                 assetCategories));
+    }
+
+    /** SILO-131 : les virements restent stockés avec le type de {@code domain-budget} (jusqu'à SILO-140). */
+    private static List<PatrimoineTransferModel> toWealth(List<TransferModel> transfers) {
+        return transfers.stream()
+                .map(t -> new PatrimoineTransferModel(t.id(), t.placement(), t.date(), t.amount(), t.notes()))
+                .toList();
+    }
+
+    private static List<TransferModel> toBudget(List<PatrimoineTransferModel> transfers) {
+        if (transfers == null) {
+            return null;
+        }
+        return transfers.stream()
+                .map(t -> new TransferModel(t.id(), t.placement(), t.date(), t.amount(), t.notes()))
+                .toList();
     }
 
     /** SILO-119 (lot B1) : remise à zéro du silo Patrimoine. */

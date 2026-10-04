@@ -3,6 +3,7 @@ package com.moe.myfamilybudget.application.overview;
 import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjection;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjection;
 import com.moe.myfamilybudget.domain.wealth.calculation.RealEstateProjection;
+import com.moe.myfamilybudget.domain.wealth.model.ScenarioAmountsModel;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
@@ -55,7 +56,9 @@ public class OverviewCalculationService {
 
         // 1. Patrimoine financier mobilisable à la retraite
         int idx = years.indexOf(retireYear);
-        TripleAmountModel financialOnlyPatrimoine = patrimoine.financialOnlyPatrimoine(idx, retireDeflator);
+        ScenarioAmountsModel financialOnlyScenarios = patrimoine.financialOnlyPatrimoine(idx, retireDeflator);
+        TripleAmountModel financialOnlyPatrimoine = new TripleAmountModel(
+            financialOnlyScenarios.pess(), financialOnlyScenarios.corr(), financialOnlyScenarios.opti());
 
         // 2. Immobilier à la retraite
         BigDecimal realEstateAtRetire = realEstate.nominalValueAtRetire().multiply(retireDeflator);

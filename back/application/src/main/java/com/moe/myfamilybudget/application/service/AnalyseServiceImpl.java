@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.application.service;
 
+import com.moe.myfamilybudget.application.mapper.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.api.controller.AnalyseApi;
 import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseInput;
@@ -96,7 +97,8 @@ public class AnalyseServiceImpl implements AnalyseApi {
                 settings, incomes, charges, placements, patrimoineReader.getRealEstate(),
                 retirementReader.getRetirement(), taxReader.getTaxChildren(), taxReader.getTaxBrackets(),
                 taxReader.getTaxRateOverrides(), taxReader.getTaxActualOverrides(), budgetReader.getOneoffExpenses(),
-                patrimoineReader.getTransfers(), budgetReader.getVariableIncomes(), budgetReader.getVariableOverrides(),
+                PatrimoineTransferConverter.toBudget(patrimoineReader.getTransfers()),
+                budgetReader.getVariableIncomes(), budgetReader.getVariableOverrides(),
                 bankImport, patrimoineReader.getAssetCategories(), loanReader.getLoans(), goalReader.getGoals(),
                 objectifsSettingsService.current());
         AnalyseResponseDto responseDto = analyseMapper.toDto(resultModel, view);

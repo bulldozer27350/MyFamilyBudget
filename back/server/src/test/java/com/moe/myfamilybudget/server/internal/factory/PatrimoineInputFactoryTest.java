@@ -25,7 +25,7 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 
 /**
  * RF-300 / RF-301 / SILO-112 : vérifie la traduction {@code Sources → PatrimoineProjectionInput} et
@@ -46,7 +46,7 @@ class PatrimoineInputFactoryTest {
             List<ChargeModel> charges,
             List<PlacementModel> placements,
             List<OneOffExpenseModel> oneoff,
-            List<TransferModel> transfers) {
+            List<PatrimoineTransferModel> transfers) {
         if (settings == null) {
             // mêmes valeurs par défaut que l'ancien BudgetDataModel.getEffectiveSettings()
             settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "", "manual", BigDecimal.ZERO,
@@ -164,12 +164,12 @@ class PatrimoineInputFactoryTest {
     @Test
     @DisplayName("from() : les retraits sans placement ou sans date lisible sont écartés")
     void transfers() {
-        List<TransferModel> transfers = List.of(
-                new TransferModel("t1", "Livret A", "2027-05-20", new BigDecimal("2000"), null),
-                new TransferModel("t2", null, "2027-05-20", new BigDecimal("100"), null),
-                new TransferModel("t3", "Livret A", null, new BigDecimal("100"), null),
-                new TransferModel("t4", "Livret A", "n'importe quoi", new BigDecimal("100"), null),
-                new TransferModel("t5", "PEA", "2028-01", null, null));
+        List<PatrimoineTransferModel> transfers = List.of(
+                new PatrimoineTransferModel("t1", "Livret A", "2027-05-20", new BigDecimal("2000"), null),
+                new PatrimoineTransferModel("t2", null, "2027-05-20", new BigDecimal("100"), null),
+                new PatrimoineTransferModel("t3", "Livret A", null, new BigDecimal("100"), null),
+                new PatrimoineTransferModel("t4", "Livret A", "n'importe quoi", new BigDecimal("100"), null),
+                new PatrimoineTransferModel("t5", "PEA", "2028-01", null, null));
         PatrimoineInputFactory.Sources data = budget(settings(null, null), List.of(), List.of(), List.of(), List.of(), transfers);
 
         List<PlacementTransfer> result = PatrimoineInputFactory.from(data).transfers();
@@ -273,9 +273,9 @@ class PatrimoineInputFactoryTest {
                 new PlacementHistoryEntryModel("h1", "2025-01-01", new BigDecimal("1100"), null),
                 new PlacementHistoryEntryModel("h2", "2025-03-01", new BigDecimal("1200"), null)));
         PlacementModel withoutHistory = placementWithHistory("PEA", "5000", List.of());
-        List<TransferModel> transfers = List.of(
-                new TransferModel("t1", "PEA", "2027-05-20", new BigDecimal("2000"), null),
-                new TransferModel("t2", null, "2027-05-20", new BigDecimal("100"), null));
+        List<PatrimoineTransferModel> transfers = List.of(
+                new PatrimoineTransferModel("t1", "PEA", "2027-05-20", new BigDecimal("2000"), null),
+                new PatrimoineTransferModel("t2", null, "2027-05-20", new BigDecimal("100"), null));
         PatrimoineInputFactory.Sources data = budget(settings(null, null), List.of(), List.of(),
                 List.of(withHistory, withoutHistory), List.of(), transfers);
 

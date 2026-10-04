@@ -7,7 +7,7 @@ import java.util.Set;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineYearModel;
-import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
+import com.moe.myfamilybudget.domain.wealth.model.ScenarioAmountsModel;
 
 /**
  * Projection patrimoniale pour l'aperçu financier (RF-900, voir
@@ -40,9 +40,9 @@ public record PatrimoineProjection(
      * @param deflator  déflateur d'inflation (1.0 si euros courants)
      * @return montant pessimiste, corrigé et optimiste du patrimoine financier retraite
      */
-    public TripleAmountModel financialOnlyPatrimoine(int yearIndex, BigDecimal deflator) {
+    public ScenarioAmountsModel financialOnlyPatrimoine(int yearIndex, BigDecimal deflator) {
         if (yearIndex < 0) {
-            return new TripleAmountModel(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+            return new ScenarioAmountsModel(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         }
 
         BigDecimal pess = BigDecimal.ZERO;
@@ -62,7 +62,7 @@ public record PatrimoineProjection(
         }
 
         BigDecimal d = deflator != null ? deflator : BigDecimal.ONE;
-        return new TripleAmountModel(
+        return new ScenarioAmountsModel(
                 pess.multiply(d),
                 corr.multiply(d),
                 opti.multiply(d));

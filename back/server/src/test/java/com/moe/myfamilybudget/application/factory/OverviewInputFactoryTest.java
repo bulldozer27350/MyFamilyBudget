@@ -21,7 +21,7 @@ import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.domain.budget.TripleAmountModel;
+import com.moe.myfamilybudget.domain.wealth.model.ScenarioAmountsModel;
 
 /**
  * RF-900 : vérifie la création d'{@link OverviewInput} par {@link OverviewInputFactory}
@@ -154,7 +154,7 @@ class OverviewInputFactoryTest {
         OverviewInput input = factory.from(sources(data), false, 2026);
 
         PatrimoineProjection pat = input.patrimoineProjection();
-        TripleAmountModel financialOnly = pat.financialOnlyPatrimoine(0, BigDecimal.ONE);
+        ScenarioAmountsModel financialOnly = pat.financialOnlyPatrimoine(0, BigDecimal.ONE);
 
         // Seul "Disponible" (10 000) doit être compté, pas "Exclu" (20 000)
         assertThat(financialOnly.corr()).isEqualByComparingTo(new BigDecimal("10000"));

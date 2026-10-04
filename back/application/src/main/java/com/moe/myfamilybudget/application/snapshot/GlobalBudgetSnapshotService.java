@@ -3,6 +3,7 @@ package com.moe.myfamilybudget.application.snapshot;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.moe.myfamilybudget.application.mapper.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
@@ -118,7 +119,8 @@ public class GlobalBudgetSnapshotService {
                 settingsReader.getSettings(), budgetReader.getIncomes(), budgetReader.getCharges(),
                 patrimoineReader.getPlacements(), patrimoineReader.getRealEstate(), retirementReader.getRetirement(),
                 taxReader.getTaxChildren(), taxReader.getTaxBrackets(), taxReader.getTaxRateOverrides(),
-                taxReader.getTaxActualOverrides(), budgetReader.getOneoffExpenses(), patrimoineReader.getTransfers(),
+                taxReader.getTaxActualOverrides(), budgetReader.getOneoffExpenses(),
+                PatrimoineTransferConverter.toBudget(patrimoineReader.getTransfers()),
                 budgetReader.getVariableIncomes(), budgetReader.getVariableOverrides(), bankReader.getBankImport(),
                 patrimoineReader.getAssetCategories(), loanReader.getLoans(), goalReader.getGoals(),
                 objectifsSettingsService.current());

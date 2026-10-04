@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.moe.myfamilybudget.application.mapper.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.api.controller.OverviewApi;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
@@ -117,7 +118,7 @@ public class OverviewServiceImpl implements OverviewApi {
         var taxRateOverrides = taxReader.getTaxRateOverrides();
         var taxActualOverrides = taxReader.getTaxActualOverrides();
         var oneoff = budgetReader.getOneoffExpenses();
-        var transfers = patrimoineReader.getTransfers();
+        var transfers = PatrimoineTransferConverter.toBudget(patrimoineReader.getTransfers());
         var variableIncomes = budgetReader.getVariableIncomes();
         var variableOverrides = budgetReader.getVariableOverrides();
         var bankImport = bankReader.getBankImport();
