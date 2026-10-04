@@ -256,7 +256,10 @@ un patch qui rencontre un arbitrage non tranché devient un patch « bloqué » 
 - **Objectif** : supprimer `SettingsReader` et `SettingsModel` de `transition-snapshot`.
 - **Travaux** : chaque silo expose ses paramètres via son propre reader (Retraite : âge, année de naissance, PASS ; Fiscalité : abattement, âge de sortie des enfants ; Trésorerie : date et mode pivot, solde de départ, balayage ; Simulation ; Hypothèses économiques). 22 fichiers d'`application` consomment `SettingsModel` aujourd'hui. L'écriture est déjà distribuée (`SettingsCommandRouter`, DB-061).
 - **Acquis** : écriture par propriétaire, façade REST composite, atomicité multi-domaines.
-- **Statut** : [x] Non commencé
+- **Découpage** : lot A (ports de lecture par propriétaire, additif) puis lot B (migration des consommateurs et suppression de `SettingsReader`). `SettingsModel` reste dans `transition-snapshot` : `BudgetDataModel` le contient jusqu'à SILO-230 et son stockage (`SettingsEntity`) est dissous par SILO-220.
+- **Livré (lot A)** : `RetirementSettingsReader` (`birthYear`, `retireAge`), `TaxSettingsReader` (`childExitAge`, `taxAbattement`), `TresorerieSettingsReader` (pivot, solde de départ, sweep, seuils de cash) dans leurs domaines ; `SimulationSettingsReader` et `EconomicAssumptionsReader` dans `transition-snapshot`, à côté de leurs writers (aucun silo pour ces deux notions). `SettingsPersistenceAdapter` implémente les cinq ports en projetant `getSettings()` : il reste le seul lecteur du cache. Test `SettingsPersistenceAdapterOwnerReadersTest`.
+- **Reste (lot B)** : migrer les dix consommateurs de `SettingsReader` (`AnalyseServiceImpl`, `ImpotsServiceImpl`, `OverviewServiceImpl`, `ParametersServiceImpl`, `PatrimoineServiceImpl`, `PendingOperationsServiceImpl`, `PointageServiceImpl`, `RetraiteServiceImpl`, `TresorerieServiceImpl`, `GlobalBudgetSnapshotService`) et `NotificationDispatchService` vers les ports propriétaires, puis supprimer `SettingsReader`. Les SILO-110 à SILO-118 peuvent démarrer sur les ports du lot A sans attendre le lot B.
+- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente de réponse / [ ] Annulé / [ ] Terminé
 
 ### SILO-110 à SILO-118 : un silo après l'autre sans `BudgetDataModel`
 - **Objectif commun** : le service du silo et ses factories n'appellent plus `composeBudgetData()` ni `new BudgetDataModel(...)` ; ils lisent des fragments par reader et construisent directement l'entrée du moteur.
@@ -406,5 +409,5 @@ fichier `21` reste vivant.
 - **Tâche** : atteindre des silos isolés, une persistance par silo transactionnelle, et une séparation application/web.
 - **Acquis** : domaines purs sans `BudgetDataModel` ; ports Reader/Writer pour sept silos ; hubs Retraite, Fiscalité, Objectifs, Banque retirés ; écriture des paramètres distribuée ; `application` sans dépendance vers `persistence`.
 - **Piste en cours** : décisions D1 à D8 tranchées (SILO-000 terminé).
-- **Reste à faire** : tout le reste de la section 7 ; SILO-000, SILO-001, SILO-002 et SILO-003 sont terminés ; patch maintenant disponible : SILO-100.
+- **Reste à faire** : tout le reste de la section 7 ; SILO-000, SILO-001, SILO-002 et SILO-003 sont terminés ; SILO-100 lot A livré (ports de lecture par propriétaire) ; patch maintenant disponible : SILO-100 lot B, ou SILO-110 à SILO-118 sur les ports du lot A.
 - **Instruction de reprise** : cloner `main`, relire ce fichier, annoncer le patch visé, puis livrer le `.patch` en LF sans attendre de validation (un arbitrage non tranché rend le patch « bloqué »).
