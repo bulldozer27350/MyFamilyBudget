@@ -3,7 +3,6 @@ package com.moe.myfamilybudget.server.internal.architecture;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.moe.myfamilybudget.server.internal.architecture.MavenModuleGraphRules.Edge;
 import java.nio.file.Files;
@@ -34,7 +33,7 @@ class MavenModuleGraphTest {
 
     @Test
     void graph_has_no_cycle_and_no_forbidden_edge_outside_the_closed_exception_list() throws Exception {
-        Map<String, Set<String>> graph = loadGraphOrSkip();
+        Map<String, Set<String>> graph = loadGraphOrFail();
         assertEquals(List.of(), MavenModuleGraphRules.findCycle(graph), "le graphe Maven doit être acyclique");
 
         Set<Edge> tolerated = toleratedEdges();
@@ -49,7 +48,7 @@ class MavenModuleGraphTest {
 
     @Test
     void exception_list_only_shrinks_and_every_entry_is_a_real_forbidden_edge() throws Exception {
-        Map<String, Set<String>> graph = loadGraphOrSkip();
+        Map<String, Set<String>> graph = loadGraphOrFail();
         assertTrue(MavenModuleGraphExceptions.ENTRIES.size() <= MavenModuleGraphExceptions.FROZEN_SIZE,
                 "MavenModuleGraphExceptions ne peut que décroître (gel du " + MavenModuleGraphExceptions.FROZEN_ON
                         + ", maximum " + MavenModuleGraphExceptions.FROZEN_SIZE + ")");
@@ -131,9 +130,9 @@ class MavenModuleGraphTest {
         return edges;
     }
 
-    private static Map<String, Set<String>> loadGraphOrSkip() throws Exception {
+    private static Map<String, Set<String>> loadGraphOrFail() throws Exception {
         Path backRoot = locateBackRoot();
-        assumeTrue(backRoot != null, "back/pom.xml introuvable depuis " + Path.of("").toAbsolutePath());
+        assertTrue(backRoot != null, "back/pom.xml introuvable depuis " + Path.of("").toAbsolutePath());
         return loadGraph(backRoot);
     }
 
