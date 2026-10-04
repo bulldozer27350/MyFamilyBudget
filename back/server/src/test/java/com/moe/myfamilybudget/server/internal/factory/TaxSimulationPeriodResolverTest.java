@@ -10,27 +10,22 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 
 /**
  * RF-202 : la période de simulation fiscale est déduite en amont, hors du moteur fiscal.
  */
 class TaxSimulationPeriodResolverTest {
 
-    private static BudgetDataModel budget(String incomeStart) {
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", BigDecimal.ZERO,
-                21, new BigDecimal("0.10"));
+    private static TaxSimulationPeriodResolver.Sources budget(String incomeStart) {
         List<IncomeModel> incomes = List.of(
                 new IncomeModel("inc1", "Salaire", new BigDecimal("4000"), incomeStart, "2026-12-31",
                         BigDecimal.ZERO, null, null));
-        return new BudgetDataModel(
-                settings, incomes,
-                List.of(), List.of(), List.of(), null,
-                List.of(), List.of(), List.of(), List.of(),
-                List.of(), List.of(), List.of(), List.of(), null);
+        return new TaxSimulationPeriodResolver.Sources(
+                new RetirementSettingsModel(1985, 64), new SimulationSettingsModel(85), "2026-01-01",
+                incomes, List.of(), List.of(), List.of(), List.of(), null);
     }
 
     @Test

@@ -18,11 +18,11 @@ import com.moe.myfamilybudget.domain.tax.calculation.AnnualVariableIncome;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
+import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
@@ -35,11 +35,7 @@ import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
  */
 class TaxInputFactoryTest {
 
-    private static BudgetDataModel budgetWithSalaryOnly() {
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", BigDecimal.ZERO,
-                21, new BigDecimal("0.10"));
-
+    private static TaxInputFactory.Sources budgetWithSalaryOnly() {
         List<IncomeModel> incomes = List.of(
                 new IncomeModel("inc1", "Salaire", new BigDecimal("4000"), "2026-01-01", "2026-12-31",
                         BigDecimal.ZERO, null, null));
@@ -52,24 +48,27 @@ class TaxInputFactoryTest {
                 new TaxChildModel("c1", "Enfant 1", 2015),
                 new TaxChildModel("c2", "Sans date", null));
 
-        return new BudgetDataModel(
-                settings,
+        return new TaxInputFactory.Sources(
+                new RetirementSettingsModel(1985, 64),
+                new TaxSettingsModel(21, new BigDecimal("0.10")),
+                new BigDecimal("0.02"),
                 incomes,
-                List.of(), List.of(), List.of(), null,
+                List.of(),
+                List.of(),
                 children,
                 brackets,
                 List.of(new TaxRateOverrideModel(2026, new BigDecimal("0.08"))),
-                List.of(new TaxActualOverrideModel(2026, new BigDecimal("3500.00"))),
-                List.of(), List.of(), List.of(), List.of(), null);
+                List.of(new TaxActualOverrideModel(2026, new BigDecimal("3500.00"))));
     }
 
-    private static TaxCalculationInput build(BudgetDataModel data) {
+    private static TaxCalculationInput build(TaxInputFactory.Sources data) {
         RetirementProjection projection =
                 new RetirementCalculationService().compute(new RetirementInputFactory().create(
-                        new RetirementSettingsModel(data.getEffectiveSettings().birthYear(),
-                                data.getEffectiveSettings().retireAge()),
-                        data.retirement(), data.getEffectiveIncomes(), data.getEffectiveTaxChildren().size()));
-        return TaxInputFactory.from(data, TaxSimulationPeriodResolver.resolve(data), projection);
+                        data.retirementSettings(), null, data.incomes(), data.taxChildren().size()));
+        TaxSimulationPeriod period = TaxSimulationPeriodResolver.resolve(new TaxSimulationPeriodResolver.Sources(
+                data.retirementSettings(), new SimulationSettingsModel(85), "2026-01-01",
+                data.incomes(), List.of(), List.of(), List.of(), List.of(), null));
+        return TaxInputFactory.from(data, period, projection);
     }
 
     private static RetirementProjectionModel pension(String monthly) {
@@ -82,7 +81,7 @@ class TaxInputFactoryTest {
     @Test
     @DisplayName("from() : reprend telle quelle la période fournie, une entrée par année")
     void testPeriodIsProvidedExplicitly() {
-        BudgetDataModel data = budgetWithSalaryOnly();
+        TaxInputFactory.Sources data = budgetWithSalaryOnly();
         TaxSimulationPeriod period = new TaxSimulationPeriod(2030, 2032);
 
         TaxCalculationInput input = TaxInputFactory.from(data, period, new RetirementProjection(List.of()));
@@ -96,7 +95,7 @@ class TaxInputFactoryTest {
     @Test
     @DisplayName("from() : pension mensuelle du moteur Retraite -> montant annuel (x12) à partir de l'année de départ")
     void testRetirementIncomeFromProjection() {
-        BudgetDataModel data = budgetWithSalaryOnly();
+        TaxInputFactory.Sources data = budgetWithSalaryOnly();
         int retireYear = 1985 + 64;
         TaxSimulationPeriod period = new TaxSimulationPeriod(retireYear - 1, retireYear + 1);
         RetirementProjection projection = new RetirementProjection(List.of(pension("1500"), pension("500")));
@@ -140,7 +139,7 @@ class TaxInputFactoryTest {
     @Test
     @DisplayName("from() : incomes contient le revenu annuel 2026 = 4000 * 12 = 48000, une entrée par année de la période")
     void testAnnualIncomes() {
-        BudgetDataModel data = budgetWithSalaryOnly();
+        TaxInputFactory.Sources data = budgetWithSalaryOnly();
         TaxCalculationInput input = build(data);
 
         int expectedYears = input.period().endYear() - input.period().startYear() + 1;

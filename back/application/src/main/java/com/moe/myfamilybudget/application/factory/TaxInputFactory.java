@@ -21,24 +21,25 @@ import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxHouseholdParameters;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxRateOverride;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 
 /**
- * Construit un {@link TaxCalculationInput} à partir de {@link BudgetDataModel} (RF-200, réduit
- * par RF-202 ; voir doc/architecture/04-domaine-fiscalite.md).
+ * Construit un {@link TaxCalculationInput} à partir de fragments lus chez leurs propriétaires
+ * (RF-200, réduit par RF-202 ; voir doc/architecture/04-domaine-fiscalite.md). SILO-111 : cette
+ * Factory ne connaît plus {@code BudgetDataModel} ; l'appelant lui fournit des {@link Sources}.
  *
- * <p>Cette classe porte volontairement la dépendance à {@code BudgetDataModel} que le domaine
- * Fiscalité ne doit pas avoir (voir doc/architecture/00-principes.md) : c'est le rôle d'une
- * Factory de frontière, pas d'un moteur de calcul — elle n'est donc pas placée dans le package
- * {@code internal.calculation}, gardé par le garde-fou ArchUnit de RF-001
+ * <p>C'est le rôle d'une Factory de frontière, pas d'un moteur de calcul — elle n'est donc pas
+ * placée dans le package {@code internal.calculation}, gardé par le garde-fou ArchUnit de RF-001
  * ({@code CalculationDependenciesArchTest}).
  *
  * <p><b>Version 2 (RF-202).</b> Deux couplages ont disparu de {@code TaxCalculator} :
@@ -60,16 +61,36 @@ public final class TaxInputFactory {
     private TaxInputFactory() {
     }
 
-    public static TaxCalculationInput from(
-            BudgetDataModel data, TaxSimulationPeriod period, RetirementProjection retirementProjection) {
-        Objects.requireNonNull(data, "data");
-        Objects.requireNonNull(period, "period");
-        SettingsModel settings = data.getEffectiveSettings();
+    /**
+     * Fragments nécessaires au calcul fiscal (SILO-111). Les listes absentes sont lues comme vides,
+     * une inflation absente vaut zéro ; {@code retirementSettings} et {@code taxSettings} sont
+     * obligatoires. Les tranches sont prises telles quelles : l'appelant applique le barème par défaut
+     * si la configuration est vide (voir {@link TaxBracketDefaults}).
+     */
+    public record Sources(
+            RetirementSettingsModel retirementSettings,
+            TaxSettingsModel taxSettings,
+            BigDecimal inflationRate,
+            List<IncomeModel> incomes,
+            List<VariableIncomeModel> variableIncomes,
+            List<VariableOverrideModel> variableOverrides,
+            List<TaxChildModel> taxChildren,
+            List<TaxBracketModel> taxBrackets,
+            List<TaxRateOverrideModel> taxRateOverrides,
+            List<TaxActualOverrideModel> taxActualOverrides) {
+    }
 
-        int birthYear = settings.getEffectiveBirthYear();
-        int retireAge = settings.getEffectiveRetireAge();
+    public static TaxCalculationInput from(
+            Sources sources, TaxSimulationPeriod period, RetirementProjection retirementProjection) {
+        Objects.requireNonNull(sources, "sources");
+        Objects.requireNonNull(period, "period");
+        RetirementSettingsModel retirementSettings = sources.retirementSettings();
+        TaxSettingsModel taxSettings = sources.taxSettings();
+
+        int birthYear = retirementSettings.getEffectiveBirthYear();
+        int retireAge = retirementSettings.getEffectiveRetireAge();
         int retireYear = birthYear + retireAge;
-        BigDecimal inflationRate = settings.getEffectiveInflationRate();
+        BigDecimal inflationRate = sources.inflationRate() != null ? sources.inflationRate() : BigDecimal.ZERO;
         List<BigDecimal> monthlyPensions = retirementProjection == null
                 ? List.of()
                 : retirementProjection.people().stream()
@@ -77,7 +98,7 @@ public final class TaxInputFactory {
                         .filter(monthly -> monthly != null && monthly.compareTo(BigDecimal.ZERO) > 0)
                         .toList();
 
-        List<IncomeModel> regularIncomes = data.getEffectiveIncomes();
+        List<IncomeModel> regularIncomes = orEmpty(sources.incomes());
 
         List<AnnualTaxIncome> incomes = new ArrayList<>();
         List<AnnualVariableIncome> variableIncomes = new ArrayList<>();
@@ -85,34 +106,35 @@ public final class TaxInputFactory {
         for (int year = period.startYear(); year <= period.endYear(); year++) {
             incomes.add(new AnnualTaxIncome(year, sumAnnual(regularIncomes, year)));
             variableIncomes.add(new AnnualVariableIncome(year,
-                    variableTaxableForYear(data, year)));
+                    variableTaxableForYear(regularIncomes, orEmpty(sources.variableIncomes()),
+                            orEmpty(sources.variableOverrides()), year)));
             retirementIncome.add(new AnnualTaxableRetirementIncome(year,
                     annualPension(monthlyPensions, retireYear, period.endYear(), inflationRate, year)));
         }
 
-        List<Integer> childBirthYears = data.getEffectiveTaxChildren().stream()
+        List<Integer> childBirthYears = orEmpty(sources.taxChildren()).stream()
                 .map(TaxChildModel::birthYear)
                 .filter(Objects::nonNull)
                 .toList();
 
-        List<TaxBracket> brackets = data.getEffectiveTaxBrackets().stream()
+        List<TaxBracket> brackets = orEmpty(sources.taxBrackets()).stream()
                 .map(TaxInputFactory::toBracket)
                 .toList();
 
-        List<TaxRateOverride> rateOverrides = data.getEffectiveTaxRateOverrides().stream()
+        List<TaxRateOverride> rateOverrides = orEmpty(sources.taxRateOverrides()).stream()
                 .filter(o -> o.year() != null)
                 .map(o -> new TaxRateOverride(o.year(), o.rate()))
                 .toList();
 
-        List<TaxActualOverride> actualOverrides = data.getEffectiveTaxActualOverrides().stream()
+        List<TaxActualOverride> actualOverrides = orEmpty(sources.taxActualOverrides()).stream()
                 .filter(o -> o.year() != null)
                 .map(o -> new TaxActualOverride(o.year(), o.amount()))
                 .toList();
 
         return new TaxCalculationInput(
                 period,
-                new TaxHouseholdParameters(birthYear, retireAge, settings.getEffectiveChildExitAge(),
-                        settings.getEffectiveTaxAbattement()),
+                new TaxHouseholdParameters(birthYear, retireAge, taxSettings.getEffectiveChildExitAge(),
+                        taxSettings.getEffectiveTaxAbattement()),
                 incomes,
                 variableIncomes,
                 childBirthYears,
@@ -146,23 +168,22 @@ public final class TaxInputFactory {
      * Part imposable des revenus variables d'une année. Logique déplacée ici depuis le moteur
      * fiscal par RF-203 : projeter les modèles persistants est le rôle de la Factory.
      */
-    private static BigDecimal variableTaxableForYear(BudgetDataModel data, int year) {
+    private static BigDecimal variableTaxableForYear(
+            List<IncomeModel> incomes, List<VariableIncomeModel> variableIncomes,
+            List<VariableOverrideModel> variableOverrides, int year) {
         BigDecimal taxable = BigDecimal.ZERO;
-        if (data.getEffectiveVariableIncomes() == null) {
-            return taxable.setScale(2, RoundingMode.HALF_UP);
-        }
 
-        for (VariableIncomeModel v : data.getEffectiveVariableIncomes()) {
+        for (VariableIncomeModel v : variableIncomes) {
             if (v.startYear() != null && year < v.startYear()) continue;
             if (v.endYear() != null && year > v.endYear()) continue;
 
-            Optional<IncomeModel> refRow = data.getEffectiveIncomes().stream()
+            Optional<IncomeModel> refRow = incomes.stream()
                     .filter(r -> v.refIncomeLabel() != null && v.refIncomeLabel().equalsIgnoreCase(r.label()))
                     .findFirst();
             BigDecimal refAnnual = refRow.map(r -> incomeAnnualForYear(r, year)).orElse(BigDecimal.ZERO);
             BigDecimal forecast = refAnnual.multiply(v.getEffectiveRate());
 
-            Optional<VariableOverrideModel> override = data.getEffectiveVariableOverrides().stream()
+            Optional<VariableOverrideModel> override = variableOverrides.stream()
                     .filter(o -> v.label() != null && v.label().equalsIgnoreCase(o.label())
                             && o.year() != null && o.year() == year)
                     .findFirst();
@@ -183,6 +204,10 @@ public final class TaxInputFactory {
             }
         }
         return taxable.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private static <T> List<T> orEmpty(List<T> list) {
+        return list != null ? list : List.of();
     }
 
     private static BigDecimal incomeAnnualForYear(IncomeModel row, int year) {

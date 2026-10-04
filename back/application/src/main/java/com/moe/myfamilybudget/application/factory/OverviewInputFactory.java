@@ -102,7 +102,7 @@ public final class OverviewInputFactory {
         int startYear = treasuryInput.period().startYear();
         int endYear = treasuryInput.period().endYear();
         TaxSimulationPeriod taxPeriod = new TaxSimulationPeriod(startYear, endYear);
-        TaxCalculationInput taxInput = TaxInputFactory.from(data, taxPeriod, retirementProjection);
+        TaxCalculationInput taxInput = TaxInputFactory.from(TreasuryInputFactory.taxSources(data), taxPeriod, retirementProjection);
         List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(taxInput);
         TaxProjection taxProjection = new TaxProjection(taxYearly.stream()
                 .map(t -> new TaxProjection.Withholding(t.year(), t.withheld(), t.taxActual()))
