@@ -70,11 +70,19 @@
   let flushing = false;
   const listeners = new Set();
 
+  function firstAutoError() {
+    for (let i = 0; i < queue.auto.length; i++) {
+      if (queue.auto[i].lastError) return queue.auto[i].lastError;
+    }
+    return null;
+  }
+
   function getState() {
     return {
       online: online,
       autoCount: queue.auto.length,
-      validateCount: queue.validate.length
+      validateCount: queue.validate.length,
+      lastError: firstAutoError()
     };
   }
 
@@ -129,13 +137,23 @@
       driftCheckUrl: mutation.driftCheckUrl || null,
       beforeSnapshot: mutation.beforeSnapshot !== undefined ? mutation.beforeSnapshot : null,
       driftListKey: mutation.driftListKey || null,
-      driftEntityId: mutation.driftEntityId !== undefined ? mutation.driftEntityId : null
+      driftEntityId: mutation.driftEntityId !== undefined ? mutation.driftEntityId : null,
+      attempts: 0,
+      lastError: null
     };
     queue[entry.tier].push(entry);
     saveQueue(queue);
-    online = false;
+    // Une ecriture mise en file n'implique pas que le serveur soit injoignable : api.js
+    // appelle enqueue() aussi sur une reponse HTTP 4xx/5xx (serveur joignable mais ecriture
+    // refusee). L'etat en ligne est donc determine par le heartbeat, pas suppose hors-ligne.
     notify();
+    schedulePing();
     return entry.id;
+  }
+
+  function schedulePing() {
+    if (typeof window === 'undefined') return;
+    setTimeout(ping, 0);
   }
 
   function removeFromQueue(tier, id) {
@@ -151,7 +169,7 @@
       headers: hasBody ? { 'Content-Type': 'application/json' } : undefined,
       body: hasBody ? JSON.stringify(entry.body) : undefined
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status + ' pour ' + entry.url);
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' pour ' + entry.method + ' ' + entry.url);
     return res;
   }
 
@@ -170,7 +188,12 @@
           await sendMutation(entry);
           removeFromQueue('auto', entry.id);
         } catch (e) {
-          console.error('[SyncStatus] Echec du rejeu automatique, nouvelle tentative au prochain retour reseau', e);
+          // Memorise la vraie cause (statut HTTP ou erreur reseau) pour l'afficher a l'utilisateur.
+          entry.attempts = (entry.attempts || 0) + 1;
+          entry.lastError = (e && e.message) ? e.message : String(e);
+          saveQueue(queue);
+          notify();
+          console.error('[SyncStatus] Echec du rejeu automatique, nouvelle tentative au prochain ping reussi', e);
           break;
         }
       }
@@ -271,7 +294,8 @@
       const wasOffline = !online;
       online = !!(res && res.ok);
       notify();
-      if (online && wasOffline) {
+      // Rejeu aussi quand le serveur n'a jamais ete vu hors-ligne (ecriture refusee en HTTP 4xx/5xx).
+      if (online && (wasOffline || queue.auto.length > 0)) {
         flushAutoQueue();
       }
     } catch (e) {

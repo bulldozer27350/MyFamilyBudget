@@ -51,7 +51,15 @@
         ? `Hors-ligne — ${total} modification${total > 1 ? 's' : ''} en attente d'envoi au serveur`
         : "Hors-ligne — connexion au serveur indisponible";
     } else {
-      message = `${state.validateCount} modification${state.validateCount > 1 ? 's' : ''} à valider avant envoi au serveur`;
+      const parts = [];
+      if (state.autoCount > 0) {
+        parts.push(`Serveur joignable, mais ${state.autoCount} modification${state.autoCount > 1 ? 's' : ''} non enregistrée${state.autoCount > 1 ? 's' : ''}`
+          + (state.lastError ? ` (${state.lastError})` : ' — nouvelle tentative en cours'));
+      }
+      if (state.validateCount > 0) {
+        parts.push(`${state.validateCount} modification${state.validateCount > 1 ? 's' : ''} à valider avant envoi au serveur`);
+      }
+      message = parts.join(' — ');
     }
 
     return React.createElement('div', {
