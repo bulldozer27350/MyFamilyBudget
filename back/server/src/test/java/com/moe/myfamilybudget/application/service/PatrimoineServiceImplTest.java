@@ -43,7 +43,7 @@ import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.GoalPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.LoanPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
+import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class PatrimoineServiceImplTest {
@@ -57,12 +57,15 @@ class PatrimoineServiceImplTest {
         mapper = new PatrimoineMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
+        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         service = new PatrimoineServiceImpl(
                 mapper, new PatrimoineProjectionService(), new PlacementEvolutionService(),
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
                 new LoanCommandService(new LoanPersistenceAdapter(persistenceManager)),
                 new GoalCommandService(new GoalPersistenceAdapter(persistenceManager)),
-                SettingsReaderTestFactory.of(persistenceManager),
+                settingsAdapter,
+                settingsAdapter,
+                settingsAdapter,
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager),
@@ -548,8 +551,8 @@ class PatrimoineServiceImplTest {
 
     @Test
     void computePatrimoineProjections_nominalAndConstantEuros() {
-        PatrimoineProjectionsModel projNominal = service.computePatrimoineProjections(persistenceManager.getBudgetData(), false);
-        PatrimoineProjectionsModel projReal = service.computePatrimoineProjections(persistenceManager.getBudgetData(), true);
+        PatrimoineProjectionsModel projNominal = service.computePatrimoineProjections(false);
+        PatrimoineProjectionsModel projReal = service.computePatrimoineProjections(true);
 
         assertNotNull(projNominal);
         assertNotNull(projReal);
@@ -599,7 +602,7 @@ class PatrimoineServiceImplTest {
         BudgetDataModel data = buildPauseScenarioBudget(false, null, BigDecimal.ZERO);
         persistenceManager.setBudgetData(data);
 
-        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(persistenceManager.getBudgetData(), false);
+        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
 
         PatrimoinePerPlacementModel selenciaRows = proj.perPlacement().stream()
                 .filter(p -> "Test Selencia".equals(p.label()))
@@ -653,7 +656,7 @@ class PatrimoineServiceImplTest {
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
         persistenceManager.setBudgetData(data);
 
-        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(persistenceManager.getBudgetData(), false);
+        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
         PatrimoinePerPlacementModel selenciaRows = proj.perPlacement().stream()
                 .filter(p -> "Test Selencia".equals(p.label()))
                 .findFirst()
@@ -692,7 +695,7 @@ class PatrimoineServiceImplTest {
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
         persistenceManager.setBudgetData(data);
 
-        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(persistenceManager.getBudgetData(), false);
+        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
         List<PatrimoineYearModel> rows = proj.perPlacement().stream()
                 .filter(p -> "Test Pausable".equals(p.label()))
                 .findFirst()
@@ -728,7 +731,7 @@ class PatrimoineServiceImplTest {
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
         persistenceManager.setBudgetData(data);
 
-        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(persistenceManager.getBudgetData(), false);
+        PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
         List<PatrimoineYearModel> rows = proj.perPlacement().stream()
                 .filter(p -> "Test Pausable".equals(p.label()))
                 .findFirst()

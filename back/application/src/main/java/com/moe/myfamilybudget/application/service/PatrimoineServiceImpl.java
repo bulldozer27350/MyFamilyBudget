@@ -2,6 +2,7 @@ package com.moe.myfamilybudget.application.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
@@ -18,9 +19,9 @@ import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolution;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
 import com.moe.myfamilybudget.application.factory.PatrimoineInputFactory;
 import com.moe.myfamilybudget.application.mapper.PatrimoineMapper;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
+import com.moe.myfamilybudget.domain.budget.TransferModel;
 import com.moe.myfamilybudget.application.command.GoalCommandService;
 import com.moe.myfamilybudget.application.command.LoanCommandService;
 import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
@@ -29,15 +30,17 @@ import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.transition.port.EconomicAssumptionsReader;
 
 /**
  * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
- * {@code PersistenceManager}. Les lectures passent par les ports de domaine ({@link
- * SettingsReader}, {@link PatrimoineReader}, {@link BudgetReader}, {@link LoanReader}, {@link
- * BankReader}) ; le {@link BudgetDataModel} attendu par {@link PatrimoineInputFactory} et par
- * {@link PatrimoineMapper#toPatrimoineResponseDto} est recomposé localement à partir de ces ports,
- * avec les domaines non lus laissés à {@code null}.
+ * {@code PersistenceManager}. SILO-112 : plus de {@code BudgetDataModel} ; chaque fragment est lu chez son
+ * propriétaire ({@link RetirementSettingsReader}, {@link TresorerieSettingsReader},
+ * {@link EconomicAssumptionsReader}, {@link PatrimoineReader}, {@link BudgetReader}, {@link LoanReader},
+ * {@link BankReader}) et transmis à {@link PatrimoineInputFactory} et à
+ * {@link PatrimoineMapper#toPatrimoineResponseDto}.
  */
 @RestController
 public class PatrimoineServiceImpl implements PatrimoineApi {
@@ -48,7 +51,9 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
     private final PatrimoineCommandService patrimoineCommandService;
     private final LoanCommandService loanCommandService;
     private final GoalCommandService goalCommandService;
-    private final SettingsReader settingsReader;
+    private final RetirementSettingsReader retirementSettingsReader;
+    private final TresorerieSettingsReader tresorerieSettingsReader;
+    private final EconomicAssumptionsReader economicAssumptionsReader;
     private final PatrimoineReader patrimoineReader;
     private final BudgetReader budgetReader;
     private final LoanReader loanReader;
@@ -61,7 +66,9 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
             PatrimoineCommandService patrimoineCommandService,
             LoanCommandService loanCommandService,
             GoalCommandService goalCommandService,
-            SettingsReader settingsReader,
+            RetirementSettingsReader retirementSettingsReader,
+            TresorerieSettingsReader tresorerieSettingsReader,
+            EconomicAssumptionsReader economicAssumptionsReader,
             PatrimoineReader patrimoineReader,
             BudgetReader budgetReader,
             LoanReader loanReader,
@@ -72,26 +79,42 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         this.patrimoineCommandService = patrimoineCommandService;
         this.loanCommandService = loanCommandService;
         this.goalCommandService = goalCommandService;
-        this.settingsReader = settingsReader;
+        this.retirementSettingsReader = retirementSettingsReader;
+        this.tresorerieSettingsReader = tresorerieSettingsReader;
+        this.economicAssumptionsReader = economicAssumptionsReader;
         this.patrimoineReader = patrimoineReader;
         this.budgetReader = budgetReader;
         this.loanReader = loanReader;
         this.bankReader = bankReader;
     }
 
-    private BudgetDataModel composeBudgetData() {
-        return new BudgetDataModel(
-                settingsReader.getSettings(), budgetReader.getIncomes(), budgetReader.getCharges(),
-                patrimoineReader.getPlacements(), patrimoineReader.getRealEstate(), null, null, null, null, null,
-                budgetReader.getOneoffExpenses(), patrimoineReader.getTransfers(), null, null,
-                bankReader.getBankImport(), patrimoineReader.getAssetCategories(), loanReader.getLoans(), null);
+    private PatrimoineInputFactory.Sources readSources(List<PlacementModel> placements, List<TransferModel> transfers) {
+        return new PatrimoineInputFactory.Sources(
+                retirementSettingsReader.getRetirementSettings(),
+                tresorerieSettingsReader.getTresorerieSettings(),
+                economicAssumptionsReader.getEconomicAssumptions().inflationRate(),
+                budgetReader.getIncomes(),
+                budgetReader.getCharges(),
+                placements,
+                budgetReader.getOneoffExpenses(),
+                transfers);
     }
 
     @Override
     public ResponseEntity<PatrimoineResponseDto> getPatrimoine(Boolean useConstantEuros) {
-        BudgetDataModel data = composeBudgetData();
-        PatrimoineProjectionsModel projections = computePatrimoineProjections(data, Boolean.TRUE.equals(useConstantEuros));
-        PatrimoineResponseDto response = this.mapper.toPatrimoineResponseDto(data, projections);
+        List<PlacementModel> placements = patrimoineReader.getPlacements();
+        List<TransferModel> transfers = patrimoineReader.getTransfers();
+        PatrimoineProjectionsModel projections = this.projectionService.compute(
+                PatrimoineInputFactory.from(readSources(placements, transfers)),
+                Boolean.TRUE.equals(useConstantEuros));
+        PatrimoineResponseDto response = this.mapper.toPatrimoineResponseDto(
+                placements,
+                transfers,
+                patrimoineReader.getRealEstate(),
+                loanReader.getLoans(),
+                patrimoineReader.getAssetCategories(),
+                bankReader.getBankImport(),
+                projections);
         return ResponseEntity.ok(response);
     }
 
@@ -168,8 +191,8 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
 
     @Override
     public ResponseEntity<PlacementEvolutionDto> getPlacementEvolution(String placementId, Boolean useConstantEuros) {
-        BudgetDataModel data = composeBudgetData();
-        PlacementModel placement = data.getEffectivePlacements().stream()
+        List<PlacementModel> placements = patrimoineReader.getPlacements();
+        PlacementModel placement = placements.stream()
                 .filter(p -> java.util.Objects.equals(p.id(), placementId))
                 .findFirst()
                 .orElse(null);
@@ -177,17 +200,19 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
             return ResponseEntity.notFound().build();
         }
         PlacementEvolution evolution = this.evolutionService.compute(
-                PatrimoineInputFactory.forPlacementEvolution(data, placement, LocalDate.now()),
+                PatrimoineInputFactory.forPlacementEvolution(
+                        readSources(placements, patrimoineReader.getTransfers()), placement, LocalDate.now()),
                 Boolean.TRUE.equals(useConstantEuros));
         return ResponseEntity.ok(this.mapper.toPlacementEvolutionDto(evolution));
     }
 
     /**
      * Façade mince (RF-301) : projection annuelle déléguée à {@link PatrimoineProjectionService}.
-     * CLEAN-010 : visibilité réduite au package ({@code PatrimoineServiceImplTest} est dans le même
-     * package) pour que la signature à base de {@code BudgetDataModel} ne soit plus exposée.
+     * Visibilité réduite au package ({@code PatrimoineServiceImplTest} est dans le même package).
      */
-    PatrimoineProjectionsModel computePatrimoineProjections(BudgetDataModel data, boolean useConstantEuros) {
-        return this.projectionService.compute(PatrimoineInputFactory.from(data), useConstantEuros);
+    PatrimoineProjectionsModel computePatrimoineProjections(boolean useConstantEuros) {
+        return this.projectionService.compute(
+                PatrimoineInputFactory.from(readSources(patrimoineReader.getPlacements(), patrimoineReader.getTransfers())),
+                useConstantEuros);
     }
 }

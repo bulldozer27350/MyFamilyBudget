@@ -1,6 +1,7 @@
 package com.moe.myfamilybudget.application.factory;
 
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.application.factory.PatrimoineInputFactory;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.application.factory.TaxInputFactory;
@@ -109,7 +110,7 @@ public final class OverviewInputFactory {
                 .toList());
 
         // 4. Patrimoine
-        PatrimoineProjectionInput patrimoineInput = PatrimoineInputFactory.from(data);
+        PatrimoineProjectionInput patrimoineInput = PatrimoineInputFactory.from(patrimoineSources(data));
         PatrimoineProjectionsModel patrimoineProjections = patrimoineProjectionService.compute(
                 patrimoineInput, useConstantEuros);
 
@@ -192,5 +193,25 @@ public final class OverviewInputFactory {
             }
         }
         return base.add(sum);
+    }
+
+    /**
+     * Transition (SILO-112) : extrait de {@link BudgetDataModel} les fragments attendus par
+     * {@link PatrimoineInputFactory}. Supprimé avec ce service (SILO-117), qui lira alors les ports
+     * propriétaires.
+     */
+    private static PatrimoineInputFactory.Sources patrimoineSources(BudgetDataModel data) {
+        SettingsModel settings = data.getEffectiveSettings();
+        return new PatrimoineInputFactory.Sources(
+                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()),
+                new TresorerieSettingsModel(settings.pivotDate(), settings.pivotMode(), settings.startBalance(),
+                        settings.sweepEnabled(), settings.cashCeiling(), settings.cashFloor(),
+                        settings.cashAlertThreshold()),
+                settings.inflationRate(),
+                data.getEffectiveIncomes(),
+                data.getEffectiveCharges(),
+                data.getEffectivePlacements(),
+                data.getEffectiveOneoff(),
+                data.getEffectiveTransfers());
     }
 }

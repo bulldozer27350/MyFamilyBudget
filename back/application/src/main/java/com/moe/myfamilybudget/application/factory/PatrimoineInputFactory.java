@@ -20,22 +20,22 @@ import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionParame
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementHistoryPoint;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementProjectionInput;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementTransfer;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.budget.TransferModel;
 
 /**
- * Construit un {@link PatrimoineProjectionInput} à partir de {@link BudgetDataModel} (RF-300,
- * voir doc/architecture/05-domaine-patrimoine.md).
+ * Construit un {@link PatrimoineProjectionInput} à partir de fragments lus chez leurs propriétaires
+ * (RF-300, voir doc/architecture/05-domaine-patrimoine.md). SILO-112 : cette Factory ne connaît plus
+ * {@code BudgetDataModel} ; l'appelant lui fournit des {@link Sources}.
  *
- * <p>Comme {@code TaxInputFactory} et {@code RetirementInputFactory}, cette classe porte la
- * dépendance à {@code BudgetDataModel} que le domaine ne doit pas avoir : elle vit dans
- * {@code internal.factory}, hors du package {@code internal.calculation} gardé par ArchUnit.
+ * <p>Comme {@code TaxInputFactory} et {@code RetirementInputFactory}, elle vit hors du package
+ * {@code internal.calculation} gardé par ArchUnit.
  *
  * <p><b>Branchée par RF-301.</b> {@code PatrimoineServiceImpl} n'est plus qu'une façade : elle
  * construit ici les contrats de {@code PatrimoineProjectionService} (projection annuelle) et de
@@ -52,12 +52,31 @@ public final class PatrimoineInputFactory {
     private PatrimoineInputFactory() {
     }
 
-    public static PatrimoineProjectionInput from(BudgetDataModel data) {
+    /**
+     * Fragments nécessaires à la projection patrimoniale (SILO-112). Les listes absentes sont lues comme
+     * vides, une inflation absente vaut zéro ; {@code retirementSettings} et {@code tresorerieSettings}
+     * sont obligatoires.
+     */
+    public record Sources(
+            RetirementSettingsModel retirementSettings,
+            TresorerieSettingsModel tresorerieSettings,
+            BigDecimal inflationRate,
+            List<IncomeModel> incomes,
+            List<ChargeModel> charges,
+            List<PlacementModel> placements,
+            List<OneOffExpenseModel> oneoff,
+            List<TransferModel> transfers) {
+
+        BigDecimal effectiveInflationRate() {
+            return inflationRate != null ? inflationRate : BigDecimal.ZERO;
+        }
+    }
+
+    public static PatrimoineProjectionInput from(Sources data) {
         Objects.requireNonNull(data, "data");
-        SettingsModel settings = data.getEffectiveSettings();
 
         int startYear = findEarliestYear(data);
-        int endYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
+        int endYear = data.retirementSettings().getEffectiveBirthYear() + data.retirementSettings().getEffectiveRetireAge();
         if (endYear < startYear) {
             endYear = startYear + 40;
         }
@@ -65,17 +84,17 @@ public final class PatrimoineInputFactory {
         PatrimoineProjectionParameters parameters = new PatrimoineProjectionParameters(
                 startYear,
                 endYear,
-                settings.getEffectiveInflationRate(),
-                settings.getEffectiveStartBalance(),
-                settings.cashCeiling(),
-                settings.cashAlertThreshold());
+                data.effectiveInflationRate(),
+                data.tresorerieSettings().getEffectiveStartBalance(),
+                data.tresorerieSettings().cashCeiling(),
+                data.tresorerieSettings().cashAlertThreshold());
 
-        List<PlacementProjectionInput> placements = data.getEffectivePlacements().stream()
+        List<PlacementProjectionInput> placements = orEmpty(data.placements()).stream()
                 .map(PatrimoineInputFactory::toPlacement)
                 .toList();
 
         return new PatrimoineProjectionInput(
-                placements, toTransfers(data), cashflow(data, settings, startYear, endYear), parameters);
+                placements, toTransfers(data), cashflow(data, startYear, endYear), parameters);
     }
 
     /**
@@ -86,10 +105,9 @@ public final class PatrimoineInputFactory {
      * @param today date du jour, fournie par l'appelant pour garder la Factory déterministe
      */
     public static PlacementEvolutionInput forPlacementEvolution(
-            BudgetDataModel data, PlacementModel placement, LocalDate today) {
+            Sources data, PlacementModel placement, LocalDate today) {
         Objects.requireNonNull(data, "data");
         Objects.requireNonNull(placement, "placement");
-        SettingsModel settings = data.getEffectiveSettings();
 
         List<PlacementHistoryPoint> history = new ArrayList<>();
         for (PlacementHistoryEntryModel entry : placement.getEffectiveHistory()) {
@@ -99,24 +117,24 @@ public final class PatrimoineInputFactory {
             }
         }
 
-        List<PlacementEvolutionInput.BackgroundPlacement> background = data.getEffectivePlacements().stream()
+        List<PlacementEvolutionInput.BackgroundPlacement> background = orEmpty(data.placements()).stream()
                 .map(p -> new PlacementEvolutionInput.BackgroundPlacement(toPlacement(p), latestKnownBalance(p)))
                 .toList();
 
         PlacementEvolutionParameters parameters = new PlacementEvolutionParameters(
                 today,
                 EVOLUTION_HORIZON_YEARS,
-                settings.getEffectiveInflationRate(),
-                settings.getEffectiveStartBalance(),
-                settings.cashCeiling(),
-                settings.cashAlertThreshold());
+                data.effectiveInflationRate(),
+                data.tresorerieSettings().getEffectiveStartBalance(),
+                data.tresorerieSettings().cashCeiling(),
+                data.tresorerieSettings().cashAlertThreshold());
 
         return new PlacementEvolutionInput(toPlacement(placement), history, background, toTransfers(data), parameters);
     }
 
-    private static List<PlacementTransfer> toTransfers(BudgetDataModel data) {
+    private static List<PlacementTransfer> toTransfers(Sources data) {
         List<PlacementTransfer> transfers = new ArrayList<>();
-        for (TransferModel transfer : data.getEffectiveTransfers()) {
+        for (TransferModel transfer : orEmpty(data.transfers())) {
             LocalDate date = parseDate(transfer.date());
             if (transfer.placement() == null || date == null) {
                 continue;
@@ -156,20 +174,20 @@ public final class PatrimoineInputFactory {
                 placement.pausePriority());
     }
 
-    private static CashflowProjection cashflow(BudgetDataModel data, SettingsModel settings, int startYear, int endYear) {
-        BigDecimal inflationRate = settings.getEffectiveInflationRate();
+    private static CashflowProjection cashflow(Sources data, int startYear, int endYear) {
+        BigDecimal inflationRate = data.effectiveInflationRate();
         List<AnnualCashflow> years = new ArrayList<>();
         for (int year = startYear; year <= endYear; year++) {
             BigDecimal income = BigDecimal.ZERO;
-            for (IncomeModel row : data.getEffectiveIncomes()) {
+            for (IncomeModel row : orEmpty(data.incomes())) {
                 income = income.add(incomeAnnualForYear(row, year));
             }
             BigDecimal charges = BigDecimal.ZERO;
-            for (ChargeModel row : data.getEffectiveCharges()) {
+            for (ChargeModel row : orEmpty(data.charges())) {
                 charges = charges.add(chargeAnnualForYear(row, year, inflationRate));
             }
             BigDecimal oneOff = BigDecimal.ZERO;
-            for (OneOffExpenseModel expense : data.getEffectiveOneoff()) {
+            for (OneOffExpenseModel expense : orEmpty(data.oneoff())) {
                 Integer expenseYear = yearOf(expense.date());
                 if (expenseYear != null && expenseYear == year) {
                     oneOff = oneOff.add(expense.getEffectiveAmount());
@@ -220,18 +238,18 @@ public final class PatrimoineInputFactory {
         return (e.getYear() - s.getYear()) * 12 + (e.getMonthValue() - s.getMonthValue()) + 1;
     }
 
-    private static int findEarliestYear(BudgetDataModel data) {
+    private static int findEarliestYear(Sources data) {
         List<String> dates = new ArrayList<>();
 
-        for (IncomeModel i : data.getEffectiveIncomes()) if (i.start() != null) dates.add(i.start());
-        for (ChargeModel c : data.getEffectiveCharges()) if (c.start() != null) dates.add(c.start());
-        for (PlacementModel p : data.getEffectivePlacements()) {
+        for (IncomeModel i : orEmpty(data.incomes())) if (i.start() != null) dates.add(i.start());
+        for (ChargeModel c : orEmpty(data.charges())) if (c.start() != null) dates.add(c.start());
+        for (PlacementModel p : orEmpty(data.placements())) {
             if (p.monthlyFrom() != null) dates.add(p.monthlyFrom());
             if (p.balanceDate() != null) dates.add(p.balanceDate());
         }
-        for (OneOffExpenseModel o : data.getEffectiveOneoff()) if (o.date() != null) dates.add(o.date());
-        for (TransferModel t : data.getEffectiveTransfers()) if (t.date() != null) dates.add(t.date());
-        if (data.settings() != null && data.settings().pivotDate() != null) dates.add(data.settings().pivotDate());
+        for (OneOffExpenseModel o : orEmpty(data.oneoff())) if (o.date() != null) dates.add(o.date());
+        for (TransferModel t : orEmpty(data.transfers())) if (t.date() != null) dates.add(t.date());
+        if (data.tresorerieSettings().pivotDate() != null) dates.add(data.tresorerieSettings().pivotDate());
 
         int earliestYear = 2026;
         boolean found = false;
@@ -247,6 +265,10 @@ public final class PatrimoineInputFactory {
         }
 
         return found ? earliestYear : 2026;
+    }
+
+    private static <T> List<T> orEmpty(List<T> list) {
+        return list != null ? list : List.of();
     }
 
     private static YearMonth toYearMonth(String dateISO) {

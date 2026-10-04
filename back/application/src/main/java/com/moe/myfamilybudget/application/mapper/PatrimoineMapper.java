@@ -27,7 +27,6 @@ import com.moe.myfamilybudget.api.model.TransferDto;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolution;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
@@ -270,29 +269,41 @@ public class PatrimoineMapper {
         return String.format("%02d/%s/%d", d.getDayOfMonth(), monthNames[d.getMonthValue() - 1], d.getYear());
     }
 
-    public PatrimoineResponseDto toPatrimoineResponseDto(BudgetDataModel data, PatrimoineProjectionsModel projections) {
-        List<PlacementDto> placements = data.getEffectivePlacements().stream()
+    /**
+     * SILO-112 : construit la réponse à partir de fragments lus chez leurs propriétaires (plus de
+     * {@code BudgetDataModel}). Les listes {@code null} sont lues comme vides ; seules les catégories de
+     * l'import bancaire sont utilisées.
+     */
+    public PatrimoineResponseDto toPatrimoineResponseDto(
+            List<PlacementModel> placementModels,
+            List<TransferModel> transferModels,
+            List<RealEstateModel> realEstateModels,
+            List<LoanModel> loanModels,
+            List<AssetCategoryModel> assetCategoryModels,
+            BankImportModel bankImport,
+            PatrimoineProjectionsModel projections) {
+        List<PlacementDto> placements = orEmpty(placementModels).stream()
                 .map(this::toPlacementDto)
                 .collect(Collectors.toList());
 
-        List<TransferDto> transfers = data.getEffectiveTransfers().stream()
+        List<TransferDto> transfers = orEmpty(transferModels).stream()
                 .map(this::toTransferDto)
                 .collect(Collectors.toList());
 
-        List<RealEstateDto> realEstate = data.getEffectiveRealEstate().stream()
+        List<RealEstateDto> realEstate = orEmpty(realEstateModels).stream()
                 .map(this::toRealEstateDto)
                 .collect(Collectors.toList());
 
-        List<LoanDto> loans = data.getEffectiveLoans().stream()
+        List<LoanDto> loans = orEmpty(loanModels).stream()
                 .map(this::toLoanDto)
                 .collect(Collectors.toList());
 
-        List<AssetCategoryDto> assetCategories = data.getEffectiveAssetCategories().stream()
+        List<AssetCategoryDto> assetCategories = orEmpty(assetCategoryModels).stream()
                 .map(this::toAssetCategoryDto)
                 .collect(Collectors.toList());
 
-        List<BankImportCategoryDto> bankCategories = data.bankImport() != null && data.bankImport().categories() != null ?
-                data.bankImport().categories().stream()
+        List<BankImportCategoryDto> bankCategories = bankImport != null && bankImport.categories() != null ?
+                bankImport.categories().stream()
                         .map(this::toBankImportCategoryDto)
                         .collect(Collectors.toList()) : Collections.emptyList();
         
@@ -307,6 +318,10 @@ public class PatrimoineMapper {
         dto.setAssetCategories(assetCategories);
         dto.setBankCategories(bankCategories);
         return dto;
+    }
+
+    private static <T> List<T> orEmpty(List<T> list) {
+        return list != null ? list : List.of();
     }
 
     public AssetCategoryDto toAssetCategoryDto(AssetCategoryModel m) {
