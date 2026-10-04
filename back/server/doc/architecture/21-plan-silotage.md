@@ -1,6 +1,6 @@
 # 21 — Plan de travail : silotage complet des données, `application` ≠ web
 
-Statut : 🟡 à valider (document établi le 4 octobre 2026 à partir de `main` @ `6c53693` et d'une relecture des documents `00` à `20`)
+Statut : 🟡 à valider, décisions D1 à D8 tranchées sauf D3 (document établi le 4 octobre 2026 à partir de `main` @ `6c53693` et d'une relecture des documents `00` à `20`)
 
 ## 1. Objectif visé (reformulation)
 
@@ -118,6 +118,24 @@ Règles vérifiées à la compilation (Maven enforcer et module-info) puis par A
 | D7 | Propriété de `marketdata` et `enablebanking` | `marketdata` : silo « Marché » (consommé par Crédit, Suggestions de taux, Patrimoine). `enablebanking` : intégration du silo Banque | **D'accord avec la recommandation** |
 | D8 | `LegacyObjectifAllocationMigrator` | Supprimer (aucun objectif réel en base au moment de son introduction), sinon le déplacer dans le silo Objectifs | **D'accord avec la recommandation** |
 
+### Question en attente : D3, périmètre de `module-info`
+
+Un `module-info.java` déclare ce qu'un module Maven expose (`exports`) et ce dont il dépend (`requires`). Le compilateur refuse
+alors tout import d'un package non exporté, même si la classe est `public`. C'est la garantie « `application` ne voit que les API »,
+vérifiée dès la compilation.
+
+Le coût apparaît sur les modules `*-core` (JPA, Spring) : Hibernate et Spring accèdent aux classes par réflexion, ce qui impose des
+`opens` (ou un `open module`) et des modules automatiques pour les bibliothèques sans descripteur. Et dans le jar exécutable Spring
+Boot, tout est sur le classpath : les `module-info` y sont ignorés à l'exécution. Le bénéfice se limite donc à la compilation et aux tests.
+
+| Option | Contenu | Conséquence |
+|---|---|---|
+| A (recommandée) | `module-info` sur les `*-api`, `application-*` et `web` ; aucun sur les `*-core` ; visibilité des `*-core` tenue par le graphe Maven (enforcer, SILO-003) et ArchUnit | garantie forte là où elle compte, pas de `opens` à maintenir |
+| B | `module-info` partout, `open module` sur les `*-core` | garantie uniforme, mais `opens` à maintenir et risques d'incompatibilité avec Hibernate/Spring |
+| C | aucun `module-info` ; tout par Maven et ArchUnit | plus simple, mais les modules actuels des domaines purs perdent leur descripteur |
+
+Réponse attendue : A, B ou C. Tant qu'elle manque, aucun travail qui touche aux `module-info` ou à leur gabarit dans les `*-core`.
+
 ## 7. Vue d'ensemble des patchs
 
 Statuts : tous « Non commencé » sauf mention « Acquis partiel ». Les identifiants existants (`DB-xxx`, `MAVEN-xxx`) restent valables
@@ -213,7 +231,8 @@ un patch qui rencontre un arbitrage non tranché devient un patch « bloqué » 
 - **Objectif** : lever les huit décisions de la section 6.
 - **Travaux** : document seul. Marco valide ou amende chaque décision ; le résultat est consigné dans cette section.
 - **Sortie** : section 6 marquée « validée » avec la décision retenue pour chaque ligne.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente de réponse / [ ] Annulé / [ ] Terminé
+- **Avancement** : D1, D2, D4, D5, D6, D7, D8 tranchées. D3 en attente d'une réponse (options A, B, C dans la section 6).
+- **Statut** : [ ] Non commencé / [ ] Démarré / [x] En attente de réponse / [ ] Annulé / [ ] Terminé
 
 ### SILO-001 : Réviser les principes et marquer les patchs remplacés
 - **Objectif** : aligner `00-principes.md`, `13-persistance.md` (O3, R3, C1) et `20-backlog-modules-maven-patchs.md` (principes, MAVEN-120, 130, 140, 160) sur cette cible ; marquer « Annulé, remplacé par SILO-xxx » chaque item non terminé qui est absorbé, selon la section 10 (RF-D00, DB-1080, DB-1170, DB-1180, DB-1190, DB-1200, GATE-010, MAVEN-130 à MAVEN-150), sans supprimer aucun fichier.
