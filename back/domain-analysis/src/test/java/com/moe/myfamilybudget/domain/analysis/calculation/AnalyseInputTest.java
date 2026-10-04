@@ -1,6 +1,5 @@
 package com.moe.myfamilybudget.domain.analysis.calculation;
 
-import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
@@ -53,7 +52,7 @@ class AnalyseInputTest {
     void testAnalyseInputKeepsProvidedValues() {
         AnalysisPeriod period = new AnalysisPeriod(LocalDate.of(2026, 5, 1), 24);
         MonthlyBudgetLines mayLines = new MonthlyBudgetLines("2026-05", List.of(
-                new BudgetLineProjection("c1", "Loyer", "charge", java.math.BigDecimal.valueOf(800), "cat1")));
+                new AnalysisBudgetLine("c1", "Loyer", "charge", java.math.BigDecimal.valueOf(800))));
         BudgetLineKind kind = new BudgetLineKind("c1", "charge");
 
         AnalyseInput input = new AnalyseInput(period, List.of(), List.of(), List.of(), List.of(),

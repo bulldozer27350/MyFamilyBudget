@@ -17,7 +17,7 @@ final class MavenModuleGraphExceptions {
     static final String FROZEN_ON = "2026-10-04";
 
     /** Taille maximale de la liste à la date de gel ; à abaisser à chaque suppression d'entrée. */
-    static final int FROZEN_SIZE = 6;
+    static final int FROZEN_SIZE = 4;
 
     /** Dérogation : arête tolérée et patch qui la supprime. */
     record Tolerated(Edge edge, String removedBy) {}
@@ -27,8 +27,6 @@ final class MavenModuleGraphExceptions {
             new Tolerated(new Edge("domain-treasury", "domain-retirement"), "SILO-132"),
             new Tolerated(new Edge("domain-treasury", "domain-tax"), "SILO-132"),
             new Tolerated(new Edge("domain-treasury", "domain-wealth"), "SILO-132"),
-            new Tolerated(new Edge("domain-analysis", "domain-bank-pointage"), "SILO-133"),
-            new Tolerated(new Edge("domain-analysis", "domain-budget"), "SILO-133"),
             // D2 : domain-budget rejoint Trésorerie (SILO-140)
             new Tolerated(new Edge("domain-treasury", "domain-budget"), "SILO-140"));
 

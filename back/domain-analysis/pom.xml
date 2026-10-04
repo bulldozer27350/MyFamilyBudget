@@ -8,10 +8,10 @@
         MAVEN-070 (doc/architecture/20-backlog-modules-maven-patchs.md) : domaine Analyse
         (calculateur Réel vs Prévisionnel, contrat d'entrée AnalyseInput, modèles de résultat).
 
-        Consommateur final : dépend uniquement des contrats publiés par domain-bank-pointage
-        (BankImportModel, PointageCalculator, BudgetLineProjection) et domain-budget (RealAverageModel).
-        Aucune dépendance vers Spring, JPA, OpenAPI, PersistenceManager, BudgetDataModel ni vers un
-        autre moteur de domaine (retraite, fiscalité, patrimoine, trésorerie).
+        Silo isolé (SILO-133) : Analyse définit ses propres contrats d'entrée (AnalysisTransaction,
+        AnalysisCategory, AnalysisMatching, AnalysisPendingOperation, AnalysisBudgetLine) et n'a aucune
+        dépendance de production vers un autre silo. Aucune dépendance vers Spring, JPA, OpenAPI,
+        PersistenceManager ni BudgetDataModel.
         Dépendances de test uniquement : JUnit 5 et AssertJ.
     -->
     <parent>
@@ -27,14 +27,6 @@
     <description>Domaine Analyse MyFamilyBudget (calculateur pur, sans Spring ni JPA)</description>
 
     <dependencies>
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-budget</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-bank-pointage</artifactId>
-        </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>

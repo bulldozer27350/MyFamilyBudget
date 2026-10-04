@@ -1,7 +1,5 @@
 package com.moe.myfamilybudget.domain.analysis.calculation;
 
-import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculator;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -16,8 +14,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
-import com.moe.myfamilybudget.domain.budget.RealAverageModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseKpiModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseDriftRowModel;
@@ -50,15 +46,15 @@ public final class AnalyseCalculator {
             cutoffISO = today.minusMonths(mBack).format(DateTimeFormatter.ISO_LOCAL_DATE);
         }
 
-        List<BankImportModel.BankTransactionModel> allTx = input.transactions() != null ? input.transactions() : Collections.emptyList();
+        List<AnalysisTransaction> allTx = input.transactions() != null ? input.transactions() : Collections.emptyList();
         final String finalCutoff = cutoffISO;
-        List<BankImportModel.BankTransactionModel> periodTx = allTx.stream()
+        List<AnalysisTransaction> periodTx = allTx.stream()
                 .filter(t -> t != null && t.date() != null && (finalCutoff == null || t.date().compareTo(finalCutoff) >= 0))
                 .collect(Collectors.toList());
 
-        List<BankImportModel.CategoryModel> categories = input.categories() != null ? input.categories() : Collections.emptyList();
-        Map<String, BankImportModel.CategoryModel> catById = new HashMap<>();
-        for (BankImportModel.CategoryModel c : categories) {
+        List<AnalysisCategory> categories = input.categories() != null ? input.categories() : Collections.emptyList();
+        Map<String, AnalysisCategory> catById = new HashMap<>();
+        for (AnalysisCategory c : categories) {
             if (c != null && c.id() != null) {
                 catById.put(c.id(), c);
             }
@@ -72,15 +68,15 @@ public final class AnalyseCalculator {
 
         Set<String> compressibleCatIds = categories.stream()
                 .filter(c -> "Oui".equalsIgnoreCase(c.compressible()))
-                .map(BankImportModel.CategoryModel::id)
+                .map(AnalysisCategory::id)
                 .collect(Collectors.toSet());
 
-        for (BankImportModel.BankTransactionModel t : periodTx) {
+        for (AnalysisTransaction t : periodTx) {
             if (t.splits() != null && !t.splits().isEmpty()) {
-                for (BankImportModel.BankTransactionSplitModel split : t.splits()) {
+                for (AnalysisTransaction.Split split : t.splits()) {
                     BigDecimal amt = split.amount() != null ? split.amount() : BigDecimal.ZERO;
                     String splitCatId = split.categoryId();
-                    BankImportModel.CategoryModel cat = (splitCatId != null && !splitCatId.isBlank()) ? catById.get(splitCatId) : null;
+                    AnalysisCategory cat = (splitCatId != null && !splitCatId.isBlank()) ? catById.get(splitCatId) : null;
 
                     boolean isIncome = (cat != null && "Revenu".equalsIgnoreCase(cat.kind())) || amt.compareTo(BigDecimal.ZERO) > 0;
                     if (isIncome) {
@@ -103,7 +99,7 @@ public final class AnalyseCalculator {
                 }
             } else {
                 BigDecimal amt = t.amount() != null ? t.amount() : BigDecimal.ZERO;
-                BankImportModel.CategoryModel cat = t.categoryId() != null ? catById.get(t.categoryId()) : null;
+                AnalysisCategory cat = t.categoryId() != null ? catById.get(t.categoryId()) : null;
 
                 boolean isIncome = (cat != null && "Revenu".equalsIgnoreCase(cat.kind())) || amt.compareTo(BigDecimal.ZERO) > 0;
                 if (isIncome) {
@@ -161,7 +157,7 @@ public final class AnalyseCalculator {
         String currentMonthISO = currentYM.toString();
         String currentMonthLabel = currentYM.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.FRENCH));
 
-        List<BudgetLineProjection> activeLines = Collections.emptyList();
+        List<AnalysisBudgetLine> activeLines = Collections.emptyList();
         if (input.monthlyBudgetLines() != null) {
             for (MonthlyBudgetLines mbl : input.monthlyBudgetLines()) {
                 if (mbl != null && currentMonthISO.equals(mbl.monthISO())) {
@@ -171,9 +167,9 @@ public final class AnalyseCalculator {
             }
         }
 
-        BankImportModel.MatchingModel currentMatching = null;
+        AnalysisMatching currentMatching = null;
         if (input.matchings() != null) {
-            for (BankImportModel.MatchingModel m : input.matchings()) {
+            for (AnalysisMatching m : input.matchings()) {
                 if (m != null && currentMonthISO.equals(m.month())) {
                     currentMatching = m;
                     break;
@@ -181,11 +177,11 @@ public final class AnalyseCalculator {
             }
         }
         if (currentMatching == null) {
-            currentMatching = new BankImportModel.MatchingModel(currentMonthISO, Collections.emptyList());
+            currentMatching = new AnalysisMatching(currentMonthISO, Collections.emptyList());
         }
 
-        Map<String, BankImportModel.BankTransactionModel> txById = new HashMap<>();
-        for (BankImportModel.BankTransactionModel tx : allTx) {
+        Map<String, AnalysisTransaction> txById = new HashMap<>();
+        for (AnalysisTransaction tx : allTx) {
             if (tx != null && tx.id() != null) {
                 txById.put(tx.id(), tx);
             }
@@ -193,25 +189,25 @@ public final class AnalyseCalculator {
 
         Map<String, List<String>> lineToTxIds = new HashMap<>();
         if (currentMatching.links() != null) {
-            for (BankImportModel.MatchingLinkModel link : currentMatching.links()) {
+            for (AnalysisMatching.Link link : currentMatching.links()) {
                 if (link != null && link.budgetLineId() != null && link.txIds() != null) {
                     lineToTxIds.put(link.budgetLineId(), link.txIds());
                 }
             }
         }
 
-        List<BankImportModel.PendingOperationModel> allPendingOps = input.pendingOperations() != null
+        List<AnalysisPendingOperation> allPendingOps = input.pendingOperations() != null
                 ? input.pendingOperations()
                 : Collections.emptyList();
 
         List<AnalyseLandingRowModel> landingData = new ArrayList<>();
-        for (BudgetLineProjection line : activeLines) {
+        for (AnalysisBudgetLine line : activeLines) {
             BigDecimal budgeted = line.monthly() != null ? line.monthly() : BigDecimal.ZERO;
             List<String> txIds = lineToTxIds.getOrDefault(line.id(), Collections.emptyList());
 
             BigDecimal reel = BigDecimal.ZERO;
             for (String refId : txIds) {
-                BigDecimal amt = PointageCalculator.resolveAmount(refId, txById);
+                BigDecimal amt = resolveAmount(refId, txById);
                 if (amt != null) {
                     if ("revenu".equals(line.kind())) {
                         reel = reel.add(amt);
@@ -222,7 +218,7 @@ public final class AnalyseCalculator {
             }
 
             BigDecimal pendingContrib = BigDecimal.ZERO;
-            for (BankImportModel.PendingOperationModel op : allPendingOps) {
+            for (AnalysisPendingOperation op : allPendingOps) {
                 if (op != null && "pending".equalsIgnoreCase(op.status()) && line.id().equals(op.budgetLineId())) {
                     String opDate = op.date() != null ? op.date() : "";
                     if (opDate.isBlank() || opDate.startsWith(currentMonthISO)) {
@@ -279,16 +275,16 @@ public final class AnalyseCalculator {
         // 3. Monthly Compare Data
         int nMonths = Math.min(mBack > 0 ? mBack : 12, 24);
         List<AnalyseMonthlyCompareModel> monthlyCompareData = new ArrayList<>();
-        Map<String, BankImportModel.MatchingModel> matchingByMonth = new HashMap<>();
+        Map<String, AnalysisMatching> matchingByMonth = new HashMap<>();
         if (input.matchings() != null) {
-            for (BankImportModel.MatchingModel m : input.matchings()) {
+            for (AnalysisMatching m : input.matchings()) {
                 if (m != null && m.month() != null) {
                     matchingByMonth.put(m.month(), m);
                 }
             }
         }
 
-        Map<String, List<BudgetLineProjection>> linesByMonth = new HashMap<>();
+        Map<String, List<AnalysisBudgetLine>> linesByMonth = new HashMap<>();
         if (input.monthlyBudgetLines() != null) {
             for (MonthlyBudgetLines mbl : input.monthlyBudgetLines()) {
                 if (mbl != null && mbl.monthISO() != null) {
@@ -309,23 +305,23 @@ public final class AnalyseCalculator {
         for (int i = nMonths - 1; i >= 0; i--) {
             YearMonth ym = currentYM.minusMonths(i);
             String monthISO = ym.toString();
-            List<BudgetLineProjection> monthLines = linesByMonth.getOrDefault(monthISO, Collections.emptyList());
+            List<AnalysisBudgetLine> monthLines = linesByMonth.getOrDefault(monthISO, Collections.emptyList());
 
             BigDecimal budgeted = monthLines.stream()
                     .map(l -> l.monthly() != null ? l.monthly() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            BankImportModel.MatchingModel monthMatching = matchingByMonth.get(monthISO);
+            AnalysisMatching monthMatching = matchingByMonth.get(monthISO);
             BigDecimal reel = BigDecimal.ZERO;
             boolean hasPointing = false;
 
             if (monthMatching != null && monthMatching.links() != null) {
-                for (BankImportModel.MatchingLinkModel link : monthMatching.links()) {
+                for (AnalysisMatching.Link link : monthMatching.links()) {
                     if (link != null && link.txIds() != null && !link.txIds().isEmpty()) {
                         hasPointing = true;
                         String kind = lineKindMap.getOrDefault(link.budgetLineId(), "charge");
                         for (String refId : link.txIds()) {
-                            BigDecimal amt = PointageCalculator.resolveAmount(refId, txById);
+                            BigDecimal amt = resolveAmount(refId, txById);
                             if (amt != null) {
                                 if ("revenu".equals(kind)) {
                                     reel = reel.add(amt);
@@ -339,7 +335,7 @@ public final class AnalyseCalculator {
             }
 
             BigDecimal pendingContrib = BigDecimal.ZERO;
-            for (BankImportModel.PendingOperationModel op : allPendingOps) {
+            for (AnalysisPendingOperation op : allPendingOps) {
                 if (op != null && "pending".equalsIgnoreCase(op.status()) && op.budgetLineId() != null && !op.budgetLineId().isBlank()) {
                     String opDate = op.date() != null ? op.date() : "";
                     if (opDate.startsWith(monthISO)) {
@@ -369,11 +365,11 @@ public final class AnalyseCalculator {
         }
 
         // 4. Drift Rows (dérives par ligne)
-        Map<String, RealAverageModel> realAverages = computeRealAveragesInternal(input, txById, lineKindMap, currentMonthISO);
+        Map<String, AnalysisRealAverage> realAverages = computeRealAveragesInternal(input, txById, lineKindMap, currentMonthISO);
         List<AnalyseDriftRowModel> driftRows = new ArrayList<>();
 
-        for (BudgetLineProjection line : activeLines) {
-            RealAverageModel avg = realAverages.get(line.id());
+        for (AnalysisBudgetLine line : activeLines) {
+            AnalysisRealAverage avg = realAverages.get(line.id());
             BigDecimal budgeted = line.monthly() != null ? line.monthly() : BigDecimal.ZERO;
             BigDecimal avg3m = avg != null ? avg.avg3m() : null;
             BigDecimal avg12m = avg != null ? avg.avg12m() : null;
@@ -424,9 +420,34 @@ public final class AnalyseCalculator {
         );
     }
 
-    private static Map<String, RealAverageModel> computeRealAveragesInternal(
+    /**
+     * Résout le montant d'un identifiant de transaction composite ("txId" ou "txId#splitId").
+     */
+    private static BigDecimal resolveAmount(String refId, Map<String, AnalysisTransaction> txMap) {
+        if (refId == null || refId.isBlank() || txMap == null) {
+            return BigDecimal.ZERO;
+        }
+        int hashIdx = refId.indexOf('#');
+        if (hashIdx >= 0) {
+            String txId = refId.substring(0, hashIdx);
+            String splitId = refId.substring(hashIdx + 1);
+            AnalysisTransaction tx = txMap.get(txId);
+            if (tx != null && tx.splits() != null) {
+                for (AnalysisTransaction.Split split : tx.splits()) {
+                    if (split != null && splitId.equals(split.id())) {
+                        return split.amount() != null ? split.amount() : BigDecimal.ZERO;
+                    }
+                }
+            }
+            return BigDecimal.ZERO;
+        }
+        AnalysisTransaction tx = txMap.get(refId);
+        return (tx != null && tx.amount() != null) ? tx.amount() : BigDecimal.ZERO;
+    }
+
+    private static Map<String, AnalysisRealAverage> computeRealAveragesInternal(
             AnalyseInput input,
-            Map<String, BankImportModel.BankTransactionModel> txById,
+            Map<String, AnalysisTransaction> txById,
             Map<String, String> lineKindMap,
             String todayMonthISO) {
 
@@ -437,16 +458,16 @@ public final class AnalyseCalculator {
         record MonthEntry(String month, BigDecimal realAmount) {}
         Map<String, List<MonthEntry>> byLine = new HashMap<>();
 
-        for (BankImportModel.MatchingModel m : input.matchings()) {
+        for (AnalysisMatching m : input.matchings()) {
             String month = m.month();
             if (m.links() == null) continue;
-            for (BankImportModel.MatchingLinkModel l : m.links()) {
+            for (AnalysisMatching.Link l : m.links()) {
                 if (l.budgetLineId() == null || l.txIds() == null || l.txIds().isEmpty()) continue;
                 String kind = lineKindMap.getOrDefault(l.budgetLineId(), "charge");
 
                 BigDecimal sum = BigDecimal.ZERO;
                 for (String refId : l.txIds()) {
-                    BigDecimal amt = PointageCalculator.resolveAmount(refId, txById);
+                    BigDecimal amt = resolveAmount(refId, txById);
                     if (amt != null) {
                         sum = sum.add("revenu".equals(kind) ? amt : amt.negate());
                     }
@@ -457,7 +478,7 @@ public final class AnalyseCalculator {
             }
         }
 
-        Map<String, RealAverageModel> result = new HashMap<>();
+        Map<String, AnalysisRealAverage> result = new HashMap<>();
 
         for (Map.Entry<String, List<MonthEntry>> entry : byLine.entrySet()) {
             String lineId = entry.getKey();
@@ -486,7 +507,7 @@ public final class AnalyseCalculator {
                 avg12m = sum12.divide(BigDecimal.valueOf(last12.size()), 10, RoundingMode.HALF_UP);
             }
 
-            result.put(lineId, new RealAverageModel(avg3m, avg12m, last12.size()));
+            result.put(lineId, new AnalysisRealAverage(avg3m, avg12m, last12.size()));
         }
 
         return result;

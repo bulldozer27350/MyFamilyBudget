@@ -9,10 +9,15 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseInput;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisBudgetLine;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisCategory;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisMatching;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisPendingOperation;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisPeriod;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisTransaction;
 import com.moe.myfamilybudget.domain.analysis.calculation.BudgetLineKind;
-import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
 import com.moe.myfamilybudget.domain.analysis.calculation.MonthlyBudgetLines;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
@@ -25,6 +30,10 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
  * <p>SILO-115 : cette factory ne connait plus {@code BudgetDataModel} ; l'appelant lui fournit
  * l'import bancaire et des {@link PointageInputFactory.Sources} (charges, revenus, placements,
  * inflation). Les listes absentes sont lues comme vides.
+ *
+ * <p>SILO-133 : Analyse definit ses propres types d'entree ; cette factory traduit les types du silo
+ * Banque/Pointage (transactions, categories, rapprochements, operations en cours, lignes budgetaires) vers
+ * ceux d'Analyse.
  *
  * <p>Isole {@link com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator} de toute dependance
  * aux modeles de persistance et aux reglages du budget.
@@ -44,20 +53,22 @@ public class AnalyseInputFactory {
         int mBack = (monthsBack != null && monthsBack >= 0) ? monthsBack : 12;
         AnalysisPeriod period = new AnalysisPeriod(today, mBack);
 
-        List<BankImportModel.BankTransactionModel> transactions = bankImport != null && bankImport.transactions() != null
-                ? bankImport.transactions()
+        List<AnalysisTransaction> transactions = bankImport != null && bankImport.transactions() != null
+                ? bankImport.transactions().stream().filter(t -> t != null).map(AnalyseInputFactory::toTransaction).toList()
                 : Collections.emptyList();
 
-        List<BankImportModel.CategoryModel> categories = bankImport != null && bankImport.categories() != null
-                ? bankImport.categories()
+        List<AnalysisCategory> categories = bankImport != null && bankImport.categories() != null
+                ? bankImport.categories().stream().filter(c -> c != null)
+                        .map(c -> new AnalysisCategory(c.id(), c.label(), c.kind(), c.compressible())).toList()
                 : Collections.emptyList();
 
-        List<BankImportModel.MatchingModel> matchings = bankImport != null && bankImport.matchings() != null
-                ? bankImport.matchings()
+        List<AnalysisMatching> matchings = bankImport != null && bankImport.matchings() != null
+                ? bankImport.matchings().stream().filter(m -> m != null).map(AnalyseInputFactory::toMatching).toList()
                 : Collections.emptyList();
 
-        List<BankImportModel.PendingOperationModel> pendingOperations = bankImport != null && bankImport.pendingOperations() != null
-                ? bankImport.pendingOperations()
+        List<AnalysisPendingOperation> pendingOperations = bankImport != null && bankImport.pendingOperations() != null
+                ? bankImport.pendingOperations().stream().filter(op -> op != null)
+                        .map(op -> new AnalysisPendingOperation(op.date(), op.amount(), op.status(), op.budgetLineId())).toList()
                 : Collections.emptyList();
 
         int nMonths = Math.min(mBack > 0 ? mBack : 12, 24);
@@ -73,7 +84,10 @@ public class AnalyseInputFactory {
                     data != null ? data.inflationRate() : null,
                     monthISO
             );
-            monthlyBudgetLines.add(new MonthlyBudgetLines(monthISO, monthLines));
+            monthlyBudgetLines.add(new MonthlyBudgetLines(monthISO, monthLines.stream()
+                    .filter(l -> l != null)
+                    .map(l -> new AnalysisBudgetLine(l.id(), l.label(), l.kind(), l.monthly()))
+                    .toList()));
         }
 
         List<BudgetLineKind> lineKinds = new ArrayList<>();
@@ -110,5 +124,21 @@ public class AnalyseInputFactory {
                 monthlyBudgetLines,
                 lineKinds
         );
+    }
+
+    private static AnalysisTransaction toTransaction(BankImportModel.BankTransactionModel t) {
+        List<AnalysisTransaction.Split> splits = t.splits() == null
+                ? Collections.emptyList()
+                : t.splits().stream().filter(sp -> sp != null)
+                        .map(sp -> new AnalysisTransaction.Split(sp.id(), sp.categoryId(), sp.amount())).toList();
+        return new AnalysisTransaction(t.id(), t.date(), t.amount(), t.categoryId(), splits);
+    }
+
+    private static AnalysisMatching toMatching(BankImportModel.MatchingModel m) {
+        List<AnalysisMatching.Link> links = m.links() == null
+                ? Collections.emptyList()
+                : m.links().stream().filter(l -> l != null)
+                        .map(l -> new AnalysisMatching.Link(l.budgetLineId(), l.txIds())).toList();
+        return new AnalysisMatching(m.month(), links);
     }
 }

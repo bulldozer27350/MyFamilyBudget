@@ -11,18 +11,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseDriftRowModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseLandingRowModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseMonthlyCompareModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseCategorySummaryModel;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionSplitModel;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.CategoryModel;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingLinkModel;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingModel;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.PendingOperationModel;
 
 /**
  * RF-602 : tests de composant pour {@link AnalyseCalculator}, construits uniquement avec
@@ -39,35 +32,35 @@ class AnalyseCalculatorComponentTest {
         return new BigDecimal(val);
     }
 
-    private static BankTransactionModel tx(String id, String date, String label, String amount, String catId) {
-        return new BankTransactionModel(id, date, label, "cb", bd(amount), catId);
+    private static AnalysisTransaction tx(String id, String date, String label, String amount, String catId) {
+        return new AnalysisTransaction(id, date, bd(amount), catId, Collections.emptyList());
     }
 
-    private static BankTransactionModel txSplit(String id, String date, String label, String amount, String defaultCatId, List<BankTransactionSplitModel> splits) {
-        return new BankTransactionModel(id, date, label, "cb", bd(amount), defaultCatId, splits);
+    private static AnalysisTransaction txSplit(String id, String date, String label, String amount, String defaultCatId, List<AnalysisTransaction.Split> splits) {
+        return new AnalysisTransaction(id, date, bd(amount), defaultCatId, splits);
     }
 
-    private static CategoryModel cat(String id, String label, String kind, String compressible) {
-        return new CategoryModel(id, label, kind, compressible);
+    private static AnalysisCategory cat(String id, String label, String kind, String compressible) {
+        return new AnalysisCategory(id, label, kind, compressible);
     }
 
-    private static MatchingModel matching(String month, MatchingLinkModel... links) {
-        return new MatchingModel(month, List.of(links));
+    private static AnalysisMatching matching(String month, AnalysisMatching.Link... links) {
+        return new AnalysisMatching(month, List.of(links));
     }
 
-    private static MatchingLinkModel link(String lineId, String... txIds) {
-        return new MatchingLinkModel(lineId, List.of(txIds));
+    private static AnalysisMatching.Link link(String lineId, String... txIds) {
+        return new AnalysisMatching.Link(lineId, List.of(txIds));
     }
 
-    private static PendingOperationModel pending(String id, String date, String amount, String lineId) {
-        return new PendingOperationModel(id, date, date, "cb", "", "Op en cours", bd(amount), "", "pending", null, null, "", Collections.emptyList(), lineId);
+    private static AnalysisPendingOperation pending(String id, String date, String amount, String lineId) {
+        return new AnalysisPendingOperation(date, bd(amount), "pending", lineId);
     }
 
-    private static BudgetLineProjection line(String id, String label, String kind, String monthly, String catId) {
-        return new BudgetLineProjection(id, label, kind, bd(monthly), catId);
+    private static AnalysisBudgetLine line(String id, String label, String kind, String monthly, String catId) {
+        return new AnalysisBudgetLine(id, label, kind, bd(monthly));
     }
 
-    private static MonthlyBudgetLines monthlyLines(String monthISO, BudgetLineProjection... lines) {
+    private static MonthlyBudgetLines monthlyLines(String monthISO, AnalysisBudgetLine... lines) {
         return new MonthlyBudgetLines(monthISO, List.of(lines));
     }
 
@@ -120,11 +113,11 @@ class AnalyseCalculatorComponentTest {
         @Test
         @DisplayName("Transactions simples avec depenses, revenus et categories compressibles")
         void simpleTransactions() {
-            CategoryModel catLogement = cat("cat_logement", "Logement", "Dépense", "Non");
-            CategoryModel catCourses = cat("cat_courses", "Alimentation", "Dépense", "Oui");
-            CategoryModel catSalaire = cat("cat_salaire", "Salaire", "Revenu", "Non");
+            AnalysisCategory catLogement = cat("cat_logement", "Logement", "Dépense", "Non");
+            AnalysisCategory catCourses = cat("cat_courses", "Alimentation", "Dépense", "Oui");
+            AnalysisCategory catSalaire = cat("cat_salaire", "Salaire", "Revenu", "Non");
 
-            List<BankTransactionModel> txs = List.of(
+            List<AnalysisTransaction> txs = List.of(
                     tx("tx1", "2026-08-01", "Loyer", "-1000.00", "cat_logement"),
                     tx("tx2", "2026-08-05", "Supermarche", "-150.00", "cat_courses"),
                     tx("tx3", "2026-08-10", "Pain", "-10.00", null), // non catégorisé
@@ -161,13 +154,13 @@ class AnalyseCalculatorComponentTest {
         @Test
         @DisplayName("Transactions ventilees (splits) par sous-categories")
         void splitTransactions() {
-            CategoryModel catFood = cat("cat_food", "Alimentation", "Dépense", "Non");
-            CategoryModel catClothes = cat("cat_clothes", "Habillement", "Dépense", "Oui");
+            AnalysisCategory catFood = cat("cat_food", "Alimentation", "Dépense", "Non");
+            AnalysisCategory catClothes = cat("cat_clothes", "Habillement", "Dépense", "Oui");
 
-            BankTransactionSplitModel s1 = new BankTransactionSplitModel("s1", "cat_food", bd("-70.00"), "Nourriture");
-            BankTransactionSplitModel s2 = new BankTransactionSplitModel("s2", "cat_clothes", bd("-30.00"), "Habits");
+            AnalysisTransaction.Split s1 = new AnalysisTransaction.Split("s1", "cat_food", bd("-70.00"));
+            AnalysisTransaction.Split s2 = new AnalysisTransaction.Split("s2", "cat_clothes", bd("-30.00"));
 
-            BankTransactionModel txS = txSplit("tx_s", "2026-08-10", "Grand Magasin", "-100.00", "cat_default", List.of(s1, s2));
+            AnalysisTransaction txS = txSplit("tx_s", "2026-08-10", "Grand Magasin", "-100.00", "cat_default", List.of(s1, s2));
 
             AnalyseInput input = new AnalyseInput(
                     new AnalysisPeriod(REF_DATE, 12),
@@ -197,17 +190,17 @@ class AnalyseCalculatorComponentTest {
         @Test
         @DisplayName("Calcul de l'atterrissage avec pointage et operations en cours")
         void landingWithMatchingAndPending() {
-            BudgetLineProjection loyerLine = line("c1", "Loyer", "charge", "1000.00", "cat1");
-            BudgetLineProjection coursesLine = line("c2", "Courses", "charge", "500.00", "cat2");
+            AnalysisBudgetLine loyerLine = line("c1", "Loyer", "charge", "1000.00", "cat1");
+            AnalysisBudgetLine coursesLine = line("c2", "Courses", "charge", "500.00", "cat2");
 
-            BankTransactionModel txLoyer = tx("t1", "2026-08-02", "Loyer", "-1000.00", "cat1");
-            BankTransactionModel txCourses1 = tx("t2", "2026-08-04", "Monoprix", "-200.00", "cat2");
+            AnalysisTransaction txLoyer = tx("t1", "2026-08-02", "Loyer", "-1000.00", "cat1");
+            AnalysisTransaction txCourses1 = tx("t2", "2026-08-04", "Monoprix", "-200.00", "cat2");
 
-            MatchingLinkModel linkLoyer = link("c1", "t1");
-            MatchingLinkModel linkCourses = link("c2", "t2");
-            MatchingModel mCurrent = matching(CURRENT_MONTH_ISO, linkLoyer, linkCourses);
+            AnalysisMatching.Link linkLoyer = link("c1", "t1");
+            AnalysisMatching.Link linkCourses = link("c2", "t2");
+            AnalysisMatching mCurrent = matching(CURRENT_MONTH_ISO, linkLoyer, linkCourses);
 
-            PendingOperationModel pendingCourses = pending("p1", "2026-08-14", "150.00", "c2");
+            AnalysisPendingOperation pendingCourses = pending("p1", "2026-08-14", "150.00", "c2");
 
             AnalyseInput input = new AnalyseInput(
                     new AnalysisPeriod(REF_DATE, 12),
@@ -248,14 +241,14 @@ class AnalyseCalculatorComponentTest {
         @Test
         @DisplayName("Generation des mois du comparatif avec montants budgetes et reels")
         void monthlyCompareFlow() {
-            BudgetLineProjection lineJul = line("c1", "Charge", "charge", "400.00", "cat");
-            BudgetLineProjection lineAug = line("c1", "Charge", "charge", "450.00", "cat");
+            AnalysisBudgetLine lineJul = line("c1", "Charge", "charge", "400.00", "cat");
+            AnalysisBudgetLine lineAug = line("c1", "Charge", "charge", "450.00", "cat");
 
-            BankTransactionModel txJul = tx("t_jul", "2026-07-10", "Charge Juil", "-390.00", "cat");
-            BankTransactionModel txAug = tx("t_aug", "2026-08-10", "Charge Aout", "-450.00", "cat");
+            AnalysisTransaction txJul = tx("t_jul", "2026-07-10", "Charge Juil", "-390.00", "cat");
+            AnalysisTransaction txAug = tx("t_aug", "2026-08-10", "Charge Aout", "-450.00", "cat");
 
-            MatchingModel mJul = matching("2026-07", link("c1", "t_jul"));
-            MatchingModel mAug = matching("2026-08", link("c1", "t_aug"));
+            AnalysisMatching mJul = matching("2026-07", link("c1", "t_jul"));
+            AnalysisMatching mAug = matching("2026-08", link("c1", "t_aug"));
 
             AnalyseInput input = new AnalyseInput(
                     new AnalysisPeriod(REF_DATE, 3), // fenetre 3 mois
@@ -296,15 +289,15 @@ class AnalyseCalculatorComponentTest {
         @Test
         @DisplayName("Calcul des moyennes 3m/12m et statut de derive")
         void driftCalculation() {
-            BudgetLineProjection c1 = line("c1", "Electricite", "charge", "100.00", "cat");
+            AnalysisBudgetLine c1 = line("c1", "Electricite", "charge", "100.00", "cat");
 
-            BankTransactionModel t6 = tx("t6", "2026-06-05", "EDF Juin", "-120.00", "cat");
-            BankTransactionModel t7 = tx("t7", "2026-07-05", "EDF Juil", "-130.00", "cat");
-            BankTransactionModel t8 = tx("t8", "2026-08-05", "EDF Aout", "-140.00", "cat");
+            AnalysisTransaction t6 = tx("t6", "2026-06-05", "EDF Juin", "-120.00", "cat");
+            AnalysisTransaction t7 = tx("t7", "2026-07-05", "EDF Juil", "-130.00", "cat");
+            AnalysisTransaction t8 = tx("t8", "2026-08-05", "EDF Aout", "-140.00", "cat");
 
-            MatchingModel m6 = matching("2026-06", link("c1", "t6"));
-            MatchingModel m7 = matching("2026-07", link("c1", "t7"));
-            MatchingModel m8 = matching("2026-08", link("c1", "t8"));
+            AnalysisMatching m6 = matching("2026-06", link("c1", "t6"));
+            AnalysisMatching m7 = matching("2026-07", link("c1", "t7"));
+            AnalysisMatching m8 = matching("2026-08", link("c1", "t8"));
 
             AnalyseInput input = new AnalyseInput(
                     new AnalysisPeriod(REF_DATE, 12),

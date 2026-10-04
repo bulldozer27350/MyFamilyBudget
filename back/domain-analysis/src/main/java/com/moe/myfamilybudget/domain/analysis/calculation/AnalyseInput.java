@@ -3,17 +3,15 @@ package com.moe.myfamilybudget.domain.analysis.calculation;
 import java.util.Collections;
 import java.util.List;
 
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-
 /**
  * Contrat d'entrée du domaine Analyse (RF-600, voir doc/architecture/08-domaine-analyse.md).
  *
- * <p>Remplace à terme le couple {@code BankImportModel} / {@code BudgetDataModel} consommé
- * directement par {@code AnalyseCalculator} : Analyse ne reçoit que des transactions, catégories,
- * rapprochements et opérations en cours (types de {@code BankImportModel}, calculateur déjà pur, non
- * dupliqués), ainsi que des lignes budgétaires déjà composées mois par mois
- * ({@link MonthlyBudgetLines}, voir {@link BudgetLineProjection}) et leur nature
- * ({@link BudgetLineKind}). Aucun {@code SettingsModel} ni modèle du budget n'est transporté.
+ * <p>Analyse ne reçoit que des transactions, catégories, rapprochements et opérations en cours
+ * sous des types qui lui sont propres ({@link AnalysisTransaction}, {@link AnalysisCategory},
+ * {@link AnalysisMatching}, {@link AnalysisPendingOperation}), ainsi que des lignes budgétaires déjà
+ * composées mois par mois ({@link MonthlyBudgetLines}, voir {@link AnalysisBudgetLine}) et leur nature
+ * ({@link BudgetLineKind}). Depuis SILO-133, le silo ne référence aucun type des silos Banque/Pointage et
+ * Budget : l'application traduit. Aucun {@code SettingsModel} ni modèle du budget n'est transporté.
  *
  * <p>Ce contrat n'inclut volontairement pas de performance des placements : aucun code Java ne la
  * consomme aujourd'hui (seule la nature d'une ligne, via {@link BudgetLineKind}, provient des
@@ -29,10 +27,10 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
  */
 public record AnalyseInput(
         AnalysisPeriod period,
-        List<BankImportModel.BankTransactionModel> transactions,
-        List<BankImportModel.CategoryModel> categories,
-        List<BankImportModel.MatchingModel> matchings,
-        List<BankImportModel.PendingOperationModel> pendingOperations,
+        List<AnalysisTransaction> transactions,
+        List<AnalysisCategory> categories,
+        List<AnalysisMatching> matchings,
+        List<AnalysisPendingOperation> pendingOperations,
         List<MonthlyBudgetLines> monthlyBudgetLines,
         List<BudgetLineKind> lineKinds) {
 
