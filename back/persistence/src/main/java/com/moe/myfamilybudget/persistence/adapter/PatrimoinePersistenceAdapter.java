@@ -21,6 +21,7 @@ import com.moe.myfamilybudget.domain.wealth.port.AssetCategoryField;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineWriter;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
 
 /**
  * Adaptateur de persistance pour {@link PatrimoineReader} (RF-B00) et {@link PatrimoineWriter} (DB-030).
@@ -35,7 +36,7 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineWriter;
  * unitaires adosses a des repositories mockes et constitue le chemin de retour arriere.
  */
 @Component
-public class PatrimoinePersistenceAdapter implements PatrimoineReader, PatrimoineWriter {
+public class PatrimoinePersistenceAdapter implements PatrimoineReader, PatrimoineWriter, PatrimoineSnapshotWriter {
 
     private final PersistenceManager persistenceManager;
     private final WealthPlacementRepository wealthPlacementRepository;
@@ -131,5 +132,19 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
     @Override
     public void removeAssetCategory(String id) {
         persistenceManager.write(m -> m.removeAssetCategory(id));
+    }
+
+    /** SILO-119 (lot B1) : import du silo Patrimoine. */
+    @Override
+    public void replace(List<PlacementModel> placements, List<RealEstateModel> realEstate,
+                        List<TransferModel> transfers, List<AssetCategoryModel> assetCategories) {
+        persistenceManager.write(m -> m.replacePatrimoineSnapshot(placements, realEstate, transfers,
+                assetCategories));
+    }
+
+    /** SILO-119 (lot B1) : remise à zéro du silo Patrimoine. */
+    @Override
+    public void reset() {
+        persistenceManager.write(m -> m.resetPatrimoineSnapshot());
     }
 }

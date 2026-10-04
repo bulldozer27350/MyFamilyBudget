@@ -11,6 +11,7 @@ import com.moe.myfamilybudget.persistence.converter.BankImportDocumentMapper;
 import com.moe.myfamilybudget.persistence.repository.BankImportDocumentRepository;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankSnapshotWriter;
 
 /**
  * Adaptateur de persistance pour {@link BankReader} (RF-B00) et {@link BankWriter} (DB-040).
@@ -25,7 +26,7 @@ import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
  * unitaires adosses a des repositories mockes et constitue le chemin de retour arriere.
  */
 @Component
-public class BankPersistenceAdapter implements BankReader, BankWriter {
+public class BankPersistenceAdapter implements BankReader, BankWriter, BankSnapshotWriter {
 
     private final PersistenceManager persistenceManager;
     private final BankImportDocumentRepository bankImportDocumentRepository;
@@ -56,5 +57,17 @@ public class BankPersistenceAdapter implements BankReader, BankWriter {
     @Override
     public void updateBankImport(BankImportModel bankImport) {
         persistenceManager.write(m -> m.updateBankImport(bankImport));
+    }
+
+    /** SILO-119 (lot B1) : import de l'import bancaire. */
+    @Override
+    public void replace(BankImportModel bankImport) {
+        persistenceManager.write(m -> m.replaceBankImportSnapshot(bankImport));
+    }
+
+    /** SILO-119 (lot B1) : remise à vide de l'import bancaire. */
+    @Override
+    public void reset() {
+        persistenceManager.write(m -> m.resetBankImportSnapshot());
     }
 }

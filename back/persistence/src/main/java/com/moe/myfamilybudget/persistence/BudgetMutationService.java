@@ -38,6 +38,11 @@ import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
+import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 
 /**
  * Logique métier de toutes les mutations du budget : sections trésorerie (revenus, charges,
@@ -948,6 +953,214 @@ class BudgetMutationService {
             BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             return base.withBankImport(bankImport);
         });
+    }
+
+    // --- SILO-119 (lot B1) : remplacement et réinitialisation par silo (import et reset par fragments) ---
+    //
+    // Chaque méthode ne modifie que les champs du silo concerné ; les autres silos sont recopiés tels quels.
+    // Une liste absente est lue comme vide, un paramètre absent prend sa valeur par défaut (celle du budget
+    // par défaut). Elles s'appellent dans une transaction déjà ouverte, après la prise du verrou de mutation.
+
+    /** Remplace les paramètres Retraite et le plan de retraite. */
+    public void replaceRetirementSnapshot(RetirementSettingsModel settings, RetirementModel retirement) {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            SettingsModel defaults = cacheStore.createDefaultBudgetData().settings();
+            Integer birthYear = settings != null ? settings.birthYear() : defaults.birthYear();
+            Integer retireAge = settings != null ? settings.retireAge() : defaults.retireAge();
+            return base.withSettings(settingsWithRetirement(base.getEffectiveSettings(), birthYear, retireAge))
+                    .withRetirement(retirement);
+        });
+    }
+
+    /** Remet les paramètres Retraite et le plan de retraite à leurs valeurs par défaut. */
+    public void resetRetirementSnapshot() {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            BudgetDataModel defaults = cacheStore.createDefaultBudgetData();
+            return base.withSettings(settingsWithRetirement(base.getEffectiveSettings(),
+                            defaults.settings().birthYear(), defaults.settings().retireAge()))
+                    .withRetirement(defaults.retirement());
+        });
+    }
+
+    /** Remplace les paramètres et la configuration fiscale. */
+    public void replaceTaxSnapshot(TaxSettingsModel settings, List<TaxChildModel> children,
+                                   List<TaxBracketModel> brackets, List<TaxRateOverrideModel> rateOverrides,
+                                   List<TaxActualOverrideModel> actualOverrides) {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            SettingsModel defaults = cacheStore.createDefaultBudgetData().settings();
+            Integer childExitAge = settings != null ? settings.childExitAge() : defaults.childExitAge();
+            BigDecimal taxAbattement = settings != null ? settings.taxAbattement() : defaults.taxAbattement();
+            return base.withSettings(settingsWithTax(base.getEffectiveSettings(), childExitAge, taxAbattement))
+                    .withTaxChildren(orEmpty(children))
+                    .withTaxBrackets(orEmpty(brackets))
+                    .withTaxRateOverrides(orEmpty(rateOverrides))
+                    .withTaxActualOverrides(orEmpty(actualOverrides));
+        });
+    }
+
+    /** Remet la fiscalité à ses valeurs par défaut (barème par défaut, aucune surcharge). */
+    public void resetTaxSnapshot() {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            BudgetDataModel defaults = cacheStore.createDefaultBudgetData();
+            return base.withSettings(settingsWithTax(base.getEffectiveSettings(),
+                            defaults.settings().childExitAge(), defaults.settings().taxAbattement()))
+                    .withTaxChildren(defaults.taxChildren())
+                    .withTaxBrackets(defaults.taxBrackets())
+                    .withTaxRateOverrides(defaults.taxRateOverrides())
+                    .withTaxActualOverrides(defaults.taxActualOverrides());
+        });
+    }
+
+    /** Remplace les paramètres et les lignes de trésorerie (revenus, charges, ponctuels, variables). */
+    public void replaceTresorerieSnapshot(TresorerieSettingsModel settings, List<IncomeModel> incomes,
+                                          List<ChargeModel> charges, List<OneOffExpenseModel> oneoffExpenses,
+                                          List<VariableIncomeModel> variableIncomes,
+                                          List<VariableOverrideModel> variableOverrides) {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            SettingsModel d = cacheStore.createDefaultBudgetData().settings();
+            TresorerieSettingsModel effective = settings != null ? settings
+                    : new TresorerieSettingsModel(d.pivotDate(), d.pivotMode(), d.startBalance(),
+                            d.sweepEnabled(), d.cashCeiling(), d.cashFloor(), d.cashAlertThreshold());
+            return base.withSettings(settingsWithTresorerie(base.getEffectiveSettings(), effective))
+                    .withIncomes(orEmpty(incomes))
+                    .withCharges(orEmpty(charges))
+                    .withOneoff(orEmpty(oneoffExpenses))
+                    .withVariableIncomes(orEmpty(variableIncomes))
+                    .withVariableOverrides(orEmpty(variableOverrides));
+        });
+    }
+
+    /** Remet la trésorerie à ses valeurs par défaut (paramètres par défaut, aucune ligne). */
+    public void resetTresorerieSnapshot() {
+        replaceTresorerieSnapshot(null, null, null, null, null, null);
+    }
+
+    /** Remplace le patrimoine : placements, immobilier, virements et catégories d'actifs. */
+    public void replacePatrimoineSnapshot(List<PlacementModel> placements, List<RealEstateModel> realEstate,
+                                          List<TransferModel> transfers, List<AssetCategoryModel> assetCategories) {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            return base.withPlacements(orEmpty(placements))
+                    .withRealEstate(orEmpty(realEstate))
+                    .withTransfers(orEmpty(transfers))
+                    .withAssetCategories(orEmpty(assetCategories));
+        });
+    }
+
+    /** Remet le patrimoine à vide. */
+    public void resetPatrimoineSnapshot() {
+        replacePatrimoineSnapshot(null, null, null, null);
+    }
+
+    /** Remplace les prêts. */
+    public void replaceLoansSnapshot(List<LoanModel> loans) {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            return base.withLoans(orEmpty(loans));
+        });
+    }
+
+    /** Supprime tous les prêts. */
+    public void resetLoansSnapshot() {
+        replaceLoansSnapshot(null);
+    }
+
+    /** Remplace les objectifs (les paramètres du domaine Objectifs ont leur propre stockage, RF-700). */
+    public void replaceGoalsSnapshot(List<ObjectifModel> goals) {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            return base.withObjectifs(orEmpty(goals));
+        });
+    }
+
+    /** Supprime tous les objectifs. */
+    public void resetGoalsSnapshot() {
+        replaceGoalsSnapshot(null);
+    }
+
+    /** Remplace l'import bancaire ({@code null} accepté : absent, comme à l'import global). */
+    public void replaceBankImportSnapshot(BankImportModel bankImport) {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            return base.withBankImport(bankImport);
+        });
+    }
+
+    /** Remet l'import bancaire à vide. */
+    public void resetBankImportSnapshot() {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            return base.withBankImport(cacheStore.createDefaultBudgetData().bankImport());
+        });
+    }
+
+    /** Remplace le paramètre de simulation ({@code null} : valeur par défaut). */
+    public void replaceSimulationSettingsSnapshot(SimulationSettingsModel settings) {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            Integer simulateUntilAge = settings != null ? settings.simulateUntilAge()
+                    : cacheStore.createDefaultBudgetData().settings().simulateUntilAge();
+            return base.withSettings(settingsWithSimulation(base.getEffectiveSettings(), simulateUntilAge));
+        });
+    }
+
+    /** Remet le paramètre de simulation à sa valeur par défaut. */
+    public void resetSimulationSettingsSnapshot() {
+        replaceSimulationSettingsSnapshot(null);
+    }
+
+    /** Remplace les hypothèses économiques ({@code null} : valeur par défaut). */
+    public void replaceEconomicAssumptionsSnapshot(EconomicAssumptionsModel assumptions) {
+        cacheStore.applyAndPersist(current -> {
+            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
+            BigDecimal inflationRate = assumptions != null ? assumptions.inflationRate()
+                    : cacheStore.createDefaultBudgetData().settings().inflationRate();
+            return base.withSettings(settingsWithInflation(base.getEffectiveSettings(), inflationRate));
+        });
+    }
+
+    /** Remet les hypothèses économiques à leurs valeurs par défaut. */
+    public void resetEconomicAssumptionsSnapshot() {
+        replaceEconomicAssumptionsSnapshot(null);
+    }
+
+    private static <T> List<T> orEmpty(List<T> list) {
+        return list != null ? list : new ArrayList<>();
+    }
+
+    private static SettingsModel settingsWithRetirement(SettingsModel s, Integer birthYear, Integer retireAge) {
+        return new SettingsModel(birthYear, retireAge, s.simulateUntilAge(), s.inflationRate(), s.pivotDate(),
+                s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), s.sweepEnabled(),
+                s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
+    }
+
+    private static SettingsModel settingsWithTax(SettingsModel s, Integer childExitAge, BigDecimal taxAbattement) {
+        return new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(), s.inflationRate(),
+                s.pivotDate(), s.pivotMode(), s.startBalance(), childExitAge, taxAbattement, s.sweepEnabled(),
+                s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
+    }
+
+    private static SettingsModel settingsWithTresorerie(SettingsModel s, TresorerieSettingsModel t) {
+        return new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(), s.inflationRate(),
+                t.pivotDate(), t.pivotMode(), t.startBalance(), s.childExitAge(), s.taxAbattement(),
+                t.sweepEnabled(), t.cashCeiling(), t.cashFloor(), t.cashAlertThreshold());
+    }
+
+    private static SettingsModel settingsWithSimulation(SettingsModel s, Integer simulateUntilAge) {
+        return new SettingsModel(s.birthYear(), s.retireAge(), simulateUntilAge, s.inflationRate(), s.pivotDate(),
+                s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), s.sweepEnabled(),
+                s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
+    }
+
+    private static SettingsModel settingsWithInflation(SettingsModel s, BigDecimal inflationRate) {
+        return new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(), inflationRate, s.pivotDate(),
+                s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), s.sweepEnabled(),
+                s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
     }
 
     // --- Objectifs : allocations multi-comptes ---

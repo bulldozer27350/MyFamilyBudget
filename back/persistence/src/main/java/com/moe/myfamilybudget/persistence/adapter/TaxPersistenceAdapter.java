@@ -18,6 +18,8 @@ import com.moe.myfamilybudget.persistence.repository.FiscalRateOverrideRepositor
 import com.moe.myfamilybudget.domain.tax.port.TaxReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
 import com.moe.myfamilybudget.domain.tax.port.TaxWriter;
+import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
+import com.moe.myfamilybudget.domain.tax.port.TaxSnapshotWriter;
 
 /**
  * Adaptateur de persistance pour {@link TaxReader} (RF-B00) et {@link TaxWriter} (DB-021).
@@ -32,7 +34,7 @@ import com.moe.myfamilybudget.domain.tax.port.TaxWriter;
  * unitaires adosses a des repositories mockes et constitue le chemin de retour arriere.
  */
 @Component
-public class TaxPersistenceAdapter implements TaxReader, TaxWriter {
+public class TaxPersistenceAdapter implements TaxReader, TaxWriter, TaxSnapshotWriter {
 
     private final PersistenceManager persistenceManager;
     private final FiscalChildRepository fiscalChildRepository;
@@ -104,5 +106,19 @@ public class TaxPersistenceAdapter implements TaxReader, TaxWriter {
     @Override
     public void resetDefaultTaxBrackets() {
         persistenceManager.write(m -> m.resetDefaultTaxBrackets());
+    }
+
+    /** SILO-119 (lot B1) : import du silo Fiscalité (paramètres et configuration fiscale). */
+    @Override
+    public void replace(TaxSettingsModel settings, List<TaxChildModel> children, List<TaxBracketModel> brackets,
+                        List<TaxRateOverrideModel> rateOverrides, List<TaxActualOverrideModel> actualOverrides) {
+        persistenceManager.write(m -> m.replaceTaxSnapshot(settings, children, brackets, rateOverrides,
+                actualOverrides));
+    }
+
+    /** SILO-119 (lot B1) : remise à zéro du silo Fiscalité. */
+    @Override
+    public void reset() {
+        persistenceManager.write(m -> m.resetTaxSnapshot());
     }
 }

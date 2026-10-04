@@ -10,6 +10,8 @@ import com.moe.myfamilybudget.persistence.repository.PensionPlanRepository;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementWriter;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSnapshotWriter;
 
 /**
  * Adaptateur de persistance pour {@link RetirementReader} (RF-B00) et {@link RetirementWriter} (DB-020).
@@ -24,7 +26,7 @@ import com.moe.myfamilybudget.domain.retirement.port.RetirementWriter;
  * unitaires adosses a des repositories mockes et constitue le chemin de retour arriere.
  */
 @Component
-public class RetirementPersistenceAdapter implements RetirementReader, RetirementWriter {
+public class RetirementPersistenceAdapter implements RetirementReader, RetirementWriter, RetirementSnapshotWriter {
 
     private final PersistenceManager persistenceManager;
     private final PensionPlanRepository pensionPlanRepository;
@@ -63,5 +65,17 @@ public class RetirementPersistenceAdapter implements RetirementReader, Retiremen
     @Override
     public void updateRetirementSetting(RetirementSettingField field, Object value) {
         persistenceManager.write(m -> m.updateRetirementSetting(field, value));
+    }
+
+    /** SILO-119 (lot B1) : import du silo Retraite (paramètres et plan de retraite). */
+    @Override
+    public void replace(RetirementSettingsModel settings, RetirementModel retirement) {
+        persistenceManager.write(m -> m.replaceRetirementSnapshot(settings, retirement));
+    }
+
+    /** SILO-119 (lot B1) : remise à zéro du silo Retraite. */
+    @Override
+    public void reset() {
+        persistenceManager.write(m -> m.resetRetirementSnapshot());
     }
 }

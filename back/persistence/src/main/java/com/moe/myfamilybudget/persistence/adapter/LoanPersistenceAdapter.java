@@ -12,6 +12,7 @@ import com.moe.myfamilybudget.persistence.converter.CreditLoanEntityMapper;
 import com.moe.myfamilybudget.persistence.repository.CreditLoanRepository;
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.credit.port.LoanWriter;
+import com.moe.myfamilybudget.domain.credit.port.LoanSnapshotWriter;
 
 /**
  * Adaptateur de persistance pour {@link LoanReader} (RF-B00) et {@link LoanWriter} (DB-041).
@@ -25,7 +26,7 @@ import com.moe.myfamilybudget.domain.credit.port.LoanWriter;
  * unitaires adosses a des repositories mockes et constitue le chemin de retour arriere.
  */
 @Component
-public class LoanPersistenceAdapter implements LoanReader, LoanWriter {
+public class LoanPersistenceAdapter implements LoanReader, LoanWriter, LoanSnapshotWriter {
 
     private static final String LIST_KEY = "loans";
 
@@ -58,5 +59,17 @@ public class LoanPersistenceAdapter implements LoanReader, LoanWriter {
     @Override
     public void deleteLoanRow(String id) {
         persistenceManager.write(m -> m.deletePatrimoineRow(LIST_KEY, id));
+    }
+
+    /** SILO-119 (lot B1) : import des prêts. */
+    @Override
+    public void replace(List<LoanModel> loans) {
+        persistenceManager.write(m -> m.replaceLoansSnapshot(loans));
+    }
+
+    /** SILO-119 (lot B1) : suppression de tous les prêts. */
+    @Override
+    public void reset() {
+        persistenceManager.write(m -> m.resetLoansSnapshot());
     }
 }

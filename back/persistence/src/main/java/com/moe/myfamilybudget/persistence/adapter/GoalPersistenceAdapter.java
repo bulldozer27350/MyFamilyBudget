@@ -12,6 +12,7 @@ import com.moe.myfamilybudget.persistence.converter.GoalEntityMapper;
 import com.moe.myfamilybudget.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalWriter;
+import com.moe.myfamilybudget.domain.goals.port.GoalSnapshotWriter;
 
 /**
  * Adaptateur de persistance pour {@link GoalReader} (RF-B00) et {@link GoalWriter} (DB-041).
@@ -25,7 +26,7 @@ import com.moe.myfamilybudget.domain.goals.port.GoalWriter;
  * unitaires adosses a des repositories mockes et constitue le chemin de retour arriere.
  */
 @Component
-public class GoalPersistenceAdapter implements GoalReader, GoalWriter {
+public class GoalPersistenceAdapter implements GoalReader, GoalWriter, GoalSnapshotWriter {
 
     private static final String LIST_KEY = "objectifs";
 
@@ -58,5 +59,17 @@ public class GoalPersistenceAdapter implements GoalReader, GoalWriter {
     @Override
     public void deleteGoalRow(String id) {
         persistenceManager.write(m -> m.deletePatrimoineRow(LIST_KEY, id));
+    }
+
+    /** SILO-119 (lot B1) : import des objectifs. */
+    @Override
+    public void replace(List<ObjectifModel> goals) {
+        persistenceManager.write(m -> m.replaceGoalsSnapshot(goals));
+    }
+
+    /** SILO-119 (lot B1) : suppression de tous les objectifs. */
+    @Override
+    public void reset() {
+        persistenceManager.write(m -> m.resetGoalsSnapshot());
     }
 }

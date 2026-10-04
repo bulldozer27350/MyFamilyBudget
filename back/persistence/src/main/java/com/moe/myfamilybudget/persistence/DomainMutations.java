@@ -16,6 +16,21 @@ import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.budget.TransferModel;
+import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
+import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanModel;
+import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
+import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 
 /**
  * Mutations de domaine du budget (DB-060), extraites de {@link PersistenceManager}.
@@ -200,6 +215,123 @@ public final class DomainMutations {
     public void updateBankImport(BankImportModel bankImport) {
         mutationService.updateBankImport(bankImport);
         publishMutated("updateBankImport");
+    }
+
+    // --- SILO-119 (lot B1) : remplacement et reinitialisation par silo ---
+
+    /** Remplace les parametres Retraite et le plan de retraite. */
+    public void replaceRetirementSnapshot(RetirementSettingsModel settings, RetirementModel retirement) {
+        mutationService.replaceRetirementSnapshot(settings, retirement);
+        publishMutated("replaceRetirementSnapshot");
+    }
+
+    /** Remet la Retraite a ses valeurs par defaut. */
+    public void resetRetirementSnapshot() {
+        mutationService.resetRetirementSnapshot();
+        publishMutated("resetRetirementSnapshot");
+    }
+
+    /** Remplace les parametres et la configuration fiscale. */
+    public void replaceTaxSnapshot(TaxSettingsModel settings, List<TaxChildModel> children,
+                                   List<TaxBracketModel> brackets, List<TaxRateOverrideModel> rateOverrides,
+                                   List<TaxActualOverrideModel> actualOverrides) {
+        mutationService.replaceTaxSnapshot(settings, children, brackets, rateOverrides, actualOverrides);
+        publishMutated("replaceTaxSnapshot");
+    }
+
+    /** Remet la Fiscalite a ses valeurs par defaut. */
+    public void resetTaxSnapshot() {
+        mutationService.resetTaxSnapshot();
+        publishMutated("resetTaxSnapshot");
+    }
+
+    /** Remplace les parametres et les lignes de tresorerie. */
+    public void replaceTresorerieSnapshot(TresorerieSettingsModel settings, List<IncomeModel> incomes,
+                                          List<ChargeModel> charges, List<OneOffExpenseModel> oneoffExpenses,
+                                          List<VariableIncomeModel> variableIncomes,
+                                          List<VariableOverrideModel> variableOverrides) {
+        mutationService.replaceTresorerieSnapshot(settings, incomes, charges, oneoffExpenses, variableIncomes,
+                variableOverrides);
+        publishMutated("replaceTresorerieSnapshot");
+    }
+
+    /** Remet la Tresorerie a ses valeurs par defaut. */
+    public void resetTresorerieSnapshot() {
+        mutationService.resetTresorerieSnapshot();
+        publishMutated("resetTresorerieSnapshot");
+    }
+
+    /** Remplace le patrimoine (placements, immobilier, virements, categories d'actifs). */
+    public void replacePatrimoineSnapshot(List<PlacementModel> placements, List<RealEstateModel> realEstate,
+                                          List<TransferModel> transfers, List<AssetCategoryModel> assetCategories) {
+        mutationService.replacePatrimoineSnapshot(placements, realEstate, transfers, assetCategories);
+        publishMutated("replacePatrimoineSnapshot");
+    }
+
+    /** Remet le Patrimoine a vide. */
+    public void resetPatrimoineSnapshot() {
+        mutationService.resetPatrimoineSnapshot();
+        publishMutated("resetPatrimoineSnapshot");
+    }
+
+    /** Remplace les prets. */
+    public void replaceLoansSnapshot(List<LoanModel> loans) {
+        mutationService.replaceLoansSnapshot(loans);
+        publishMutated("replaceLoansSnapshot");
+    }
+
+    /** Supprime tous les prets. */
+    public void resetLoansSnapshot() {
+        mutationService.resetLoansSnapshot();
+        publishMutated("resetLoansSnapshot");
+    }
+
+    /** Remplace les objectifs. */
+    public void replaceGoalsSnapshot(List<ObjectifModel> goals) {
+        mutationService.replaceGoalsSnapshot(goals);
+        publishMutated("replaceGoalsSnapshot");
+    }
+
+    /** Supprime tous les objectifs. */
+    public void resetGoalsSnapshot() {
+        mutationService.resetGoalsSnapshot();
+        publishMutated("resetGoalsSnapshot");
+    }
+
+    /** Remplace l'import bancaire. */
+    public void replaceBankImportSnapshot(BankImportModel bankImport) {
+        mutationService.replaceBankImportSnapshot(bankImport);
+        publishMutated("replaceBankImportSnapshot");
+    }
+
+    /** Remet l'import bancaire a vide. */
+    public void resetBankImportSnapshot() {
+        mutationService.resetBankImportSnapshot();
+        publishMutated("resetBankImportSnapshot");
+    }
+
+    /** Remplace le parametre de simulation. */
+    public void replaceSimulationSettingsSnapshot(SimulationSettingsModel settings) {
+        mutationService.replaceSimulationSettingsSnapshot(settings);
+        publishMutated("replaceSimulationSettingsSnapshot");
+    }
+
+    /** Remet le parametre de simulation a sa valeur par defaut. */
+    public void resetSimulationSettingsSnapshot() {
+        mutationService.resetSimulationSettingsSnapshot();
+        publishMutated("resetSimulationSettingsSnapshot");
+    }
+
+    /** Remplace les hypotheses economiques. */
+    public void replaceEconomicAssumptionsSnapshot(EconomicAssumptionsModel assumptions) {
+        mutationService.replaceEconomicAssumptionsSnapshot(assumptions);
+        publishMutated("replaceEconomicAssumptionsSnapshot");
+    }
+
+    /** Remet les hypotheses economiques a leurs valeurs par defaut. */
+    public void resetEconomicAssumptionsSnapshot() {
+        mutationService.resetEconomicAssumptionsSnapshot();
+        publishMutated("resetEconomicAssumptionsSnapshot");
     }
 
     /**
