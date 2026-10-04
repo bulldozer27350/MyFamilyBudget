@@ -24,9 +24,9 @@ public record TreasuryProjectionInput(
     List<VariableIncomeProjection> variableIncomes,
     List<OneOffCashflow> oneOffExpenses,
     List<TransferProjection> transfers,
-    List<PlacementCashflowInput> placements,
-    TaxProjection taxProjection,
-    RetirementIncomeProjection retirementIncome,
+    List<TreasuryPlacementCashflow> placements,
+    TreasuryTaxProjection taxProjection,
+    TreasuryPensionProjection retirementIncome,
     TreasuryParameters parameters
 ) {}
 ```
@@ -41,8 +41,8 @@ RF-401) les compose à partir de `BudgetDataModel`.
 ```
 
 ```text
-Fiscalité ────────→ TaxProjection
-Retraite ─────────→ RetirementIncomeProjection
+Fiscalité ────────→ (traduit par l'application en TreasuryTaxProjection)
+Retraite ─────────→ (traduit par l'application en TreasuryPensionProjection)
 Patrimoine ───────→ (aucune, voir décision ci-dessous)
 Banque ───────────→ (hors contrat, computeRealAverages/buildTresorerieSuggestions restent
                       à part — non traité par RF-400, voir points restants en fin de section)
@@ -53,7 +53,7 @@ Banque ───────────→ (hors contrat, computeRealAverages/b
 **Point ouvert tranché (RF-400).** 00-principes.md liste explicitement `Patrimoine ↔ Trésorerie`
 parmi les cycles interdits et prescrit, pour ce cas, « la projection unidirectionnelle ». Aucun
 `ContributionDecisionPlan` n'est donc introduit en sortie de Trésorerie : `placements` (voir
-`PlacementCashflowInput`) reste une somme simple des versements configurés sur chaque placement,
+`TreasuryPlacementCashflow`) reste une somme simple des versements configurés sur chaque placement,
 sans tenir compte du mécanisme de pause du domaine Patrimoine — exactement le comportement actuel
 de `placementsMonthlyAnnualForYear`. Patrimoine garde de son côté sa propre approximation de la
 trésorerie pour sa décision de pause (voir `PatrimoineProjectionParameters`, RF-301) : les deux
@@ -87,8 +87,8 @@ Trésorerie devient un agrégateur de **projections**, pas un agrégateur de mod
 
 `internal.calculation` : `TreasuryProjectionInput`, `TreasurySimulationPeriod`,
 `IncomeProjectionInput`, `ChargeProjectionInput`, `VariableIncomeProjection` (+ `Override`
-imbriqué), `OneOffCashflow`, `TransferProjection`, `PlacementCashflowInput`, `TaxProjection` (+
-`Withholding` imbriqué), `RetirementIncomeProjection` (+ `AnnualPension` imbriqué),
+imbriqué), `OneOffCashflow`, `TransferProjection`, `TreasuryPlacementCashflow`, `TreasuryTaxProjection` (+
+`Withholding` imbriqué), `TreasuryPensionProjection` (+ `AnnualPension` imbriqué),
 `TreasuryParameters`. `internal.factory` : `TreasuryInputFactory` (purement additive).
 
 ## Restant hors RF-400

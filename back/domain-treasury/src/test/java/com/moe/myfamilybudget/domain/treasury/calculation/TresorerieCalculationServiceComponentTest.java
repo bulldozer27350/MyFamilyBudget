@@ -1,6 +1,5 @@
 package com.moe.myfamilybudget.domain.treasury.calculation;
 
-import com.moe.myfamilybudget.domain.wealth.calculation.PlacementCashflowInput;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
@@ -14,8 +13,6 @@ import org.junit.jupiter.api.Test;
 import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
 import com.moe.myfamilybudget.domain.budget.VariablePreviewCellModel;
 import com.moe.myfamilybudget.domain.budget.VariablePreviewModel;
-import com.moe.myfamilybudget.domain.retirement.calculation.RetirementIncomeProjection;
-import com.moe.myfamilybudget.domain.tax.calculation.TaxProjection;
 
 /**
  * RF-402 : tests de composant du moteur de trésorerie, construits uniquement avec
@@ -36,8 +33,8 @@ class TresorerieCalculationServiceComponentTest {
         return new TreasuryProjectionInput(
                 new TreasurySimulationPeriod(startYear, endYear),
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
-                new TaxProjection(List.of()),
-                new RetirementIncomeProjection(List.of()),
+                new TreasuryTaxProjection(List.of()),
+                new TreasuryPensionProjection(List.of()),
                 new TreasuryParameters(endYear, BigDecimal.ZERO, BigDecimal.ZERO));
     }
 
@@ -194,8 +191,8 @@ class TresorerieCalculationServiceComponentTest {
             TreasuryProjectionInput input = new TreasuryProjectionInput(
                     new TreasurySimulationPeriod(2026, 2028),
                     List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of()),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, bd("5000"), BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);
@@ -217,8 +214,8 @@ class TresorerieCalculationServiceComponentTest {
                     List.of(new IncomeProjectionInput("Salaire", bd("3000"),
                             LocalDate.of(2026, 1, 1), LocalDate.of(2040, 12, 31), bd("0.00"))),
                     List.of(), List.of(), List.of(), List.of(), List.of(),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of()),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, bd("1000"), BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);
@@ -241,8 +238,8 @@ class TresorerieCalculationServiceComponentTest {
                     List.of(new ChargeProjectionInput("Loyer", bd("800"),
                             LocalDate.of(2026, 1, 1), LocalDate.of(2040, 12, 31), null)),
                     List.of(), List.of(), List.of(), List.of(),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of()),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, BigDecimal.ZERO, BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);
@@ -262,10 +259,10 @@ class TresorerieCalculationServiceComponentTest {
                     List.of(new IncomeProjectionInput("Salaire", bd("3000"),
                             LocalDate.of(2026, 1, 1), LocalDate.of(2040, 12, 31), bd("0.00"))),
                     List.of(), List.of(), List.of(), List.of(), List.of(),
-                    new TaxProjection(List.of(
-                            new TaxProjection.Withholding(2026, bd("4000"), bd("3800")),
-                            new TaxProjection.Withholding(2027, bd("4000"), bd("4200")))),
-                    new RetirementIncomeProjection(List.of()),
+                    new TreasuryTaxProjection(List.of(
+                            new TreasuryTaxProjection.Withholding(2026, bd("4000"), bd("3800")),
+                            new TreasuryTaxProjection.Withholding(2027, bd("4000"), bd("4200")))),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, BigDecimal.ZERO, BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);
@@ -289,9 +286,9 @@ class TresorerieCalculationServiceComponentTest {
             TreasuryProjectionInput input = new TreasuryProjectionInput(
                     new TreasurySimulationPeriod(2045, 2045),
                     List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of(
-                            new RetirementIncomeProjection.AnnualPension(2045, bd("24000")))),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of(
+                            new TreasuryPensionProjection.AnnualPension(2045, bd("24000")))),
                     new TreasuryParameters(2045, BigDecimal.ZERO, BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);
@@ -309,8 +306,8 @@ class TresorerieCalculationServiceComponentTest {
                     List.of(), List.of(), List.of(),
                     List.of(new OneOffCashflow(LocalDate.of(2026, 6, 15), bd("5000"))),
                     List.of(), List.of(),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of()),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, bd("10000"), BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);
@@ -333,8 +330,8 @@ class TresorerieCalculationServiceComponentTest {
                     List.of(), List.of(), List.of(), List.of(),
                     List.of(new TransferProjection(LocalDate.of(2026, 3, 1), bd("2000"))),
                     List.of(),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of()),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, BigDecimal.ZERO, BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);
@@ -350,9 +347,9 @@ class TresorerieCalculationServiceComponentTest {
             TreasuryProjectionInput input = new TreasuryProjectionInput(
                     new TreasurySimulationPeriod(2026, 2026),
                     List.of(), List.of(), List.of(), List.of(), List.of(),
-                    List.of(new PlacementCashflowInput(2026, bd("6000"))),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of()),
+                    List.of(new TreasuryPlacementCashflow(2026, bd("6000"))),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, bd("10000"), BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);
@@ -374,8 +371,8 @@ class TresorerieCalculationServiceComponentTest {
                     List.of(new VariableIncomeProjection("Prime", "Salaire", 2026, 2040, bd("0.10"),
                             null, List.of(new VariableIncomeProjection.Override(2026, bd("4000"), null)))),
                     List.of(), List.of(), List.of(),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of()),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, BigDecimal.ZERO, BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);
@@ -399,8 +396,8 @@ class TresorerieCalculationServiceComponentTest {
                     List.of(new ChargeProjectionInput("Loyer", bd("500"),
                             LocalDate.of(2026, 1, 1), LocalDate.of(2040, 12, 31), bd("0.00"))),
                     List.of(), List.of(), List.of(), List.of(),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of()),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, bd("0"), bd("0.00")));
 
             TreasuryProjection result = service.compute(input);
@@ -431,8 +428,8 @@ class TresorerieCalculationServiceComponentTest {
                     List.of(new VariableIncomeProjection("Prime", "Salaire", null, null, bd("0.10"),
                             null, List.of())),
                     List.of(), List.of(), List.of(),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of()),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, BigDecimal.ZERO, BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);
@@ -460,8 +457,8 @@ class TresorerieCalculationServiceComponentTest {
                     List.of(new VariableIncomeProjection("Prime", "Salaire", null, null, bd("0.10"),
                             null, List.of(new VariableIncomeProjection.Override(2026, bd("5000"), null)))),
                     List.of(), List.of(), List.of(),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of()),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, BigDecimal.ZERO, BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);
@@ -486,8 +483,8 @@ class TresorerieCalculationServiceComponentTest {
                     List.of(new VariableIncomeProjection("Prime", "Salaire", 2027, 2040, bd("0.10"),
                             null, List.of())),
                     List.of(), List.of(), List.of(),
-                    new TaxProjection(List.of()),
-                    new RetirementIncomeProjection(List.of()),
+                    new TreasuryTaxProjection(List.of()),
+                    new TreasuryPensionProjection(List.of()),
                     new TreasuryParameters(2060, BigDecimal.ZERO, BigDecimal.ZERO));
 
             TreasuryProjection result = service.compute(input);

@@ -1,17 +1,19 @@
-package com.moe.myfamilybudget.domain.retirement.calculation;
+package com.moe.myfamilybudget.domain.treasury.calculation;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Pensions de retraite déjà calculées par {@code RetirementCalculationService} (RF-101),
- * annualisées et sommées pour toutes les personnes du foyer, projection minimale reçue par
- * Trésorerie (RF-400, voir doc/architecture/06-domaine-tresorerie.md).
+ * Pensions de retraite perçues, annualisées et sommées pour toutes les personnes du foyer : contrat
+ * d'entrée propre à Trésorerie (SILO-132, décision D1 de doc/architecture/21-plan-silotage.md).
+ *
+ * <p>Trésorerie ne connaît pas le domaine Retraite : l'application traduit la projection de Retraite
+ * vers ce type.
  *
  * @param years montant annuel de pension par année de l'horizon de trésorerie
  */
-public record RetirementIncomeProjection(List<AnnualPension> years) {
-    public RetirementIncomeProjection {
+public record TreasuryPensionProjection(List<AnnualPension> years) {
+    public TreasuryPensionProjection {
         years = years != null ? List.copyOf(years) : List.of();
     }
 

@@ -1,6 +1,5 @@
 package com.moe.myfamilybudget.domain.treasury.calculation;
 
-import com.moe.myfamilybudget.domain.wealth.calculation.PlacementCashflowInput;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -12,8 +11,6 @@ import java.util.stream.Collectors;
 import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
 import com.moe.myfamilybudget.domain.budget.VariablePreviewCellModel;
 import com.moe.myfamilybudget.domain.budget.VariablePreviewModel;
-import com.moe.myfamilybudget.domain.retirement.calculation.RetirementIncomeProjection;
-import com.moe.myfamilybudget.domain.tax.calculation.TaxProjection;
 
 /**
  * Calcul pur de la trésorerie prévisionnelle (Trésorerie) : projections de flux annuel et aperçu
@@ -43,19 +40,19 @@ public class TresorerieCalculationService {
 
         Map<Integer, BigDecimal> pensionByYear = input.retirementIncome().years().stream()
                 .collect(Collectors.toMap(
-                        RetirementIncomeProjection.AnnualPension::year,
-                        RetirementIncomeProjection.AnnualPension::amount,
+                        TreasuryPensionProjection.AnnualPension::year,
+                        TreasuryPensionProjection.AnnualPension::amount,
                         BigDecimal::add));
 
         Map<Integer, BigDecimal> placementByYear = input.placements().stream()
                 .collect(Collectors.toMap(
-                        PlacementCashflowInput::year,
-                        PlacementCashflowInput::amount,
+                        TreasuryPlacementCashflow::year,
+                        TreasuryPlacementCashflow::amount,
                         BigDecimal::add));
 
-        Map<Integer, TaxProjection.Withholding> taxByYear = input.taxProjection().years().stream()
+        Map<Integer, TreasuryTaxProjection.Withholding> taxByYear = input.taxProjection().years().stream()
                 .collect(Collectors.toMap(
-                        TaxProjection.Withholding::year,
+                        TreasuryTaxProjection.Withholding::year,
                         w -> w,
                         (a, b) -> b));
 
@@ -95,13 +92,13 @@ public class TresorerieCalculationService {
                 }
             }
 
-            TaxProjection.Withholding taxInfo = taxByYear.get(year);
+            TreasuryTaxProjection.Withholding taxInfo = taxByYear.get(year);
             BigDecimal impots = taxInfo != null ? taxInfo.withheld() : BigDecimal.ZERO;
 
             BigDecimal regularisation = BigDecimal.ZERO;
             if (idx > 0) {
                 int prevYear = years.get(idx - 1);
-                TaxProjection.Withholding prevTax = taxByYear.get(prevYear);
+                TreasuryTaxProjection.Withholding prevTax = taxByYear.get(prevYear);
                 if (prevTax != null) {
                     regularisation = prevTax.actual().subtract(prevTax.withheld());
                 }

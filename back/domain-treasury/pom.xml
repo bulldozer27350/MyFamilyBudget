@@ -9,9 +9,10 @@
         (moteur de projection, contrats d'entrée/sortie, modèles de résultat, ports Writer et
         énumérations de champs).
 
-        Dépendances autorisées : domain-budget, et uniquement les contrats publiés par
-        domain-retirement (RetirementIncomeProjection), domain-tax (TaxProjection) et
-        domain-wealth (PlacementCashflowInput, PlacementTransfer), jamais leurs moteurs.
+        Dépendance autorisée : domain-budget uniquement (sa dissolution est portée par SILO-140).
+        SILO-132 : aucune dépendance vers domain-retirement, domain-tax ni domain-wealth ; Trésorerie
+        définit ses propres entrées (TreasuryPensionProjection, TreasuryTaxProjection,
+        TreasuryPlacementCashflow) et l'application traduit.
         Aucune dépendance vers Spring, JPA, OpenAPI, PersistenceManager, BudgetDataModel,
         internal.impl ni internal.factory. Dépendances de test uniquement : JUnit 5 et AssertJ.
     -->
@@ -31,18 +32,6 @@
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>domain-budget</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-retirement</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-tax</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-wealth</artifactId>
         </dependency>
 
         <dependency>

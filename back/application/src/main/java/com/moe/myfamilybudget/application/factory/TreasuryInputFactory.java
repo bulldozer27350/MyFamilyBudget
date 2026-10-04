@@ -26,12 +26,12 @@ import com.moe.myfamilybudget.domain.tax.calculation.AnnualVariableIncome;
 import com.moe.myfamilybudget.domain.treasury.calculation.ChargeProjectionInput;
 import com.moe.myfamilybudget.domain.treasury.calculation.IncomeProjectionInput;
 import com.moe.myfamilybudget.domain.treasury.calculation.OneOffCashflow;
-import com.moe.myfamilybudget.domain.wealth.calculation.PlacementCashflowInput;
-import com.moe.myfamilybudget.domain.retirement.calculation.RetirementIncomeProjection;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
-import com.moe.myfamilybudget.domain.tax.calculation.TaxProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryPensionProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryPlacementCashflow;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryTaxProjection;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.domain.treasury.calculation.TransferProjection;
 import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryParameters;
@@ -149,9 +149,9 @@ public final class TreasuryInputFactory {
                 .map(t -> new TransferProjection(parseDate(t.date()), t.getEffectiveAmount()))
                 .toList();
 
-        List<PlacementCashflowInput> placements = new ArrayList<>();
+        List<TreasuryPlacementCashflow> placements = new ArrayList<>();
         for (int year = startYear; year <= endYear; year++) {
-            placements.add(new PlacementCashflowInput(year, placementsAnnualForYear(data.placements(), year)));
+            placements.add(new TreasuryPlacementCashflow(year, placementsAnnualForYear(data.placements(), year)));
         }
 
         TaxSimulationPeriod taxPeriod = new TaxSimulationPeriod(startYear, endYear);
@@ -166,17 +166,17 @@ public final class TreasuryInputFactory {
         Map<Integer, BigDecimal> retIncomes = taxInput.retirementIncome().stream()
                 .collect(Collectors.toMap(TaxablePensionIncome::year, TaxablePensionIncome::amount, BigDecimal::add));
 
-        TaxProjection taxProjection = new TaxProjection(taxYearly.stream()
+        TreasuryTaxProjection taxProjection = new TreasuryTaxProjection(taxYearly.stream()
                 .map(t -> {
                     BigDecimal gross = regularIncomes.getOrDefault(t.year(), BigDecimal.ZERO)
                             .add(varIncomes.getOrDefault(t.year(), BigDecimal.ZERO))
                             .add(retIncomes.getOrDefault(t.year(), BigDecimal.ZERO));
                     BigDecimal withheld = t.ratePAS() != null ? t.ratePAS().multiply(gross) : t.withheld();
-                    return new TaxProjection.Withholding(t.year(), withheld, t.taxActual());
+                    return new TreasuryTaxProjection.Withholding(t.year(), withheld, t.taxActual());
                 })
                 .toList());
 
-        RetirementIncomeProjection retirementIncome = new RetirementIncomeProjection(
+        TreasuryPensionProjection retirementIncome = new TreasuryPensionProjection(
                 retirementPensionByYear(retirement, retireYear, endYear));
 
         TreasuryParameters parameters = new TreasuryParameters(
@@ -205,7 +205,7 @@ public final class TreasuryInputFactory {
                 v.getEffectiveRate(), v.taxable(), overrides);
     }
 
-    /** Somme des versements mensuels configurés dans la fenêtre de chaque placement, sans pause (voir {@link PlacementCashflowInput}). */
+    /** Somme des versements mensuels configurés dans la fenêtre de chaque placement, sans pause (voir {@link TreasuryPlacementCashflow}). */
     private static BigDecimal placementsAnnualForYear(List<PlacementModel> placements, int year) {
         BigDecimal sum = BigDecimal.ZERO;
         for (PlacementModel p : placements) {
@@ -219,7 +219,7 @@ public final class TreasuryInputFactory {
         return sum;
     }
 
-    private static List<RetirementIncomeProjection.AnnualPension> retirementPensionByYear(
+    private static List<TreasuryPensionProjection.AnnualPension> retirementPensionByYear(
             RetirementProjection retirement, int retireYear, int endYear) {
         BigDecimal monthlyPension = BigDecimal.ZERO;
         for (RetirementProjectionModel p : retirement.people()) {
@@ -228,9 +228,9 @@ public final class TreasuryInputFactory {
             }
         }
         BigDecimal annualPension = monthlyPension.multiply(BigDecimal.valueOf(12));
-        List<RetirementIncomeProjection.AnnualPension> years = new ArrayList<>();
+        List<TreasuryPensionProjection.AnnualPension> years = new ArrayList<>();
         for (int year = retireYear; year <= Math.max(retireYear, endYear); year++) {
-            years.add(new RetirementIncomeProjection.AnnualPension(year, annualPension));
+            years.add(new TreasuryPensionProjection.AnnualPension(year, annualPension));
         }
         return years;
     }

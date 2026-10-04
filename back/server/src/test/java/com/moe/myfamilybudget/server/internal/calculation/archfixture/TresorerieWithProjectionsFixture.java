@@ -1,15 +1,14 @@
 package com.moe.myfamilybudget.server.internal.calculation.archfixture;
 
-import com.moe.myfamilybudget.domain.wealth.calculation.PlacementCashflowInput;
-import com.moe.myfamilybudget.domain.retirement.calculation.RetirementIncomeProjection;
-import com.moe.myfamilybudget.domain.tax.calculation.TaxProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryPensionProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryPlacementCashflow;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryTaxProjection;
 
 /**
- * Fixture ARCH-020 conforme : Trésorerie consomme uniquement les projections explicites des autres
- * domaines.
+ * Fixture ARCH-020 conforme : Trésorerie consomme uniquement ses propres contrats d'entrée (SILO-132).
  */
 public abstract class TresorerieWithProjectionsFixture {
-    protected RetirementIncomeProjection retirement;
-    protected TaxProjection tax;
-    protected PlacementCashflowInput placement;
+    protected TreasuryPensionProjection retirement;
+    protected TreasuryTaxProjection tax;
+    protected TreasuryPlacementCashflow placement;
 }

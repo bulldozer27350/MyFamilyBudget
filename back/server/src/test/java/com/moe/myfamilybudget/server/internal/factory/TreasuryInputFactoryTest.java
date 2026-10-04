@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.treasury.calculation.ChargeProjectionInput;
 import com.moe.myfamilybudget.domain.treasury.calculation.IncomeProjectionInput;
-import com.moe.myfamilybudget.domain.wealth.calculation.PlacementCashflowInput;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryPlacementCashflow;
 import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjectionInput;
 import com.moe.myfamilybudget.domain.treasury.calculation.VariableIncomeProjection;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
@@ -114,7 +114,7 @@ class TreasuryInputFactoryTest {
 
         TreasuryProjectionInput input = factory.from(data);
 
-        PlacementCashflowInput year2026 = input.placements().stream()
+        TreasuryPlacementCashflow year2026 = input.placements().stream()
                 .filter(p -> p.year() == 2026).findFirst().orElseThrow();
         assertThat(year2026.amount()).isEqualByComparingTo("3600");
     }

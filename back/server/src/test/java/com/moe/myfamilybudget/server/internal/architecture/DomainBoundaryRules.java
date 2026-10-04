@@ -24,8 +24,7 @@ import com.tngtech.archunit.lang.ArchRule;
  * <p>Principes de lecture :
  * <ul>
  *   <li>un domaine peut consommer la <b>projection</b> d'un autre domaine (un contrat de données,
- *       par exemple {@code RetirementIncomeProjection}, {@code TaxProjection},
- *       {@code PlacementCashflowInput}, {@code CashflowProjection}), jamais son
+ *       par exemple {@code TaxProjection}, {@code CashflowProjection}), jamais son
  *       <b>implémentation</b> (moteur, entrée de calcul, paramètres, modèle de résultat) ;</li>
  *   <li>les règles « domaine vers domaine » visent les couches pures
  *       ({@link PureLayerRules#PURE_LAYER}) : {@code internal.factory} n'est pas visé, les
@@ -94,7 +93,7 @@ final class DomainBoundaryRules {
 
     /**
      * Implémentation Patrimoine : moteurs, entrées et paramètres. Les projections publiées
-     * ({@code PlacementCashflowInput}, {@code PlacementBalanceSnapshot}) n'en font pas partie.
+     * ({@code PlacementBalanceSnapshot}) n'en font pas partie.
      */
     static final DescribedPredicate<JavaClass> PATRIMOINE_INTERNALS = topLevelNameMatching(
             "les internals Patrimoine (moteurs, entrées, paramètres)",
@@ -181,9 +180,9 @@ final class DomainBoundaryRules {
     static final ArchRule TRESORERIE_CONSUMES_EXPLICIT_PROJECTIONS_ONLY = noClasses()
             .that(PureLayerRules.PURE_LAYER).and(TRESORERIE)
             .should().dependOnClassesThat(RETRAITE_INTERNALS.or(FISCALITE_INTERNALS).or(PATRIMOINE_INTERNALS))
-            .as("Trésorerie consomme les projections explicites (RetirementIncomeProjection, TaxProjection, "
-                    + "VariableIncomeProjection, PlacementCashflowInput), pas les internals Retraite, "
-                    + "Fiscalité ni Patrimoine (ARCH-020)");
+            .as("Trésorerie porte ses propres contrats d'entrée (TreasuryPensionProjection, "
+                    + "TreasuryTaxProjection, TreasuryPlacementCashflow) et ne dépend pas des internals "
+                    + "Retraite, Fiscalité ni Patrimoine (ARCH-020, SILO-132)");
 
     // ------------------------------------------------------------------------------------------
     // Patrimoine
