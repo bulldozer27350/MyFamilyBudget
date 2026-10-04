@@ -421,11 +421,17 @@ La stratégie retenue est :
 - **Prérequis** : MAVEN-090 (`domain-notifications` terminé) et MAVEN-100.
 - **Objectif** : terminer le déplacement de `internal.factory` dans `application`, reporté par MAVEN-100.
 - **Travaux** :
-  - déplacer `NotificationInputFactory` dans `application.factory` une fois MAVEN-090 livré (ses entrées `DebitThresholdInput` / `BalanceFloorInput` doivent alors vivre dans `domain-notifications`) ;
+  - ~~déplacer `NotificationInputFactory` dans `application.factory`~~ : livré (voir « Lot 1 » ci-dessous) ;
   - ~~Overview~~ : `OverviewInputFactory`, `OverviewInput`, `OverviewParameters` et `OverviewCalculationService` sont déjà dans `application` (lot A de MAVEN-103) ; il ne reste ici que `NotificationInputFactory` et `PlacementRateSuggestionInputFactory` ;
   - déplacer `PlacementRateSuggestionInputFactory` : trancher l'ownership de `PlacementRateSuggestion*` et de `internal.marketdata` (voir MAVEN-080) pour éviter une dépendance `application → server` ;
   - déplacer dans `application` les tests de composant des commands et factories dont les fixtures ne dépendent plus de `server` (`testsupport`) ;
   - supprimer le package `internal.factory` ; vérifier que `internal.model` ne contient plus que des modèles à répartir ailleurs (voir « `internal.model` »).
+- **Lot 1 (livré, après MAVEN-090)** :
+  - `NotificationInputFactory` (assemblage pur des entrées `DebitThresholdInput` / `BalanceFloorInput` / `ObjectifReachableInput` à partir des modèles de banque, d'objectifs et de patrimoine) → `application.factory` ; sans changement de comportement ;
+  - `application` déclare la dépendance de production `domain-notifications` (ses entrées vivent désormais dans ce module depuis MAVEN-090) ; il ne dépend toujours ni de `server` ni de `persistence` ;
+  - `NotificationDispatchService` (resté dans `server`, voir MAVEN-103 lot B2) importe la factory depuis `application.factory` ; `NotificationInputFactoryTest` suit sa classe (package `application.factory`, source dans `back/server/src/test`, comme `OverviewInputFactoryTest`) ;
+  - ArchUnit inchangé : `application.factory` fait déjà partie de `DOMAIN_LAYERS` et la famille « Notifications » (`NOTIFICATIONS_FAMILY`) reconnaît la factory par son nom de classe.
+- **Lot 2 (à faire)** : `PlacementRateSuggestionInputFactory` — **bloqué par un arbitrage** : `PlacementRateSuggestion*` et `internal.marketdata` restent dans `server`, donc le déplacer créerait une dépendance `application → server` ; il faut d'abord statuer sur leur ownership (nouveau module `marketdata`/`domain-credit`, ou maintien dans `server-app` jusqu'à MAVEN-130), puis supprimer `internal.factory`.
 - **Critères de sortie** : plus aucune classe dans `server.internal.factory` ni `server.internal.command` ; `application` ne dépend pas de `server` ; aucun domaine pur ne dépend de `application` ; build complet vert.
 - **Tests** : tests des factories et commands exécutés dans `application` ; ArchUnit ; scénarios d'intégration.
 - **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé

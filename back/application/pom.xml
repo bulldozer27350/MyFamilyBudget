@@ -70,6 +70,10 @@
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>domain-goals</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>domain-notifications</artifactId>
+        </dependency>
 
         <!-- Contrat REST généré : DTO et interfaces *Api implémentées par application.service (MAVEN-102) -->
         <dependency>

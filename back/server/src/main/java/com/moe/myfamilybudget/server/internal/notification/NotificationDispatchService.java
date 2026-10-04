@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import com.moe.myfamilybudget.server.internal.factory.NotificationInputFactory;
+import com.moe.myfamilybudget.application.factory.NotificationInputFactory;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
 import com.moe.myfamilybudget.persistence.entity.NotificationSentLogEntity;

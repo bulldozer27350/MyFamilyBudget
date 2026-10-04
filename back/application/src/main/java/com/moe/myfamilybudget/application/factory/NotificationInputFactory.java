@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.factory;
+package com.moe.myfamilybudget.application.factory;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.factory;
+package com.moe.myfamilybudget.application.factory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
