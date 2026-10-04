@@ -39,7 +39,7 @@ import com.moe.myfamilybudget.persistence.adapter.GoalPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.LoanPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
 import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
 
 @SpringBootTest
@@ -395,7 +395,7 @@ class BusinessLogicIntegrationTest {
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(),
-                new SettingsPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
+                SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));
@@ -421,7 +421,7 @@ class BusinessLogicIntegrationTest {
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(),
-                new SettingsPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
+                SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));
@@ -442,7 +442,7 @@ class BusinessLogicIntegrationTest {
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(),
-                new SettingsPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
+                SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));

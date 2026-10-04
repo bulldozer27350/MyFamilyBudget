@@ -43,7 +43,7 @@ import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.GoalPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.LoanPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class PatrimoineServiceImplTest {
@@ -62,7 +62,7 @@ class PatrimoineServiceImplTest {
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
                 new LoanCommandService(new LoanPersistenceAdapter(persistenceManager)),
                 new GoalCommandService(new GoalPersistenceAdapter(persistenceManager)),
-                new SettingsPersistenceAdapter(persistenceManager),
+                SettingsReaderTestFactory.of(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager),

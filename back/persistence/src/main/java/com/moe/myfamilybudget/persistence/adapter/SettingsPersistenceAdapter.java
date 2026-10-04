@@ -14,7 +14,6 @@ import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.transition.port.EconomicAssumptionsReader;
 import com.moe.myfamilybudget.transition.port.EconomicAssumptionsWriter;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
 import com.moe.myfamilybudget.transition.port.SimulationSettingsReader;
 import com.moe.myfamilybudget.transition.port.SimulationSettingsWriter;
 
@@ -23,15 +22,16 @@ import com.moe.myfamilybudget.transition.port.SimulationSettingsWriter;
  * {@link EconomicAssumptionsWriter} (SET-020). Le stockage physique reste {@code SettingsEntity} pour tout
  * sauf les paramètres Objectifs ; sa séparation relève des patchs DB-xxx.
  *
- * <p>SILO-100 : l'adaptateur expose aussi les paramètres par propriétaire ({@link RetirementSettingsReader},
- * {@link TaxSettingsReader}, {@link TresorerieSettingsReader}, {@link SimulationSettingsReader},
- * {@link EconomicAssumptionsReader}). Ces lectures projettent le même état que {@link #getSettings()} ; les
- * consommateurs migrent un silo après l'autre (SILO-110 à SILO-118), puis {@link SettingsReader} disparaît.
- * L'adaptateur reste le seul lecteur du cache jusqu'à SILO-220 (stockage chez les propriétaires).
+ * <p>SILO-100 : l'adaptateur n'implémente plus {@code SettingsReader} ; il expose les paramètres par
+ * propriétaire ({@link RetirementSettingsReader}, {@link TaxSettingsReader}, {@link TresorerieSettingsReader},
+ * {@link SimulationSettingsReader}, {@link EconomicAssumptionsReader}). Le {@code SettingsModel} global est
+ * recomposé côté application ({@code SettingsModelAssembler}). L'adaptateur reste le seul lecteur du cache
+ * jusqu'à SILO-220 (stockage chez les propriétaires) ; {@link #getSettings()} ne sert plus qu'à ces
+ * projections et aux tests.
  */
 @Component
 public class SettingsPersistenceAdapter
-        implements SettingsReader, RetirementSettingsReader, TaxSettingsReader, TresorerieSettingsReader,
+        implements RetirementSettingsReader, TaxSettingsReader, TresorerieSettingsReader,
         SimulationSettingsReader, EconomicAssumptionsReader, SimulationSettingsWriter, EconomicAssumptionsWriter {
 
     private final PersistenceManager persistenceManager;
@@ -40,7 +40,6 @@ public class SettingsPersistenceAdapter
         this.persistenceManager = persistenceManager;
     }
 
-    @Override
     public SettingsModel getSettings() {
         return persistenceManager.getBudgetData().getEffectiveSettings();
     }

@@ -23,7 +23,7 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTran
 import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.notifications.rules.BalanceFloorRule;
 import com.moe.myfamilybudget.domain.notifications.rules.DebitThresholdRule;
 import com.moe.myfamilybudget.domain.notifications.rules.ObjectifReachableRule;
@@ -32,7 +32,7 @@ import com.moe.myfamilybudget.persistence.repository.NotificationSentLogReposito
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
 
 /**
  * NOTIF-010 : {@code NotificationDispatchService} lit le budget uniquement via les ports de lecture, et
@@ -41,7 +41,7 @@ import com.moe.myfamilybudget.transition.port.SettingsReader;
 class NotificationDispatchServiceReadersTest {
 
     private BankReader bankReader;
-    private SettingsReader settingsReader;
+    private TresorerieSettingsReader settingsReader;
     private GoalReader goalReader;
     private PatrimoineReader patrimoineReader;
     private NotificationSettingsService settingsService;
@@ -52,7 +52,7 @@ class NotificationDispatchServiceReadersTest {
     @BeforeEach
     void setUp() {
         bankReader = mock(BankReader.class);
-        settingsReader = mock(SettingsReader.class);
+        settingsReader = mock(TresorerieSettingsReader.class);
         goalReader = mock(GoalReader.class);
         patrimoineReader = mock(PatrimoineReader.class);
         settingsService = mock(NotificationSettingsService.class);
@@ -89,15 +89,15 @@ class NotificationDispatchServiceReadersTest {
     }
 
     @Test
-    @DisplayName("Solde sous le plancher : le solde de départ vient du port Settings")
-    void balanceFloorUsesOpeningBalanceFromSettingsReader() {
+    @DisplayName("Solde sous le plancher : le solde de départ vient du port des paramètres Trésorerie")
+    void balanceFloorUsesOpeningBalanceFromTresorerieSettingsReader() {
         enable(false, true, false);
         when(bankReader.getBankImport()).thenReturn(null);
 
-        when(settingsReader.getSettings()).thenReturn(settingsWithStartBalance("250"));
+        when(settingsReader.getTresorerieSettings()).thenReturn(settingsWithStartBalance("250"));
         assertThat(service.runManualCheck()).isEqualTo(1);
 
-        when(settingsReader.getSettings()).thenReturn(settingsWithStartBalance("5000"));
+        when(settingsReader.getTresorerieSettings()).thenReturn(settingsWithStartBalance("5000"));
         assertThat(service.runManualCheck()).isZero();
 
         verifyNoInteractions(goalReader, patrimoineReader);
@@ -108,7 +108,7 @@ class NotificationDispatchServiceReadersTest {
     void balanceFloorToleratesMissingSettings() {
         enable(false, true, false);
         when(bankReader.getBankImport()).thenReturn(null);
-        when(settingsReader.getSettings()).thenReturn(null);
+        when(settingsReader.getTresorerieSettings()).thenReturn(null);
 
         assertThat(service.runManualCheck()).isEqualTo(1);
     }
@@ -164,8 +164,8 @@ class NotificationDispatchServiceReadersTest {
                 false, "22:00", "07:00"));
     }
 
-    private static SettingsModel settingsWithStartBalance(String startBalance) {
-        return new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                new BigDecimal(startBalance), 21, new BigDecimal("0.10"));
+    private static TresorerieSettingsModel settingsWithStartBalance(String startBalance) {
+        return new TresorerieSettingsModel("2026-01-01", "manual", new BigDecimal(startBalance), false, null, null,
+                null);
     }
 }

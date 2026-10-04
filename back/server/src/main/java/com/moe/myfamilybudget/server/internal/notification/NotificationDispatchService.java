@@ -17,7 +17,6 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.moe.myfamilybudget.application.factory.NotificationInputFactory;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
 import com.moe.myfamilybudget.persistence.entity.NotificationSentLogEntity;
 import com.moe.myfamilybudget.domain.notifications.rules.BalanceFloorRule;
@@ -26,8 +25,9 @@ import com.moe.myfamilybudget.domain.notifications.rules.ObjectifReachableRule;
 import com.moe.myfamilybudget.persistence.repository.NotificationSentLogRepository;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
 
 /**
  * Croise les {@link NotificationRule} actives avec la liste des {@link NotificationChannel}, et
@@ -36,7 +36,7 @@ import com.moe.myfamilybudget.transition.port.SettingsReader;
  * Depuis RF-702, ce service assemble en amont l'entrée propre à chaque règle (voir
  * {@link NotificationInputFactory}) avant de l'évaluer : les règles ne connaissent plus le budget.
  * Depuis NOTIF-010, cet assemblage lit uniquement les fragments nécessaires à chaque règle via les
- * ports de lecture existants ({@link BankReader}, {@link SettingsReader}, {@link GoalReader},
+ * ports de lecture existants ({@link BankReader}, {@link TresorerieSettingsReader}, {@link GoalReader},
  * {@link PatrimoineReader}) : ce service ne dépend plus de {@code PersistenceManager} ni du budget
  * global. Les lectures ne sont effectuées que pour les règles actives.
  *
@@ -66,14 +66,14 @@ public class NotificationDispatchService {
     private final List<NotificationChannel> channels;
     private final NotificationSettingsService settingsService;
     private final BankReader bankReader;
-    private final SettingsReader settingsReader;
+    private final TresorerieSettingsReader tresorerieSettingsReader;
     private final GoalReader goalReader;
     private final PatrimoineReader patrimoineReader;
     private final NotificationSentLogRepository sentLogRepository;
 
     public NotificationDispatchService(DebitThresholdRule debitThresholdRule, BalanceFloorRule balanceFloorRule,
             ObjectifReachableRule objectifReachableRule, List<NotificationChannel> channels,
-            NotificationSettingsService settingsService, BankReader bankReader, SettingsReader settingsReader,
+            NotificationSettingsService settingsService, BankReader bankReader, TresorerieSettingsReader tresorerieSettingsReader,
             GoalReader goalReader, PatrimoineReader patrimoineReader,
             NotificationSentLogRepository sentLogRepository) {
         this.debitThresholdRule = debitThresholdRule;
@@ -82,7 +82,7 @@ public class NotificationDispatchService {
         this.channels = channels;
         this.settingsService = settingsService;
         this.bankReader = bankReader;
-        this.settingsReader = settingsReader;
+        this.tresorerieSettingsReader = tresorerieSettingsReader;
         this.goalReader = goalReader;
         this.patrimoineReader = patrimoineReader;
         this.sentLogRepository = sentLogRepository;
@@ -121,8 +121,8 @@ public class NotificationDispatchService {
 
     /** Solde de départ des paramètres budgétaires ({@code null} traité comme zéro par la factory). */
     private BigDecimal openingBalance() {
-        SettingsModel budgetSettings = settingsReader.getSettings();
-        return budgetSettings != null ? budgetSettings.getEffectiveStartBalance() : null;
+        TresorerieSettingsModel treasurySettings = tresorerieSettingsReader.getTresorerieSettings();
+        return treasurySettings != null ? treasurySettings.getEffectiveStartBalance() : null;
     }
 
     /**
