@@ -249,7 +249,8 @@ un patch qui rencontre un arbitrage non tranché devient un patch « bloqué » 
 ### SILO-003 : Garde-fous de graphe Maven
 - **Objectif** : faire échouer le build si `application-*`/`web` dépendent d'un `*-core` ou de `infra-jpa`, si un silo dépend d'un autre silo (D1), ou si `BudgetDataModel` réapparaît.
 - **Travaux** : `maven-enforcer` (règles de dépendances interdites) et test de graphe ; règles activées au fur et à mesure (liste de dérogations décroissante).
-- **Statut** : [x] Non commencé
+- **Livré** : test de graphe seul (`MavenModuleGraphTest`, `MavenModuleGraphRules`, `MavenModuleGraphExceptions`), qui lit les `pom.xml` du reactor sans configuration de plugin. Règles : (A) un silo ne dépend d'aucun autre silo ; (B) un silo ne dépend ni de l'orchestration, ni de `persistence`, `server`, `transition-snapshot`, `api` (ni de `infra-jpa` hors `*-core`) ; (C) `application*` et `web` ne dépendent d'aucun `*-core`, ni de `infra-jpa`, `persistence`, `server` ; (D) graphe acyclique. Les neuf arêtes actuelles entre modules `domain-*` sont une liste fermée datée du 4 octobre 2026, chacune avec son patch de suppression (SILO-130 à SILO-134, SILO-140) ; la liste ne peut que décroître et une entrée périmée fait échouer le test. Les règles B et C sont sans effet tant que les modules cibles n'existent pas. La règle « `application` ne dépend que des `*-api` » (SILO-160) et l'interdiction de `transition-snapshot` (SILO-230) ne sont pas encore activées. `maven-enforcer` n'est pas ajouté : il sera utile avec les modules `*-core`, sans valeur ajoutée ici.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente de réponse / [ ] Annulé / [x] Terminé
 
 ### SILO-100 : Éclater la lecture de `SettingsModel`
 - **Objectif** : supprimer `SettingsReader` et `SettingsModel` de `transition-snapshot`.
@@ -405,5 +406,5 @@ fichier `21` reste vivant.
 - **Tâche** : atteindre des silos isolés, une persistance par silo transactionnelle, et une séparation application/web.
 - **Acquis** : domaines purs sans `BudgetDataModel` ; ports Reader/Writer pour sept silos ; hubs Retraite, Fiscalité, Objectifs, Banque retirés ; écriture des paramètres distribuée ; `application` sans dépendance vers `persistence`.
 - **Piste en cours** : décisions D1 à D8 tranchées (SILO-000 terminé).
-- **Reste à faire** : tout le reste de la section 7 ; SILO-000, SILO-001 et SILO-002 sont terminés ; patchs maintenant disponibles : SILO-003, SILO-100.
+- **Reste à faire** : tout le reste de la section 7 ; SILO-000, SILO-001, SILO-002 et SILO-003 sont terminés ; patch maintenant disponible : SILO-100.
 - **Instruction de reprise** : cloner `main`, relire ce fichier, annoncer le patch visé, puis livrer le `.patch` en LF sans attendre de validation (un arbitrage non tranché rend le patch « bloqué »).
