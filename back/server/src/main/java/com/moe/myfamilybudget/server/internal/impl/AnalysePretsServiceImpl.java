@@ -21,7 +21,6 @@ import com.moe.myfamilybudget.server.internal.marketdata.MarketDataService;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
 import com.moe.myfamilybudget.server.internal.marketdata.MortgageRateQuote;
 import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel;
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
@@ -35,9 +34,9 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
  * taux saisi dans les hypothèses, puis taux moyen des nouveaux crédits de la Banque de France.
  *
  * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
- * {@code PersistenceManager}. {@link LoanAdviceInputFactory} ne lit que loans, placements et
- * assetCategories (voir son usage de {@code BudgetDataModel}) : seuls {@link LoanReader} et
- * {@link PatrimoineReader} sont composés ici, les autres domaines restent à {@code null}.
+ * {@code PersistenceManager}. SILO-116 : plus de {@code BudgetDataModel} ; {@link LoanAdviceInputFactory}
+ * reçoit directement les prêts ({@link LoanReader}) et les placements et catégories d'actifs
+ * ({@link PatrimoineReader}).
  */
 @RestController
 public class AnalysePretsServiceImpl implements AnalysePretsApi {
@@ -61,20 +60,14 @@ public class AnalysePretsServiceImpl implements AnalysePretsApi {
         this.patrimoineReader = patrimoineReader;
     }
 
-    private BudgetDataModel composeBudgetData() {
-        return new BudgetDataModel(
-                null, null, null, patrimoineReader.getPlacements(), null, null, null, null, null, null, null, null,
-                null, null, null, patrimoineReader.getAssetCategories(), loanReader.getLoans(), null);
-    }
-
     @Override
     public ResponseEntity<AnalysePretsDto> getAnalysePrets(BigDecimal marketRate) {
-        BudgetDataModel data = composeBudgetData();
         LoanAdviceParameters saved = settingsService.current();
         ResolvedMarketRate resolved = resolveMarketRate(marketRate, saved, marketDataService.current());
         LoanAdviceParameters effective = withMarketRate(saved, resolved.rate());
         LoanAdviceResultModel result = calculationService.compute(
-                LoanAdviceInputFactory.from(data, effective, resolved.rate(), LocalDate.now()));
+                LoanAdviceInputFactory.from(loanReader.getLoans(), patrimoineReader.getPlacements(),
+                        patrimoineReader.getAssetCategories(), effective, resolved.rate(), LocalDate.now()));
         // Le calcul ignore un taux hors plage : l'origine n'est alors pas affichée.
         LoanAdviceResultModel described = result.marketRateUsed() != null
                 ? result.withMarketRateSource(resolved.source())

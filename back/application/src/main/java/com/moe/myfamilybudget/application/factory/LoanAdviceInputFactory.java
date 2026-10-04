@@ -4,14 +4,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import com.moe.myfamilybudget.domain.credit.calculation.LiquidPlacementAlternative;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceInput;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanInput;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
@@ -25,25 +23,13 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
  *
  * <p>Cette classe vit dans {@code internal.factory}, hors du package {@code internal.calculation}
  * gardé par ArchUnit.
+ *
+ * <p>SILO-116 : cette factory ne connaît plus {@code BudgetDataModel} ; l'appelant lui fournit les
+ * fragments lus via {@code LoanReader} et {@code PatrimoineReader}.
  */
 public final class LoanAdviceInputFactory {
 
     private LoanAdviceInputFactory() {
-    }
-
-    /**
-     * Assemble l'entrée depuis le budget courant.
-     *
-     * @param data       budget courant (prêts, placements, catégories d'actifs)
-     * @param parameters hypothèses de l'analyse
-     * @param marketRate taux de marché résolu par l'appelant, {@code null} si inconnu
-     * @param today      date de référence des projections
-     */
-    public static LoanAdviceInput from(BudgetDataModel data, LoanAdviceParameters parameters,
-            BigDecimal marketRate, LocalDate today) {
-        Objects.requireNonNull(data, "data");
-        return from(data.getEffectiveLoans(), data.getEffectivePlacements(), data.getEffectiveAssetCategories(),
-                parameters, marketRate, today);
     }
 
     /** Assemble l'entrée depuis les sous-modèles déjà extraits ; les listes peuvent être {@code null}. */

@@ -5,13 +5,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput.PlacementRateInput;
 import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
 /**
@@ -24,24 +22,13 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
  *
  * <p>Cette classe vit dans {@code internal.factory}, hors du package {@code internal.calculation}
  * gardé par ArchUnit.
+ *
+ * <p>SILO-116 : cette factory ne connaît plus {@code BudgetDataModel} ; l'appelant lui fournit les
+ * fragments lus via {@code PatrimoineReader}.
  */
 public final class PlacementRateSuggestionInputFactory {
 
     private PlacementRateSuggestionInputFactory() {
-    }
-
-    /**
-     * Assemble l'entrée depuis le budget courant.
-     *
-     * @param data      budget courant (placements, catégories d'actifs)
-     * @param market    données de marché courantes, {@code null} si indisponibles
-     * @param amplitude écart pessimiste/optimiste demandé, {@code null} pour la valeur par défaut
-     * @param today     date de référence
-     */
-    public static PlacementRateSuggestionInput from(BudgetDataModel data, MarketRatesView market,
-            BigDecimal amplitude, LocalDate today) {
-        Objects.requireNonNull(data, "data");
-        return from(data.getEffectivePlacements(), data.getEffectiveAssetCategories(), market, amplitude, today);
     }
 
     /** Assemble l'entrée depuis les sous-modèles déjà extraits ; les listes peuvent être {@code null}. */
