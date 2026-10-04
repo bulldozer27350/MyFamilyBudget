@@ -30,6 +30,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.application.service.OverviewServiceImpl;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
@@ -399,7 +400,7 @@ class BusinessLogicIntegrationTest {
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));
-        RetirementProjectionModel proj = svc.computeRetirementProjection(data, alice, 2054);
+        RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 
         // trimestresDateYear=2025, salaire actif 2026..2053 = 28 annees * 4 = 112
         // total = 140 + 112 = 252
@@ -425,7 +426,7 @@ class BusinessLogicIntegrationTest {
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));
-        RetirementProjectionModel proj = svc.computeRetirementProjection(data, alice, 2054);
+        RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 
         assertThat(proj.pensionBaseAnnuelle()).isGreaterThan(BigDecimal.ZERO);
         assertThat(proj.pensionComplementaireAnnuelle()).isGreaterThan(BigDecimal.ZERO);
@@ -446,7 +447,7 @@ class BusinessLogicIntegrationTest {
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));
-        RetirementProjectionModel proj = svc.computeRetirementProjection(data, alice, 2054);
+        RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 
         MvcResult result = mockMvc.perform(get("/api/v1/overview").contextPath("/api/v1")).andExpect(status().isOk()).andReturn();
         double totalPensions = objectMapper.readTree(result.getResponse().getContentAsString()).path("totalPensions").asDouble();
@@ -862,5 +863,13 @@ class BusinessLogicIntegrationTest {
             if (node.path("year").asInt() == year) return node;
         }
         return null;
+    }
+
+    /** SILO-117 : le service prend des fragments Retraite, plus le snapshot global. */
+    private static RetirementProjectionModel retirementProjection(
+            OverviewServiceImpl svc, BudgetDataModel data, RetirementModel.RetirementPersonModel person) {
+        return svc.computeRetirementProjection(
+                new RetirementSettingsModel(data.getEffectiveSettings().birthYear(), data.getEffectiveSettings().retireAge()),
+                data.retirement(), data.getEffectiveIncomes(), data.getEffectiveTaxChildren().size(), person);
     }
 }

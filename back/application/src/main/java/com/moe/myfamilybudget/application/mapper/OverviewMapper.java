@@ -152,7 +152,7 @@ public class OverviewMapper {
 
     /**
      * Assemble la vue de façade depuis le snapshot global (classe de transition, retirée avec
-     * SILO-117 pour Overview et SILO-119 pour le snapshot global).
+     * SILO-119).
      */
     public static BudgetFacadeView facadeViewOf(BudgetDataModel data, ObjectifsParameters objectifsParameters) {
         if (data == null) {

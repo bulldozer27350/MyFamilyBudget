@@ -1,9 +1,6 @@
 package com.moe.myfamilybudget.application.factory;
 
-import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
-import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.application.factory.PatrimoineInputFactory;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.application.factory.TaxInputFactory;
@@ -34,17 +31,20 @@ import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjection;
 import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjectionInput;
 import com.moe.myfamilybudget.domain.treasury.calculation.TresorerieCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 
 /**
- * Construit un {@link OverviewInput} à partir de {@link BudgetDataModel} (RF-900,
+ * Construit un {@link OverviewInput} à partir de fragments du budget (RF-900,
  * voir doc/architecture/11-domaine-overview.md).
+ *
+ * <p>SILO-117 : cette factory ne connaît plus {@code BudgetDataModel} ; l'appelant lui fournit des
+ * {@link Sources} (les fragments de {@link TreasuryInputFactory.Sources}, qui couvrent aussi Fiscalité,
+ * Retraite et Patrimoine, plus l'immobilier). Les listes absentes sont lues comme vides, le barème fiscal
+ * par défaut s'applique via {@link TaxBracketDefaults}.
  *
  * <p>Porte la composition des projections produites par les autres domaines
  * (Trésorerie, Retraite, Fiscalité, Patrimoine, Immobilier) :
@@ -81,47 +81,58 @@ public final class OverviewInputFactory {
         this.retirementCalculationService = Objects.requireNonNull(retirementCalculationService, "retirementCalculationService");
     }
 
-    public OverviewInput from(BudgetDataModel data, boolean useConstantEuros) {
+    /**
+     * Fragments nécessaires à l'assemblage de l'aperçu (SILO-117) : ceux de Trésorerie (qui contiennent
+     * déjà paramètres, revenus, charges, placements, fiscalité, retraite et import bancaire) et l'immobilier.
+     */
+    public record Sources(TreasuryInputFactory.Sources treasury, List<RealEstateModel> realEstate) {
+
+        public Sources {
+            Objects.requireNonNull(treasury, "treasury");
+            realEstate = realEstate != null ? realEstate : List.of();
+        }
+    }
+
+    public OverviewInput from(Sources data, boolean useConstantEuros) {
         return from(data, useConstantEuros, LocalDate.now().getYear());
     }
 
-    public OverviewInput from(BudgetDataModel data, boolean useConstantEuros, int currentYear) {
+    public OverviewInput from(Sources data, boolean useConstantEuros, int currentYear) {
         Objects.requireNonNull(data, "data");
-        SettingsModel settings = data.getEffectiveSettings();
+        TreasuryInputFactory.Sources t = data.treasury();
 
-        int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
+        int retireYear = t.retirementSettings().getEffectiveBirthYear() + t.retirementSettings().getEffectiveRetireAge();
 
         // 1. Trésorerie
-        TreasuryProjectionInput treasuryInput = treasuryInputFactory.from(treasurySources(data));
+        TreasuryProjectionInput treasuryInput = treasuryInputFactory.from(t);
         TreasuryProjection treasuryProjection = tresorerieCalculationService.compute(treasuryInput);
 
         // 2. Retraite
         RetirementProjection retirementProjection = retirementCalculationService.compute(
                 retirementInputFactory.create(
-                new RetirementSettingsModel(data.getEffectiveSettings().birthYear(), data.getEffectiveSettings().retireAge()),
-                data.retirement(), data.getEffectiveIncomes(), data.getEffectiveTaxChildren().size()));
+                        t.retirementSettings(), t.retirement(), t.incomes(), t.taxChildren().size()));
 
         // 3. Fiscalité
         int startYear = treasuryInput.period().startYear();
         int endYear = treasuryInput.period().endYear();
         TaxSimulationPeriod taxPeriod = new TaxSimulationPeriod(startYear, endYear);
-        TaxCalculationInput taxInput = TaxInputFactory.from(taxSources(data), taxPeriod, retirementProjection);
+        TaxCalculationInput taxInput = TaxInputFactory.from(taxSources(t), taxPeriod, retirementProjection);
         List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(taxInput);
         TaxProjection taxProjection = new TaxProjection(taxYearly.stream()
-                .map(t -> new TaxProjection.Withholding(t.year(), t.withheld(), t.taxActual()))
+                .map(y -> new TaxProjection.Withholding(y.year(), y.withheld(), y.taxActual()))
                 .toList());
 
         // 4. Patrimoine
-        PatrimoineProjectionInput patrimoineInput = PatrimoineInputFactory.from(patrimoineSources(data));
+        PatrimoineProjectionInput patrimoineInput = PatrimoineInputFactory.from(patrimoineSources(t));
         PatrimoineProjectionsModel patrimoineProjections = patrimoineProjectionService.compute(
                 patrimoineInput, useConstantEuros);
 
-        BigDecimal patrimoineActuel = data.getEffectivePlacements().stream()
+        BigDecimal patrimoineActuel = t.placements().stream()
                 .map(PlacementModel::getEffectiveBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Set<String> excludedLabels = new HashSet<>();
-        for (PlacementModel p : data.getEffectivePlacements()) {
+        for (PlacementModel p : t.placements()) {
             if (p.isExcludedFromRetirement()) {
                 excludedLabels.add(p.label());
             }
@@ -130,13 +141,13 @@ public final class OverviewInputFactory {
                 patrimoineProjections, patrimoineActuel, excludedLabels);
 
         // 5. Immobilier
-        RealEstateProjection realEstateProjection = buildRealEstateProjection(data, retireYear, currentYear);
+        RealEstateProjection realEstateProjection = buildRealEstateProjection(data.realEstate(), retireYear, currentYear);
 
         // 6. Paramètres Overview
-        BigDecimal pivotBalance = computePivotBalance(data);
+        BigDecimal pivotBalance = computePivotBalance(t);
         OverviewParameters parameters = new OverviewParameters(
                 retireYear,
-                settings.getEffectiveInflationRate(),
+                t.inflationRate(),
                 pivotBalance,
                 currentYear,
                 useConstantEuros);
@@ -150,12 +161,12 @@ public final class OverviewInputFactory {
                 parameters);
     }
 
-    private RealEstateProjection buildRealEstateProjection(BudgetDataModel data, int retireYear, int currentYear) {
+    private RealEstateProjection buildRealEstateProjection(List<RealEstateModel> realEstate, int retireYear, int currentYear) {
         BigDecimal totalNominal = BigDecimal.ZERO;
         BigDecimal totalCurrent = BigDecimal.ZERO;
         List<RealEstateItemProjection> items = new ArrayList<>();
 
-        for (RealEstateModel r : data.getEffectiveRealEstate()) {
+        for (RealEstateModel r : realEstate) {
             BigDecimal currentVal = r.getEffectiveCurrentValue();
             totalCurrent = totalCurrent.add(currentVal);
 
@@ -176,93 +187,51 @@ public final class OverviewInputFactory {
         return new RealEstateProjection(totalNominal, totalCurrent, items);
     }
 
-    private BigDecimal computePivotBalance(BudgetDataModel data) {
-        if (data.settings() == null || data.settings().pivotDate() == null) {
+    private BigDecimal computePivotBalance(TreasuryInputFactory.Sources t) {
+        TresorerieSettingsModel settings = t.tresorerieSettings();
+        if (settings.pivotDate() == null) {
             return null;
         }
-        if ("manual".equalsIgnoreCase(data.settings().pivotMode())) {
-            return data.settings().getEffectiveStartBalance();
+        if ("manual".equalsIgnoreCase(settings.pivotMode())) {
+            return settings.getEffectiveStartBalance();
         }
-        BigDecimal base = data.settings().getEffectiveStartBalance();
-        String pivotDate = data.settings().pivotDate();
+        BigDecimal base = settings.getEffectiveStartBalance();
+        String pivotDate = settings.pivotDate();
 
         BigDecimal sum = BigDecimal.ZERO;
-        if (data.bankImport() != null && data.bankImport().transactions() != null) {
-            for (BankImportModel.BankTransactionModel t : data.bankImport().transactions()) {
-                if (t.date() != null && t.date().compareTo(pivotDate) <= 0) {
-                    sum = sum.add(t.amount() != null ? t.amount() : BigDecimal.ZERO);
+        if (t.bankImport() != null && t.bankImport().transactions() != null) {
+            for (BankImportModel.BankTransactionModel tx : t.bankImport().transactions()) {
+                if (tx.date() != null && tx.date().compareTo(pivotDate) <= 0) {
+                    sum = sum.add(tx.amount() != null ? tx.amount() : BigDecimal.ZERO);
                 }
             }
         }
         return base.add(sum);
     }
 
-    /**
-     * Transition (SILO-113) : extrait de {@link BudgetDataModel} les fragments attendus par
-     * {@link TreasuryInputFactory}. Supprimé avec ce service (SILO-117), qui lira alors les ports
-     * propriétaires.
-     */
-    private static TreasuryInputFactory.Sources treasurySources(BudgetDataModel data) {
-        SettingsModel settings = data.getEffectiveSettings();
-        return new TreasuryInputFactory.Sources(
-                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()),
-                new TaxSettingsModel(settings.childExitAge(), settings.taxAbattement()),
-                new TresorerieSettingsModel(settings.pivotDate(), settings.pivotMode(), settings.startBalance(),
-                        settings.sweepEnabled(), settings.cashCeiling(), settings.cashFloor(),
-                        settings.cashAlertThreshold()),
-                new SimulationSettingsModel(settings.simulateUntilAge()),
-                settings.inflationRate(),
-                data.retirement(),
-                data.getEffectiveIncomes(),
-                data.getEffectiveCharges(),
-                data.getEffectivePlacements(),
-                data.getEffectiveOneoff(),
-                data.getEffectiveTransfers(),
-                data.getEffectiveVariableIncomes(),
-                data.getEffectiveVariableOverrides(),
-                data.getEffectiveTaxChildren(),
-                data.getEffectiveTaxBrackets(),
-                data.getEffectiveTaxRateOverrides(),
-                data.getEffectiveTaxActualOverrides(),
-                data.bankImport());
-    }
-
-    /**
-     * Transition (SILO-111, déplacé ici par SILO-113) : extrait de {@link BudgetDataModel} les fragments
-     * attendus par {@link TaxInputFactory}. Supprimé avec ce service (SILO-117).
-     */
-    private static TaxInputFactory.Sources taxSources(BudgetDataModel data) {
-        SettingsModel settings = data.getEffectiveSettings();
+    private static TaxInputFactory.Sources taxSources(TreasuryInputFactory.Sources t) {
         return new TaxInputFactory.Sources(
-                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()),
-                new TaxSettingsModel(settings.childExitAge(), settings.taxAbattement()),
-                settings.inflationRate(),
-                data.getEffectiveIncomes(),
-                data.getEffectiveVariableIncomes(),
-                data.getEffectiveVariableOverrides(),
-                data.getEffectiveTaxChildren(),
-                data.getEffectiveTaxBrackets(),
-                data.getEffectiveTaxRateOverrides(),
-                data.getEffectiveTaxActualOverrides());
+                t.retirementSettings(),
+                t.taxSettings(),
+                t.inflationRate(),
+                t.incomes(),
+                t.variableIncomes(),
+                t.variableOverrides(),
+                t.taxChildren(),
+                TaxBracketDefaults.orDefault(t.taxBrackets()),
+                t.taxRateOverrides(),
+                t.taxActualOverrides());
     }
 
-    /**
-     * Transition (SILO-112) : extrait de {@link BudgetDataModel} les fragments attendus par
-     * {@link PatrimoineInputFactory}. Supprimé avec ce service (SILO-117), qui lira alors les ports
-     * propriétaires.
-     */
-    private static PatrimoineInputFactory.Sources patrimoineSources(BudgetDataModel data) {
-        SettingsModel settings = data.getEffectiveSettings();
+    private static PatrimoineInputFactory.Sources patrimoineSources(TreasuryInputFactory.Sources t) {
         return new PatrimoineInputFactory.Sources(
-                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()),
-                new TresorerieSettingsModel(settings.pivotDate(), settings.pivotMode(), settings.startBalance(),
-                        settings.sweepEnabled(), settings.cashCeiling(), settings.cashFloor(),
-                        settings.cashAlertThreshold()),
-                settings.inflationRate(),
-                data.getEffectiveIncomes(),
-                data.getEffectiveCharges(),
-                data.getEffectivePlacements(),
-                data.getEffectiveOneoff(),
-                data.getEffectiveTransfers());
+                t.retirementSettings(),
+                t.tresorerieSettings(),
+                t.inflationRate(),
+                t.incomes(),
+                t.charges(),
+                t.placements(),
+                t.oneoff(),
+                t.transfers());
     }
 }

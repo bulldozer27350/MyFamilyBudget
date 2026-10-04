@@ -13,6 +13,7 @@ import com.moe.myfamilybudget.api.model.CashflowYearDto;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
@@ -161,8 +162,9 @@ class OverviewServiceImplTest {
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
 
         // When
-        com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel projection = overviewService.computeRetirementProjection(budgetData,
-                person, 2049);
+        com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel projection = overviewService.computeRetirementProjection(
+                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()), budgetData.retirement(),
+                budgetData.getEffectiveIncomes(), budgetData.getEffectiveTaxChildren().size(), person);
 
         // Then
         assertThat(projection.ageDepart()).isEqualTo(64);

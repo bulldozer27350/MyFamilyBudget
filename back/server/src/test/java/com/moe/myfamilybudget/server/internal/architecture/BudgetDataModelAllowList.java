@@ -21,7 +21,7 @@ final class BudgetDataModelAllowList {
     static final String FROZEN_ON = "2026-10-04";
 
     /** Taille maximale de la liste à la date de gel ; à abaisser à chaque suppression d'entrée. */
-    static final int FROZEN_SIZE = 22;
+    static final int FROZEN_SIZE = 20;
 
     /** Entrée : classe de premier niveau autorisée et patch qui retire son usage. */
     record Entry(String className, String removedBy) {}
@@ -34,11 +34,9 @@ final class BudgetDataModelAllowList {
     static final List<Entry> ENTRIES = List.of(
             // application : factories
             new Entry(APP + "factory.LoanAdviceInputFactory", "SILO-116"),
-            new Entry(APP + "factory.OverviewInputFactory", "SILO-117"),
             // application : mappers
             new Entry(APP + "mapper.OverviewMapper", "SILO-119"),
             // application : services et snapshot global
-            new Entry(APP + "service.OverviewServiceImpl", "SILO-117"),
             new Entry(APP + "snapshot.GlobalBudgetSnapshotService", "SILO-119"),
             // server : reliquats
             new Entry(SRV + "factory.PlacementRateSuggestionInputFactory", "SILO-116"),
