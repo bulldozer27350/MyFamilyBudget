@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.moe.myfamilybudget.application.factory.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.api.model.AssetCategoryDto;
 import com.moe.myfamilybudget.api.model.BankColumnMappingDto;
 import com.moe.myfamilybudget.api.model.BankImportCategoryDto;

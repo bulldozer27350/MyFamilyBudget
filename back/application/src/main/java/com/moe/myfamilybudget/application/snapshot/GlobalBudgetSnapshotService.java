@@ -7,7 +7,7 @@ import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
 import com.moe.myfamilybudget.application.mapper.BudgetSnapshotFragments;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
-import com.moe.myfamilybudget.application.mapper.PatrimoineTransferConverter;
+import com.moe.myfamilybudget.application.factory.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankSnapshotWriter;

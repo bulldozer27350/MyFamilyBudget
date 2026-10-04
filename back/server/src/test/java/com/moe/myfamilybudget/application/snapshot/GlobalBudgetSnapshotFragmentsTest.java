@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -98,8 +99,11 @@ class GlobalBudgetSnapshotFragmentsTest {
     void importNullWritesNothing() {
         service.importSnapshot(null);
 
+        // L'import renvoie l'etat courant (export) : les paramètres Objectifs sont donc lus, jamais écrits.
         verifyNoInteractions(lock, retirement, tax, tresorerie, simulation, economic, patrimoine, loans, goals,
-                bank, objectifs);
+                bank);
+        verify(objectifs, never()).save(any());
+        verify(objectifs, never()).reset();
     }
 
     @Test

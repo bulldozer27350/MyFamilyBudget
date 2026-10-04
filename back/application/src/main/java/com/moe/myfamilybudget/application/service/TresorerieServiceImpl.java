@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.moe.myfamilybudget.application.mapper.PatrimoineTransferConverter;
+import com.moe.myfamilybudget.application.factory.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.api.controller.TresorerieApi;
 import com.moe.myfamilybudget.api.model.TresorerieAjustementRequestDto;
 import com.moe.myfamilybudget.api.model.TresorerieResponseDto;

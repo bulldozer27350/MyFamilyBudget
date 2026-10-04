@@ -1,6 +1,6 @@
 package com.moe.myfamilybudget.application.service;
 
-import com.moe.myfamilybudget.application.mapper.PatrimoineTransferConverter;
+import com.moe.myfamilybudget.application.factory.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.api.controller.AnalyseApi;
 import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseInput;

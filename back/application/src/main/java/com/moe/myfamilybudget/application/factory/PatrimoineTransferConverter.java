@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.application.mapper;
+package com.moe.myfamilybudget.application.factory;
 
 import java.util.List;
 

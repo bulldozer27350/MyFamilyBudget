@@ -70,7 +70,7 @@
         <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
         <openapi-generator.version>7.10.0</openapi-generator.version>
         <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
-        <node.version>v20.18.1</node.version>
+        <node.version>v22.23.3</node.version>
 
         <!-- Versions des dépendances non gérées par le BOM Spring Boot -->
         <jackson-nullable.version>0.2.6</jackson-nullable.version>

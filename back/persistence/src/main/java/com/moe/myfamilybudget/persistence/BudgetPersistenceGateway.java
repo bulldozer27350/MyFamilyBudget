@@ -193,7 +193,43 @@ class BudgetPersistenceGateway {
      * Supprime la ligne {@code budget_data} existante (et, par cascade, ses entités associées).
      */
     void deleteAll() {
+        deleteExistingBudgetData();
+    }
+
+    /**
+     * Supprime les lignes {@code budget_data} existantes ET leurs lignes enfants, dans cet ordre, avec un
+     * {@code flush} entre les deux.
+     *
+     * <p>SILO-119 (lot B2) : un import ou un reset enchaine plusieurs {@code save} dans UNE transaction. Les
+     * enfants ecrits par un {@code save} precedent (revenus, charges...) sont rattaches a leur parent par
+     * {@code child.setBudgetData(parent)} uniquement : les collections {@code @OneToMany(mappedBy)} du parent
+     * restent vides en memoire, donc le {@code CascadeType.ALL} d'un {@code deleteAll()} ulterieur ne les
+     * supprime pas. Ils resteraient geres par le contexte de persistance en designant un parent supprime, et
+     * le prochain auto-flush levait {@code TransientObjectException}. Supprimer explicitement les enfants
+     * d'abord (requete par {@code budget_data_id}, sauf les prets) rend la suppression independante de l'etat des
+     * collections en memoire.
+     */
+    private void deleteExistingBudgetData() {
+        for (BudgetDataEntity existing : budgetDataRepository.findAll()) {
+            Long id = existing.getId();
+            incomeRepository.deleteByBudgetDataId(id);
+            chargeRepository.deleteByBudgetDataId(id);
+            placementRepository.deleteByBudgetDataId(id);
+            realEstateRepository.deleteByBudgetDataId(id);
+            oneOffExpenseRepository.deleteByBudgetDataId(id);
+            transferRepository.deleteByBudgetDataId(id);
+            variableIncomeRepository.deleteByBudgetDataId(id);
+            variableOverrideRepository.deleteByBudgetDataId(id);
+            assetCategoryRepository.deleteByBudgetDataId(id);
+        }
+        // LoanRepository.deleteByBudgetDataId est une suppression JPQL en masse : elle ne retire pas les prets
+        // deja charges (EAGER) dans le contexte de persistance, et le cascade du deleteAll() ci-dessous tenterait
+        // alors de supprimer deux fois la meme ligne (StaleObjectStateException). On passe ici par une
+        // suppression par entites, coherente avec les autres repositories.
+        loanRepository.deleteAll();
+        budgetDataRepository.flush();
         budgetDataRepository.deleteAll();
+        budgetDataRepository.flush();
     }
 
     /**
@@ -266,7 +302,7 @@ class BudgetPersistenceGateway {
         // la dernière version sauvegardée. On supprime l'existant avant de réinsérer
         // (même mécanisme que PersistenceManager.resetData()) pour garantir qu'une seule
         // ligne budget_data existe à tout moment.
-        budgetDataRepository.deleteAll();
+        deleteExistingBudgetData();
 
         BudgetDataEntity entity = EntityModelConverter.toEntity(model);
 

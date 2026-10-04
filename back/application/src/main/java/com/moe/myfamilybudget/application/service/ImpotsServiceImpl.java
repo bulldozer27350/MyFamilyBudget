@@ -1,6 +1,6 @@
 package com.moe.myfamilybudget.application.service;
 
-import com.moe.myfamilybudget.application.mapper.PatrimoineTransferConverter;
+import com.moe.myfamilybudget.application.factory.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.api.controller.ImpotsApi;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
