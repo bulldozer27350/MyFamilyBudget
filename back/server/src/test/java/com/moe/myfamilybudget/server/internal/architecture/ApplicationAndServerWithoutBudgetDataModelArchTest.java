@@ -7,6 +7,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import org.junit.jupiter.api.Test;
 
 /**
  * Garde-fou SILO-120 (voir doc/architecture/21-plan-silotage.md) : {@code BudgetDataModel} est supprimé
@@ -28,8 +29,8 @@ class ApplicationAndServerWithoutBudgetDataModelArchTest {
             .should().dependOnClassesThat().areAssignableTo(BudgetDataModel.class)
             .as("application et server ne dépendent plus de BudgetDataModel (SILO-120)");
 
-    @ArchTest
-    static void allow_list_only_contains_persistence_classes() {
+    @Test
+    public void allow_list_only_contains_persistence_classes() {
         for (BudgetDataModelAllowList.Entry entry : BudgetDataModelAllowList.ENTRIES) {
             if (!entry.className().startsWith(PERSISTENCE_PREFIX)) {
                 throw new AssertionError("BudgetDataModelAllowList ne doit plus contenir que des classes de persistence (SILO-120) : "
