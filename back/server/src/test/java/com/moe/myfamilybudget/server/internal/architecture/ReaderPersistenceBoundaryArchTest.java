@@ -38,7 +38,7 @@ class ReaderPersistenceBoundaryArchTest {
     static final ArchRule ONLY_PERSISTENCE_USES_PERSISTENCE_MANAGER = noClasses()
             .that().resideOutsideOfPackages("com.moe.myfamilybudget.persistence..")
             .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
-            .as("seul le module persistence depend de PersistenceManager (DB-1070, MAVEN-103 : le snapshot global passe par le port GlobalBudgetSnapshotWriter)");
+            .as("seul le module persistence depend de PersistenceManager (DB-1070, MAVEN-103 : le snapshot global passe par les ports replace/reset de chaque silo, SILO-119)");
 
     @ArchTest
     static final ArchRule NOBODY_OUTSIDE_PERSISTENCE_READS_THE_GLOBAL_BUDGET = noClasses()

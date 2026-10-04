@@ -3,49 +3,49 @@ package com.moe.myfamilybudget.application.snapshot;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.moe.myfamilybudget.application.mapper.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
-import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
+import com.moe.myfamilybudget.application.mapper.BudgetSnapshotFragments;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
+import com.moe.myfamilybudget.application.mapper.PatrimoineTransferConverter;
+import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankSnapshotWriter;
+import com.moe.myfamilybudget.domain.credit.port.LoanReader;
+import com.moe.myfamilybudget.domain.credit.port.LoanSnapshotWriter;
+import com.moe.myfamilybudget.domain.goals.port.GoalReader;
+import com.moe.myfamilybudget.domain.goals.port.GoalSnapshotWriter;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSnapshotWriter;
+import com.moe.myfamilybudget.domain.tax.port.TaxReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSnapshotWriter;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSnapshotWriter;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
 import com.moe.myfamilybudget.transition.port.BudgetMutationLock;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
-import com.moe.myfamilybudget.transition.port.GlobalBudgetSnapshotWriter;
-import com.moe.myfamilybudget.domain.goals.port.GoalReader;
-import com.moe.myfamilybudget.domain.credit.port.LoanReader;
-import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
+import com.moe.myfamilybudget.transition.port.EconomicAssumptionsSnapshotWriter;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
-import com.moe.myfamilybudget.domain.tax.port.TaxReader;
+import com.moe.myfamilybudget.transition.port.SimulationSettingsSnapshotWriter;
 
 /**
- * CLEAN-020 : frontière explicite des opérations transverses qui justifient encore le snapshot
- * global {@link BudgetDataModel} : export ({@code GET /budget}), import ({@code POST /budget/import}),
- * reset ({@code POST /budget/reset}) et, plus généralement, sauvegarde/restauration du budget complet.
+ * Opérations transverses sur le budget complet : export ({@code GET /budget}), import
+ * ({@code POST /budget/import}) et reset ({@code POST /budget/reset}). Aucun service métier local ne doit
+ * passer par ici.
  *
- * <p>Ce composant est le <strong>seul</strong> point d'application qui assemble le snapshot à partir des
- * ports de lecture et qui écrit via {@link GlobalBudgetSnapshotWriter} (import, reset) ; MAVEN-103 : le port
- * est implémenté par {@code persistence} (qui délègue à {@code PersistenceManager}), ce qui permet à ce composant de
- * vivre dans {@code application} sans dépendre de {@code persistence}.
- * Le contrôleur ({@code SystemeServiceImpl}) ne manipule plus ni {@code BudgetDataModel} ni
- * {@code PersistenceManager}. Aucun service métier local ne doit passer par ici.
+ * <p>SILO-119 (lot B2) : plus aucun passage par {@code BudgetDataModel}. L'export assemble
+ * {@link BudgetFacadeView} depuis les ports de lecture des silos ; l'import décompose le JSON en fragments
+ * ({@link BudgetSnapshotFragments}) et appelle le port {@code replace} de chaque silo ; le reset appelle le
+ * port {@code reset} de chaque silo. Le format JSON est inchangé.
  *
- * <p>VT-340 : import et reset écrivent dans deux domaines (budget, puis paramètres Objectifs) ; ils sont donc
- * transactionnels pour que l'échec de la seconde écriture annule la première (base et cache mémoire). Le verrou du
- * budget est pris en premier.
- *
- * <p>SILO-119 (lot A) : l'export et la réponse du reset ne passent plus par {@code BudgetDataModel} ; la vue de
- * façade {@link BudgetFacadeView} est assemblée directement depuis les ports de lecture des silos. Seul le chemin
- * d'écriture (import via {@code OverviewMapper#toInternalModel} et {@link GlobalBudgetSnapshotWriter}) garde le
- * modèle global, jusqu'au lot B (ports {@code replace}/{@code reset} par silo).
+ * <p>VT-340 : import et reset écrivent dans plusieurs silos puis dans les paramètres Objectifs ; ils sont
+ * transactionnels pour que l'échec d'une écriture annule les précédentes (base et cache mémoire). Le verrou
+ * du budget est pris en premier.
  */
 @Service
 public class GlobalBudgetSnapshotService {
 
     private final BudgetMutationLock budgetMutationLock;
-    private final GlobalBudgetSnapshotWriter snapshotWriter;
     private final OverviewMapper overviewMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
     private final SettingsReader settingsReader;
@@ -56,10 +56,18 @@ public class GlobalBudgetSnapshotService {
     private final BankReader bankReader;
     private final LoanReader loanReader;
     private final GoalReader goalReader;
+    private final RetirementSnapshotWriter retirementWriter;
+    private final TaxSnapshotWriter taxWriter;
+    private final TresorerieSnapshotWriter tresorerieWriter;
+    private final SimulationSettingsSnapshotWriter simulationWriter;
+    private final EconomicAssumptionsSnapshotWriter economicAssumptionsWriter;
+    private final PatrimoineSnapshotWriter patrimoineWriter;
+    private final LoanSnapshotWriter loanWriter;
+    private final GoalSnapshotWriter goalWriter;
+    private final BankSnapshotWriter bankWriter;
 
     public GlobalBudgetSnapshotService(
             BudgetMutationLock budgetMutationLock,
-            GlobalBudgetSnapshotWriter snapshotWriter,
             OverviewMapper overviewMapper,
             ObjectifsSettingsService objectifsSettingsService,
             SettingsReader settingsReader,
@@ -69,9 +77,17 @@ public class GlobalBudgetSnapshotService {
             TaxReader taxReader,
             BankReader bankReader,
             LoanReader loanReader,
-            GoalReader goalReader) {
+            GoalReader goalReader,
+            RetirementSnapshotWriter retirementWriter,
+            TaxSnapshotWriter taxWriter,
+            TresorerieSnapshotWriter tresorerieWriter,
+            SimulationSettingsSnapshotWriter simulationWriter,
+            EconomicAssumptionsSnapshotWriter economicAssumptionsWriter,
+            PatrimoineSnapshotWriter patrimoineWriter,
+            LoanSnapshotWriter loanWriter,
+            GoalSnapshotWriter goalWriter,
+            BankSnapshotWriter bankWriter) {
         this.budgetMutationLock = budgetMutationLock;
-        this.snapshotWriter = snapshotWriter;
         this.overviewMapper = overviewMapper;
         this.objectifsSettingsService = objectifsSettingsService;
         this.settingsReader = settingsReader;
@@ -82,6 +98,15 @@ public class GlobalBudgetSnapshotService {
         this.bankReader = bankReader;
         this.loanReader = loanReader;
         this.goalReader = goalReader;
+        this.retirementWriter = retirementWriter;
+        this.taxWriter = taxWriter;
+        this.tresorerieWriter = tresorerieWriter;
+        this.simulationWriter = simulationWriter;
+        this.economicAssumptionsWriter = economicAssumptionsWriter;
+        this.patrimoineWriter = patrimoineWriter;
+        this.loanWriter = loanWriter;
+        this.goalWriter = goalWriter;
+        this.bankWriter = bankWriter;
     }
 
     /** Export du budget complet (lecture seule). */
@@ -91,15 +116,25 @@ public class GlobalBudgetSnapshotService {
 
     /**
      * Import du budget complet. Un corps {@code null} n'écrit rien et renvoie l'état courant.
-     * Écrit le budget puis les paramètres Objectifs dans la même transaction.
+     * Écrit chaque silo puis les paramètres Objectifs dans la même transaction.
      */
     @Transactional
     public BudgetDataDto importSnapshot(BudgetDataDto body) {
         if (body != null) {
             budgetMutationLock.lockForCurrentTransaction();
-            BudgetDataModel model = overviewMapper.toInternalModel(body);
-            snapshotWriter.setBudgetData(model);
-            objectifsSettingsService.save(overviewMapper.toObjectifsParameters(body));
+            BudgetSnapshotFragments f = overviewMapper.toSnapshotFragments(body);
+            retirementWriter.replace(f.retirementSettings(), f.retirement());
+            taxWriter.replace(f.taxSettings(), f.taxChildren(), f.taxBrackets(), f.taxRateOverrides(),
+                    f.taxActualOverrides());
+            tresorerieWriter.replace(f.tresorerieSettings(), f.incomes(), f.charges(), f.oneoff(),
+                    f.variableIncomes(), f.variableOverrides());
+            simulationWriter.replace(f.simulationSettings());
+            economicAssumptionsWriter.replace(f.economicAssumptions());
+            patrimoineWriter.replace(f.placements(), f.realEstate(), f.transfers(), f.assetCategories());
+            loanWriter.replace(f.loans());
+            goalWriter.replace(f.goals());
+            bankWriter.replace(f.bankImport());
+            objectifsSettingsService.save(f.objectifsParameters());
         }
         return export();
     }
@@ -108,7 +143,15 @@ public class GlobalBudgetSnapshotService {
     @Transactional
     public BudgetDataDto reset() {
         budgetMutationLock.lockForCurrentTransaction();
-        snapshotWriter.resetData();
+        retirementWriter.reset();
+        taxWriter.reset();
+        tresorerieWriter.reset();
+        simulationWriter.reset();
+        economicAssumptionsWriter.reset();
+        patrimoineWriter.reset();
+        loanWriter.reset();
+        goalWriter.reset();
+        bankWriter.reset();
         objectifsSettingsService.reset();
         return export();
     }

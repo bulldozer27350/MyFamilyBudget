@@ -21,7 +21,7 @@ final class BudgetDataModelAllowList {
     static final String FROZEN_ON = "2026-10-04";
 
     /** Taille maximale de la liste à la date de gel ; à abaisser à chaque suppression d'entrée. */
-    static final int FROZEN_SIZE = 17;
+    static final int FROZEN_SIZE = 13;
 
     /** Entrée : classe de premier niveau autorisée et patch qui retire son usage. */
     record Entry(String className, String removedBy) {}
@@ -33,13 +33,6 @@ final class BudgetDataModelAllowList {
 
     static final List<Entry> ENTRIES = List.of(
             // application : factories
-            // application : mappers
-            new Entry(APP + "mapper.OverviewMapper", "SILO-119"),
-            // application : services et snapshot global
-            new Entry(APP + "snapshot.GlobalBudgetSnapshotService", "SILO-119"),
-            // server : reliquats
-            // transition-snapshot : port d'écriture du snapshot global
-            new Entry(TRANS + "port.GlobalBudgetSnapshotWriter", "SILO-119"),
             // persistence : adaptateurs de lecture par cache global
             new Entry(PERS + "adapter.BudgetPersistenceAdapter", "SILO-216"),
             new Entry(PERS + "adapter.GoalPersistenceAdapter", "SILO-212"),
@@ -48,8 +41,6 @@ final class BudgetDataModelAllowList {
             new Entry(PERS + "adapter.RetirementPersistenceAdapter", "SILO-210"),
             new Entry(PERS + "adapter.SettingsPersistenceAdapter", "SILO-220"),
             new Entry(PERS + "adapter.TaxPersistenceAdapter", "SILO-211"),
-            // persistence : écriture du snapshot global
-            new Entry(PERS + "adapter.GlobalBudgetSnapshotWriterAdapter", "SILO-119"),
             // persistence : cache, mutations et conversion globales
             new Entry(PERS + "BudgetCacheStore", "SILO-230"),
             new Entry(PERS + "BudgetMutationService", "SILO-230"),

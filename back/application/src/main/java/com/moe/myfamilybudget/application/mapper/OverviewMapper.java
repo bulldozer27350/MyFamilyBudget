@@ -47,7 +47,11 @@ import com.moe.myfamilybudget.api.model.VariableOverrideDto;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
+import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.budget.CashflowYearModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
@@ -76,94 +80,55 @@ import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 @Component
 public class OverviewMapper {
 
-    public BudgetDataModel toInternalModel(BudgetDataDto dto) {
+    /**
+     * SILO-119 (lot B2) : décompose un budget importé en fragments, un par silo (les paramètres de
+     * {@code settings} sont répartis chez leurs propriétaires). Un corps {@code null} donne des fragments
+     * vides et sans paramètres.
+     */
+    public BudgetSnapshotFragments toSnapshotFragments(BudgetDataDto dto) {
         if (dto == null) {
-            return new BudgetDataModel(null, null, null, null, null, null, null, null, null, null, null, null, null,
-                    null, null);
+            return new BudgetSnapshotFragments(null, null, null, List.of(), List.of(), List.of(), List.of(), null,
+                    List.of(), List.of(), List.of(), List.of(), List.of(), null, null, List.of(), List.of(),
+                    List.of(), List.of(), List.of(), List.of(), null, ObjectifsParameters.defaults());
         }
 
         SettingsModel settings = toSettingsModel(dto.getSettings());
-        List<IncomeModel> incomes = dto.getIncomes() != null
-                ? dto.getIncomes().stream().map(this::toIncomeModel).collect(Collectors.toList())
-                : List.of();
-        List<ChargeModel> charges = dto.getCharges() != null
-                ? dto.getCharges().stream().map(this::toChargeModel).collect(Collectors.toList())
-                : List.of();
-        List<PlacementModel> placements = dto.getPlacements() != null
-                ? dto.getPlacements().stream().map(this::toPlacementModel).collect(Collectors.toList())
-                : List.of();
-        List<RealEstateModel> realEstate = dto.getRealEstate() != null
-                ? dto.getRealEstate().stream().map(this::toRealEstateModel).collect(Collectors.toList())
-                : List.of();
-        List<LoanModel> loans = dto.getLoans() != null
-                ? dto.getLoans().stream().map(this::toLoanModel).collect(Collectors.toList())
-                : List.of();
-        List<ObjectifModel> objectifs = dto.getObjectifs() != null
-                ? dto.getObjectifs().stream().map(this::toObjectifModel).collect(Collectors.toList())
-                : List.of();
-        RetirementModel retirement = withLegacyPassFallback(toRetirementModel(dto.getRetirement()), dto.getSettings());
-        List<TaxChildModel> taxChildren = dto.getTaxChildren() != null
-                ? dto.getTaxChildren().stream().map(this::toTaxChildModel).collect(Collectors.toList())
-                : List.of();
-        List<TaxBracketModel> taxBrackets = dto.getTaxBrackets() != null
-                ? dto.getTaxBrackets().stream().map(this::toTaxBracketModel).collect(Collectors.toList())
-                : List.of();
-        List<TaxRateOverrideModel> taxRateOverrides = dto.getTaxRateOverrides() != null
-                ? dto.getTaxRateOverrides().stream().map(this::toTaxRateOverrideModel).collect(Collectors.toList())
-                : List.of();
-        List<TaxActualOverrideModel> taxActualOverrides = dto.getTaxActualOverrides() != null
-                ? dto.getTaxActualOverrides().stream().map(this::toTaxActualOverrideModel).collect(Collectors.toList())
-                : List.of();
-        List<OneOffExpenseModel> oneoff = dto.getOneoff() != null
-                ? dto.getOneoff().stream().map(this::toOneOffExpenseModel).collect(Collectors.toList())
-                : List.of();
         List<TransferModel> transfers = dto.getTransfers() != null
                 ? dto.getTransfers().stream().map(this::toTransferModel).collect(Collectors.toList())
                 : List.of();
-        List<VariableIncomeModel> variableIncomes = dto.getVariableIncomes() != null
-                ? dto.getVariableIncomes().stream().map(this::toVariableIncomeModel).collect(Collectors.toList())
-                : List.of();
-        List<VariableOverrideModel> variableOverrides = dto.getVariableOverrides() != null
-                ? dto.getVariableOverrides().stream().map(this::toVariableOverrideModel).collect(Collectors.toList())
-                : List.of();
-        BankImportModel bankImport = toBankImportModel(dto.getBankImport());
-        List<AssetCategoryModel> assetCategories = dto.getAssetCategories() != null
-                ? dto.getAssetCategories().stream().map(this::toAssetCategoryModel).collect(Collectors.toList())
-                : List.of();
 
-        return new BudgetDataModel(settings, incomes, charges, placements, realEstate, retirement, taxChildren,
-                taxBrackets, taxRateOverrides, taxActualOverrides, oneoff, transfers, variableIncomes,
-                variableOverrides, bankImport, assetCategories, loans, objectifs);
+        return new BudgetSnapshotFragments(
+                settings != null ? new RetirementSettingsModel(settings.birthYear(), settings.retireAge()) : null,
+                withLegacyPassFallback(toRetirementModel(dto.getRetirement()), dto.getSettings()),
+                settings != null ? new TaxSettingsModel(settings.childExitAge(), settings.taxAbattement()) : null,
+                mapList(dto.getTaxChildren(), this::toTaxChildModel),
+                mapList(dto.getTaxBrackets(), this::toTaxBracketModel),
+                mapList(dto.getTaxRateOverrides(), this::toTaxRateOverrideModel),
+                mapList(dto.getTaxActualOverrides(), this::toTaxActualOverrideModel),
+                settings != null
+                        ? new TresorerieSettingsModel(settings.pivotDate(), settings.pivotMode(),
+                                settings.startBalance(), settings.sweepEnabled(), settings.cashCeiling(),
+                                settings.cashFloor(), settings.cashAlertThreshold())
+                        : null,
+                mapList(dto.getIncomes(), this::toIncomeModel),
+                mapList(dto.getCharges(), this::toChargeModel),
+                mapList(dto.getOneoff(), this::toOneOffExpenseModel),
+                mapList(dto.getVariableIncomes(), this::toVariableIncomeModel),
+                mapList(dto.getVariableOverrides(), this::toVariableOverrideModel),
+                settings != null ? new SimulationSettingsModel(settings.simulateUntilAge()) : null,
+                settings != null ? new EconomicAssumptionsModel(settings.inflationRate()) : null,
+                mapList(dto.getPlacements(), this::toPlacementModel),
+                mapList(dto.getRealEstate(), this::toRealEstateModel),
+                PatrimoineTransferConverter.toWealth(transfers),
+                mapList(dto.getAssetCategories(), this::toAssetCategoryModel),
+                mapList(dto.getLoans(), this::toLoanModel),
+                mapList(dto.getObjectifs(), this::toObjectifModel),
+                toBankImportModel(dto.getBankImport()),
+                toObjectifsParameters(dto));
     }
 
-    public BudgetDataDto toBudgetDataDto(BudgetDataModel model) {
-        return toBudgetDataDto(model, ObjectifsParameters.defaults());
-    }
-
-    /**
-     * Comme {@link #toBudgetDataDto(BudgetDataModel)}, en réinjectant les paramètres du domaine
-     * Objectifs dans {@code settings} pour conserver le contrat d'API inchangé (RF-700).
-     * Réservé aux opérations sur le snapshot global ({@code /budget}, import, reset) : les
-     * réponses composites Overview/Analyse passent par {@link #toBudgetDataDto(BudgetFacadeView)}.
-     */
-    public BudgetDataDto toBudgetDataDto(BudgetDataModel model, ObjectifsParameters objectifs) {
-        return toBudgetDataDto(facadeViewOf(model, objectifs));
-    }
-
-    /**
-     * Assemble la vue de façade depuis le snapshot global (classe de transition, retirée avec
-     * SILO-119).
-     */
-    public static BudgetFacadeView facadeViewOf(BudgetDataModel data, ObjectifsParameters objectifsParameters) {
-        if (data == null) {
-            return null;
-        }
-        return new BudgetFacadeView(
-                data.settings(), data.incomes(), data.charges(), data.placements(), data.realEstate(),
-                data.retirement(), data.taxChildren(), data.taxBrackets(), data.taxRateOverrides(),
-                data.taxActualOverrides(), data.oneoff(), data.transfers(), data.variableIncomes(),
-                data.variableOverrides(), data.bankImport(), data.assetCategories(), data.loans(),
-                data.objectifs(), objectifsParameters);
+    private static <D, M> List<M> mapList(List<D> dtos, java.util.function.Function<D, M> mapper) {
+        return dtos != null ? dtos.stream().map(mapper).collect(Collectors.toList()) : List.of();
     }
 
     /**

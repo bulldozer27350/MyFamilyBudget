@@ -15,8 +15,8 @@ import com.moe.myfamilybudget.transition.model.BudgetDataModel;
  * métier ni des mappers de façade.
  *
  * <p>Règles strictes (sans gel). Les assemblers applicatifs ({@code internal.factory}, services
- * d'API) et les opérations transverses ({@code OverviewMapper#toInternalModel}, snapshot
- * {@code /budget}) peuvent encore utiliser {@code BudgetDataModel} pendant la transition : ils
+ * d'API) et les opérations transverses (snapshot {@code /budget}, désormais par fragments de silo,
+ * SILO-119) peuvent encore utiliser {@code BudgetDataModel} pendant la transition : ils
  * relèvent de ARCH-010 et CLEAN-010/020.
  */
 @AnalyzeClasses(packages = "com.moe.myfamilybudget", importOptions = ImportOption.DoNotIncludeTests.class)

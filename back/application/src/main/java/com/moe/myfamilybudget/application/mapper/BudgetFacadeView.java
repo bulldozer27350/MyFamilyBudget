@@ -33,8 +33,8 @@ import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
  *
  * <p>Seuls les assemblers de façade (services d'API, {@code GlobalBudgetSnapshotService}) construisent
  * cette vue. SILO-115 : elle ne connaît plus {@code BudgetDataModel} ; le service Analyse l'assemble
- * directement depuis les ports de lecture, et {@code OverviewMapper.facadeViewOf} porte la conversion
- * depuis le snapshot global jusqu'à SILO-119.
+ * directement depuis les ports de lecture ; SILO-119 (lot B2) : {@code OverviewMapper.facadeViewOf} est
+ * supprimé, plus aucune conversion depuis le snapshot global.
  */
 public record BudgetFacadeView(
         SettingsModel settings,
