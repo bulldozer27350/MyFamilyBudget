@@ -1,6 +1,6 @@
 # 21 — Plan de travail : silotage complet des données, `application` ≠ web
 
-Statut : 🟡 à valider, décisions D1 à D8 tranchées sauf D3 (document établi le 4 octobre 2026 à partir de `main` @ `6c53693` et d'une relecture des documents `00` à `20`)
+Statut : 🟢 décisions D1 à D8 tranchées (document établi le 4 octobre 2026 à partir de `main` @ `6c53693` et d'une relecture des documents `00` à `20`)
 
 ## 1. Objectif visé (reformulation)
 
@@ -118,7 +118,7 @@ Règles vérifiées à la compilation (Maven enforcer et module-info) puis par A
 | D7 | Propriété de `marketdata` et `enablebanking` | `marketdata` : silo « Marché » (consommé par Crédit, Suggestions de taux, Patrimoine). `enablebanking` : intégration du silo Banque | **D'accord avec la recommandation** |
 | D8 | `LegacyObjectifAllocationMigrator` | Supprimer (aucun objectif réel en base au moment de son introduction), sinon le déplacer dans le silo Objectifs | **D'accord avec la recommandation** |
 
-### Question en attente : D3, périmètre de `module-info`
+### Décision D3 : périmètre de `module-info`
 
 Un `module-info.java` déclare ce qu'un module Maven expose (`exports`) et ce dont il dépend (`requires`). Le compilateur refuse
 alors tout import d'un package non exporté, même si la classe est `public`. C'est la garantie « `application` ne voit que les API »,
@@ -134,9 +134,7 @@ Boot, tout est sur le classpath : les `module-info` y sont ignorés à l'exécut
 | B | `module-info` partout, `open module` sur les `*-core` | garantie uniforme, mais `opens` à maintenir et risques d'incompatibilité avec Hibernate/Spring |
 | C | aucun `module-info` ; tout par Maven et ArchUnit | plus simple, mais les modules actuels des domaines purs perdent leur descripteur |
 
-Réponse attendue : A, B ou C. Tant qu'elle manque, aucun travail qui touche aux `module-info` ou à leur gabarit dans les `*-core`.
-
-Réponse donnée par l'utilisateur : **A**
+Réponse donnée par l'utilisateur : **A**. `module-info` sur les `*-api`, `application-*` et `web` ; aucun sur les `*-core`.
 
 ## 7. Vue d'ensemble des patchs
 
@@ -233,8 +231,8 @@ un patch qui rencontre un arbitrage non tranché devient un patch « bloqué » 
 - **Objectif** : lever les huit décisions de la section 6.
 - **Travaux** : document seul. Marco valide ou amende chaque décision ; le résultat est consigné dans cette section.
 - **Sortie** : section 6 marquée « validée » avec la décision retenue pour chaque ligne.
-- **Avancement** : D1, D2, D4, D5, D6, D7, D8 tranchées. D3 en attente d'une réponse (options A, B, C dans la section 6).
-- **Statut** : [ ] Non commencé / [ ] Démarré / [x] En attente de réponse / [ ] Annulé / [ ] Terminé
+- **Avancement** : D1 à D8 tranchées (D3 : option A).
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente de réponse / [ ] Annulé / [x] Terminé
 
 ### SILO-001 : Réviser les principes et marquer les patchs remplacés
 - **Objectif** : aligner `00-principes.md`, `13-persistance.md` (O3, R3, C1) et `20-backlog-modules-maven-patchs.md` (principes, MAVEN-120, 130, 140, 160) sur cette cible ; marquer « Annulé, remplacé par SILO-xxx » chaque item non terminé qui est absorbé, selon la section 10 (RF-D00, DB-1080, DB-1170, DB-1180, DB-1190, DB-1200, GATE-010, MAVEN-130 à MAVEN-150), sans supprimer aucun fichier.
@@ -405,6 +403,6 @@ fichier `21` reste vivant.
 
 - **Tâche** : atteindre des silos isolés, une persistance par silo transactionnelle, et une séparation application/web.
 - **Acquis** : domaines purs sans `BudgetDataModel` ; ports Reader/Writer pour sept silos ; hubs Retraite, Fiscalité, Objectifs, Banque retirés ; écriture des paramètres distribuée ; `application` sans dépendance vers `persistence`.
-- **Piste en cours** : valider les décisions D1 à D8 (SILO-000).
-- **Reste à faire** : tout le reste de la section 7 ; SILO-002 est terminé ; premier patch sans dépendance restant : SILO-000 (décision D3 en attente d'explications).
-- **Instruction de reprise** : cloner `main`, relire ce fichier, annoncer le patch visé, puis livrer le `.patch` en LF sans attendre de validation (sauf SILO-000, qui demande l'avis de Marco).
+- **Piste en cours** : décisions D1 à D8 tranchées (SILO-000 terminé).
+- **Reste à faire** : tout le reste de la section 7 ; SILO-000 et SILO-002 sont terminés ; patchs maintenant disponibles : SILO-001, SILO-003, SILO-100.
+- **Instruction de reprise** : cloner `main`, relire ce fichier, annoncer le patch visé, puis livrer le `.patch` en LF sans attendre de validation (un arbitrage non tranché rend le patch « bloqué »).
