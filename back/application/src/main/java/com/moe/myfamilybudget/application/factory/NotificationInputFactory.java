@@ -6,8 +6,8 @@ import java.util.List;
 
 import com.moe.myfamilybudget.domain.notifications.calculation.BalanceFloorInput;
 import com.moe.myfamilybudget.domain.notifications.calculation.DebitThresholdInput;
-import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
-import com.moe.myfamilybudget.domain.goals.calculation.PlacementBalanceSnapshot;
+import com.moe.myfamilybudget.domain.notifications.calculation.ObjectifReachableInput;
+import com.moe.myfamilybudget.domain.notifications.calculation.PlacementBalanceSnapshot;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.PendingOperationModel;

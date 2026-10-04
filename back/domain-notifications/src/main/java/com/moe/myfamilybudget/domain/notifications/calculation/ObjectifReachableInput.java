@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.goals.calculation;
+package com.moe.myfamilybudget.domain.notifications.calculation;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -8,9 +8,11 @@ import java.util.List;
  * Entrée de la règle de notification « objectif atteignable » (RF-701, voir
  * doc/architecture/09-domaine-objectifs-notifications.md).
  *
- * <p>Une des trois entrées distinctes des notifications. Les objectifs désignent leurs placements
- * par identifiant ; les soldes courants arrivent sous forme de {@link PlacementBalanceSnapshot}
- * (RF-700), sans dépendance à {@code PlacementModel} ni à {@code ObjectifModel}.
+ * <p>Une des trois entrées distinctes des notifications. Contrat propre au silo Notifications (SILO-134) :
+ * il ne référence aucun type du silo Objectifs. Les objectifs désignent leurs placements par identifiant ;
+ * les soldes courants arrivent sous forme de {@link PlacementBalanceSnapshot} (RF-700), sans dépendance à
+ * {@code PlacementModel} ni à {@code ObjectifModel}. L'application traduit les objectifs et les placements
+ * vers ce contrat.
  *
  * @param goals             objectifs avec leurs allocations
  * @param placementBalances soldes courants des placements référencés par les allocations

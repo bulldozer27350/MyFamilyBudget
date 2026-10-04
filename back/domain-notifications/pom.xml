@@ -9,9 +9,9 @@
         (contrat NotificationRule/NotificationMessage, paramètres métier de notification, règles
         pures DebitThresholdRule / BalanceFloorRule / ObjectifReachableRule et leurs entrées).
 
-        Notifications est un consommateur final de contrats : seule dépendance de production,
-        domain-goals (ObjectifReachableInput, PlacementBalanceSnapshot). Aucune dépendance vers
-        Spring, JPA, Web Push, OpenAPI, PersistenceManager ou BudgetDataModel ; la dédup, le
+        Notifications définit ses propres contrats d'entrée (SILO-134) : aucune dépendance de production
+        vers un autre silo (ObjectifReachableInput et PlacementBalanceSnapshot lui appartiennent). Aucune
+        dépendance vers Spring, JPA, Web Push, OpenAPI, PersistenceManager ou BudgetDataModel ; la dédup, le
         dispatch, les canaux et la persistance des paramètres restent hors du module.
         Dépendances de test uniquement : JUnit 5 et AssertJ.
     -->
@@ -28,11 +28,6 @@
     <description>Domaine Notifications MyFamilyBudget (règles pures, sans Spring ni JPA)</description>
 
     <dependencies>
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-goals</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

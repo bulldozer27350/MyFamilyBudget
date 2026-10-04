@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
 
 class NotificationInputsTest {
 
@@ -44,6 +43,18 @@ class NotificationInputsTest {
 
         ObjectifReachableInput.Allocation allocation = new ObjectifReachableInput.Allocation("p1", null);
         assertThat(allocation.amount()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    @DisplayName("PlacementBalanceSnapshot normalise identifiant et solde nuls")
+    void testPlacementBalanceSnapshotDefaults() {
+        PlacementBalanceSnapshot empty = new PlacementBalanceSnapshot(null, null);
+        assertThat(empty.placementId()).isEmpty();
+        assertThat(empty.balance()).isEqualByComparingTo(BigDecimal.ZERO);
+
+        PlacementBalanceSnapshot snapshot = new PlacementBalanceSnapshot("p1", new BigDecimal("1500.50"));
+        assertThat(snapshot.placementId()).isEqualTo("p1");
+        assertThat(snapshot.balance()).isEqualByComparingTo("1500.50");
     }
 
     @Test

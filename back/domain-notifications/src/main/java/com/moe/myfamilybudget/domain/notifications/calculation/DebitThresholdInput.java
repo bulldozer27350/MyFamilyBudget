@@ -3,7 +3,6 @@ package com.moe.myfamilybudget.domain.notifications.calculation;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
-import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
 
 /**
  * Entrée de la règle de notification « débit important » (RF-701, voir

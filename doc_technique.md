@@ -188,8 +188,9 @@ Le domaine Analyse (`AnalyseCalculator`, contrat d'entrée `AnalyseInput`, modè
 `domain-budget` et `domain-bank-pointage`.
 Le domaine Crédit (`LoanAdviceCalculationService`, contrats `LoanAdviceInput`/`LoanInput`, modèles de prêt et de
 résultat, ports `LoanReader`/`LoanWriter`) vit dans `back/domain-credit` (`com.moe.myfamilybudget.domain.credit.*`) ;
-le domaine Objectifs (paramètres, contrats `ObjectifReachableInput`/`PlacementBalanceSnapshot`, modèles d'objectif,
-ports `GoalReader`/`GoalWriter`) vit dans `back/domain-goals` (`com.moe.myfamilybudget.domain.goals.*`). Les deux
+le domaine Objectifs (paramètres, modèles d'objectif, ports `GoalReader`/`GoalWriter`) vit dans `back/domain-goals`
+(`com.moe.myfamilybudget.domain.goals.*`) ; les contrats `ObjectifReachableInput`/`PlacementBalanceSnapshot` appartiennent
+au domaine Notifications (SILO-134). Les deux
 modules n'ont aucune dépendance vers un autre module du reactor ; le moteur Crédit est déclaré comme bean par
 `config/DomainEngineConfig`.
 Le domaine Notifications (contrat `NotificationRule`/`NotificationMessage`, `NotificationSettingsParameters`, règles pures

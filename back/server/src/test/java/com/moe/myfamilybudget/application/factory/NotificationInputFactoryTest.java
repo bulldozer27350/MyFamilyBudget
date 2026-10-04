@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.notifications.calculation.BalanceFloorInput;
 import com.moe.myfamilybudget.domain.notifications.calculation.DebitThresholdInput;
-import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
+import com.moe.myfamilybudget.domain.notifications.calculation.ObjectifReachableInput;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.PendingOperationModel;

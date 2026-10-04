@@ -7,8 +7,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 
-import com.moe.myfamilybudget.domain.goals.calculation.ObjectifReachableInput;
-import com.moe.myfamilybudget.domain.goals.calculation.PlacementBalanceSnapshot;
+import com.moe.myfamilybudget.domain.notifications.calculation.ObjectifReachableInput;
+import com.moe.myfamilybudget.domain.notifications.calculation.PlacementBalanceSnapshot;
 import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
 import com.moe.myfamilybudget.domain.notifications.model.NotificationRule;
 

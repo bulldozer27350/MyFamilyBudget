@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
-import com.moe.myfamilybudget.domain.goals.calculation.PlacementBalanceSnapshot;
 
 class ObjectifsSettingsServiceTest {
 
@@ -79,17 +78,5 @@ class ObjectifsSettingsServiceTest {
         service.reset();
 
         assertThat(service.current()).isEqualTo(ObjectifsParameters.defaults());
-    }
-
-    @Test
-    @DisplayName("PlacementBalanceSnapshot normalise identifiant et solde nuls")
-    void testPlacementBalanceSnapshotDefaults() {
-        PlacementBalanceSnapshot empty = new PlacementBalanceSnapshot(null, null);
-        assertThat(empty.placementId()).isEmpty();
-        assertThat(empty.balance()).isEqualByComparingTo(BigDecimal.ZERO);
-
-        PlacementBalanceSnapshot snapshot = new PlacementBalanceSnapshot("p1", new BigDecimal("1500.50"));
-        assertThat(snapshot.placementId()).isEqualTo("p1");
-        assertThat(snapshot.balance()).isEqualByComparingTo("1500.50");
     }
 }
