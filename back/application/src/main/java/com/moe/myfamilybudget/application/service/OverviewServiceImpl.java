@@ -14,7 +14,6 @@ import com.moe.myfamilybudget.application.overview.OverviewInput;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.application.factory.OverviewInputFactory;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
-import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.application.model.OverviewResultModel;
@@ -99,7 +98,7 @@ public class OverviewServiceImpl implements OverviewApi {
         OverviewInput input = inputFactory.from(internalData, Boolean.TRUE.equals(useConstantEuros));
         OverviewResultModel internalResult = calculationService.computeOverview(input);
         return ResponseEntity.ok(this.mapper.toDto(internalResult,
-                BudgetFacadeView.from(internalData, ObjectifsParameters.defaults())));
+                OverviewMapper.facadeViewOf(internalData, ObjectifsParameters.defaults())));
     }
 
     /**

@@ -56,15 +56,15 @@ class BudgetFacadeViewMapperTest {
     }
 
     @Test
-    @DisplayName("BudgetFacadeView.from(null, ...) retourne null")
+    @DisplayName("OverviewMapper.facadeViewOf(null, ...) retourne null")
     void fromNullSnapshotReturnsNull() {
-        assertNull(BudgetFacadeView.from(null, ObjectifsParameters.defaults()));
+        assertNull(OverviewMapper.facadeViewOf(null, ObjectifsParameters.defaults()));
     }
 
     @Test
-    @DisplayName("BudgetFacadeView.from(...) applique les paramètres Objectifs par défaut si absents")
+    @DisplayName("OverviewMapper.facadeViewOf(...) applique les paramètres Objectifs par défaut si absents")
     void fromAppliesObjectifsDefaults() {
-        BudgetFacadeView view = BudgetFacadeView.from(snapshot(), null);
+        BudgetFacadeView view = OverviewMapper.facadeViewOf(snapshot(), null);
 
         assertEquals(ObjectifsParameters.defaults(), view.objectifsParameters());
     }
@@ -72,7 +72,7 @@ class BudgetFacadeViewMapperTest {
     @Test
     @DisplayName("toBudgetDataDto(vue) réinjecte les paramètres Objectifs dans settings")
     void budgetDataDtoFromViewInjectsObjectifsParameters() {
-        BudgetFacadeView view = BudgetFacadeView.from(snapshot(), new ObjectifsParameters(6, 2));
+        BudgetFacadeView view = OverviewMapper.facadeViewOf(snapshot(), new ObjectifsParameters(6, 2));
 
         BudgetDataDto dto = overviewMapper.toBudgetDataDto(view);
 
@@ -89,7 +89,7 @@ class BudgetFacadeViewMapperTest {
         ObjectifsParameters objectifs = new ObjectifsParameters(9, 4);
 
         BudgetDataDto fromSnapshot = overviewMapper.toBudgetDataDto(snapshot(), objectifs);
-        BudgetDataDto fromView = overviewMapper.toBudgetDataDto(BudgetFacadeView.from(snapshot(), objectifs));
+        BudgetDataDto fromView = overviewMapper.toBudgetDataDto(OverviewMapper.facadeViewOf(snapshot(), objectifs));
 
         assertEquals(fromSnapshot, fromView);
     }
@@ -103,7 +103,7 @@ class BudgetFacadeViewMapperTest {
     @Test
     @DisplayName("OverviewMapper.toDto(résultat, vue) expose le budget dans data")
     void overviewDtoExposesFacadeData() {
-        BudgetFacadeView view = BudgetFacadeView.from(snapshot(), ObjectifsParameters.defaults());
+        BudgetFacadeView view = OverviewMapper.facadeViewOf(snapshot(), ObjectifsParameters.defaults());
 
         OverviewResponseDto dto = overviewMapper.toDto(overviewResult(), view);
 
@@ -122,7 +122,7 @@ class BudgetFacadeViewMapperTest {
     @Test
     @DisplayName("AnalyseMapper.toDto(résultat, vue) recopie les données de budget et les seuils Objectifs")
     void analyseDtoExposesFacadeData() {
-        BudgetFacadeView view = BudgetFacadeView.from(snapshot(), new ObjectifsParameters(6, 2));
+        BudgetFacadeView view = OverviewMapper.facadeViewOf(snapshot(), new ObjectifsParameters(6, 2));
 
         AnalyseResponseDto dto = analyseMapper.toDto(analyseResult(), view);
 

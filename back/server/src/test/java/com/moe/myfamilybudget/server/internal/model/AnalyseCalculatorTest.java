@@ -17,6 +17,7 @@ import com.moe.myfamilybudget.domain.analysis.model.AnalyseCategorySummaryModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseLandingRowModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
 import com.moe.myfamilybudget.application.factory.AnalyseInputFactory;
+import com.moe.myfamilybudget.application.factory.PointageInputFactory;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.BankTransactionModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.CategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingLinkModel;
@@ -25,6 +26,13 @@ import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 
 class AnalyseCalculatorTest {
+
+    /** SILO-115 : la factory reçoit des fragments, pas le snapshot global. */
+    private static PointageInputFactory.Sources sources(BudgetDataModel data) {
+        return new PointageInputFactory.Sources(
+                data.charges(), data.incomes(), data.placements(),
+                data.settings() != null ? data.settings().inflationRate() : null);
+    }
 
     @Test
     @DisplayName("computeAnalyse doit calculer correctement les KPIs, catégories et lignes d'atterrissage sur le modèle interne")
@@ -72,7 +80,7 @@ class AnalyseCalculatorTest {
                 List.of(matching)
         );
 
-        AnalyseResultModel result = AnalyseCalculator.computeAnalyse(new AnalyseInputFactory().from(data, bankImport, 12));
+        AnalyseResultModel result = AnalyseCalculator.computeAnalyse(new AnalyseInputFactory().from(bankImport, sources(data), 12));
 
         assertThat(result).isNotNull();
         assertThat(result.kpis()).isNotNull();
@@ -132,7 +140,7 @@ class AnalyseCalculatorTest {
                 List.of(matching)
         );
 
-        AnalyseResultModel result = AnalyseCalculator.computeAnalyse(new AnalyseInputFactory().from(data, bankImport, 12));
+        AnalyseResultModel result = AnalyseCalculator.computeAnalyse(new AnalyseInputFactory().from(bankImport, sources(data), 12));
 
         assertThat(result).isNotNull();
         // Check total expenses and compressible

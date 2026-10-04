@@ -14,14 +14,17 @@ import com.moe.myfamilybudget.domain.analysis.calculation.BudgetLineKind;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
 import com.moe.myfamilybudget.domain.analysis.calculation.MonthlyBudgetLines;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 
 /**
- * Factory construisant un {@link AnalyseInput} a partir de {@link BudgetDataModel}
- * et {@link BankImportModel} (RF-601, voir doc/architecture/08-domaine-analyse.md).
+ * Factory construisant un {@link AnalyseInput} a partir de l'import bancaire et des fragments du
+ * budget (RF-601, voir doc/architecture/08-domaine-analyse.md).
+ *
+ * <p>SILO-115 : cette factory ne connait plus {@code BudgetDataModel} ; l'appelant lui fournit
+ * l'import bancaire et des {@link PointageInputFactory.Sources} (charges, revenus, placements,
+ * inflation). Les listes absentes sont lues comme vides.
  *
  * <p>Isole {@link com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator} de toute dependance
  * aux modeles de persistance et aux reglages du budget.
@@ -29,20 +32,17 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 @Component
 public class AnalyseInputFactory {
 
-    public AnalyseInput from(BudgetDataModel data, BankImportModel bankImport, Integer monthsBack) {
-        return from(data, bankImport, monthsBack, LocalDate.now());
+    public AnalyseInput from(BankImportModel bankImport, PointageInputFactory.Sources data, Integer monthsBack) {
+        return from(bankImport, data, monthsBack, LocalDate.now());
     }
 
-    public AnalyseInput from(BudgetDataModel data, BankImportModel bankImport, Integer monthsBack, LocalDate today) {
+    public AnalyseInput from(BankImportModel bankImport, PointageInputFactory.Sources data, Integer monthsBack,
+            LocalDate today) {
         if (today == null) {
             today = LocalDate.now();
         }
         int mBack = (monthsBack != null && monthsBack >= 0) ? monthsBack : 12;
         AnalysisPeriod period = new AnalysisPeriod(today, mBack);
-
-        if (bankImport == null && data != null) {
-            bankImport = data.bankImport();
-        }
 
         List<BankImportModel.BankTransactionModel> transactions = bankImport != null && bankImport.transactions() != null
                 ? bankImport.transactions()
@@ -70,7 +70,7 @@ public class AnalyseInputFactory {
                     data != null ? data.charges() : null,
                     data != null ? data.incomes() : null,
                     data != null ? data.placements() : null,
-                    data != null && data.settings() != null ? data.settings().inflationRate() : null,
+                    data != null ? data.inflationRate() : null,
                     monthISO
             );
             monthlyBudgetLines.add(new MonthlyBudgetLines(monthISO, monthLines));

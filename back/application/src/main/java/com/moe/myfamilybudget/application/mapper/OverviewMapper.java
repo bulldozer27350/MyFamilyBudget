@@ -147,7 +147,23 @@ public class OverviewMapper {
      * réponses composites Overview/Analyse passent par {@link #toBudgetDataDto(BudgetFacadeView)}.
      */
     public BudgetDataDto toBudgetDataDto(BudgetDataModel model, ObjectifsParameters objectifs) {
-        return toBudgetDataDto(BudgetFacadeView.from(model, objectifs));
+        return toBudgetDataDto(facadeViewOf(model, objectifs));
+    }
+
+    /**
+     * Assemble la vue de façade depuis le snapshot global (classe de transition, retirée avec
+     * SILO-117 pour Overview et SILO-119 pour le snapshot global).
+     */
+    public static BudgetFacadeView facadeViewOf(BudgetDataModel data, ObjectifsParameters objectifsParameters) {
+        if (data == null) {
+            return null;
+        }
+        return new BudgetFacadeView(
+                data.settings(), data.incomes(), data.charges(), data.placements(), data.realEstate(),
+                data.retirement(), data.taxChildren(), data.taxBrackets(), data.taxRateOverrides(),
+                data.taxActualOverrides(), data.oneoff(), data.transfers(), data.variableIncomes(),
+                data.variableOverrides(), data.bankImport(), data.assetCategories(), data.loans(),
+                data.objectifs(), objectifsParameters);
     }
 
     /**

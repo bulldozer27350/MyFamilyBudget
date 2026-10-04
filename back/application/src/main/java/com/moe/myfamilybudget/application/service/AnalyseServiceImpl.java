@@ -5,13 +5,17 @@ import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseInput;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.application.factory.AnalyseInputFactory;
+import com.moe.myfamilybudget.application.factory.PointageInputFactory;
 import com.moe.myfamilybudget.application.mapper.AnalyseMapper;
 import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
+import com.moe.myfamilybudget.domain.budget.ChargeModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
@@ -19,6 +23,8 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxReader;
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,7 +36,9 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code PersistenceManager}. La réponse recopie la quasi-totalité de {@code BudgetDataModel}
  * (voir {@code OverviewMapper.toBudgetDataDto(BudgetFacadeView)}), donc tous les ports de lecture sont
  * composés ici. RES-010 : le mapper ne reçoit plus {@code BudgetDataModel}, mais une
- * {@code BudgetFacadeView} assemblée ici.
+ * {@code BudgetFacadeView} assemblée ici. SILO-115 : plus aucun {@code BudgetDataModel} ; la vue de façade
+ * est assemblée directement depuis les ports et {@link SettingsReader} n'est conservé que pour le bloc
+ * {@code settings} de la réponse REST (contrat inchangé) et le taux d'inflation des lignes budgétaires.
  */
 @RestController
 public class AnalyseServiceImpl implements AnalyseApi {
@@ -71,25 +79,27 @@ public class AnalyseServiceImpl implements AnalyseApi {
         this.goalReader = goalReader;
     }
 
-    private BudgetDataModel composeBudgetData() {
-        return new BudgetDataModel(
-                settingsReader.getSettings(), budgetReader.getIncomes(), budgetReader.getCharges(),
-                patrimoineReader.getPlacements(), patrimoineReader.getRealEstate(), retirementReader.getRetirement(),
-                taxReader.getTaxChildren(), taxReader.getTaxBrackets(), taxReader.getTaxRateOverrides(),
-                taxReader.getTaxActualOverrides(), budgetReader.getOneoffExpenses(), patrimoineReader.getTransfers(),
-                budgetReader.getVariableIncomes(), budgetReader.getVariableOverrides(), bankReader.getBankImport(),
-                patrimoineReader.getAssetCategories(), loanReader.getLoans(), goalReader.getGoals());
-    }
-
     @Override
     public ResponseEntity<AnalyseResponseDto> getAnalyse(Integer monthsBack) {
-        BudgetDataModel data = composeBudgetData();
-        BankImportModel bankImport = data.bankImport();
+        SettingsModel settings = settingsReader.getSettings();
+        List<IncomeModel> incomes = budgetReader.getIncomes();
+        List<ChargeModel> charges = budgetReader.getCharges();
+        List<PlacementModel> placements = patrimoineReader.getPlacements();
+        BankImportModel bankImport = bankReader.getBankImport();
 
-        AnalyseInput input = analyseInputFactory.from(data, bankImport, monthsBack);
+        PointageInputFactory.Sources sources = new PointageInputFactory.Sources(
+                charges, incomes, placements, settings != null ? settings.inflationRate() : null);
+        AnalyseInput input = analyseInputFactory.from(bankImport, sources, monthsBack);
         AnalyseResultModel resultModel = AnalyseCalculator.computeAnalyse(input);
-        AnalyseResponseDto responseDto = analyseMapper.toDto(resultModel,
-                BudgetFacadeView.from(data, objectifsSettingsService.current()));
+
+        BudgetFacadeView view = new BudgetFacadeView(
+                settings, incomes, charges, placements, patrimoineReader.getRealEstate(),
+                retirementReader.getRetirement(), taxReader.getTaxChildren(), taxReader.getTaxBrackets(),
+                taxReader.getTaxRateOverrides(), taxReader.getTaxActualOverrides(), budgetReader.getOneoffExpenses(),
+                patrimoineReader.getTransfers(), budgetReader.getVariableIncomes(), budgetReader.getVariableOverrides(),
+                bankImport, patrimoineReader.getAssetCategories(), loanReader.getLoans(), goalReader.getGoals(),
+                objectifsSettingsService.current());
+        AnalyseResponseDto responseDto = analyseMapper.toDto(resultModel, view);
 
         return ResponseEntity.ok(responseDto);
     }

@@ -5,7 +5,6 @@ import java.util.List;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
@@ -33,7 +32,9 @@ import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
  * portés explicitement pour être réinjectés dans {@code settings} sans changer le contrat REST.
  *
  * <p>Seuls les assemblers de façade (services d'API, {@code GlobalBudgetSnapshotService}) construisent
- * cette vue, via {@link #from(BudgetDataModel, ObjectifsParameters)}.
+ * cette vue. SILO-115 : elle ne connaît plus {@code BudgetDataModel} ; le service Analyse l'assemble
+ * directement depuis les ports de lecture, et {@code OverviewMapper.facadeViewOf} porte la conversion
+ * depuis le snapshot global jusqu'à SILO-119.
  */
 public record BudgetFacadeView(
         SettingsModel settings,
@@ -56,17 +57,10 @@ public record BudgetFacadeView(
         List<ObjectifModel> objectifs,
         ObjectifsParameters objectifsParameters) {
 
-    /** Assemble la vue de façade à partir du snapshot courant et des paramètres Objectifs. */
-    public static BudgetFacadeView from(BudgetDataModel data, ObjectifsParameters objectifsParameters) {
-        if (data == null) {
-            return null;
+    /** Paramètres Objectifs absents : valeurs par défaut (contrat REST inchangé). */
+    public BudgetFacadeView {
+        if (objectifsParameters == null) {
+            objectifsParameters = ObjectifsParameters.defaults();
         }
-        return new BudgetFacadeView(
-                data.settings(), data.incomes(), data.charges(), data.placements(), data.realEstate(),
-                data.retirement(), data.taxChildren(), data.taxBrackets(), data.taxRateOverrides(),
-                data.taxActualOverrides(), data.oneoff(), data.transfers(), data.variableIncomes(),
-                data.variableOverrides(), data.bankImport(), data.assetCategories(), data.loans(),
-                data.objectifs(),
-                objectifsParameters != null ? objectifsParameters : ObjectifsParameters.defaults());
     }
 }
