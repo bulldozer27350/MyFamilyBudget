@@ -223,7 +223,8 @@ un patch qui rencontre un arbitrage non tranché devient un patch « bloqué » 
 - **Objectif** : empêcher toute extension de l'usage. Liste fermée des classes autorisées (celle d'aujourd'hui), test qui échoue si elle grandit, et chaque patch SILO-1xx retire des lignes.
 - **Travaux** : remplace l'autorisation par nom du port `GlobalBudgetSnapshotWriter` par une liste datée avec, pour chaque entrée, le patch qui la supprime.
 - **Sortie** : liste figée ; aucune entrée sans patch de suppression associé.
-- **Statut** : [x] Non commencé
+- **Livré** : `BudgetDataModelAllowList` (38 classes, gel du 4 octobre 2026, patch de suppression nommé pour chaque entrée) et `BudgetDataModelUsageArchTest` (échec si une classe hors liste dépend du modèle, si la liste grandit, si une entrée est dupliquée, sans patch SILO-xxx ou périmée). Chaque patch SILO-1xx, SILO-119, SILO-21x et SILO-230 retire ses lignes et abaisse `FROZEN_SIZE`. Les règles par package de l'ancien garde-fou CLEAN-010 sont supprimées ; le garde-fou `GlobalSnapshotBoundaryArchTest` (CLEAN-020) est conservé jusqu'à SILO-119.
+- **Statut** : [x] Terminé
 
 ### SILO-003 : Garde-fous de graphe Maven
 - **Objectif** : faire échouer le build si `application-*`/`web` dépendent d'un `*-core` ou de `infra-jpa`, si un silo dépend d'un autre silo (D1), ou si `BudgetDataModel` réapparaît.
@@ -384,5 +385,5 @@ fichier `21` reste vivant.
 - **Tâche** : atteindre des silos isolés, une persistance par silo transactionnelle, et une séparation application/web.
 - **Acquis** : domaines purs sans `BudgetDataModel` ; ports Reader/Writer pour sept silos ; hubs Retraite, Fiscalité, Objectifs, Banque retirés ; écriture des paramètres distribuée ; `application` sans dépendance vers `persistence`.
 - **Piste en cours** : valider les décisions D1 à D8 (SILO-000).
-- **Reste à faire** : tout le reste de la section 7 ; premiers patchs sans dépendance : SILO-000, SILO-002.
+- **Reste à faire** : tout le reste de la section 7 ; SILO-002 est terminé ; premier patch sans dépendance restant : SILO-000 (décision D3 en attente d'explications).
 - **Instruction de reprise** : cloner `main`, relire ce fichier, annoncer le patch visé, puis livrer le `.patch` en LF sans attendre de validation (sauf SILO-000, qui demande l'avis de Marco).

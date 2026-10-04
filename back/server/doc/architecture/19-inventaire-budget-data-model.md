@@ -62,10 +62,10 @@ lui-même (garanti par `PureLayerArchTest` et `ResultModelsArchTest`). Aucune r�
 
 ## Garde-fou
 
-`BudgetDataModelUsageArchTest` : seuls `..internal.persistence..`, `..internal.factory..`,
-`..internal.mapper..`, `..internal.updater..`, `..internal.snapshot..` et les huit services d'API listés ci-dessus
-peuvent dépendre de `BudgetDataModel`. Un nouveau consommateur fait échouer la règle : il doit consommer des fragments via les `Reader`
-ou être ajouté à ce fichier et à la liste blanche avec sa classification.
+SILO-002 : `BudgetDataModelUsageArchTest` n'autorise plus de règle par package. Seules les classes nommées dans
+`BudgetDataModelAllowList` (liste fermée, gelée le 4 octobre 2026, 38 entrées) peuvent dépendre de `BudgetDataModel` ;
+chaque entrée indique le patch `SILO-xxx` qui la supprime. La liste ne peut que décroître. Cette page reste la référence
+de classification (`SNAPSHOT-GLOBAL`, `ASSEMBLY-TEMP`).
 
 ## Dette restante (hors `CLEAN-010`)
 
