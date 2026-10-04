@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjection;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageInput;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
@@ -96,8 +95,8 @@ class PointageInputFactoryTest {
                 List.of(new BankImportModel.MatchingModel("2026-05", List.of(mai)),
                         new BankImportModel.MatchingModel("2026-06", List.of(juin))));
 
-        BudgetDataModel data = new BudgetDataModel(null, List.of(SALAIRE), List.of(LOYER), List.of(LIVRET),
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        PointageInputFactory.Sources data = new PointageInputFactory.Sources(
+                List.of(LOYER), List.of(SALAIRE), List.of(LIVRET), null);
 
         PointageInput input = PointageInputFactory.from(bankImport, data, "2026-05");
 
@@ -111,8 +110,7 @@ class PointageInputFactoryTest {
     @DisplayName("from renvoie aucun lien si le mois n'a pas de rapprochement")
     void testFromWithoutMatchingForMonth() {
         BankImportModel bankImport = new BankImportModel(null, null, null, null, null, null);
-        BudgetDataModel data = new BudgetDataModel(null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        PointageInputFactory.Sources data = new PointageInputFactory.Sources(null, null, null, null);
 
         PointageInput input = PointageInputFactory.from(bankImport, data, "2026-05");
 

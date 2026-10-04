@@ -14,11 +14,9 @@ import com.moe.myfamilybudget.domain.bankpointage.calculation.BudgetLineProjecti
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageInput;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointagePeriod;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 
 /**
  * Construit un {@link PointageInput} et les {@link BudgetLineProjection} qu'il transporte (RF-501,
@@ -27,7 +25,9 @@ import com.moe.myfamilybudget.transition.model.SettingsModel;
  * <p>Le calcul des lignes budgétaires actives d'un mois (ex-{@code
  * PointageCalculator.calculateActiveBudgetLines}) est une étape de composition en amont : c'est
  * ici, et non plus dans le moteur de pointage, que {@code ChargeModel}, {@code IncomeModel},
- * {@code PlacementModel} et {@code SettingsModel} sont traduits en {@link BudgetLineProjection}.
+ * {@code PlacementModel} et le taux d'inflation sont traduits en {@link BudgetLineProjection}.
+ * SILO-114 : cette Factory ne connaît plus {@code BudgetDataModel} ni {@code SettingsModel} ;
+ * l'appelant lui fournit des {@link Sources} ou les fragments eux-mêmes.
  * Les règles (bornes de dates, croissance annuelle, taux d'inflation par défaut, libellé
  * « Épargne : » des placements) sont reprises à l'identique de l'ancienne implémentation.
  *
@@ -45,13 +45,24 @@ public final class PointageInputFactory {
     }
 
     /**
+     * Fragments du budget nécessaires pour composer les lignes actives (SILO-114). Les listes absentes
+     * sont lues comme vides, une inflation absente vaut zéro.
+     */
+    public record Sources(
+            List<ChargeModel> charges,
+            List<IncomeModel> incomes,
+            List<PlacementModel> placements,
+            BigDecimal inflationRate) {
+    }
+
+    /**
      * Assemble l'entrée de pointage d'un mois.
      *
      * @param bankImport import bancaire courant (transactions et rapprochements)
-     * @param data       budget courant, utilisé uniquement pour composer les lignes actives
+     * @param data       fragments du budget, utilisés uniquement pour composer les lignes actives
      * @param monthISO   mois pointé au format {@code YYYY-MM}
      */
-    public static PointageInput from(BankImportModel bankImport, BudgetDataModel data, String monthISO) {
+    public static PointageInput from(BankImportModel bankImport, Sources data, String monthISO) {
         Objects.requireNonNull(bankImport, "bankImport");
         Objects.requireNonNull(data, "data");
 
@@ -68,7 +79,7 @@ public final class PointageInputFactory {
         return new PointageInput(
                 bankImport.transactions(),
                 monthLinks,
-                activeBudgetLines(data.charges(), data.incomes(), data.placements(), data.settings(), monthISO),
+                activeBudgetLines(data.charges(), data.incomes(), data.placements(), data.inflationRate(), monthISO),
                 new PointagePeriod(monthISO));
     }
 
@@ -79,7 +90,7 @@ public final class PointageInputFactory {
             List<ChargeModel> charges,
             List<IncomeModel> incomes,
             List<PlacementModel> placements,
-            SettingsModel settings,
+            BigDecimal inflationRate,
             String monthISO) {
 
         if (monthISO == null || monthISO.isBlank()) {
@@ -87,10 +98,7 @@ public final class PointageInputFactory {
         }
 
         int year = parseYearFromMonthISO(monthISO);
-        SettingsModel effectiveSettings = settings != null
-                ? settings
-                : new SettingsModel(null, null, null, null, null, null, null, null, null, null, null, null);
-        BigDecimal inflationRate = effectiveSettings.getEffectiveInflationRate();
+        BigDecimal effectiveInflationRate = inflationRate != null ? inflationRate : BigDecimal.ZERO;
 
         List<BudgetLineProjection> activeLines = new ArrayList<>();
 
@@ -100,7 +108,7 @@ public final class PointageInputFactory {
                 if (c == null) continue;
                 if (!isActive(monthISO, c.start(), c.end())) continue;
 
-                BigDecimal monthly = calculateChargeMonthly(c, year, inflationRate);
+                BigDecimal monthly = calculateChargeMonthly(c, year, effectiveInflationRate);
                 if (monthly.compareTo(BigDecimal.ZERO) > 0) {
                     activeLines.add(new BudgetLineProjection(c.id(), c.label(), "charge", monthly, c.categoryId()));
                 }

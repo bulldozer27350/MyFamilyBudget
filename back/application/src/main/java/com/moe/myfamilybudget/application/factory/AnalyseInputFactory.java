@@ -70,7 +70,7 @@ public class AnalyseInputFactory {
                     data != null ? data.charges() : null,
                     data != null ? data.incomes() : null,
                     data != null ? data.placements() : null,
-                    data != null ? data.settings() : null,
+                    data != null && data.settings() != null ? data.settings().inflationRate() : null,
                     monthISO
             );
             monthlyBudgetLines.add(new MonthlyBudgetLines(monthISO, monthLines));

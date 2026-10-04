@@ -16,7 +16,6 @@ import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
 import com.moe.myfamilybudget.domain.bankpointage.model.AutoMatchResultModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
@@ -268,7 +267,17 @@ public class StatementBankImportMapper {
         return map;
     }
 
-    public Map<String, Object> toPendingOperationsResponseMap(BankImportModel bankImport, BudgetDataModel budgetData) {
+    /**
+     * SILO-114 : plus de {@code BudgetDataModel} ; l'appelant fournit les fragments lus chez leurs
+     * propriétaires. Contrat REST inchangé : le bloc {@code settings} est celui du modèle de paramètres, avec
+     * {@code pass2026} et {@code passGrowthRate} à {@code null} comme avant.
+     */
+    public Map<String, Object> toPendingOperationsResponseMap(
+            BankImportModel bankImport,
+            List<ChargeModel> charges,
+            List<IncomeModel> incomes,
+            List<OneOffExpenseModel> oneoff,
+            SettingsModel settings) {
         if (bankImport == null) return Collections.emptyMap();
         Map<String, Object> map = new HashMap<>();
 
@@ -288,28 +297,19 @@ public class StatementBankImportMapper {
                 ? bankImport.rules().stream().map(this::toRuleMap).collect(Collectors.toList())
                 : Collections.emptyList());
 
-        if (budgetData != null) {
-            map.put("charges", budgetData.getEffectiveCharges() != null
-                    ? budgetData.getEffectiveCharges().stream().map(this::toChargeMap).collect(Collectors.toList())
-                    : Collections.emptyList());
+        map.put("charges", charges != null
+                ? charges.stream().map(this::toChargeMap).collect(Collectors.toList())
+                : Collections.emptyList());
 
-            map.put("incomes", budgetData.getEffectiveIncomes() != null
-                    ? budgetData.getEffectiveIncomes().stream().map(this::toIncomeMap).collect(Collectors.toList())
-                    : Collections.emptyList());
+        map.put("incomes", incomes != null
+                ? incomes.stream().map(this::toIncomeMap).collect(Collectors.toList())
+                : Collections.emptyList());
 
-            map.put("oneoff", budgetData.getEffectiveOneoff() != null
-                    ? budgetData.getEffectiveOneoff().stream().map(this::toOneOffMap).collect(Collectors.toList())
-                    : Collections.emptyList());
+        map.put("oneoff", oneoff != null
+                ? oneoff.stream().map(this::toOneOffMap).collect(Collectors.toList())
+                : Collections.emptyList());
 
-            map.put("settings", budgetData.getEffectiveSettings() != null
-                    ? toSettingsMap(budgetData.getEffectiveSettings(), budgetData.retirement())
-                    : Collections.emptyMap());
-        } else {
-            map.put("charges", Collections.emptyList());
-            map.put("incomes", Collections.emptyList());
-            map.put("oneoff", Collections.emptyList());
-            map.put("settings", Collections.emptyMap());
-        }
+        map.put("settings", settings != null ? toSettingsMap(settings, null) : Collections.emptyMap());
 
         return map;
     }

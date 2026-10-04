@@ -16,7 +16,6 @@ import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.AutoMatchResultModel;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculator;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
@@ -25,11 +24,10 @@ import com.moe.myfamilybudget.transition.port.SettingsReader;
  * Service et Contrôleur REST implémentant le contrat OpenAPI OperationsEnCoursApi (Tag: Operations en cours).
  *
  * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
- * {@code PersistenceManager}. Lecture via {@link BankReader}, {@link BudgetReader} et
- * {@link SettingsReader} ; écriture via {@link BankImportCommandService} (déjà en place depuis
- * RF-A00). {@code toPendingOperationsResponseMap} attend encore un {@link BudgetDataModel}
- * complet (voir {@code StatementBankImportMapper}) : il n'en lit que charges/incomes/oneoff/
- * settings, les autres domaines sont donc laissés à {@code null}, comme pour Trésorerie.
+ * {@code PersistenceManager}. SILO-114 : plus de {@code BudgetDataModel} ; lecture via {@link BankReader}
+ * et {@link BudgetReader} (charges, revenus, ponctuels) ; {@link SettingsReader} n'est conservé que pour le
+ * bloc {@code settings} de la réponse REST (contrat inchangé), retiré avec la composition applicative de ce
+ * bloc. Écriture via {@link BankImportCommandService} (déjà en place depuis RF-A00).
  */
 @Service
 @RestController
@@ -54,13 +52,6 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         this.mapper = mapper;
     }
 
-    private BudgetDataModel composeBudgetData() {
-        return new BudgetDataModel(
-                settingsReader.getSettings(), budgetReader.getIncomes(), budgetReader.getCharges(),
-                null, null, null, null, null, null, null,
-                budgetReader.getOneoffExpenses(), null, null, null, null, null, null, null);
-    }
-
     // ---------------------------------------------------------------------------
     // TAG: OPERATIONS EN COURS (3 méthodes définies dans OpenAPI)
     // ---------------------------------------------------------------------------
@@ -68,7 +59,12 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
     @Override
     public ResponseEntity<Object> getPendingOperations() {
         BankImportModel current = bankReader.getBankImport();
-        Map<String, Object> responseMap = mapper.toPendingOperationsResponseMap(current, composeBudgetData());
+        Map<String, Object> responseMap = mapper.toPendingOperationsResponseMap(
+                current,
+                budgetReader.getCharges(),
+                budgetReader.getIncomes(),
+                budgetReader.getOneoffExpenses(),
+                settingsReader.getSettings());
         return ResponseEntity.ok(responseMap);
     }
 
