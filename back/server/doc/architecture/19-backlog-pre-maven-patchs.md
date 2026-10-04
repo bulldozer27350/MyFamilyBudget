@@ -359,6 +359,7 @@ Avant tout patch :
 # GATE-010 — Gate final avant reprise DB / ouverture Maven
 
 - **Prérequis** : tous les patchs précédents.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Annulé, remplacé par SILO-190 et SILO-290 (Maven est déjà ouvert)
 - **Finalité** : vérifier qu'il ne reste plus de dette connue bloquante avant le passage aux modules.
 - **Contrôles obligatoires** :
 

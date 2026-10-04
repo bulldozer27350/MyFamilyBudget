@@ -5,6 +5,17 @@ Statut : 🟡 à valider
 Ce fichier fait office de constitution du chantier. Toute proposition de contrat (`XxxInput`,
 `XxxResult`) ou de module doit s'y conformer.
 
+> **Révision du 4 octobre 2026 (SILO-001)** : l'objectif a évolué ; voir [`21-plan-silotage.md`](21-plan-silotage.md). Les points
+> ci-dessous prévalent sur le reste de ce fichier en cas de conflit :
+>
+> - `BudgetDataModel` n'est plus un snapshot toléré : il est supprimé (SILO-230). Aucun usage nouveau ; liste fermée et décroissante (SILO-002).
+> - Chaque domaine est un silo qui ne connaît aucun autre silo (D1). Un silo ne consomme pas les projections ou résultats publiés
+>   par un autre silo : il définit ses propres entrées et l'application traduit. Le graphe de dépendances ci-dessous décrit des
+>   flux de données orchestrés par l'application, non des dépendances de module.
+> - Les revenus et charges appartiennent à Trésorerie ; `domain-budget` est dissous (D2).
+> - La persistance appartient au silo propriétaire de la donnée ; l'application est la seule transverse et ne connaît que les API des silos (D4, D6).
+> - `application` n'est pas le serveur web : DTO OpenAPI, `ResponseEntity` et erreurs HTTP relèvent du module `web`.
+
 ## Ce qu'il ne faut surtout pas faire
 
 - **Créer un nouveau modèle global.** Un `XxxInput` qui reprend tous les sous-modèles de

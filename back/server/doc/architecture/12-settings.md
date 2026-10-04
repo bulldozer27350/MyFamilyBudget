@@ -2,6 +2,8 @@
 
 Statut : 🟡 à valider
 
+> **Révision du 4 octobre 2026 (SILO-001)** : `SettingsModel` et `SettingsReader` disparaissent (SILO-100) et `SettingsEntity` est dissoute chez les propriétaires des champs (SILO-220). La façade REST composite et la propriété métier distribuée décrites ici restent valables.
+
 ## Décision retenue
 
 La cible n'est **pas** un `GlobalSettingsModel` qui recréerait un `BudgetDataModel` miniature.

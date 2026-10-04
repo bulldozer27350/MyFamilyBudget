@@ -793,9 +793,9 @@ spécifiques à relire avant de le démarrer.
 - Revue de bout en bout : cocher chaque item de `14-checklist-maven.md` (uniquement palier 1 de persistance).
 - Aucune modification de code attendue ici — c'est une revue humaine avant de planifier la création effective des modules Maven, qui fera l'objet d'une nouvelle liste de patchs.
 - **Statut** :
-- [x] Non commencé
+- [ ] Non commencé
 - [ ] Démarré
 - [ ] En attente de réponse
-- [ ] Annulé
+- [x] Annulé, remplacé par SILO-390 (Maven est déjà ouvert ; la checklist devient la base des portes A, B et C)
 - [ ] Terminé
 - [ ] Constaté comme mergé

@@ -2,7 +2,7 @@
 
 Statut : 🟡 à exécuter depuis `main` courant
 
-> **Mise à jour du 4 octobre 2026** : les patchs MAVEN-120 (périmètre), MAVEN-130, MAVEN-140, MAVEN-150 et MAVEN-160 sont repris ou remplacés par [`21-plan-silotage.md`](21-plan-silotage.md).
+> **Mise à jour du 4 octobre 2026** : les patchs MAVEN-120 (périmètre), MAVEN-130, MAVEN-140, MAVEN-150 et MAVEN-160 sont repris ou remplacés par [`21-plan-silotage.md`](21-plan-silotage.md) ; les statuts correspondants sont à jour (SILO-001).
 
 Document établi à partir de l’état du dépôt au **2 octobre 2026** et des travaux d’architecture déjà réalisés.
 
@@ -31,8 +31,8 @@ La stratégie retenue est :
 - Maven doit matérialiser les frontières métier, pas reproduire les anciens packages `internal.*`.
 - Un domaine ne doit pas dépendre d’un autre domaine via ses classes d’implémentation internes ; les échanges passent par des contrats/projections explicites.
 - Les domaines purs ne dépendent ni de JPA, ni de `PersistenceManager`, ni des DTO OpenAPI, ni de Spring lorsqu’il n’est pas nécessaire.
-- `BudgetDataModel` reste un **snapshot global de transition** ; il n’est pas introduit comme dépendance des nouveaux modules de domaine.
-- `PersistenceManager`, `BudgetPersistenceGateway`, `BudgetCacheStore` et les entités JPA restent dans le périmètre persistance tant que les `DB-xxx` ne les ont pas rendus plus fins.
+- `BudgetDataModel` reste un **snapshot global de transition** ; il n’est pas introduit comme dépendance des nouveaux modules de domaine. Il doit disparaître (SILO-230) : aucun nouvel usage, liste fermée dans `BudgetDataModelAllowList` (SILO-002).
+- `PersistenceManager`, `BudgetPersistenceGateway`, `BudgetCacheStore` et les entités JPA restent dans le périmètre persistance tant que les `DB-xxx` ne les ont pas rendus plus fins. Le module `persistence` est un état transitoire : il est éclaté par silo (SILO-210 à SILO-217) puis supprimé (SILO-230).
 - Les `XxxInputFactory` sont considérées comme des composants d’**assemblage applicatif**, pas comme des composants du moteur métier pur.
 - Les `ResultModel` métier restent dans les domaines ; les vues REST composites appartiennent à l’application/API.
 - Chaque patch doit compiler et laisser la CI verte.
@@ -517,6 +517,7 @@ La stratégie retenue est :
 # MAVEN-120 — Extraire `persistence`
 
 - **Prérequis** : MAVEN-100.
+- **Révision (SILO-001)** : périmètre transitoire. Le module monolithique `persistence` est remplacé par un module `infra-jpa` (configuration technique seule, SILO-200) et par la persistance de chaque silo dans son module (SILO-210 à SILO-217). Aucun changement pour les travaux déjà livrés.
 - **Objectif** : regrouper tout ce qui est infrastructure de persistance, même si son contenu continue à évoluer pendant les `DB-xxx`.
 - **Contenu cible** :
   - `internal.persistence.*`
@@ -571,7 +572,7 @@ La stratégie retenue est :
   - déplacer hors de ce module les tests unitaires purs ;
   - conserver les tests d’intégration nécessitant le contexte complet ici ou dans une source de test dédiée.
 - **Tests** : démarrage Spring ; endpoints critiques ; import/reset ; E2E ; packaging Docker.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Annulé, remplacé par SILO-320 et SILO-330 (`web` + `bootstrap`) / [ ] Terminé
 
 # MAVEN-140 — Stabiliser le graphe et ajouter les garde-fous Maven
 
@@ -591,7 +592,7 @@ La stratégie retenue est :
   - aucun cycle introduit par les services transverses ;
   - build complet vert.
 - **Tests** : Maven reactor + ArchUnit + compilation complète.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Annulé, remplacé par SILO-003 et SILO-340 / [ ] Terminé
 
 # MAVEN-150 — CI sélective par sous-graphe Maven
 
@@ -608,11 +609,11 @@ La stratégie retenue est :
   - ne pas considérer le cache Maven comme un substitut à la sélection de modules.
 - **Critère de sortie** : une modification d’un domaine isolé ne déclenche pas systématiquement tous les tests JVM unitaires indépendants.
 - **Tests** : plusieurs PR artificielles ou jeux de chemins représentatifs ; contrôle qu’un changement transversal force correctement le build complet.
-- **Statut** : [x] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Annulé, remplacé par SILO-350 / [ ] Terminé
 
 # MAVEN-160 — Revue de candidatures au multi-repo
 
-- **Prérequis** : MAVEN-150 et `DB-1180` terminé.
+- **Prérequis** : SILO-390 (le prérequis `DB-1180` est annulé, voir `21-plan-silotage.md`). Reporté : à reconsidérer seulement après SILO-390.
 - **Objectif** : décider quels modules, s’il en existe, justifient réellement un repository et un cycle de release indépendants.
 - **Critères de décision** :
   - API publique suffisamment stable ;

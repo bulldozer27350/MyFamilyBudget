@@ -2,6 +2,8 @@
 
 Statut : 🟡 à valider
 
+> **Mise à jour du 4 octobre 2026** : DB-1080, DB-1170, DB-1180, DB-1190 et DB-1200 sont annulés et remplacés par les patchs `SILO-xxx` de [`21-plan-silotage.md`](21-plan-silotage.md) (voir sa section 10). DB-1140, DB-1150 et DB-1160 sont poursuivis sous les identifiants SILO-214, SILO-215 et SILO-216.
+
 ## Lecture obligatoire avant tout patch
 
 0. Le palier historique `RF-B00` / `RF-B01` de `15-backlog-patchs.md` doit être mergé et vert ;
@@ -793,7 +795,7 @@ pas les agents qui travaillent sur les autres domaines.
 - **Prérequis** : DB-1051, DB-1061, `VT-220`, `VT-320`.
 - **Objectif** : prouver que le changement de persistance reste invisible fonctionnellement.
 - **Travaux** : F1/F2/F3/F4 de `16-tests.md`, fallback désactivé.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Annulé, remplacé par SILO-250 / [ ] Terminé
 
 ---
 
@@ -910,7 +912,7 @@ les plus isolés.
 - **Objectif** : retirer la dépendance technique globale après disparition du hub.
 - **Travaux** : un mapper/converter par owner ; supprimer les méthodes mortes ; laisser les conversions du snapshot
   global dans un composant explicitement transverse.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Annulé, remplacé par SILO-210 à SILO-217 / [ ] Terminé
 
 ## DB-1180 — Réduire `BudgetDataModel` au snapshot global
 
@@ -918,14 +920,14 @@ les plus isolés.
 - **Objectif** : empêcher l'utilisation de `BudgetDataModel` comme façade d'accès quotidien à la persistance.
 - **Travaux** : recherche des `new BudgetDataModel(...)`, `getBudgetData()`, `setBudgetData()` ; conserver seulement
   les chemins import/export/backup/migration/tests globaux.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Annulé, remplacé par SILO-230 (DB-1180 conservait `BudgetDataModel` comme snapshot global) / [ ] Terminé
 
 ## DB-1190 — Nettoyage final du bootstrap/persistence legacy
 
 - **Prérequis** : DB-1180.
 - **Objectif** : supprimer le code de transition qui n'a plus d'appelant.
 - **Travaux** : anciens repositories, gateways legacy, méthodes inutilisées, wiring manuel restant.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Annulé, remplacé par SILO-230 / [ ] Terminé
 
 ## DB-1200 — Gate persistance avant Maven
 
@@ -934,7 +936,7 @@ les plus isolés.
 - **Contrôles** : build, PostgreSQL, restart, E2E fallback désactivé, ArchUnit, recherche des références résiduelles,
   checklist `14-checklist-maven.md`.
 - **Livrable** : validation humaine + passage vers le futur backlog Maven.
-- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [ ] Annulé / [ ] Terminé
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente / [x] Annulé, remplacé par SILO-290 / [ ] Terminé
 
 ## Graphe de parallélisation
 

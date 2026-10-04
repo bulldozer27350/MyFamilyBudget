@@ -2,7 +2,7 @@
 
 Statut : 🟡 à valider
 
-> **Mise à jour du 4 octobre 2026** : l'objectif a évolué (suppression totale de `BudgetDataModel`, persistance par silo, application ≠ web). O3, R3 et C1 de ce document sont à réviser ; voir [`21-plan-silotage.md`](21-plan-silotage.md).
+> **Mise à jour du 4 octobre 2026** : l'objectif a évolué (suppression totale de `BudgetDataModel`, persistance par silo, application ≠ web). O3, R3 et C1 ont été révisés par SILO-001 (versions d'origine remplacées ci-dessous) ; voir [`21-plan-silotage.md`](21-plan-silotage.md).
 
 ## Pourquoi ce fichier existe
 
@@ -99,17 +99,15 @@ Exemples de propriétaire :
 `Settings` reste une façade REST/application : ses champs sont stockés chez leur propriétaire métier, il n'y a
 pas vocation à créer un nouveau « domaine Settings » monolithique.
 
-### O3 — Faire de `BudgetDataModel` un snapshot, pas un modèle d'accès aux données
+### O3 — Supprimer `BudgetDataModel`, composer l'export à partir de fragments de silo
 
-Le type peut survivre pour :
+*(Révisé le 4 octobre 2026 : l'ancienne version faisait survivre le type comme snapshot.)*
 
-- export JSON ;
-- import JSON ;
-- backup/restore ;
-- migrations de données ;
-- tests de caractérisation globaux.
+`BudgetDataModel` disparaît (SILO-230). Chaque silo expose `export`, `replace` et `reset` sur ses propres records (D6). Pour
+l'export, l'import, la sauvegarde et la restauration, l'application compose et décompose le JSON global à partir de ces
+fragments et exécute l'import dans une seule transaction. Le format JSON `/budget`, `/budget/import` et `/budget/reset` est conservé côté web.
 
-Il ne doit plus être nécessaire pour lire une seule donnée de domaine.
+Usage de transition : strictement borné par la liste fermée de SILO-002, chaque entrée nommant le patch qui la supprime.
 
 ### O4 — Retirer `BudgetDataEntity` du rôle de racine relationnelle universelle
 
@@ -220,15 +218,17 @@ Fiscalité, Trésorerie, Objectifs, Simulation et EconomicAssumptions, selon la 
 
 ### Snapshot `BudgetDataModel`
 
-Il reste utile pour les formats d'échange globaux. Cela ne doit pas être confondu avec un accès transactionnel
-quotidien aux données métier.
+*(Révisé le 4 octobre 2026.)* Il ne survit pas : les formats d'échange globaux sont composés par l'application à partir des
+fragments de silo (voir O3).
 
 ## Contraintes
 
-### C1 — Une seule base PostgreSQL pendant ce chantier
+### C1 — Une seule base PostgreSQL, des tables par silo
 
-Le but est de séparer les responsabilités, pas de distribuer le système. Une base physique par domaine serait une
-décision d'infrastructure ultérieure.
+*(Révisé le 4 octobre 2026.)* Le but est de séparer les responsabilités, pas de distribuer le système. Une base, un seul
+`PlatformTransactionManager`, une même `EntityManagerFactory` ; chaque silo possède ses entités, repositories et mappers, avec des
+tables préfixées par silo et aucune clé étrangère entre silos (D4). C'est ce qui rend possible une transaction couvrant plusieurs
+silos, ouverte par l'application via un port `TransactionRunner`. Une base physique par silo serait une décision d'infrastructure ultérieure.
 
 ### C2 — Pas de référence JPA inter-domaines
 
@@ -248,7 +248,7 @@ soit publié en mémoire ; en cas d'échec DB, l'ancien état reste observable.
 ### C5 — Une modification de schéma doit rester réversible
 
 Chaque patch JPA doit pouvoir être isolé et identifié. Les suppressions d'anciennes relations viennent après une
-preuve de non-régression, pas avant.
+preuve de non-régression, pas avant. Le système de migration de schéma retenu est Liquibase (D5), à introduire par le patch qui en a besoin.
 
 ## Risques et limites
 
@@ -262,10 +262,10 @@ Une lecture du code n'est donc pas une validation suffisante.
 La séparation doit progressivement créer des convertisseurs par domaine. Le laisser global trop longtemps recrée
 une dépendance cachée entre modules Maven.
 
-### R3 — Les imports/exports maintiennent une forme globale
+### R3 — Les imports/exports sont composés par l'application
 
-Ce n'est pas un échec de l'architecture : c'est une frontière applicative assumée. Le point important est que cette
-forme globale ne soit plus utilisée par les calculateurs ni les repositories métier.
+*(Révisé le 4 octobre 2026.)* La forme globale n'existe plus que comme document JSON assemblé par l'application à partir des
+fragments de silo ; aucun type global n'est utilisé par les calculateurs, les repositories ni les services de silo.
 
 ### R4 — Pas d'extraction microservice pendant cette phase
 

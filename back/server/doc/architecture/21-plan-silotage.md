@@ -236,7 +236,8 @@ un patch qui rencontre un arbitrage non tranché devient un patch « bloqué » 
 
 ### SILO-001 : Réviser les principes et marquer les patchs remplacés
 - **Objectif** : aligner `00-principes.md`, `13-persistance.md` (O3, R3, C1) et `20-backlog-modules-maven-patchs.md` (principes, MAVEN-120, 130, 140, 160) sur cette cible ; marquer « Annulé, remplacé par SILO-xxx » chaque item non terminé qui est absorbé, selon la section 10 (RF-D00, DB-1080, DB-1170, DB-1180, DB-1190, DB-1200, GATE-010, MAVEN-130 à MAVEN-150), sans supprimer aucun fichier.
-- **Statut** : [x] Non commencé
+- **Livré** : `00`, `12`, `13` (O3, R3, C1, snapshot, C5) et `20` (principes, MAVEN-120, note de tête) révisés ; RF-D00, DB-1080, DB-1170, DB-1180, DB-1190, DB-1200, GATE-010, MAVEN-130, MAVEN-140, MAVEN-150 marqués « Annulé, remplacé par SILO-xxx » ; MAVEN-160 reporté après SILO-390 (prérequis DB-1180 retiré). Aucun fichier supprimé.
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente de réponse / [ ] Annulé / [x] Terminé
 
 ### SILO-002 : Garde-fou de péremption pour `BudgetDataModel`
 - **Objectif** : empêcher toute extension de l'usage. Liste fermée des classes autorisées (celle d'aujourd'hui), test qui échoue si elle grandit, et chaque patch SILO-1xx retire des lignes.
@@ -404,5 +405,5 @@ fichier `21` reste vivant.
 - **Tâche** : atteindre des silos isolés, une persistance par silo transactionnelle, et une séparation application/web.
 - **Acquis** : domaines purs sans `BudgetDataModel` ; ports Reader/Writer pour sept silos ; hubs Retraite, Fiscalité, Objectifs, Banque retirés ; écriture des paramètres distribuée ; `application` sans dépendance vers `persistence`.
 - **Piste en cours** : décisions D1 à D8 tranchées (SILO-000 terminé).
-- **Reste à faire** : tout le reste de la section 7 ; SILO-000 et SILO-002 sont terminés ; patchs maintenant disponibles : SILO-001, SILO-003, SILO-100.
+- **Reste à faire** : tout le reste de la section 7 ; SILO-000, SILO-001 et SILO-002 sont terminés ; patchs maintenant disponibles : SILO-003, SILO-100.
 - **Instruction de reprise** : cloner `main`, relire ce fichier, annoncer le patch visé, puis livrer le `.patch` en LF sans attendre de validation (un arbitrage non tranché rend le patch « bloqué »).
