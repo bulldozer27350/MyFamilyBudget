@@ -26,14 +26,12 @@ import com.moe.myfamilybudget.domain.treasury.calculation.TresorerieCalculationS
 import com.moe.myfamilybudget.application.factory.TreasuryInputFactory;
 import com.moe.myfamilybudget.application.mapper.TresorerieMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.CategoryOptionModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculator;
 import com.moe.myfamilybudget.domain.budget.RealAverageModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieResultModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSuggestionModel;
 import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
@@ -41,7 +39,13 @@ import com.moe.myfamilybudget.application.command.TresorerieCommandService;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.transition.port.EconomicAssumptionsReader;
+import com.moe.myfamilybudget.transition.port.SimulationSettingsReader;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieAdjustmentKind;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieLineField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieList;
@@ -49,7 +53,7 @@ import com.moe.myfamilybudget.transition.error.UnknownTresorerieFieldException;
 
 /**
  * Contrôleur REST de la trésorerie prévisionnelle (Trésorerie) : orchestration HTTP uniquement
- * (lecture via {@link PersistenceManager}, mutations via {@link TresorerieCommandService},
+ * (lectures via les ports propriétaires, mutations via {@link TresorerieCommandService},
  * mapping du résultat en DTO).
  *
  * <p>RF-401 (voir doc/architecture/06-domaine-tresorerie.md) : la projection de flux est déléguée
@@ -58,10 +62,12 @@ import com.moe.myfamilybudget.transition.error.UnknownTresorerieFieldException;
  * assemblées ici au niveau application.
  *
  * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
- * {@code PersistenceManager}. Les lectures passent par les ports de domaine ({@link
- * SettingsReader}, {@link BudgetReader}, {@link PatrimoineReader}, {@link BankReader}) ; le
- * {@link BudgetDataModel} attendu par {@link TreasuryInputFactory} est recomposé localement à
- * partir de ces ports, avec les domaines non lus laissés à {@code null}.
+ * {@code PersistenceManager}. SILO-113 : plus de {@code BudgetDataModel} ; chaque fragment est lu chez son
+ * propriétaire ({@link RetirementSettingsReader}, {@link TaxSettingsReader},
+ * {@link TresorerieSettingsReader}, {@link SimulationSettingsReader}, {@link EconomicAssumptionsReader},
+ * {@link RetirementReader}, {@link TaxReader}, {@link BudgetReader}, {@link PatrimoineReader},
+ * {@link BankReader}) et transmis à {@link TreasuryInputFactory} sous forme de
+ * {@link TreasuryInputFactory.Sources}.
  */
 @RestController
 public class TresorerieServiceImpl implements TresorerieApi {
@@ -70,7 +76,13 @@ public class TresorerieServiceImpl implements TresorerieApi {
     private final TresorerieCalculationService calculationService;
     private final TreasuryInputFactory treasuryInputFactory;
     private final TresorerieCommandService tresorerieCommandService;
-    private final SettingsReader settingsReader;
+    private final RetirementSettingsReader retirementSettingsReader;
+    private final TaxSettingsReader taxSettingsReader;
+    private final TresorerieSettingsReader tresorerieSettingsReader;
+    private final SimulationSettingsReader simulationSettingsReader;
+    private final EconomicAssumptionsReader economicAssumptionsReader;
+    private final RetirementReader retirementReader;
+    private final TaxReader taxReader;
     private final BudgetReader budgetReader;
     private final PatrimoineReader patrimoineReader;
     private final BankReader bankReader;
@@ -78,7 +90,13 @@ public class TresorerieServiceImpl implements TresorerieApi {
     public TresorerieServiceImpl(
             TresorerieMapper mapper,
             TresorerieCommandService tresorerieCommandService,
-            SettingsReader settingsReader,
+            RetirementSettingsReader retirementSettingsReader,
+            TaxSettingsReader taxSettingsReader,
+            TresorerieSettingsReader tresorerieSettingsReader,
+            SimulationSettingsReader simulationSettingsReader,
+            EconomicAssumptionsReader economicAssumptionsReader,
+            RetirementReader retirementReader,
+            TaxReader taxReader,
             BudgetReader budgetReader,
             PatrimoineReader patrimoineReader,
             BankReader bankReader) {
@@ -86,25 +104,43 @@ public class TresorerieServiceImpl implements TresorerieApi {
         this.tresorerieCommandService = tresorerieCommandService;
         this.calculationService = new TresorerieCalculationService();
         this.treasuryInputFactory = new TreasuryInputFactory();
-        this.settingsReader = settingsReader;
+        this.retirementSettingsReader = retirementSettingsReader;
+        this.taxSettingsReader = taxSettingsReader;
+        this.tresorerieSettingsReader = tresorerieSettingsReader;
+        this.simulationSettingsReader = simulationSettingsReader;
+        this.economicAssumptionsReader = economicAssumptionsReader;
+        this.retirementReader = retirementReader;
+        this.taxReader = taxReader;
         this.budgetReader = budgetReader;
         this.patrimoineReader = patrimoineReader;
         this.bankReader = bankReader;
     }
 
-    private BudgetDataModel composeBudgetData() {
-        return new BudgetDataModel(
-                settingsReader.getSettings(), budgetReader.getIncomes(), budgetReader.getCharges(),
-                patrimoineReader.getPlacements(), null, null, null, null, null, null,
-                budgetReader.getOneoffExpenses(), patrimoineReader.getTransfers(),
-                budgetReader.getVariableIncomes(), budgetReader.getVariableOverrides(),
-                bankReader.getBankImport(), null, null, null);
+    private TreasuryInputFactory.Sources readSources() {
+        return new TreasuryInputFactory.Sources(
+                retirementSettingsReader.getRetirementSettings(),
+                taxSettingsReader.getTaxSettings(),
+                tresorerieSettingsReader.getTresorerieSettings(),
+                simulationSettingsReader.getSimulationSettings(),
+                economicAssumptionsReader.getEconomicAssumptions().inflationRate(),
+                retirementReader.getRetirement(),
+                budgetReader.getIncomes(),
+                budgetReader.getCharges(),
+                patrimoineReader.getPlacements(),
+                budgetReader.getOneoffExpenses(),
+                patrimoineReader.getTransfers(),
+                budgetReader.getVariableIncomes(),
+                budgetReader.getVariableOverrides(),
+                taxReader.getTaxChildren(),
+                taxReader.getTaxBrackets(),
+                taxReader.getTaxRateOverrides(),
+                taxReader.getTaxActualOverrides(),
+                bankReader.getBankImport());
     }
 
     @Override
     public ResponseEntity<TresorerieResponseDto> getTresorerie(Boolean useConstantEuros) {
-        BudgetDataModel data = composeBudgetData();
-        TresorerieResultModel result = computeTresorerie(data, Boolean.TRUE.equals(useConstantEuros));
+        TresorerieResultModel result = computeTresorerie(readSources(), Boolean.TRUE.equals(useConstantEuros));
         return ResponseEntity.ok(this.mapper.toTresorerieResponseDto(result));
     }
 
@@ -143,10 +179,9 @@ public class TresorerieServiceImpl implements TresorerieApi {
 
     /**
      * Calcule la projection et compose le modèle de résultat complet (RF-401).
-     * CLEAN-010 : visibilité réduite au package ({@code TresorerieServiceImplTest} est dans le même
-     * package) pour que la signature à base de {@code BudgetDataModel} ne soit plus exposée.
+     * Visibilité réduite au package ({@code TresorerieServiceImplTest} est dans le même package).
      */
-    TresorerieResultModel computeTresorerie(BudgetDataModel data, boolean useConstantEuros) {
+    TresorerieResultModel computeTresorerie(TreasuryInputFactory.Sources data, boolean useConstantEuros) {
         TreasuryProjectionInput input = this.treasuryInputFactory.from(data);
         TreasuryProjection projections = this.calculationService.compute(input);
 
@@ -154,25 +189,25 @@ public class TresorerieServiceImpl implements TresorerieApi {
         List<Integer> years = projections.years();
         List<Integer> previewYears = projections.previewYears();
 
-        List<String> incomeLabels = data.getEffectiveIncomes().stream()
+        List<String> incomeLabels = data.incomes().stream()
                 .map(IncomeModel::label)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        List<String> variableIncomeLabels = data.getEffectiveVariableIncomes().stream()
+        List<String> variableIncomeLabels = data.variableIncomes().stream()
                 .map(VariableIncomeModel::label)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        List<CategoryOptionModel> categoryOptions = buildCategoryOptions(data);
+        List<CategoryOptionModel> categoryOptions = buildCategoryOptions(data.bankImport());
         List<TresorerieSuggestionModel> suggestions = buildTresorerieSuggestions(data);
 
         return new TresorerieResultModel(
-                data.getEffectiveIncomes(),
-                data.getEffectiveCharges(),
-                data.getEffectiveOneoff(),
-                data.getEffectiveVariableIncomes(),
-                data.getEffectiveVariableOverrides(),
+                data.incomes(),
+                data.charges(),
+                data.oneoff(),
+                data.variableIncomes(),
+                data.variableOverrides(),
                 incomeLabels,
                 variableIncomeLabels,
                 categoryOptions,
@@ -185,15 +220,15 @@ public class TresorerieServiceImpl implements TresorerieApi {
         );
     }
 
-    List<CategoryOptionModel> buildCategoryOptions(BudgetDataModel data) {
+    List<CategoryOptionModel> buildCategoryOptions(BankImportModel bankImport) {
         List<CategoryOptionModel> list = new ArrayList<>();
         list.add(new CategoryOptionModel("", "— Non liée —"));
 
-        if (data.bankImport() != null && data.bankImport().categories() != null) {
+        if (bankImport != null && bankImport.categories() != null) {
             Collator frCollator = Collator.getInstance(Locale.FRENCH);
             frCollator.setStrength(Collator.PRIMARY);
 
-            List<BankImportModel.CategoryModel> sorted = new ArrayList<>(data.bankImport().categories());
+            List<BankImportModel.CategoryModel> sorted = new ArrayList<>(bankImport.categories());
             sorted.sort((a, b) -> frCollator.compare(
                     a.label() != null ? a.label() : "",
                     b.label() != null ? b.label() : ""
@@ -206,7 +241,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
         return list;
     }
 
-    Map<String, RealAverageModel> computeRealAverages(BudgetDataModel data) {
+    Map<String, RealAverageModel> computeRealAverages(TreasuryInputFactory.Sources data) {
         if (data.bankImport() == null) {
             return Map.of();
         }
@@ -224,13 +259,13 @@ public class TresorerieServiceImpl implements TresorerieApi {
         }
 
         Map<String, String> lineKindMap = new HashMap<>();
-        for (ChargeModel c : data.getEffectiveCharges()) {
+        for (ChargeModel c : data.charges()) {
             lineKindMap.put(c.id(), "charge");
         }
-        for (IncomeModel i : data.getEffectiveIncomes()) {
+        for (IncomeModel i : data.incomes()) {
             lineKindMap.put(i.id(), "revenu");
         }
-        for (PlacementModel p : data.getEffectivePlacements()) {
+        for (PlacementModel p : data.placements()) {
             lineKindMap.put(p.id(), "placement");
         }
 
@@ -293,20 +328,20 @@ public class TresorerieServiceImpl implements TresorerieApi {
         return result;
     }
 
-    List<TresorerieSuggestionModel> buildTresorerieSuggestions(BudgetDataModel data) {
+    List<TresorerieSuggestionModel> buildTresorerieSuggestions(TreasuryInputFactory.Sources data) {
         Map<String, RealAverageModel> realAverages = computeRealAverages(data);
-        BigDecimal inflationRate = data.settings() != null ? data.settings().getEffectiveInflationRate() : new BigDecimal("0.02");
+        BigDecimal inflationRate = data.inflationRate();
         int currentYear = LocalDate.now().getYear();
 
         List<TresorerieSuggestionModel> lines = new ArrayList<>();
 
-        for (ChargeModel c : data.getEffectiveCharges()) {
+        for (ChargeModel c : data.charges()) {
             addSuggestionLine(c.id(), c.label(), "charge", c, null, null, realAverages, currentYear, inflationRate, lines);
         }
-        for (IncomeModel i : data.getEffectiveIncomes()) {
+        for (IncomeModel i : data.incomes()) {
             addSuggestionLine(i.id(), i.label(), "revenu", null, i, null, realAverages, currentYear, inflationRate, lines);
         }
-        for (PlacementModel p : data.getEffectivePlacements()) {
+        for (PlacementModel p : data.placements()) {
             addSuggestionLine(p.id(), "Épargne : " + p.label(), "placement", null, null, p, realAverages, currentYear, inflationRate, lines);
         }
 

@@ -24,6 +24,7 @@ import com.moe.myfamilybudget.api.model.TresorerieResponseDto;
 import com.moe.myfamilybudget.api.model.UpdateTresorerieLigneRequestDto;
 import com.moe.myfamilybudget.api.model.VariableIncomeDto;
 import com.moe.myfamilybudget.api.model.VariableOverrideDto;
+import com.moe.myfamilybudget.application.factory.TreasuryInputFactory;
 import com.moe.myfamilybudget.application.mapper.TresorerieMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
@@ -31,8 +32,12 @@ import com.moe.myfamilybudget.domain.budget.CategoryOptionModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieResultModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSuggestionModel;
 import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
@@ -44,7 +49,9 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
+import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.TresoreriePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -59,9 +66,16 @@ class TresorerieServiceImplTest {
         mapper = new TresorerieMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
+        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         service = new TresorerieServiceImpl(
                 mapper, new TresorerieCommandService(new TresoreriePersistenceAdapter(persistenceManager)),
-                SettingsReaderTestFactory.of(persistenceManager),
+                settingsAdapter,
+                settingsAdapter,
+                settingsAdapter,
+                settingsAdapter,
+                settingsAdapter,
+                new RetirementPersistenceAdapter(persistenceManager),
+                new TaxPersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 new BankPersistenceAdapter(persistenceManager));
@@ -520,6 +534,28 @@ class TresorerieServiceImplTest {
     // CALCULS & PROJECTIONS TRESORERIE
     // -------------------------------------------------------------------------
 
+    /** Fragments équivalents à ceux que {@code BudgetDataModel} fournissait avant SILO-113. */
+    private static TreasuryInputFactory.Sources sources(
+            SettingsModel settings,
+            List<IncomeModel> incomes,
+            List<ChargeModel> charges,
+            List<OneOffExpenseModel> oneoff,
+            List<VariableIncomeModel> variableIncomes,
+            List<VariableOverrideModel> variableOverrides,
+            BankImportModel bankImport) {
+        return new TreasuryInputFactory.Sources(
+                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()),
+                new TaxSettingsModel(settings.childExitAge(), settings.taxAbattement()),
+                new TresorerieSettingsModel(settings.pivotDate(), settings.pivotMode(), settings.startBalance(),
+                        settings.sweepEnabled(), settings.cashCeiling(), settings.cashFloor(),
+                        settings.cashAlertThreshold()),
+                new SimulationSettingsModel(settings.simulateUntilAge()),
+                settings.inflationRate(),
+                null,
+                incomes, charges, List.of(), oneoff, List.of(), variableIncomes, variableOverrides,
+                List.of(), List.of(), List.of(), List.of(), bankImport);
+    }
+
     @Test
     void computeTresorerie_withCompleteData_buildsAllFields() {
         SettingsModel settings = new SettingsModel(
@@ -565,23 +601,9 @@ class TresorerieServiceImplTest {
                 )
         );
 
-        BudgetDataModel data = new BudgetDataModel(
-                settings,
-                List.of(salary),
-                List.of(rent),
-                List.of(),
-                List.of(),
-                null,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(travel),
-                List.of(),
-                List.of(bonus),
-                List.of(bonusReal),
-                bankImport
-        );
+        TreasuryInputFactory.Sources data = sources(
+                settings, List.of(salary), List.of(rent), List.of(travel), List.of(bonus), List.of(bonusReal),
+                bankImport);
 
         TresorerieResultModel result = service.computeTresorerie(data, false);
 
@@ -633,13 +655,9 @@ class TresorerieServiceImplTest {
         BankImportModel.CategoryModel catB = new BankImportModel.CategoryModel("cat_b", "Alimentation");
         BankImportModel.CategoryModel catC = new BankImportModel.CategoryModel("cat_c", "Énergie");
 
-        BudgetDataModel data = new BudgetDataModel(
-                null, List.of(), List.of(), List.of(), List.of(), null, List.of(), List.of(),
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
-                new BankImportModel(List.of(), List.of(catA, catB, catC), List.of())
-        );
+        BankImportModel bankImport = new BankImportModel(List.of(), List.of(catA, catB, catC), List.of());
 
-        List<CategoryOptionModel> options = service.buildCategoryOptions(data);
+        List<CategoryOptionModel> options = service.buildCategoryOptions(bankImport);
         assertEquals(4, options.size()); // 1 default + 3 sorted
         assertEquals("", options.get(0).value());
         assertEquals("Alimentation", options.get(1).label());

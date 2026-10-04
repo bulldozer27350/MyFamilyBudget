@@ -12,8 +12,14 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.tax.calculation.AnnualTaxIncome;
 import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
 import com.moe.myfamilybudget.domain.tax.calculation.AnnualVariableIncome;
@@ -33,13 +39,12 @@ import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjectionInpu
 import com.moe.myfamilybudget.domain.treasury.calculation.TreasurySimulationPeriod;
 import com.moe.myfamilybudget.domain.treasury.calculation.VariableIncomeProjection;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.ChargeModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.budget.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculator;
 import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 import com.moe.myfamilybudget.domain.budget.TransferModel;
@@ -47,13 +52,12 @@ import com.moe.myfamilybudget.domain.budget.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.budget.VariableOverrideModel;
 
 /**
- * Construit un {@link TreasuryProjectionInput} à partir de {@link BudgetDataModel} (RF-400, voir
- * doc/architecture/06-domaine-tresorerie.md).
+ * Construit un {@link TreasuryProjectionInput} à partir de fragments lus chez leurs propriétaires
+ * (RF-400, voir doc/architecture/06-domaine-tresorerie.md). SILO-113 : cette Factory ne connaît plus
+ * {@code BudgetDataModel} ; l'appelant lui fournit des {@link Sources}.
  *
  * <p>Comme {@code TaxInputFactory}, {@code RetirementInputFactory} et {@code PatrimoineInputFactory},
- * cette classe porte la dépendance à {@code BudgetDataModel} que le domaine ne doit pas avoir :
- * elle vit dans {@code internal.factory}, hors du package {@code internal.calculation} gardé par
- * ArchUnit.
+ * elle vit hors du package {@code internal.calculation} gardé par ArchUnit.
  *
  * <p><b>Purement additive, non branchée.</b> {@code TresorerieCalculationService} continue de
  * calculer lui-même sa projection jusqu'au branchement (RF-401). L'horizon, l'impôt et les
@@ -71,41 +75,88 @@ public final class TreasuryInputFactory {
     private final RetirementInputFactory retirementInputFactory = new RetirementInputFactory();
     private final RetirementCalculationService retirementCalculationService = new RetirementCalculationService();
 
-    public TreasuryProjectionInput from(BudgetDataModel data) {
-        Objects.requireNonNull(data, "data");
-        SettingsModel settings = data.getEffectiveSettings();
+    /**
+     * Fragments nécessaires à la projection de trésorerie (SILO-113). Les listes absentes sont lues comme
+     * vides, une inflation absente vaut zéro ; les paramètres des quatre propriétaires de paramètres
+     * ({@code retirementSettings}, {@code taxSettings}, {@code tresorerieSettings},
+     * {@code simulationSettings}) sont obligatoires. {@code retirement} et {@code bankImport} peuvent être
+     * {@code null}. Sans tranche fiscale configurée, le barème par défaut s'applique (voir
+     * {@link TaxBracketDefaults}).
+     */
+    public record Sources(
+            RetirementSettingsModel retirementSettings,
+            TaxSettingsModel taxSettings,
+            TresorerieSettingsModel tresorerieSettings,
+            SimulationSettingsModel simulationSettings,
+            BigDecimal inflationRate,
+            RetirementModel retirement,
+            List<IncomeModel> incomes,
+            List<ChargeModel> charges,
+            List<PlacementModel> placements,
+            List<OneOffExpenseModel> oneoff,
+            List<TransferModel> transfers,
+            List<VariableIncomeModel> variableIncomes,
+            List<VariableOverrideModel> variableOverrides,
+            List<TaxChildModel> taxChildren,
+            List<TaxBracketModel> taxBrackets,
+            List<TaxRateOverrideModel> taxRateOverrides,
+            List<TaxActualOverrideModel> taxActualOverrides,
+            BankImportModel bankImport) {
 
-        int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
+        public Sources {
+            Objects.requireNonNull(retirementSettings, "retirementSettings");
+            Objects.requireNonNull(taxSettings, "taxSettings");
+            Objects.requireNonNull(tresorerieSettings, "tresorerieSettings");
+            Objects.requireNonNull(simulationSettings, "simulationSettings");
+            inflationRate = inflationRate != null ? inflationRate : BigDecimal.ZERO;
+            incomes = orEmpty(incomes);
+            charges = orEmpty(charges);
+            placements = orEmpty(placements);
+            oneoff = orEmpty(oneoff);
+            transfers = orEmpty(transfers);
+            variableIncomes = orEmpty(variableIncomes);
+            variableOverrides = orEmpty(variableOverrides);
+            taxChildren = orEmpty(taxChildren);
+            taxBrackets = orEmpty(taxBrackets);
+            taxRateOverrides = orEmpty(taxRateOverrides);
+            taxActualOverrides = orEmpty(taxActualOverrides);
+        }
+    }
+
+    public TreasuryProjectionInput from(Sources data) {
+        Objects.requireNonNull(data, "data");
+        RetirementSettingsModel retirementSettings = data.retirementSettings();
+
+        int retireYear = retirementSettings.getEffectiveBirthYear() + retirementSettings.getEffectiveRetireAge();
         int startYear = findEarliestYear(data);
-        int wantedEnd = settings.getEffectiveBirthYear() + settings.getEffectiveSimulateUntilAge();
+        int wantedEnd = retirementSettings.getEffectiveBirthYear() + data.simulationSettings().getEffectiveSimulateUntilAge();
         int endYear = Math.max(retireYear + 3, wantedEnd);
         TreasurySimulationPeriod period = new TreasurySimulationPeriod(startYear, endYear);
 
-        List<IncomeProjectionInput> incomes = data.getEffectiveIncomes().stream()
+        List<IncomeProjectionInput> incomes = data.incomes().stream()
                 .map(TreasuryInputFactory::toIncome)
                 .toList();
-        List<ChargeProjectionInput> charges = data.getEffectiveCharges().stream()
+        List<ChargeProjectionInput> charges = data.charges().stream()
                 .map(TreasuryInputFactory::toCharge)
                 .toList();
-        List<VariableIncomeProjection> variableIncomes = data.getEffectiveVariableIncomes().stream()
-                .map(v -> toVariableIncome(v, data.getEffectiveVariableOverrides()))
+        List<VariableIncomeProjection> variableIncomes = data.variableIncomes().stream()
+                .map(v -> toVariableIncome(v, data.variableOverrides()))
                 .toList();
-        List<OneOffCashflow> oneOffExpenses = data.getEffectiveOneoff().stream()
+        List<OneOffCashflow> oneOffExpenses = data.oneoff().stream()
                 .map(o -> new OneOffCashflow(parseDate(o.date()), o.getEffectiveAmount()))
                 .toList();
-        List<TransferProjection> transfers = data.getEffectiveTransfers().stream()
+        List<TransferProjection> transfers = data.transfers().stream()
                 .map(t -> new TransferProjection(parseDate(t.date()), t.getEffectiveAmount()))
                 .toList();
 
         List<PlacementCashflowInput> placements = new ArrayList<>();
         for (int year = startYear; year <= endYear; year++) {
-            placements.add(new PlacementCashflowInput(year, placementsAnnualForYear(data.getEffectivePlacements(), year)));
+            placements.add(new PlacementCashflowInput(year, placementsAnnualForYear(data.placements(), year)));
         }
 
         TaxSimulationPeriod taxPeriod = new TaxSimulationPeriod(startYear, endYear);
         RetirementProjection retirement = retirementCalculationService.compute(retirementInputFactory.create(
-                new RetirementSettingsModel(data.getEffectiveSettings().birthYear(), data.getEffectiveSettings().retireAge()),
-                data.retirement(), data.getEffectiveIncomes(), data.getEffectiveTaxChildren().size()));
+                retirementSettings, data.retirement(), data.incomes(), data.taxChildren().size()));
         TaxCalculationInput taxInput = TaxInputFactory.from(taxSources(data), taxPeriod, retirement);
         List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(taxInput);
         Map<Integer, BigDecimal> regularIncomes = taxInput.incomes().stream()
@@ -129,7 +180,7 @@ public final class TreasuryInputFactory {
                 retirementPensionByYear(retirement, retireYear, endYear));
 
         TreasuryParameters parameters = new TreasuryParameters(
-                retireYear, resolvePivotBalance(data), settings.getEffectiveInflationRate());
+                retireYear, resolvePivotBalance(data), data.inflationRate());
 
         return new TreasuryProjectionInput(period, incomes, charges, variableIncomes, oneOffExpenses,
                 transfers, placements, taxProjection, retirementIncome, parameters);
@@ -184,16 +235,13 @@ public final class TreasuryInputFactory {
         return years;
     }
 
-    private static BigDecimal resolvePivotBalance(BudgetDataModel data) {
-        SettingsModel settings = data.getEffectiveSettings();
-        if (data.settings() == null || data.settings().pivotDate() == null) {
-            return settings.getEffectiveStartBalance();
-        }
-        if ("manual".equalsIgnoreCase(data.settings().pivotMode())) {
-            return settings.getEffectiveStartBalance();
-        }
+    private static BigDecimal resolvePivotBalance(Sources data) {
+        TresorerieSettingsModel settings = data.tresorerieSettings();
         BigDecimal base = settings.getEffectiveStartBalance();
-        String pivotDate = data.settings().pivotDate();
+        if (settings.pivotDate() == null || "manual".equalsIgnoreCase(settings.pivotMode())) {
+            return base;
+        }
+        String pivotDate = settings.pivotDate();
         BigDecimal sum = BigDecimal.ZERO;
         if (data.bankImport() != null && data.bankImport().transactions() != null) {
             for (BankImportModel.BankTransactionModel t : data.bankImport().transactions()) {
@@ -205,17 +253,17 @@ public final class TreasuryInputFactory {
         return base.add(sum);
     }
 
-    private static int findEarliestYear(BudgetDataModel data) {
+    private static int findEarliestYear(Sources data) {
         List<String> dates = new ArrayList<>();
-        for (IncomeModel i : data.getEffectiveIncomes()) if (i.start() != null) dates.add(i.start());
-        for (ChargeModel c : data.getEffectiveCharges()) if (c.start() != null) dates.add(c.start());
-        for (PlacementModel p : data.getEffectivePlacements()) {
+        for (IncomeModel i : data.incomes()) if (i.start() != null) dates.add(i.start());
+        for (ChargeModel c : data.charges()) if (c.start() != null) dates.add(c.start());
+        for (PlacementModel p : data.placements()) {
             if (p.monthlyFrom() != null) dates.add(p.monthlyFrom());
             if (p.balanceDate() != null) dates.add(p.balanceDate());
         }
-        for (OneOffExpenseModel o : data.getEffectiveOneoff()) if (o.date() != null) dates.add(o.date());
-        for (TransferModel t : data.getEffectiveTransfers()) if (t.date() != null) dates.add(t.date());
-        if (data.settings() != null && data.settings().pivotDate() != null) dates.add(data.settings().pivotDate());
+        for (OneOffExpenseModel o : data.oneoff()) if (o.date() != null) dates.add(o.date());
+        for (TransferModel t : data.transfers()) if (t.date() != null) dates.add(t.date());
+        if (data.tresorerieSettings().pivotDate() != null) dates.add(data.tresorerieSettings().pivotDate());
         if (data.bankImport() != null && data.bankImport().transactions() != null) {
             for (BankImportModel.BankTransactionModel t : data.bankImport().transactions()) {
                 if (t.date() != null) dates.add(t.date());
@@ -253,22 +301,24 @@ public final class TreasuryInputFactory {
     }
 
     /**
-     * Transition (SILO-111) : extrait de {@link BudgetDataModel} les fragments attendus par
-     * {@link TaxInputFactory}. Supprimé avec ce service (SILO-113) et {@code OverviewInputFactory}
-     * (SILO-117), qui liront alors les ports propriétaires.
+     * Fragments fiscaux attendus par {@link TaxInputFactory}, extraits des {@link Sources} de Trésorerie.
+     * Le barème par défaut est appliqué si aucune tranche n'est configurée (voir {@link TaxBracketDefaults}).
      */
-    static TaxInputFactory.Sources taxSources(BudgetDataModel data) {
-        SettingsModel settings = data.getEffectiveSettings();
+    private static TaxInputFactory.Sources taxSources(Sources data) {
         return new TaxInputFactory.Sources(
-                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()),
-                new TaxSettingsModel(settings.childExitAge(), settings.taxAbattement()),
-                settings.inflationRate(),
-                data.getEffectiveIncomes(),
-                data.getEffectiveVariableIncomes(),
-                data.getEffectiveVariableOverrides(),
-                data.getEffectiveTaxChildren(),
-                data.getEffectiveTaxBrackets(),
-                data.getEffectiveTaxRateOverrides(),
-                data.getEffectiveTaxActualOverrides());
+                data.retirementSettings(),
+                data.taxSettings(),
+                data.inflationRate(),
+                data.incomes(),
+                data.variableIncomes(),
+                data.variableOverrides(),
+                data.taxChildren(),
+                TaxBracketDefaults.orDefault(data.taxBrackets()),
+                data.taxRateOverrides(),
+                data.taxActualOverrides());
+    }
+
+    private static <T> List<T> orEmpty(List<T> list) {
+        return list != null ? list : List.of();
     }
 }

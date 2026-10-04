@@ -1,7 +1,9 @@
 package com.moe.myfamilybudget.application.factory;
 
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
+import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.application.factory.PatrimoineInputFactory;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.application.factory.TaxInputFactory;
@@ -90,7 +92,7 @@ public final class OverviewInputFactory {
         int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
 
         // 1. Trésorerie
-        TreasuryProjectionInput treasuryInput = treasuryInputFactory.from(data);
+        TreasuryProjectionInput treasuryInput = treasuryInputFactory.from(treasurySources(data));
         TreasuryProjection treasuryProjection = tresorerieCalculationService.compute(treasuryInput);
 
         // 2. Retraite
@@ -103,7 +105,7 @@ public final class OverviewInputFactory {
         int startYear = treasuryInput.period().startYear();
         int endYear = treasuryInput.period().endYear();
         TaxSimulationPeriod taxPeriod = new TaxSimulationPeriod(startYear, endYear);
-        TaxCalculationInput taxInput = TaxInputFactory.from(TreasuryInputFactory.taxSources(data), taxPeriod, retirementProjection);
+        TaxCalculationInput taxInput = TaxInputFactory.from(taxSources(data), taxPeriod, retirementProjection);
         List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(taxInput);
         TaxProjection taxProjection = new TaxProjection(taxYearly.stream()
                 .map(t -> new TaxProjection.Withholding(t.year(), t.withheld(), t.taxActual()))
@@ -193,6 +195,55 @@ public final class OverviewInputFactory {
             }
         }
         return base.add(sum);
+    }
+
+    /**
+     * Transition (SILO-113) : extrait de {@link BudgetDataModel} les fragments attendus par
+     * {@link TreasuryInputFactory}. Supprimé avec ce service (SILO-117), qui lira alors les ports
+     * propriétaires.
+     */
+    private static TreasuryInputFactory.Sources treasurySources(BudgetDataModel data) {
+        SettingsModel settings = data.getEffectiveSettings();
+        return new TreasuryInputFactory.Sources(
+                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()),
+                new TaxSettingsModel(settings.childExitAge(), settings.taxAbattement()),
+                new TresorerieSettingsModel(settings.pivotDate(), settings.pivotMode(), settings.startBalance(),
+                        settings.sweepEnabled(), settings.cashCeiling(), settings.cashFloor(),
+                        settings.cashAlertThreshold()),
+                new SimulationSettingsModel(settings.simulateUntilAge()),
+                settings.inflationRate(),
+                data.retirement(),
+                data.getEffectiveIncomes(),
+                data.getEffectiveCharges(),
+                data.getEffectivePlacements(),
+                data.getEffectiveOneoff(),
+                data.getEffectiveTransfers(),
+                data.getEffectiveVariableIncomes(),
+                data.getEffectiveVariableOverrides(),
+                data.getEffectiveTaxChildren(),
+                data.getEffectiveTaxBrackets(),
+                data.getEffectiveTaxRateOverrides(),
+                data.getEffectiveTaxActualOverrides(),
+                data.bankImport());
+    }
+
+    /**
+     * Transition (SILO-111, déplacé ici par SILO-113) : extrait de {@link BudgetDataModel} les fragments
+     * attendus par {@link TaxInputFactory}. Supprimé avec ce service (SILO-117).
+     */
+    private static TaxInputFactory.Sources taxSources(BudgetDataModel data) {
+        SettingsModel settings = data.getEffectiveSettings();
+        return new TaxInputFactory.Sources(
+                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()),
+                new TaxSettingsModel(settings.childExitAge(), settings.taxAbattement()),
+                settings.inflationRate(),
+                data.getEffectiveIncomes(),
+                data.getEffectiveVariableIncomes(),
+                data.getEffectiveVariableOverrides(),
+                data.getEffectiveTaxChildren(),
+                data.getEffectiveTaxBrackets(),
+                data.getEffectiveTaxRateOverrides(),
+                data.getEffectiveTaxActualOverrides());
     }
 
     /**
