@@ -281,7 +281,9 @@ un patch qui rencontre un arbitrage non tranché devient un patch « bloqué » 
 - **Objectif** : supprimer `GlobalBudgetSnapshotWriter`, `GlobalBudgetSnapshotService.composeSnapshot` et `OverviewMapper.toInternalModel`.
 - **Travaux** : chaque silo expose `export()`, `replace(...)`, `reset()` sur ses propres records ; l'application compose et décompose le JSON global et exécute l'import dans une seule transaction (verrou pris en premier, comme aujourd'hui).
 - **Sortie** : le format JSON `/budget`, `/budget/import`, `/budget/reset` est inchangé ; plus aucun passage par `BudgetDataModel`.
-- **Statut** : [x] Non commencé
+- **Découpage** : lot A (export et réponse du reset par fragments) puis lot B (ports `export`/`replace`/`reset` par silo, import par fragments, suppression de `GlobalBudgetSnapshotWriter`, de `OverviewMapper.toInternalModel` et de `OverviewMapper.facadeViewOf`).
+- **Livré (lot A)** : `GlobalBudgetSnapshotService.export()` assemble `BudgetFacadeView` directement depuis les ports de lecture (`composeSnapshot()` supprimé) ; `reset()` n'utilise plus le modèle renvoyé par le port d'écriture et répond par `export()`, comme `importSnapshot`. Contrat REST inchangé. Le service reste sur la liste de SILO-002 (import et `resetData()` passent encore par `BudgetDataModel`) ; liste inchangée.
+- **Statut** : [ ] Non commencé / [x] Démarré / [ ] En attente de réponse / [ ] Annulé / [ ] Terminé (lot A livré ; lot B restant)
 
 ### SILO-120 : `BudgetDataModel` supprimé d'`application` et de `server`
 - **Travaux** : vérification statique ; la liste de SILO-002 ne contient plus que `persistence` et `transition-snapshot`.

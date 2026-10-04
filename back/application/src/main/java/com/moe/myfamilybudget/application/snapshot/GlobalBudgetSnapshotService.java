@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
+import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
@@ -34,8 +35,10 @@ import com.moe.myfamilybudget.domain.tax.port.TaxReader;
  * transactionnels pour que l'échec de la seconde écriture annule la première (base et cache mémoire). Le verrou du
  * budget est pris en premier.
  *
- * <p>Le snapshot reste un {@code ASSEMBLY-TEMP} jusqu'à la fin des {@code DB-xxx} (voir
- * {@code doc/architecture/19-inventaire-budget-data-model.md}).
+ * <p>SILO-119 (lot A) : l'export et la réponse du reset ne passent plus par {@code BudgetDataModel} ; la vue de
+ * façade {@link BudgetFacadeView} est assemblée directement depuis les ports de lecture des silos. Seul le chemin
+ * d'écriture (import via {@code OverviewMapper#toInternalModel} et {@link GlobalBudgetSnapshotWriter}) garde le
+ * modèle global, jusqu'au lot B (ports {@code replace}/{@code reset} par silo).
  */
 @Service
 public class GlobalBudgetSnapshotService {
@@ -82,7 +85,7 @@ public class GlobalBudgetSnapshotService {
 
     /** Export du budget complet (lecture seule). */
     public BudgetDataDto export() {
-        return overviewMapper.toBudgetDataDto(composeSnapshot(), objectifsSettingsService.current());
+        return overviewMapper.toBudgetDataDto(composeFacadeView());
     }
 
     /**
@@ -104,18 +107,20 @@ public class GlobalBudgetSnapshotService {
     @Transactional
     public BudgetDataDto reset() {
         budgetMutationLock.lockForCurrentTransaction();
-        BudgetDataModel reset = snapshotWriter.resetData();
+        snapshotWriter.resetData();
         objectifsSettingsService.reset();
-        return overviewMapper.toBudgetDataDto(reset, objectifsSettingsService.current());
+        return export();
     }
 
-    private BudgetDataModel composeSnapshot() {
-        return new BudgetDataModel(
+    /** Vue de façade assemblée fragment par fragment depuis les ports de lecture (SILO-119, lot A). */
+    private BudgetFacadeView composeFacadeView() {
+        return new BudgetFacadeView(
                 settingsReader.getSettings(), budgetReader.getIncomes(), budgetReader.getCharges(),
                 patrimoineReader.getPlacements(), patrimoineReader.getRealEstate(), retirementReader.getRetirement(),
                 taxReader.getTaxChildren(), taxReader.getTaxBrackets(), taxReader.getTaxRateOverrides(),
                 taxReader.getTaxActualOverrides(), budgetReader.getOneoffExpenses(), patrimoineReader.getTransfers(),
                 budgetReader.getVariableIncomes(), budgetReader.getVariableOverrides(), bankReader.getBankImport(),
-                patrimoineReader.getAssetCategories(), loanReader.getLoans(), goalReader.getGoals());
+                patrimoineReader.getAssetCategories(), loanReader.getLoans(), goalReader.getGoals(),
+                objectifsSettingsService.current());
     }
 }

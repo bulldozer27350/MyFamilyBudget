@@ -46,9 +46,8 @@ class GlobalBudgetSnapshotServiceTest {
         BudgetDataDto reset = snapshotService.reset();
 
         assertThat(reset).isNotNull();
-        // reset() renvoie le modèle par défaut en mémoire (BigDecimal sans échelle, ex. 47100), alors que
-        // export() relit la base (NUMERIC avec échelle, ex. 47100.00) : equals() de BigDecimal tient compte
-        // de l'échelle, on compare donc les montants par valeur (compareTo).
+        // SILO-119 : reset() relit les fragments des silos, comme export(). La comparaison par valeur
+        // (compareTo) des montants reste tolérante à l'échelle des BigDecimal (NUMERIC en base).
         assertThat(snapshotService.export())
                 .usingRecursiveComparison()
                 .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
