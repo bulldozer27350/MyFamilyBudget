@@ -289,7 +289,9 @@ un patch qui rencontre un arbitrage non tranché devient un patch « bloqué » 
 
 ### SILO-120 : `BudgetDataModel` supprimé d'`application` et de `server`
 - **Travaux** : vérification statique ; la liste de SILO-002 ne contient plus que `persistence` et `transition-snapshot`.
-- **Statut** : [x] Non commencé
+- **Livré** : vérification faite le 4 octobre 2026 sur `main` @ `fc5c358` : aucune classe de production d'`application` ni de `server` ne référence `BudgetDataModel` (il ne subsiste que des mentions en commentaires) ; aucun `composeBudgetData()` ni `new BudgetDataModel(...)` hors `persistence` ; la liste de SILO-002 compte 13 entrées, toutes dans `persistence`. Ajout du garde-fou `ApplicationAndServerWithoutBudgetDataModelArchTest` : aucune classe de production de `application..` ou `server..` ne dépend du modèle, et la liste fermée ne contient plus que des classes de `persistence`. Aucun changement de code de production, contrat REST inchangé.
+- **Reste hors de ce patch** : les dépendances Maven d'`application` et de `server` vers `transition-snapshot` (elles portent encore `SettingsModel` et les ports transverses, retirés par SILO-220 et SILO-230) ; les fixtures de tests qui construisent encore un `BudgetDataModel` (`OverviewInputFactoryTest`, `OverviewServiceImplTest`, `PatrimoineServiceImplTest`, `TresorerieServiceImplTest`, `GlobalBudgetSnapshotServiceTest`, tests d'intégration), supprimées avec SILO-230 ; `SettingsReader` et `SettingsModelAssembler`, qui portent les blocs `settings` des réponses REST (SILO-100, solde).
+- **Statut** : [ ] Non commencé / [ ] Démarré / [ ] En attente de réponse / [ ] Annulé / [x] Terminé
 
 ### SILO-130 à SILO-134 : contrats propres au consommateur (si D1 = non)
 - **Objectif** : un silo ne référence plus de type d'un autre silo.
@@ -416,5 +418,5 @@ fichier `21` reste vivant.
 - **Tâche** : atteindre des silos isolés, une persistance par silo transactionnelle, et une séparation application/web.
 - **Acquis** : domaines purs sans `BudgetDataModel` ; ports Reader/Writer pour sept silos ; hubs Retraite, Fiscalité, Objectifs, Banque retirés ; écriture des paramètres distribuée ; `application` sans dépendance vers `persistence`.
 - **Piste en cours** : décisions D1 à D8 tranchées (SILO-000 terminé).
-- **Reste à faire** : tout le reste de la section 7 ; SILO-000, SILO-001, SILO-002 et SILO-003 sont terminés ; SILO-100 lots A et B, SILO-110 à SILO-118 livrés, SILO-119 (lots A, B1 et B2), SILO-130 et SILO-131 livrés ; patchs maintenant disponibles : SILO-120 (vérification statique), SILO-132 à SILO-134.
+- **Reste à faire** : tout le reste de la section 7 ; SILO-000, SILO-001, SILO-002 et SILO-003 sont terminés ; SILO-100 lots A et B, SILO-110 à SILO-118 livrés, SILO-119 (lots A, B1 et B2), SILO-120, SILO-130 et SILO-131 livrés ; patchs maintenant disponibles : SILO-132 à SILO-134.
 - **Instruction de reprise** : cloner `main`, relire ce fichier, annoncer le patch visé, puis livrer le `.patch` en LF sans attendre de validation (un arbitrage non tranché rend le patch « bloqué »).
