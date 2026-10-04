@@ -107,16 +107,16 @@ Règles vérifiées à la compilation (Maven enforcer et module-info) puis par A
 
 ## 6. Décisions à trancher (patch SILO-000)
 
-| # | Question | Recommandation |
-|---|---|---|
-| D1 | Un silo peut-il consommer des types publiés par un autre silo (ex. Trésorerie utilise `TaxProjection`) ? | **Non** : chaque consommateur définit ses propres entrées, l'application traduit. Plus de code de mapping, mais indépendance réelle. Si refusé, le plan reste valable avec les contrats `*-api` partagés (SILO-130 à SILO-134 deviennent facultatifs) |
-| D2 | Sort de `domain-budget` (Income, Charge, Transfer, TripleAmount…) | Les revenus/charges appartiennent à Trésorerie (document 13). Les autres silos reçoivent leurs propres types. Un petit module de **valeurs pures sans sens métier** (ex. triple pessimiste/réaliste/optimiste) est toléré s'il n'est pas un « common » fourre-tout |
-| D3 | Périmètre de `module-info` | Sur tous les `*-api`, `application-*`, `web`. Pas sur les `*-core` JPA/Spring (modules automatiques, `opens` coûteux) : la visibilité y est tenue par le graphe Maven et ArchUnit. Le runtime Spring Boot reste sur le classpath, donc `module-info` y est ignoré |
-| D4 | Schéma de base | Une base, tables préfixées par silo (déjà le cas : `cashflow_`, `wealth_`, `fiscal_`, `pension_`, `goal_`, `credit_`). Pas de clé étrangère entre silos |
-| D5 | Migrations de schéma | Aujourd'hui `ddl-auto: update` + procédure manuelle (suppression du schéma, réimport JSON). Choisir : maintenir cette procédure (mono-utilisateur) ou introduire Flyway par silo |
-| D6 | Import/export/reset global | Chaque silo expose `export` / `replace` / `reset` sur ses propres records ; l'application compose le fichier JSON (format `BudgetDataDto` conservé côté web) et exécute l'import dans une transaction |
-| D7 | Propriété de `marketdata` et `enablebanking` | `marketdata` : silo « Marché » (consommé par Crédit, Suggestions de taux, Patrimoine). `enablebanking` : intégration du silo Banque |
-| D8 | `LegacyObjectifAllocationMigrator` | Supprimer (aucun objectif réel en base au moment de son introduction), sinon le déplacer dans le silo Objectifs |
+| # | Question | Recommandation | Décision |
+|---|---|---|---|
+| D1 | Un silo peut-il consommer des types publiés par un autre silo (ex. Trésorerie utilise `TaxProjection`) ? | **Non** : chaque consommateur définit ses propres entrées, l'application traduit. Plus de code de mapping, mais indépendance réelle. Si refusé, le plan reste valable avec les contrats `*-api` partagés (SILO-130 à SILO-134 deviennent facultatifs) | **D'accord avec la recommandation** |
+| D2 | Sort de `domain-budget` (Income, Charge, Transfer, TripleAmount…) | Les revenus/charges appartiennent à Trésorerie (document 13). Les autres silos reçoivent leurs propres types. Un petit module de **valeurs pures sans sens métier** (ex. triple pessimiste/réaliste/optimiste) est toléré s'il n'est pas un « common » fourre-tout | **D'accord avec la recommandation** |
+| D3 | Périmètre de `module-info` | Sur tous les `*-api`, `application-*`, `web`. Pas sur les `*-core` JPA/Spring (modules automatiques, `opens` coûteux) : la visibilité y est tenue par le graphe Maven et ArchUnit. Le runtime Spring Boot reste sur le classpath, donc `module-info` y est ignoré | Besoin d'explications supplémentaires. A traiter avant de lancer des travaux liés à ce sujet |
+| D4 | Schéma de base | Une base, tables préfixées par silo (déjà le cas : `cashflow_`, `wealth_`, `fiscal_`, `pension_`, `goal_`, `credit_`). Pas de clé étrangère entre silos | **D'accord avec la recommandation** |
+| D5 | Migrations de schéma | Aujourd'hui `ddl-auto: update` + procédure manuelle (suppression du schéma, réimport JSON). Choisir : maintenir cette procédure (mono-utilisateur) ou introduire Flyway par silo | **Introduire Liquibase comme système de migration** |
+| D6 | Import/export/reset global | Chaque silo expose `export` / `replace` / `reset` sur ses propres records ; l'application compose le fichier JSON (format `BudgetDataDto` conservé côté web) et exécute l'import dans une transaction | **D'accord avec la recommandation** |
+| D7 | Propriété de `marketdata` et `enablebanking` | `marketdata` : silo « Marché » (consommé par Crédit, Suggestions de taux, Patrimoine). `enablebanking` : intégration du silo Banque | **D'accord avec la recommandation** |
+| D8 | `LegacyObjectifAllocationMigrator` | Supprimer (aucun objectif réel en base au moment de son introduction), sinon le déplacer dans le silo Objectifs | **D'accord avec la recommandation** |
 
 ## 7. Vue d'ensemble des patchs
 
