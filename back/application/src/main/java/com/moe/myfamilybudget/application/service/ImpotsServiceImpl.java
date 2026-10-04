@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.application.service;
 
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.api.controller.ImpotsApi;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
@@ -108,7 +109,9 @@ public class ImpotsServiceImpl implements ImpotsApi {
     public ResponseEntity<Object> getImpots() {
         BudgetDataModel data = composeBudgetData();
         TaxSimulationPeriod period = TaxSimulationPeriodResolver.resolve(data);
-        RetirementProjection retirement = retirementCalculationService.compute(retirementInputFactory.create(data));
+        RetirementProjection retirement = retirementCalculationService.compute(retirementInputFactory.create(
+                new RetirementSettingsModel(data.getEffectiveSettings().birthYear(), data.getEffectiveSettings().retireAge()),
+                data.retirement(), data.getEffectiveIncomes(), data.getEffectiveTaxChildren().size()));
         TaxCalculationInput input = TaxInputFactory.from(data, period, retirement);
         List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(input);
         List<TaxYearlyModel> taxPreview = TaxCalculator.buildTaxPreview(

@@ -265,7 +265,7 @@ un patch qui rencontre un arbitrage non tranché devient un patch « bloqué » 
 ### SILO-110 à SILO-118 : un silo après l'autre sans `BudgetDataModel`
 - **Objectif commun** : le service du silo et ses factories n'appellent plus `composeBudgetData()` ni `new BudgetDataModel(...)` ; ils lisent des fragments par reader et construisent directement l'entrée du moteur.
 - **Fichiers visés** :
-  - SILO-110 : `RetraiteServiceImpl`, `RetirementInputFactory` ;
+  - SILO-110 : `RetraiteServiceImpl`, `RetirementInputFactory` (**livré** : `RetirementInputFactory.create(RetirementSettingsModel, RetirementModel, List<IncomeModel>, int)` ne connaît plus `BudgetDataModel` ; `RetraiteServiceImpl` lit `RetirementSettingsReader`, `RetirementReader`, `BudgetReader`, `TaxReader` ; il garde `SettingsReader` pour le seul bloc `settings` de la réponse REST, contrat inchangé, retiré avec la composition applicative de ce bloc ; les quatre appelants encore sur `BudgetDataModel` (`OverviewServiceImpl`, `ImpotsServiceImpl`, `TreasuryInputFactory`, `OverviewInputFactory`) extraient les fragments localement jusqu'à leur propre patch ; liste de SILO-002 : 38 → 36) ;
   - SILO-111 : `ImpotsServiceImpl`, `TaxInputFactory`, `TaxSimulationPeriodResolver` ;
   - SILO-112 : `PatrimoineServiceImpl`, `PatrimoineInputFactory`, `PatrimoineMapper` ;
   - SILO-113 : `TresorerieServiceImpl`, `TreasuryInputFactory` ;
@@ -410,5 +410,5 @@ fichier `21` reste vivant.
 - **Tâche** : atteindre des silos isolés, une persistance par silo transactionnelle, et une séparation application/web.
 - **Acquis** : domaines purs sans `BudgetDataModel` ; ports Reader/Writer pour sept silos ; hubs Retraite, Fiscalité, Objectifs, Banque retirés ; écriture des paramètres distribuée ; `application` sans dépendance vers `persistence`.
 - **Piste en cours** : décisions D1 à D8 tranchées (SILO-000 terminé).
-- **Reste à faire** : tout le reste de la section 7 ; SILO-000, SILO-001, SILO-002 et SILO-003 sont terminés ; SILO-100 lots A et B livrés (ports de lecture par propriétaire, assembleur applicatif) ; patch maintenant disponible : SILO-110 à SILO-118 (sur les ports propriétaires).
+- **Reste à faire** : tout le reste de la section 7 ; SILO-000, SILO-001, SILO-002 et SILO-003 sont terminés ; SILO-100 lots A et B et SILO-110 livrés ; patch maintenant disponible : SILO-111 à SILO-118 (sur les ports propriétaires).
 - **Instruction de reprise** : cloner `main`, relire ce fichier, annoncer le patch visé, puis livrer le `.patch` en LF sans attendre de validation (un arbitrage non tranché rend le patch « bloqué »).

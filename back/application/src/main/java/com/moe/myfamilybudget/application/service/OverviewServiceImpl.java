@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.api.controller.OverviewApi;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
@@ -112,7 +113,9 @@ public class OverviewServiceImpl implements OverviewApi {
         RetirementModel retirement = data.retirement();
         List<RetirementModel.RetirementPersonModel> people = retirement != null ? retirement.getEffectivePeople() : List.of();
         int index = people.indexOf(person);
-        RetirementProjection projection = retirementCalculationService.compute(retirementInputFactory.create(data));
+        RetirementProjection projection = retirementCalculationService.compute(retirementInputFactory.create(
+                new RetirementSettingsModel(data.getEffectiveSettings().birthYear(), data.getEffectiveSettings().retireAge()),
+                data.retirement(), data.getEffectiveIncomes(), data.getEffectiveTaxChildren().size()));
         return index >= 0 && index < projection.people().size() ? projection.people().get(index) : null;
     }
 }

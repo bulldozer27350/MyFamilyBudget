@@ -14,15 +14,17 @@ import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculatio
 import com.moe.myfamilybudget.application.command.RetirementCommandService;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.application.mapper.RetraiteMapper;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.application.model.RetraitePersonWithProjectionModel;
+import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.application.model.RetraiteResultModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxReader;
 
@@ -31,16 +33,17 @@ import com.moe.myfamilybudget.domain.tax.port.TaxReader;
  *
  * RF-101 (doc/architecture/03-domaine-retraite.md) : ce service ne recalcule plus de projection
  * retraite en interne. Il compose {@link RetirementInputFactory} (construction de l'
- * {@link RetirementCalculationInput} à partir de {@link BudgetDataModel}) et
- * {@link RetirementCalculationService} (moteur de calcul pur, sans dépendance à
- * {@code BudgetDataModel}), qui devient l'unique version canonique de ce calcul.
+ * {@link RetirementCalculationInput}) et {@link RetirementCalculationService} (moteur de calcul
+ * pur), qui devient l'unique version canonique de ce calcul.
  *
  * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
- * {@code PersistenceManager}. Les lectures passent par les ports de domaine ({@link
- * SettingsReader}, {@link RetirementReader}, {@link TaxReader}, {@link BudgetReader}) ; le
- * {@link BudgetDataModel} attendu par {@link RetirementInputFactory} est recomposé localement à
- * partir de ces ports, avec les domaines non lus laissés à {@code null} (la factory ne les
- * touche pas).
+ * {@code PersistenceManager}. Les lectures passent par les ports de domaine.
+ *
+ * SILO-110 : plus aucun {@code BudgetDataModel}. Le calcul lit ses fragments via
+ * {@link RetirementSettingsReader}, {@link RetirementReader}, {@link TaxReader} (nombre
+ * d'enfants) et {@link BudgetReader} (revenus). {@link SettingsReader} ne sert plus qu'au bloc
+ * {@code settings} de la réponse REST, dont le contrat reste celui des façades composites
+ * (voir 12-settings.md) ; il disparaît avec la composition applicative de ce bloc.
  */
 @RestController
 public class RetraiteServiceImpl implements RetraiteApi {
@@ -50,6 +53,7 @@ public class RetraiteServiceImpl implements RetraiteApi {
     private final RetirementCalculationService retirementCalculationService;
     private final RetirementCommandService retirementCommandService;
     private final SettingsReader settingsReader;
+    private final RetirementSettingsReader retirementSettingsReader;
     private final RetirementReader retirementReader;
     private final TaxReader taxReader;
     private final BudgetReader budgetReader;
@@ -60,6 +64,7 @@ public class RetraiteServiceImpl implements RetraiteApi {
         RetirementCalculationService retirementCalculationService,
         RetirementCommandService retirementCommandService,
         SettingsReader settingsReader,
+        RetirementSettingsReader retirementSettingsReader,
         RetirementReader retirementReader,
         TaxReader taxReader,
         BudgetReader budgetReader
@@ -69,6 +74,7 @@ public class RetraiteServiceImpl implements RetraiteApi {
         this.retirementCalculationService = retirementCalculationService;
         this.retirementCommandService = retirementCommandService;
         this.settingsReader = settingsReader;
+        this.retirementSettingsReader = retirementSettingsReader;
         this.retirementReader = retirementReader;
         this.taxReader = taxReader;
         this.budgetReader = budgetReader;
@@ -94,17 +100,14 @@ public class RetraiteServiceImpl implements RetraiteApi {
 
     public RetraiteResultModel buildRetraiteResult() {
         SettingsModel settings = settingsReader.getSettings();
+        RetirementSettingsModel retirementSettings = retirementSettingsReader.getRetirementSettings();
         RetirementModel retirement = retirementReader.getRetirement();
+        List<IncomeModel> incomes = budgetReader.getIncomes();
 
-        BudgetDataModel data = new BudgetDataModel(
-            settings, budgetReader.getIncomes(), null, null, null,
-            retirement, taxReader.getTaxChildren(), null, null, null,
-            null, null, null, null, null
-        );
+        int retireYear = retirementSettings.getEffectiveBirthYear() + retirementSettings.getEffectiveRetireAge();
 
-        int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
-
-        RetirementCalculationInput input = retirementInputFactory.create(data);
+        RetirementCalculationInput input = retirementInputFactory.create(
+            retirementSettings, retirement, incomes, taxReader.getTaxChildren().size());
         RetirementProjection projection = retirementCalculationService.compute(input);
 
         List<RetirementModel.RetirementPersonModel> people = retirement != null
@@ -143,7 +146,7 @@ public class RetraiteServiceImpl implements RetraiteApi {
         return new RetraiteResultModel(
             retWithProj,
             retireYear,
-            budgetReader.getIncomes(),
+            incomes,
             settings
         );
     }

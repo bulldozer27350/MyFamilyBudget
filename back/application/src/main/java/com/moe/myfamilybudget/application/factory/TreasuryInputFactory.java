@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.calculation.AnnualTaxIncome;
 import com.moe.myfamilybudget.domain.retirement.calculation.AnnualTaxableRetirementIncome;
 import com.moe.myfamilybudget.domain.tax.calculation.AnnualVariableIncome;
@@ -101,7 +102,9 @@ public final class TreasuryInputFactory {
         }
 
         TaxSimulationPeriod taxPeriod = new TaxSimulationPeriod(startYear, endYear);
-        RetirementProjection retirement = retirementCalculationService.compute(retirementInputFactory.create(data));
+        RetirementProjection retirement = retirementCalculationService.compute(retirementInputFactory.create(
+                new RetirementSettingsModel(data.getEffectiveSettings().birthYear(), data.getEffectiveSettings().retireAge()),
+                data.retirement(), data.getEffectiveIncomes(), data.getEffectiveTaxChildren().size()));
         TaxCalculationInput taxInput = TaxInputFactory.from(data, taxPeriod, retirement);
         List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(taxInput);
         Map<Integer, BigDecimal> regularIncomes = taxInput.incomes().stream()

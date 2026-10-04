@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.application.factory;
 
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.application.factory.PatrimoineInputFactory;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.application.factory.TaxInputFactory;
@@ -93,7 +94,9 @@ public final class OverviewInputFactory {
 
         // 2. Retraite
         RetirementProjection retirementProjection = retirementCalculationService.compute(
-                retirementInputFactory.create(data));
+                retirementInputFactory.create(
+                new RetirementSettingsModel(data.getEffectiveSettings().birthYear(), data.getEffectiveSettings().retireAge()),
+                data.retirement(), data.getEffectiveIncomes(), data.getEffectiveTaxChildren().size()));
 
         // 3. Fiscalité
         int startYear = treasuryInput.period().startYear();

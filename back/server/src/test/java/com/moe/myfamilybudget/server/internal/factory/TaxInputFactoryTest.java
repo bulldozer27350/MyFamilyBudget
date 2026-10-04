@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.factory;
 
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.application.factory.TaxInputFactory;
 import com.moe.myfamilybudget.application.factory.TaxSimulationPeriodResolver;
@@ -64,7 +65,10 @@ class TaxInputFactoryTest {
 
     private static TaxCalculationInput build(BudgetDataModel data) {
         RetirementProjection projection =
-                new RetirementCalculationService().compute(new RetirementInputFactory().create(data));
+                new RetirementCalculationService().compute(new RetirementInputFactory().create(
+                        new RetirementSettingsModel(data.getEffectiveSettings().birthYear(),
+                                data.getEffectiveSettings().retireAge()),
+                        data.retirement(), data.getEffectiveIncomes(), data.getEffectiveTaxChildren().size()));
         return TaxInputFactory.from(data, TaxSimulationPeriodResolver.resolve(data), projection);
     }
 

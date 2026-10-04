@@ -12,21 +12,34 @@ import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculatio
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementParameters;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementPersonInput;
 import com.moe.myfamilybudget.domain.retirement.calculation.SalaryHistoryEntry;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.budget.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 
+/**
+ * Construit l'entrée du moteur Retraite à partir des seuls fragments utiles (SILO-110) : paramètres Retraite,
+ * retraite, revenus (pour projeter les salaires) et nombre d'enfants du foyer fiscal. Aucun modèle global.
+ */
 @Component
 public class RetirementInputFactory {
 
-    public RetirementCalculationInput create(BudgetDataModel data) {
-        BudgetDataModel effectiveData = data != null ? data : new BudgetDataModel(
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
-        );
-        SettingsModel settings = effectiveData.getEffectiveSettings();
-        RetirementModel retirement = effectiveData.retirement();
-        int retireYear = settings.getEffectiveBirthYear() + settings.getEffectiveRetireAge();
+    /**
+     * @param settings         paramètres dont Retraite est propriétaire ({@code null} : valeurs par défaut)
+     * @param retirement       retraite ({@code null} : aucune personne, paramètres par défaut du moteur)
+     * @param incomes          revenus servant à projeter les salaires ({@code null} traité comme vide)
+     * @param taxChildrenCount nombre d'enfants du foyer fiscal
+     */
+    public RetirementCalculationInput create(
+        RetirementSettingsModel settings,
+        RetirementModel retirement,
+        List<IncomeModel> incomes,
+        int taxChildrenCount
+    ) {
+        RetirementSettingsModel effectiveSettings = settings != null
+            ? settings
+            : new RetirementSettingsModel(null, null);
+        List<IncomeModel> effectiveIncomes = incomes != null ? incomes : List.of();
+        int retireYear = effectiveSettings.getEffectiveBirthYear() + effectiveSettings.getEffectiveRetireAge();
 
         RetirementParameters parameters = new RetirementParameters(
             retirement != null ? retirement.pass2026() : null,
@@ -37,20 +50,20 @@ public class RetirementInputFactory {
         );
 
         List<RetirementPersonInput> people = retirement == null ? List.of() : retirement.getEffectivePeople().stream()
-            .map(person -> toPersonInput(effectiveData, settings, person, retireYear))
+            .map(person -> toPersonInput(effectiveIncomes, effectiveSettings, person, retireYear))
             .toList();
 
         return new RetirementCalculationInput(
             retireYear,
             parameters,
-            effectiveData.getEffectiveTaxChildren().size(),
+            taxChildrenCount,
             people
         );
     }
 
     private RetirementPersonInput toPersonInput(
-        BudgetDataModel data,
-        SettingsModel settings,
+        List<IncomeModel> incomes,
+        RetirementSettingsModel settings,
         RetirementModel.RetirementPersonModel person,
         int retireYear
     ) {
@@ -64,7 +77,7 @@ public class RetirementInputFactory {
         List<AnnualSalaryProjection> projectedSalaries = projectionStartYear > retireYear
             ? List.of()
             : IntStream.rangeClosed(projectionStartYear, retireYear)
-                .mapToObj(year -> new AnnualSalaryProjection(year, projectedAnnualSalary(data, person.incomeLabel(), year)))
+                .mapToObj(year -> new AnnualSalaryProjection(year, projectedAnnualSalary(incomes, person.incomeLabel(), year)))
                 .toList();
 
         List<SalaryHistoryEntry> salaryHistory = person.getEffectiveSalaryHistory().stream()
@@ -83,9 +96,9 @@ public class RetirementInputFactory {
         );
     }
 
-    private BigDecimal projectedAnnualSalary(BudgetDataModel data, String incomeLabel, int year) {
+    private BigDecimal projectedAnnualSalary(List<IncomeModel> incomes, String incomeLabel, int year) {
         if (incomeLabel == null || incomeLabel.isBlank()) return BigDecimal.ZERO;
-        return data.getEffectiveIncomes().stream()
+        return incomes.stream()
             .filter(income -> incomeLabel.equalsIgnoreCase(income.label()))
             .findFirst()
             .map(income -> incomeAnnualForYear(income, year))
