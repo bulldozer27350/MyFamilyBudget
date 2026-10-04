@@ -39,7 +39,6 @@ import com.moe.myfamilybudget.application.command.TresorerieCommandService;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
@@ -65,7 +64,7 @@ import com.moe.myfamilybudget.transition.error.UnknownTresorerieFieldException;
  * {@code PersistenceManager}. SILO-113 : plus de {@code BudgetDataModel} ; chaque fragment est lu chez son
  * propriétaire ({@link RetirementSettingsReader}, {@link TaxSettingsReader},
  * {@link TresorerieSettingsReader}, {@link SimulationSettingsReader}, {@link EconomicAssumptionsReader},
- * {@link RetirementReader}, {@link TaxReader}, {@link BudgetReader}, {@link PatrimoineReader},
+ * {@link TaxReader}, {@link BudgetReader}, {@link PatrimoineReader},
  * {@link BankReader}) et transmis à {@link TreasuryInputFactory} sous forme de
  * {@link TreasuryInputFactory.Sources}.
  */
@@ -81,7 +80,6 @@ public class TresorerieServiceImpl implements TresorerieApi {
     private final TresorerieSettingsReader tresorerieSettingsReader;
     private final SimulationSettingsReader simulationSettingsReader;
     private final EconomicAssumptionsReader economicAssumptionsReader;
-    private final RetirementReader retirementReader;
     private final TaxReader taxReader;
     private final BudgetReader budgetReader;
     private final PatrimoineReader patrimoineReader;
@@ -95,7 +93,6 @@ public class TresorerieServiceImpl implements TresorerieApi {
             TresorerieSettingsReader tresorerieSettingsReader,
             SimulationSettingsReader simulationSettingsReader,
             EconomicAssumptionsReader economicAssumptionsReader,
-            RetirementReader retirementReader,
             TaxReader taxReader,
             BudgetReader budgetReader,
             PatrimoineReader patrimoineReader,
@@ -109,7 +106,6 @@ public class TresorerieServiceImpl implements TresorerieApi {
         this.tresorerieSettingsReader = tresorerieSettingsReader;
         this.simulationSettingsReader = simulationSettingsReader;
         this.economicAssumptionsReader = economicAssumptionsReader;
-        this.retirementReader = retirementReader;
         this.taxReader = taxReader;
         this.budgetReader = budgetReader;
         this.patrimoineReader = patrimoineReader;
@@ -123,7 +119,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
                 tresorerieSettingsReader.getTresorerieSettings(),
                 simulationSettingsReader.getSimulationSettings(),
                 economicAssumptionsReader.getEconomicAssumptions().inflationRate(),
-                retirementReader.getRetirement(),
+                null, // /tresorerie ne projette aucune pension (comportement historique, cf. VT-110)
                 budgetReader.getIncomes(),
                 budgetReader.getCharges(),
                 patrimoineReader.getPlacements(),
