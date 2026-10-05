@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.application.command.GoalCommandService;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
@@ -18,6 +19,7 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
  * SILO-240 (lot A) -- tests de caracterisation des regles d'integrite entre silos, telles qu'elles sont
@@ -27,11 +29,16 @@ import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTest
  * {@code application} (lot B) soit verifiable : une regle deplacee doit rester verte, un trou comble
  * doit modifier explicitement le test concerne. Inventaire complet : section SILO-240 de
  * {@code 21-plan-silotage.md}.
+ *
+ * <p>SILO-240 (lot B1) : la regle de sur-allocation Objectifs -> Patrimoine est portee dans
+ * {@link GoalCommandService} ; ses tests passent maintenant par ce service (memes scenarios, memes messages),
+ * les trois trous restent figes sur les adaptateurs.
  */
 class InterSiloIntegrityCharacterizationTest {
 
     private PatrimoinePersistenceAdapter patrimoine;
     private GoalPersistenceAdapter goals;
+    private GoalCommandService goalCommands;
 
     @BeforeEach
     void setUp() {
@@ -39,6 +46,8 @@ class InterSiloIntegrityCharacterizationTest {
         persistenceManager.init();
         patrimoine = new PatrimoinePersistenceAdapter(persistenceManager);
         goals = new GoalPersistenceAdapter(persistenceManager);
+        goalCommands = new GoalCommandService(goals, goals, patrimoine, silos -> { },
+                RecordingTransactionRunner.direct());
     }
 
     private void savePlacement(String id, String label, String balance) {
@@ -60,7 +69,7 @@ class InterSiloIntegrityCharacterizationTest {
     void allocationAboveBalanceIsRejected() {
         savePlacement("plc_1", "Livret A", "1000");
 
-        assertThatThrownBy(() -> goals.saveGoalRow(goalBody("goal_1", "plc_1", "1500")))
+        assertThatThrownBy(() -> goalCommands.saveGoalRow(goalBody("goal_1", "plc_1", "1500")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Livret A")
                 .hasMessageContaining("solde suffisant");
@@ -71,11 +80,11 @@ class InterSiloIntegrityCharacterizationTest {
     @DisplayName("Objectifs -> Patrimoine : le solde disponible tient compte des allocations des AUTRES objectifs")
     void availableBalanceDeductsAllocationsOfOtherGoals() {
         savePlacement("plc_1", "Livret A", "1000");
-        goals.saveGoalRow(goalBody("goal_1", "plc_1", "600"));
+        goalCommands.saveGoalRow(goalBody("goal_1", "plc_1", "600"));
 
-        assertThatThrownBy(() -> goals.saveGoalRow(goalBody("goal_2", "plc_1", "500")))
+        assertThatThrownBy(() -> goalCommands.saveGoalRow(goalBody("goal_2", "plc_1", "500")))
                 .isInstanceOf(IllegalArgumentException.class);
-        goals.saveGoalRow(goalBody("goal_2", "plc_1", "400"));
+        goalCommands.saveGoalRow(goalBody("goal_2", "plc_1", "400"));
 
         assertThat(goals.getGoals()).extracting(ObjectifModel::id).containsExactly("goal_1", "goal_2");
     }
@@ -84,9 +93,9 @@ class InterSiloIntegrityCharacterizationTest {
     @DisplayName("Objectifs -> Patrimoine : rééditer un objectif remplace ses propres allocations")
     void editingAGoalReplacesItsOwnAllocations() {
         savePlacement("plc_1", "Livret A", "1000");
-        goals.saveGoalRow(goalBody("goal_1", "plc_1", "900"));
+        goalCommands.saveGoalRow(goalBody("goal_1", "plc_1", "900"));
 
-        goals.saveGoalRow(goalBody("goal_1", "plc_1", "1000"));
+        goalCommands.saveGoalRow(goalBody("goal_1", "plc_1", "1000"));
 
         assertThat(goals.getGoals()).hasSize(1);
         assertThat(goals.getGoals().get(0).getEffectiveAllocations())
@@ -99,7 +108,7 @@ class InterSiloIntegrityCharacterizationTest {
     @DisplayName("TROU : supprimer un placement alloue a un objectif ne touche pas l'objectif (allocation orpheline)")
     void deletingAllocatedPlacementLeavesOrphanAllocation() {
         savePlacement("plc_1", "Livret A", "1000");
-        goals.saveGoalRow(goalBody("goal_1", "plc_1", "600"));
+        goalCommands.saveGoalRow(goalBody("goal_1", "plc_1", "600"));
 
         patrimoine.deletePatrimoineRow(PatrimoineList.PLACEMENTS, "plc_1");
 

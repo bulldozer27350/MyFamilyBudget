@@ -9,7 +9,7 @@ import java.math.BigDecimal;
  *
  * Un objectif peut regrouper plusieurs allocations (un même objectif alimenté par plusieurs
  * comptes), et un même compte peut être référencé par plusieurs objectifs différents ; c'est la
- * validation appelante ({@code BudgetMutationService}) qui garantit que la somme des allocations
+ * validation appelante ({@code GoalCommandService}, SILO-240) qui garantit que la somme des allocations
  * d'un compte, tous objectifs confondus, ne dépasse jamais son solde.
  *
  * Remplace, pour les nouveaux objectifs, le couple historique {@code sourcePlacementId}/

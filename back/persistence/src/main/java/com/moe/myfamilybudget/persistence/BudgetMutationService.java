@@ -529,8 +529,6 @@ class BudgetMutationService {
                 String notes = getString(body, "notes", "");
                 List<ObjectifAllocationModel> allocations = getObjectifAllocations(body);
 
-                validateObjectifAllocations(uid, allocations, base);
-
                 ObjectifModel model = new ObjectifModel(uid, label, targetAmount, null, targetDate, "", notes,
                         allocations);
 
@@ -1192,55 +1190,6 @@ class BudgetMutationService {
             allocations.add(new ObjectifAllocationModel(allocationId, placementId, amount));
         }
         return allocations;
-    }
-
-    /**
-     * Bloque la sauvegarde si les allocations demandées dépassent le solde d'un compte, une fois
-     * déduites les allocations déjà réservées par les AUTRES objectifs (celles de l'objectif en
-     * cours de sauvegarde sont intégralement remplacées par {@code allocations}, elles ne
-     * comptent donc pas dans le "déjà alloué ailleurs").
-     */
-    private void validateObjectifAllocations(String objectifUid, List<ObjectifAllocationModel> allocations,
-                                              BudgetDataModel base) {
-        if (allocations == null || allocations.isEmpty()) {
-            return;
-        }
-
-        Map<String, BigDecimal> soldeParCompte = new HashMap<>();
-        Map<String, String> libelleParCompte = new HashMap<>();
-        for (PlacementModel p : base.getEffectivePlacements()) {
-            soldeParCompte.put(p.id(), p.getEffectiveBalance());
-            libelleParCompte.put(p.id(), p.label());
-        }
-
-        Map<String, BigDecimal> dejaAlloueAilleurs = new HashMap<>();
-        for (ObjectifModel o : base.getEffectiveObjectifs()) {
-            if (Objects.equals(o.id(), objectifUid)) {
-                continue;
-            }
-            for (ObjectifAllocationModel a : o.getEffectiveAllocations()) {
-                dejaAlloueAilleurs.merge(a.placementId(), a.getEffectiveAmount(), BigDecimal::add);
-            }
-        }
-
-        Map<String, BigDecimal> demandeParCompte = new HashMap<>();
-        for (ObjectifAllocationModel a : allocations) {
-            demandeParCompte.merge(a.placementId(), a.getEffectiveAmount(), BigDecimal::add);
-        }
-
-        for (Map.Entry<String, BigDecimal> entry : demandeParCompte.entrySet()) {
-            String placementId = entry.getKey();
-            BigDecimal demande = entry.getValue();
-            BigDecimal solde = soldeParCompte.getOrDefault(placementId, BigDecimal.ZERO);
-            BigDecimal dejaAlloue = dejaAlloueAilleurs.getOrDefault(placementId, BigDecimal.ZERO);
-            BigDecimal disponible = solde.subtract(dejaAlloue);
-            if (demande.compareTo(disponible) > 0) {
-                String libelle = libelleParCompte.getOrDefault(placementId, placementId);
-                throw new IllegalArgumentException("Le compte '" + libelle
-                        + "' n'a pas un solde suffisant pour cette allocation : disponible "
-                        + disponible + " €, montant demandé " + demande + " €.");
-            }
-        }
     }
 
     // --- Utilitaires de conversion ---

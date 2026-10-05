@@ -32,7 +32,7 @@ class GoalsNotificationsFragmentInputsArchTest {
                     + "|server\\.internal\\.mapper\\.NotificationsMapper"
                     + "|server\\.internal\\.calculation\\.JpaObjectifsSettingsStore"
                     + "|application\\.factory\\.NotificationInputFactory"
-                    + "|application\\.command\\.GoalCommandService"
+                    + "|application\\.command\\.Goal(CommandService|AllocationRule)"
                     + "|application\\.settings\\.ObjectifsSettings(Service|Store)"
                     + ")(\\$.*)?";
 

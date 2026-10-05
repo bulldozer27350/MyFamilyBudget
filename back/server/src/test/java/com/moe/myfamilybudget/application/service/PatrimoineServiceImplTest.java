@@ -47,6 +47,7 @@ import com.moe.myfamilybudget.persistence.adapter.LoanPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 class PatrimoineServiceImplTest {
 
@@ -60,11 +61,13 @@ class PatrimoineServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
+        GoalPersistenceAdapter goalAdapter = new GoalPersistenceAdapter(persistenceManager);
         service = new PatrimoineServiceImpl(
                 mapper, new DefaultPatrimoineProjectionService(), new DefaultPlacementEvolutionService(),
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
                 new LoanCommandService(new LoanPersistenceAdapter(persistenceManager)),
-                new GoalCommandService(new GoalPersistenceAdapter(persistenceManager)),
+                new GoalCommandService(goalAdapter, goalAdapter, new PatrimoinePersistenceAdapter(persistenceManager),
+                        silos -> { }, RecordingTransactionRunner.direct()),
                 settingsAdapter,
                 settingsAdapter,
                 settingsAdapter,

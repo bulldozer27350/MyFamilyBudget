@@ -19,7 +19,8 @@ import com.moe.myfamilybudget.domain.goals.port.GoalSnapshotWriter;
  *
  * <p>DB-1021 : en production, la lecture passe par {@link GoalRepository} (tables autonomes {@code goal} /
  * {@code goal_allocation}, DB-1020). Les ecritures passent toujours par le {@code PersistenceManager}
- * (liste {@code "objectifs"}, validation des allocations contre le cache) : la passerelle de persistance
+ * (liste {@code "objectifs"} ; la validation des allocations est faite en amont par
+ * {@code GoalCommandService}, SILO-240) : la passerelle de persistance
  * recopie les objectifs dans les tables autonomes dans la meme transaction.
  *
  * <p>Le constructeur sans repository conserve l'ancienne lecture depuis le cache memoire ; il sert aux tests
