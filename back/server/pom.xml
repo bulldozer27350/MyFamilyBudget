@@ -60,10 +60,14 @@
             <artifactId>domain-bank-pointage</artifactId>
         </dependency>
 
-        <!-- Domaine Trésorerie : moteur de projection, modèles et ports (MAVEN-050) -->
+        <!-- Silo Trésorerie : API (contrats, ports, interfaces de service) et cœur (moteur) ; SILO-153 -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-treasury</artifactId>
+            <artifactId>treasury-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>treasury-core</artifactId>
         </dependency>
 
         <!-- Domaine Analyse : calculateur Réel vs Prévisionnel, contrat d'entrée et modèles de résultat (MAVEN-070) -->

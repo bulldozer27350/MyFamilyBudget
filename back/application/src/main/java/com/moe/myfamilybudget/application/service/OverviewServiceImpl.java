@@ -14,6 +14,7 @@ import com.moe.myfamilybudget.application.overview.OverviewCalculationService;
 import com.moe.myfamilybudget.application.overview.OverviewInput;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationService;
+import com.moe.myfamilybudget.domain.treasury.calculation.TresorerieCalculationService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.application.factory.OverviewInputFactory;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
@@ -77,6 +78,7 @@ public class OverviewServiceImpl implements OverviewApi {
             RetirementCalculationService retirementCalculationService,
             TaxCalculationService taxCalculationService,
             PatrimoineProjectionService patrimoineProjectionService,
+            TresorerieCalculationService tresorerieCalculationService,
             SettingsReader settingsReader,
             BudgetReader budgetReader,
             PatrimoineReader patrimoineReader,
@@ -87,7 +89,7 @@ public class OverviewServiceImpl implements OverviewApi {
             GoalReader goalReader) {
         this.mapper = mapper;
         this.inputFactory = new OverviewInputFactory(retirementCalculationService, taxCalculationService,
-                patrimoineProjectionService);
+                patrimoineProjectionService, tresorerieCalculationService);
         this.calculationService = new OverviewCalculationService();
         this.retirementInputFactory = new RetirementInputFactory();
         this.retirementCalculationService = retirementCalculationService;

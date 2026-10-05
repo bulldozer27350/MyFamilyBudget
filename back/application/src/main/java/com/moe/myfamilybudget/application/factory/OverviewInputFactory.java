@@ -65,9 +65,10 @@ public final class OverviewInputFactory {
     @Autowired
     public OverviewInputFactory(RetirementCalculationService retirementCalculationService,
             TaxCalculationService taxCalculationService,
-            PatrimoineProjectionService patrimoineProjectionService) {
+            PatrimoineProjectionService patrimoineProjectionService,
+            TresorerieCalculationService tresorerieCalculationService) {
         this(new TreasuryInputFactory(retirementCalculationService, taxCalculationService),
-             new TresorerieCalculationService(),
+             tresorerieCalculationService,
              patrimoineProjectionService,
              new RetirementInputFactory(),
              retirementCalculationService,

@@ -52,7 +52,7 @@
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-treasury</artifactId>
+            <artifactId>treasury-api</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>

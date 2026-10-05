@@ -93,6 +93,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
             TresorerieCommandService tresorerieCommandService,
             RetirementCalculationService retirementCalculationService,
             TaxCalculationService taxCalculationService,
+            TresorerieCalculationService tresorerieCalculationService,
             RetirementSettingsReader retirementSettingsReader,
             TaxSettingsReader taxSettingsReader,
             TresorerieSettingsReader tresorerieSettingsReader,
@@ -104,7 +105,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
             BankReader bankReader) {
         this.mapper = mapper;
         this.tresorerieCommandService = tresorerieCommandService;
-        this.calculationService = new TresorerieCalculationService();
+        this.calculationService = tresorerieCalculationService;
         this.treasuryInputFactory = new TreasuryInputFactory(retirementCalculationService, taxCalculationService);
         this.retirementSettingsReader = retirementSettingsReader;
         this.taxSettingsReader = taxSettingsReader;
@@ -368,10 +369,10 @@ public class TresorerieServiceImpl implements TresorerieApi {
         BigDecimal budgeted;
         if ("charge".equals(kind) && charge != null) {
             ChargeProjectionInput cInput = TreasuryInputFactory.toCharge(charge);
-            budgeted = TresorerieCalculationService.chargeMonthlyForYear(cInput, currentYear, inflationRate);
+            budgeted = calculationService.chargeMonthlyForYear(cInput, currentYear, inflationRate);
         } else if ("revenu".equals(kind) && income != null) {
             IncomeProjectionInput iInput = TreasuryInputFactory.toIncome(income);
-            budgeted = TresorerieCalculationService.incomeMonthlyForYear(iInput, currentYear);
+            budgeted = calculationService.incomeMonthlyForYear(iInput, currentYear);
         } else if ("placement".equals(kind) && placement != null) {
             budgeted = placement.getEffectiveMonthly();
         } else {

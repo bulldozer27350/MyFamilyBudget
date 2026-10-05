@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
+import com.moe.myfamilybudget.domain.treasury.core.DefaultTresorerieCalculationService;
 import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionService;
 import com.moe.myfamilybudget.application.overview.OverviewInput;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjection;
@@ -33,7 +34,7 @@ import com.moe.myfamilybudget.domain.wealth.model.ScenarioAmountsModel;
 class OverviewInputFactoryTest {
 
     private final OverviewInputFactory factory = new OverviewInputFactory(new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(),
-            new DefaultPatrimoineProjectionService());
+            new DefaultPatrimoineProjectionService(), new DefaultTresorerieCalculationService());
 
     private static SettingsModel settings() {
         return new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", new BigDecimal("5000"),

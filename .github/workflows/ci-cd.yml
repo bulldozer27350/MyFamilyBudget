@@ -61,7 +61,8 @@ jobs:
             back/wealth-api/pom.xml
             back/wealth-core/pom.xml
             back/domain-bank-pointage/pom.xml
-            back/domain-treasury/pom.xml
+            back/treasury-api/pom.xml
+            back/treasury-core/pom.xml
             back/domain-analysis/pom.xml
             back/domain-credit/pom.xml
             back/domain-goals/pom.xml

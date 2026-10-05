@@ -17,7 +17,8 @@ COPY back/tax-core/pom.xml back/tax-core/pom.xml
 COPY back/wealth-api/pom.xml back/wealth-api/pom.xml
 COPY back/wealth-core/pom.xml back/wealth-core/pom.xml
 COPY back/domain-bank-pointage/pom.xml back/domain-bank-pointage/pom.xml
-COPY back/domain-treasury/pom.xml back/domain-treasury/pom.xml
+COPY back/treasury-api/pom.xml back/treasury-api/pom.xml
+COPY back/treasury-core/pom.xml back/treasury-core/pom.xml
 COPY back/domain-analysis/pom.xml back/domain-analysis/pom.xml
 COPY back/domain-credit/pom.xml back/domain-credit/pom.xml
 COPY back/domain-goals/pom.xml back/domain-goals/pom.xml
@@ -43,7 +44,8 @@ COPY back/tax-core back/tax-core
 COPY back/wealth-api back/wealth-api
 COPY back/wealth-core back/wealth-core
 COPY back/domain-bank-pointage back/domain-bank-pointage
-COPY back/domain-treasury back/domain-treasury
+COPY back/treasury-api back/treasury-api
+COPY back/treasury-core back/treasury-core
 COPY back/domain-analysis back/domain-analysis
 COPY back/domain-credit back/domain-credit
 COPY back/domain-goals back/domain-goals

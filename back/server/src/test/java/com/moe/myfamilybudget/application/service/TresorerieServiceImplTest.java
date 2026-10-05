@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
+import com.moe.myfamilybudget.domain.treasury.core.DefaultTresorerieCalculationService;
 import com.moe.myfamilybudget.api.model.ChargeDto;
 import com.moe.myfamilybudget.api.model.IncomeDto;
 import com.moe.myfamilybudget.api.model.OneOffExpenseDto;
@@ -72,6 +73,7 @@ class TresorerieServiceImplTest {
                 mapper, new TresorerieCommandService(new TresoreriePersistenceAdapter(persistenceManager)),
                 new DefaultRetirementCalculationService(),
                 new DefaultTaxCalculationService(),
+                new DefaultTresorerieCalculationService(),
                 settingsAdapter,
                 settingsAdapter,
                 settingsAdapter,

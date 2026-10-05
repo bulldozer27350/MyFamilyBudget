@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
+import com.moe.myfamilybudget.domain.treasury.core.DefaultTresorerieCalculationService;
 import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionService;
 import com.moe.myfamilybudget.api.model.CashflowYearDto;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
@@ -52,6 +53,7 @@ class OverviewServiceImplTest {
                 new DefaultRetirementCalculationService(),
                 new DefaultTaxCalculationService(),
                 new DefaultPatrimoineProjectionService(),
+                new DefaultTresorerieCalculationService(),
                 SettingsReaderTestFactory.of(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),

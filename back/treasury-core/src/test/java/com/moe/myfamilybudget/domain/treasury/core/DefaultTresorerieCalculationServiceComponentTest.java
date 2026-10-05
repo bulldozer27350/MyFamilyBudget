@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.treasury.calculation;
+package com.moe.myfamilybudget.domain.treasury.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -10,6 +10,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.domain.treasury.calculation.ChargeProjectionInput;
+import com.moe.myfamilybudget.domain.treasury.calculation.IncomeProjectionInput;
+import com.moe.myfamilybudget.domain.treasury.calculation.OneOffCashflow;
+import com.moe.myfamilybudget.domain.treasury.calculation.TransferProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.TresorerieCalculationService;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryParameters;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryPensionProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryPlacementCashflow;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjectionInput;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasurySimulationPeriod;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryTaxProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.VariableIncomeProjection;
 import com.moe.myfamilybudget.domain.treasury.model.CashflowYearModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewCellModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
@@ -20,10 +33,10 @@ import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
  * contexte Spring. Chaque scénario construit un {@link TreasuryProjectionInput} minimal et vérifie
  * le comportement de {@link TresorerieCalculationService#compute(TreasuryProjectionInput)}.
  */
-@DisplayName("TresorerieCalculationService - tests de composant sur TreasuryProjectionInput")
-class TresorerieCalculationServiceComponentTest {
+@DisplayName("DefaultTresorerieCalculationService - tests de composant sur TreasuryProjectionInput")
+class DefaultTresorerieCalculationServiceComponentTest {
 
-    private final TresorerieCalculationService service = new TresorerieCalculationService();
+    private final TresorerieCalculationService service = new DefaultTresorerieCalculationService();
 
     private static BigDecimal bd(String v) {
         return new BigDecimal(v);
@@ -51,7 +64,7 @@ class TresorerieCalculationServiceComponentTest {
         void startYear() {
             ChargeProjectionInput c = new ChargeProjectionInput("Loyer", bd("800"),
                     LocalDate.of(2026, 1, 1), LocalDate.of(2030, 12, 31), null);
-            assertThat(TresorerieCalculationService.chargeMonthlyForYear(c, 2026, bd("0.015")))
+            assertThat(service.chargeMonthlyForYear(c, 2026, bd("0.015")))
                     .isEqualByComparingTo(bd("800"));
         }
 
@@ -60,7 +73,7 @@ class TresorerieCalculationServiceComponentTest {
         void withInflation() {
             ChargeProjectionInput c = new ChargeProjectionInput("Loyer", bd("800"),
                     LocalDate.of(2026, 1, 1), LocalDate.of(2030, 12, 31), null);
-            BigDecimal result = TresorerieCalculationService.chargeMonthlyForYear(c, 2027, bd("0.02"));
+            BigDecimal result = service.chargeMonthlyForYear(c, 2027, bd("0.02"));
             // 800 * 1.02 = 816
             assertThat(result).isEqualByComparingTo(bd("816"));
         }
@@ -70,7 +83,7 @@ class TresorerieCalculationServiceComponentTest {
         void withExplicitGrowth() {
             ChargeProjectionInput c = new ChargeProjectionInput("Assurance", bd("100"),
                     LocalDate.of(2026, 1, 1), LocalDate.of(2030, 12, 31), bd("0.05"));
-            BigDecimal result = TresorerieCalculationService.chargeMonthlyForYear(c, 2027, bd("0.02"));
+            BigDecimal result = service.chargeMonthlyForYear(c, 2027, bd("0.02"));
             // 100 * 1.05 = 105
             assertThat(result).isEqualByComparingTo(bd("105"));
         }
@@ -80,16 +93,16 @@ class TresorerieCalculationServiceComponentTest {
         void outsideRange() {
             ChargeProjectionInput c = new ChargeProjectionInput("Loyer", bd("800"),
                     LocalDate.of(2026, 1, 1), LocalDate.of(2030, 12, 31), null);
-            assertThat(TresorerieCalculationService.chargeMonthlyForYear(c, 2025, bd("0.015")))
+            assertThat(service.chargeMonthlyForYear(c, 2025, bd("0.015")))
                     .isEqualByComparingTo(BigDecimal.ZERO);
-            assertThat(TresorerieCalculationService.chargeMonthlyForYear(c, 2031, bd("0.015")))
+            assertThat(service.chargeMonthlyForYear(c, 2031, bd("0.015")))
                     .isEqualByComparingTo(BigDecimal.ZERO);
         }
 
         @Test
         @DisplayName("Renvoie ZERO pour une charge nulle")
         void nullCharge() {
-            assertThat(TresorerieCalculationService.chargeMonthlyForYear(null, 2026, bd("0.015")))
+            assertThat(service.chargeMonthlyForYear(null, 2026, bd("0.015")))
                     .isEqualByComparingTo(BigDecimal.ZERO);
         }
     }
@@ -103,7 +116,7 @@ class TresorerieCalculationServiceComponentTest {
         void fullYear() {
             ChargeProjectionInput c = new ChargeProjectionInput("Loyer", bd("800"),
                     LocalDate.of(2026, 1, 1), LocalDate.of(2030, 12, 31), null);
-            BigDecimal result = TresorerieCalculationService.chargeAnnualForYear(c, 2026, bd("0.015"));
+            BigDecimal result = service.chargeAnnualForYear(c, 2026, bd("0.015"));
             // 800 * 12 = 9600
             assertThat(result).isEqualByComparingTo(bd("9600"));
         }
@@ -113,7 +126,7 @@ class TresorerieCalculationServiceComponentTest {
         void partialStartYear() {
             ChargeProjectionInput c = new ChargeProjectionInput("Loyer", bd("800"),
                     LocalDate.of(2026, 7, 1), LocalDate.of(2030, 12, 31), null);
-            BigDecimal result = TresorerieCalculationService.chargeAnnualForYear(c, 2026, bd("0.015"));
+            BigDecimal result = service.chargeAnnualForYear(c, 2026, bd("0.015"));
             // 6 mois * 800 = 4800
             assertThat(result).isEqualByComparingTo(bd("4800"));
         }
@@ -128,7 +141,7 @@ class TresorerieCalculationServiceComponentTest {
         void startYear() {
             IncomeProjectionInput i = new IncomeProjectionInput("Salaire", bd("3000"),
                     LocalDate.of(2026, 1, 1), LocalDate.of(2040, 12, 31), bd("0.02"));
-            assertThat(TresorerieCalculationService.incomeMonthlyForYear(i, 2026))
+            assertThat(service.incomeMonthlyForYear(i, 2026))
                     .isEqualByComparingTo(bd("3000"));
         }
 
@@ -137,7 +150,7 @@ class TresorerieCalculationServiceComponentTest {
         void withGrowth() {
             IncomeProjectionInput i = new IncomeProjectionInput("Salaire", bd("3000"),
                     LocalDate.of(2026, 1, 1), LocalDate.of(2040, 12, 31), bd("0.02"));
-            BigDecimal result = TresorerieCalculationService.incomeMonthlyForYear(i, 2027);
+            BigDecimal result = service.incomeMonthlyForYear(i, 2027);
             // 3000 * 1.02 = 3060
             assertThat(result).isEqualByComparingTo(bd("3060"));
         }
@@ -147,7 +160,7 @@ class TresorerieCalculationServiceComponentTest {
         void outsideRange() {
             IncomeProjectionInput i = new IncomeProjectionInput("Salaire", bd("3000"),
                     LocalDate.of(2026, 1, 1), LocalDate.of(2040, 12, 31), bd("0.02"));
-            assertThat(TresorerieCalculationService.incomeMonthlyForYear(i, 2025))
+            assertThat(service.incomeMonthlyForYear(i, 2025))
                     .isEqualByComparingTo(BigDecimal.ZERO);
         }
     }
@@ -161,7 +174,7 @@ class TresorerieCalculationServiceComponentTest {
         void fullYear() {
             IncomeProjectionInput i = new IncomeProjectionInput("Salaire", bd("3000"),
                     LocalDate.of(2026, 1, 1), LocalDate.of(2040, 12, 31), bd("0.02"));
-            BigDecimal result = TresorerieCalculationService.incomeAnnualForYear(i, 2026);
+            BigDecimal result = service.incomeAnnualForYear(i, 2026);
             // 3000 * 12 = 36000
             assertThat(result).isEqualByComparingTo(bd("36000"));
         }
@@ -171,7 +184,7 @@ class TresorerieCalculationServiceComponentTest {
         void partialEndYear() {
             IncomeProjectionInput i = new IncomeProjectionInput("Salaire", bd("3000"),
                     LocalDate.of(2026, 1, 1), LocalDate.of(2028, 6, 30), bd("0.00"));
-            BigDecimal result = TresorerieCalculationService.incomeAnnualForYear(i, 2028);
+            BigDecimal result = service.incomeAnnualForYear(i, 2028);
             // 6 mois * 3000 = 18000
             assertThat(result).isEqualByComparingTo(bd("18000"));
         }
@@ -509,36 +522,36 @@ class TresorerieCalculationServiceComponentTest {
         @Test
         @DisplayName("Année complète = 12 mois")
         void fullYear() {
-            assertThat(TresorerieCalculationService.monthsActiveInYear(
+            assertThat(DefaultTresorerieCalculationService.monthsActiveInYear(
                     LocalDate.of(2020, 1, 1), LocalDate.of(2030, 12, 31), 2026)).isEqualTo(12);
         }
 
         @Test
         @DisplayName("Début en cours d'année")
         void partialStart() {
-            assertThat(TresorerieCalculationService.monthsActiveInYear(
+            assertThat(DefaultTresorerieCalculationService.monthsActiveInYear(
                     LocalDate.of(2026, 4, 1), LocalDate.of(2030, 12, 31), 2026)).isEqualTo(9);
         }
 
         @Test
         @DisplayName("Fin en cours d'année")
         void partialEnd() {
-            assertThat(TresorerieCalculationService.monthsActiveInYear(
+            assertThat(DefaultTresorerieCalculationService.monthsActiveInYear(
                     LocalDate.of(2020, 1, 1), LocalDate.of(2026, 6, 30), 2026)).isEqualTo(6);
         }
 
         @Test
         @DisplayName("Année hors plage = 0 mois")
         void outsideRange() {
-            assertThat(TresorerieCalculationService.monthsActiveInYear(
+            assertThat(DefaultTresorerieCalculationService.monthsActiveInYear(
                     LocalDate.of(2026, 1, 1), LocalDate.of(2030, 12, 31), 2025)).isEqualTo(0);
         }
 
         @Test
         @DisplayName("Null start ou end = 0 mois")
         void nullDates() {
-            assertThat(TresorerieCalculationService.monthsActiveInYear(null, LocalDate.of(2030, 12, 31), 2026)).isEqualTo(0);
-            assertThat(TresorerieCalculationService.monthsActiveInYear(LocalDate.of(2026, 1, 1), null, 2026)).isEqualTo(0);
+            assertThat(DefaultTresorerieCalculationService.monthsActiveInYear(null, LocalDate.of(2030, 12, 31), 2026)).isEqualTo(0);
+            assertThat(DefaultTresorerieCalculationService.monthsActiveInYear(LocalDate.of(2026, 1, 1), null, 2026)).isEqualTo(0);
         }
     }
 }

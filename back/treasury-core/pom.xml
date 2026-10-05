@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        SILO-153 (doc/architecture/21-plan-silotage.md) : cœur du silo Trésorerie (moteur de calcul
+        `DefaultTresorerieCalculationService`, implémentation de l'interface de `treasury-api`).
+
+        Règle : ce module ne dépend que de `treasury-api` (et, plus tard, de `infra-jpa`, SILO-216). Pas de
+        `module-info` (décision D3) : visibilité tenue par le graphe Maven (règle C de `MavenModuleGraphTest`)
+        et ArchUnit. Seul le composition root (server) le référence ; `application` ne dépend que de
+        `treasury-api`. Le moteur n'est pas un @Component : son bean est déclaré par `DomainEngineConfig`.
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>treasury-core</artifactId>
+    <packaging>jar</packaging>
+    <name>treasury-core</name>
+    <description>Cœur du silo Trésorerie MyFamilyBudget (moteur de calcul pur, sans Spring ni JPA)</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>treasury-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

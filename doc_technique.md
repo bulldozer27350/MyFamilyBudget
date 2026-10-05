@@ -168,7 +168,7 @@ back/server/src/main/java/com/moe/myfamilybudget/
 
 Depuis MAVEN-010, le backend est un reactor Maven (`back/pom.xml`). Les modèles du budget de base
 (`IncomeModel`, `ChargeModel`, `OneOffExpenseModel`, `TransferModel`, `VariableIncomeModel`,
-`VariableOverrideModel`, ...) vivent dans le module `back/domain-treasury` (package
+`VariableOverrideModel`, ...) vivent dans le module `back/treasury-api` (package
 `com.moe.myfamilybudget.domain.treasury.model`, `domain-budget` ayant été dissous par SILO-140), sans
 dépendance Spring/JPA/OpenAPI ; `server` en dépend.
 Le domaine Retraite (moteur de calcul, projections, modèle, ports Reader/Writer) vit de même dans
@@ -185,10 +185,12 @@ et `application` ne connaît que les interfaces.
 Le domaine Banque/Pointage (modèle d'import bancaire, `BankImportCalculator`, `PointageCalculator`, contrats
 d'entrée, ports) vit dans `back/domain-bank-pointage` (`com.moe.myfamilybudget.domain.bankpointage.*`), sans
 dépendance vers un autre module du reactor ; Enable Banking, adapters JPA et contrôleurs restent dans `server`.
-Le domaine Trésorerie (`TresorerieCalculationService`, contrats d'entrée/sortie, modèles de résultat, ports Writer)
-vit dans `back/domain-treasury` (`com.moe.myfamilybudget.domain.treasury.*`) ; il ne dépend d'aucun autre module du reactor
-et porte ses propres contrats d'entrée (`TreasuryTaxProjection`, `TreasuryPensionProjection`,
-`TreasuryPlacementCashflow`), traduits par `application`.
+Le domaine Trésorerie vit dans `back/treasury-api` (interface `TresorerieCalculationService`, contrats d'entrée/sortie,
+modèles, ports, `com.moe.myfamilybudget.domain.treasury.*`) et `back/treasury-core` (moteur
+`DefaultTresorerieCalculationService`, SILO-153) ; il ne dépend d'aucun autre module du reactor et porte ses propres
+contrats d'entrée (`TreasuryTaxProjection`, `TreasuryPensionProjection`, `TreasuryPlacementCashflow`), traduits par
+`application`. Son moteur est déclaré comme bean par `config/DomainEngineConfig` et `application` ne connaît que
+l'interface.
 Le domaine Analyse (`AnalyseCalculator`, contrat d'entrée `AnalyseInput`, modèles de résultat) vit dans
 `back/domain-analysis` (`com.moe.myfamilybudget.domain.analysis.*`) ; consommateur final, il ne dépend d'aucun
 autre module du reactor et porte ses propres types d'entrée.

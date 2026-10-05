@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.treasury.calculation;
+package com.moe.myfamilybudget.domain.treasury.core;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -8,6 +8,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import com.moe.myfamilybudget.domain.treasury.calculation.ChargeProjectionInput;
+import com.moe.myfamilybudget.domain.treasury.calculation.IncomeProjectionInput;
+import com.moe.myfamilybudget.domain.treasury.calculation.OneOffCashflow;
+import com.moe.myfamilybudget.domain.treasury.calculation.TransferProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.TresorerieCalculationService;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryPensionProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryPlacementCashflow;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjectionInput;
+import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryTaxProjection;
+import com.moe.myfamilybudget.domain.treasury.calculation.VariableIncomeProjection;
 import com.moe.myfamilybudget.domain.treasury.model.CashflowYearModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewCellModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
@@ -15,6 +26,9 @@ import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
 /**
  * Calcul pur de la trésorerie prévisionnelle (Trésorerie) : projections de flux annuel et aperçu
  * des revenus variables.
+ *
+ * <p>SILO-153 : implémentation de {@link TresorerieCalculationService} ({@code treasury-api}), hébergée dans
+ * {@code treasury-core} ; les fonctions unitaires publiques deviennent des méthodes d'instance de l'interface.
  *
  * <p>RF-401 (voir doc/architecture/06-domaine-tresorerie.md) : ce moteur ne dépend plus de
  * {@code BudgetDataModel}. Il consomme uniquement {@link TreasuryProjectionInput} préparé par
@@ -25,8 +39,9 @@ import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
  * pures opérant exclusivement sur leurs modèles minimaux ({@link ChargeProjectionInput},
  * {@link IncomeProjectionInput}).
  */
-public class TresorerieCalculationService {
+public class DefaultTresorerieCalculationService implements TresorerieCalculationService {
 
+    @Override
     public TreasuryProjection compute(TreasuryProjectionInput input) {
         Objects.requireNonNull(input, "input");
 
@@ -192,9 +207,10 @@ public class TresorerieCalculationService {
         return variablePreview;
     }
 
-    // --- Fonctions de calcul unitaires (RF-401) ---
+    // --- Fonctions de calcul unitaires (RF-401, SILO-153) ---
 
-    public static BigDecimal chargeMonthlyForYear(ChargeProjectionInput c, int year, BigDecimal inflationRate) {
+    @Override
+    public BigDecimal chargeMonthlyForYear(ChargeProjectionInput c, int year, BigDecimal inflationRate) {
         if (c == null || c.start() == null || c.end() == null || year < c.start().getYear() || year > c.end().getYear()) {
             return BigDecimal.ZERO;
         }
@@ -204,7 +220,8 @@ public class TresorerieCalculationService {
         return c.monthly().multiply(BigDecimal.valueOf(factor));
     }
 
-    public static BigDecimal chargeAnnualForYear(ChargeProjectionInput c, int year, BigDecimal inflationRate) {
+    @Override
+    public BigDecimal chargeAnnualForYear(ChargeProjectionInput c, int year, BigDecimal inflationRate) {
         if (c == null) return BigDecimal.ZERO;
         int m = monthsActiveInYear(c.start(), c.end(), year);
         if (m == 0) return BigDecimal.ZERO;
@@ -222,7 +239,8 @@ public class TresorerieCalculationService {
         return inflationRate != null ? inflationRate : new BigDecimal("0.015");
     }
 
-    public static BigDecimal incomeMonthlyForYear(IncomeProjectionInput i, int year) {
+    @Override
+    public BigDecimal incomeMonthlyForYear(IncomeProjectionInput i, int year) {
         if (i == null || i.start() == null || i.end() == null || year < i.start().getYear() || year > i.end().getYear()) {
             return BigDecimal.ZERO;
         }
@@ -231,7 +249,8 @@ public class TresorerieCalculationService {
         return i.monthly().multiply(BigDecimal.valueOf(factor));
     }
 
-    public static BigDecimal incomeAnnualForYear(IncomeProjectionInput i, int year) {
+    @Override
+    public BigDecimal incomeAnnualForYear(IncomeProjectionInput i, int year) {
         if (i == null) return BigDecimal.ZERO;
         int m = monthsActiveInYear(i.start(), i.end(), year);
         if (m == 0) return BigDecimal.ZERO;

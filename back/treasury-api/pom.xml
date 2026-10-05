@@ -5,16 +5,18 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!--
-        MAVEN-050 (doc/architecture/20-backlog-modules-maven-patchs.md) : domaine Trésorerie
-        (moteur de projection, contrats d'entrée/sortie, modèles de résultat, ports Writer et
-        énumérations de champs).
+        MAVEN-050 puis SILO-153 (doc/architecture/21-plan-silotage.md) : API du silo Trésorerie
+        (interface de service TresorerieCalculationService, contrats d'entrée/sortie, modèles, ports
+        Reader/Writer et énumérations de champs). Le moteur `DefaultTresorerieCalculationService` vit dans
+        `treasury-core`. Nom de module Java inchangé (`com.moe.myfamilybudget.domain.treasury`).
 
         SILO-140 : domain-budget est dissous, ses modèles (revenus, charges, ponctuels, virements, revenus
         variables, résultats de flux) rejoignent le package treasury.model. SILO-132 : aucune dépendance
         vers un autre module du reactor ; Trésorerie définit ses propres entrées (TreasuryPensionProjection, TreasuryTaxProjection,
         TreasuryPlacementCashflow) et l'application traduit.
         Aucune dépendance vers Spring, JPA, OpenAPI, PersistenceManager, BudgetDataModel,
-        internal.impl ni internal.factory. Dépendances de test uniquement : JUnit 5 et AssertJ.
+        internal.impl ni internal.factory. Aucune dépendance de test : le module ne contient que des
+        contrats, testés par `treasury-core`.
     -->
     <parent>
         <groupId>com.moe.myfamilybudget</groupId>
@@ -23,21 +25,9 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>domain-treasury</artifactId>
+    <artifactId>treasury-api</artifactId>
     <packaging>jar</packaging>
-    <name>domain-treasury</name>
-    <description>Domaine Trésorerie MyFamilyBudget (moteur pur, sans Spring ni JPA)</description>
+    <name>treasury-api</name>
+    <description>API du silo Trésorerie MyFamilyBudget (contrats, ports, interfaces de service ; sans Spring ni JPA)</description>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
 </project>
