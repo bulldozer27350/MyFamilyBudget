@@ -6,12 +6,15 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.moe.myfamilybudget.application.command.RetirementCommandService;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteIncomeModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraitePersonCommand;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraitePersonWithProjectionModel;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteProjectionModel;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteResultModel;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSalaryHistoryModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSaveCommand;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSettingsModel;
 import com.moe.myfamilybudget.application.usecase.retirement.RetirementUseCase;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationInput;
@@ -51,6 +54,7 @@ public class DefaultRetirementUseCase implements RetirementUseCase {
     private final RetirementReader retirementReader;
     private final TaxReader taxReader;
     private final BudgetReader budgetReader;
+    private final RetirementCommandService retirementCommandService;
 
     public DefaultRetirementUseCase(
         RetirementInputFactory retirementInputFactory,
@@ -59,7 +63,8 @@ public class DefaultRetirementUseCase implements RetirementUseCase {
         RetirementSettingsReader retirementSettingsReader,
         RetirementReader retirementReader,
         TaxReader taxReader,
-        BudgetReader budgetReader
+        BudgetReader budgetReader,
+        RetirementCommandService retirementCommandService
     ) {
         this.retirementInputFactory = retirementInputFactory;
         this.retirementCalculationService = retirementCalculationService;
@@ -68,6 +73,7 @@ public class DefaultRetirementUseCase implements RetirementUseCase {
         this.retirementReader = retirementReader;
         this.taxReader = taxReader;
         this.budgetReader = budgetReader;
+        this.retirementCommandService = retirementCommandService;
     }
 
     @Override
@@ -122,6 +128,44 @@ public class DefaultRetirementUseCase implements RetirementUseCase {
             toIncomes(incomes),
             toSettings(settings)
         );
+    }
+
+    @Override
+    public void saveRetraite(RetraiteSaveCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("La commande de sauvegarde de la retraite est obligatoire");
+        }
+        List<RetirementModel.RetirementPersonModel> people = new ArrayList<>();
+        if (command.people() != null) {
+            for (RetraitePersonCommand person : command.people()) {
+                List<RetirementModel.SalaryHistoryModel> history = new ArrayList<>();
+                if (person.salaryHistory() != null) {
+                    for (RetraiteSalaryHistoryModel entry : person.salaryHistory()) {
+                        history.add(new RetirementModel.SalaryHistoryModel(entry.year(), entry.salary()));
+                    }
+                }
+                people.add(new RetirementModel.RetirementPersonModel(
+                    person.id(),
+                    person.name(),
+                    person.birthYear(),
+                    person.incomeLabel(),
+                    person.trimestresValides(),
+                    person.trimestresDate(),
+                    history,
+                    person.agircPoints(),
+                    person.ratioPointsParEuro(),
+                    person.cadre()
+                ));
+            }
+        }
+        retirementCommandService.updateRetirement(new RetirementModel(
+            people,
+            command.pass2026(),
+            command.passGrowthRate(),
+            command.agircPointValue(),
+            command.agircPointDateGlobal(),
+            command.agircPointGrowthRate()
+        ));
     }
 
     private static List<RetraiteSalaryHistoryModel> toSalaryHistory(List<RetirementModel.SalaryHistoryModel> history) {

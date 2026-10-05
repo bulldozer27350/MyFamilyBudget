@@ -6,11 +6,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.RetraiteApi;
-import com.moe.myfamilybudget.application.command.RetirementCommandService;
 import com.moe.myfamilybudget.application.mapper.RetraiteMapper;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteResultModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSaveCommand;
 import com.moe.myfamilybudget.application.usecase.retirement.RetirementUseCase;
-import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 
 /**
  * Point d'entrée REST du domaine Retraite.
@@ -19,7 +18,8 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
  * ({@link ResponseEntity}, carte JSON du contrat). La composition de la réponse (lectures des fragments,
  * construction de l'entrée du moteur, appel du moteur, traduction des types des silos) est portée par le cas
  * d'usage {@link RetirementUseCase} ({@code application-api}), implémenté par
- * {@code DefaultRetirementUseCase}. L'écriture passe toujours par {@link RetirementCommandService}.
+ * {@code DefaultRetirementUseCase}. SILO-310 : l'écriture passe aussi par le cas d'usage, avec une
+ * {@link RetraiteSaveCommand} construite par le mapper à partir du corps JSON.
  *
  * <p>RF-101 (doc/architecture/03-domaine-retraite.md) : le moteur de calcul pur reste l'unique version
  * canonique de la projection retraite. RF-B01 : plus d'appel direct à {@code PersistenceManager}.
@@ -29,16 +29,13 @@ public class RetraiteServiceImpl implements RetraiteApi {
 
     private final RetraiteMapper retraiteMapper;
     private final RetirementUseCase retirementUseCase;
-    private final RetirementCommandService retirementCommandService;
 
     public RetraiteServiceImpl(
         RetraiteMapper retraiteMapper,
-        RetirementUseCase retirementUseCase,
-        RetirementCommandService retirementCommandService
+        RetirementUseCase retirementUseCase
     ) {
         this.retraiteMapper = retraiteMapper;
         this.retirementUseCase = retirementUseCase;
-        this.retirementCommandService = retirementCommandService;
     }
 
     @Override
@@ -53,8 +50,7 @@ public class RetraiteServiceImpl implements RetraiteApi {
         if (body instanceof Map<?, ?> map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> typedMap = (Map<String, Object>) map;
-            RetirementModel model = retraiteMapper.toRetirementModelFromMap(typedMap);
-            retirementCommandService.updateRetirement(model);
+            retirementUseCase.saveRetraite(retraiteMapper.toSaveCommandFromMap(typedMap));
         }
         return ResponseEntity.ok().build();
     }

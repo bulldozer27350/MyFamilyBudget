@@ -1,6 +1,7 @@
 package com.moe.myfamilybudget.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -11,8 +12,11 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.application.command.RetirementCommandService;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraitePersonCommand;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraitePersonWithProjectionModel;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteResultModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSalaryHistoryModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSaveCommand;
 import com.moe.myfamilybudget.application.usecase.retirement.RetirementUseCase;
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
@@ -38,6 +42,7 @@ class DefaultRetirementUseCaseTest {
         PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         RetirementPersistenceAdapter retirementAdapter = new RetirementPersistenceAdapter(persistenceManager);
+        commandService = new RetirementCommandService(retirementAdapter);
         useCase = new DefaultRetirementUseCase(
                 new RetirementInputFactory(),
                 new DefaultRetirementCalculationService(),
@@ -45,8 +50,8 @@ class DefaultRetirementUseCaseTest {
                 new SettingsPersistenceAdapter(persistenceManager),
                 retirementAdapter,
                 new TaxPersistenceAdapter(persistenceManager),
-                new BudgetPersistenceAdapter(persistenceManager));
-        commandService = new RetirementCommandService(retirementAdapter);
+                new BudgetPersistenceAdapter(persistenceManager),
+                commandService);
     }
 
     @Test
@@ -106,5 +111,33 @@ class DefaultRetirementUseCaseTest {
         assertThat(result.retirement().passGrowthRate()).isNotNull();
         assertThat(result.retirement().agircPointValue()).isNotNull();
         assertThat(result.retirement().agircPointDateGlobal()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("saveRetraite() écrit la commande puis getRetraite() la relit")
+    void savesACommand() {
+        useCase.saveRetraite(new RetraiteSaveCommand(
+                List.of(new RetraitePersonCommand(
+                        "p2", "Marie Martin", 1982, "", 100, "2025-06-01",
+                        List.of(new RetraiteSalaryHistoryModel(2021, new BigDecimal("28000"))),
+                        new BigDecimal("1500"), new BigDecimal("0.0051"), Boolean.FALSE)),
+                new BigDecimal("49000"), new BigDecimal("0.01"), new BigDecimal("1.45"), "2026-02-01",
+                new BigDecimal("0.011")));
+
+        RetraiteResultModel result = useCase.getRetraite();
+
+        assertThat(result.retirement().pass2026()).isEqualByComparingTo("49000");
+        assertThat(result.retirement().people()).hasSize(1);
+        RetraitePersonWithProjectionModel person = result.retirement().people().get(0);
+        assertThat(person.name()).isEqualTo("Marie Martin");
+        assertThat(person.cadre()).isFalse();
+        assertThat(person.salaryHistory()).hasSize(1);
+        assertThat(person.salaryHistory().get(0).salary()).isEqualByComparingTo("28000");
+    }
+
+    @Test
+    @DisplayName("saveRetraite(null) est refusé sans écriture")
+    void refusesANullCommand() {
+        assertThatThrownBy(() -> useCase.saveRetraite(null)).isInstanceOf(IllegalArgumentException.class);
     }
 }

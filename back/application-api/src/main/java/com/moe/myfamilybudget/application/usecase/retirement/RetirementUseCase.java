@@ -13,4 +13,11 @@ public interface RetirementUseCase {
      * paramètres généraux.
      */
     RetraiteResultModel getRetraite();
+
+    /**
+     * Remplace les données de retraite (SILO-310).
+     *
+     * @throws IllegalArgumentException si {@code command} est {@code null} (aucune écriture n'est alors faite)
+     */
+    void saveRetraite(RetraiteSaveCommand command);
 }

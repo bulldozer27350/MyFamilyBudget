@@ -58,8 +58,8 @@ class RetraiteServiceImplTest {
                         new SettingsPersistenceAdapter(persistenceManager),
                         new RetirementPersistenceAdapter(persistenceManager),
                         new TaxPersistenceAdapter(persistenceManager),
-                        new BudgetPersistenceAdapter(persistenceManager)),
-                new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager)));
+                        new BudgetPersistenceAdapter(persistenceManager),
+                        new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager))));
     }
 
     @Test

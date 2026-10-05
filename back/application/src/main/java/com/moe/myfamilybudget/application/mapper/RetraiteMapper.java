@@ -18,12 +18,13 @@ import com.moe.myfamilybudget.api.model.RetirementPersonDto;
 import com.moe.myfamilybudget.api.model.SalaryHistoryDto;
 import com.moe.myfamilybudget.api.model.SettingsDto;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteIncomeModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraitePersonCommand;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraitePersonWithProjectionModel;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteProjectionModel;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteResultModel;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSalaryHistoryModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSaveCommand;
 import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSettingsModel;
-import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 
 @Component
 public class RetraiteMapper {
@@ -126,9 +127,9 @@ public class RetraiteMapper {
         return projMap;
     }
 
-    public RetirementModel toRetirementModelFromMap(Map<String, Object> map) {
+    public RetraiteSaveCommand toSaveCommandFromMap(Map<String, Object> map) {
         if (map == null) {
-            return new RetirementModel(List.of(), new BigDecimal("47100"), new BigDecimal("0.015"), new BigDecimal("1.4386"), "2025-11-01", new BigDecimal("0.01"));
+            return new RetraiteSaveCommand(List.of(), new BigDecimal("47100"), new BigDecimal("0.015"), new BigDecimal("1.4386"), "2025-11-01", new BigDecimal("0.01"));
         }
 
         BigDecimal pass2026 = toBigDecimal(map.get("pass2026"), new BigDecimal("47100"));
@@ -137,7 +138,7 @@ public class RetraiteMapper {
         String agircPointDateGlobal = map.get("agircPointDateGlobal") != null ? String.valueOf(map.get("agircPointDateGlobal")) : "2025-11-01";
         BigDecimal agircPointGrowthRate = toBigDecimal(map.get("agircPointGrowthRate"), new BigDecimal("0.01"));
 
-        List<RetirementModel.RetirementPersonModel> people = new ArrayList<>();
+        List<RetraitePersonCommand> people = new ArrayList<>();
         Object peopleObj = map.get("people");
         if (peopleObj instanceof List<?> list) {
             for (Object item : list) {
@@ -152,7 +153,7 @@ public class RetraiteMapper {
                     BigDecimal agircPoints = toBigDecimal(pMap.get("agircPoints"), BigDecimal.ZERO);
                     BigDecimal ratioPointsParEuro = toBigDecimal(pMap.get("ratioPointsParEuro"), new BigDecimal("0.0051"));
 
-                    List<RetirementModel.SalaryHistoryModel> salHistory = new ArrayList<>();
+                    List<RetraiteSalaryHistoryModel> salHistory = new ArrayList<>();
                     Object salObj = pMap.get("salaryHistory");
                     if (salObj instanceof List<?> salList) {
                         for (Object shItem : salList) {
@@ -160,20 +161,20 @@ public class RetraiteMapper {
                                 Integer year = getInteger(shMap, "year", null);
                                 BigDecimal salary = toBigDecimal(shMap.get("salary"), BigDecimal.ZERO);
                                 if (year != null) {
-                                    salHistory.add(new RetirementModel.SalaryHistoryModel(year, salary));
+                                    salHistory.add(new RetraiteSalaryHistoryModel(year, salary));
                                 }
                             }
                         }
                     }
 
-                    people.add(new RetirementModel.RetirementPersonModel(
+                    people.add(new RetraitePersonCommand(
                         id, name, birthYear, incomeLabel, trimestresValides, trimestresDate, salHistory, agircPoints, ratioPointsParEuro, cadre
                     ));
                 }
             }
         }
 
-        return new RetirementModel(people, pass2026, passGrowthRate, agircPointValue, agircPointDateGlobal, agircPointGrowthRate);
+        return new RetraiteSaveCommand(people, pass2026, passGrowthRate, agircPointValue, agircPointDateGlobal, agircPointGrowthRate);
     }
 
     private IncomeDto toIncomeDto(RetraiteIncomeModel m) {
