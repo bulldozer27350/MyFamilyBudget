@@ -10,7 +10,9 @@
         `application.service` (implémentations des interfaces REST générées), `application.mapper`,
         `application.model` (modèles de résultat) et `application.error`).
 
-        Dépendances de production : les modules de domaine, `transition-snapshot` (BudgetDataModel, SettingsModel
+        Dépendances de production : les modules `*-api` des silos (jamais un `*-core` : règle C de
+        MavenModuleGraphRules et ApplicationWithoutSiloCoreArchTest, SILO-160 ; les moteurs sont fournis par
+        injection depuis `server`), `transition-snapshot` (BudgetDataModel, SettingsModel
         et ports transverses), `api` (contrat REST généré, MAVEN-110 : DTO et interfaces `*Api` implémentées par
         les services ; apporte spring-web et Jakarta Validation), `spring-context` et `spring-tx`
         (stéréotypes, @Transactional), `poi-ooxml` (lecture Excel de l'import bancaire) et `slf4j-api`.

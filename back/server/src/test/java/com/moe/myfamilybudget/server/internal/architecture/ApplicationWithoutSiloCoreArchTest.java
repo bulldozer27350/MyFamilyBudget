@@ -1,72 +1,50 @@
 package com.moe.myfamilybudget.server.internal.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import java.util.List;
 
 /**
- * Garde-fou SILO-150 (voir doc/architecture/21-plan-silotage.md) : {@code application} ne connaît que l'API du
- * silo Retraite ({@code retirement-api}), jamais son cœur ({@code com.moe.myfamilybudget.domain.retirement.core}).
- * Le moteur est fourni par injection ; seuls le composition root et les tests le référencent. La règle est
- * étendue silo par silo (Fiscalité : SILO-151 ; Patrimoine : SILO-152 ; Trésorerie : SILO-153 ; Banque/Pointage : SILO-154 ; Analyse : SILO-155 ; Crédit : SILO-156 ; Notifications : SILO-158 ; Marché : SILO-159) (puis généralisée par SILO-160).
+ * Garde-fou SILO-150 à SILO-160 (voir doc/architecture/21-plan-silotage.md) : {@code application} ne connaît que
+ * les API des silos ({@code *-api}), jamais leur cœur ({@code com.moe.myfamilybudget.domain.<silo>.core}). Les
+ * moteurs sont fournis par injection ; seuls le composition root ({@code DomainEngineConfig}, dans
+ * {@code server}) et les tests les référencent.
+ *
+ * <p>Depuis SILO-160, une seule règle couvre tous les silos, y compris ceux créés plus tard : elle remplace les
+ * règles par silo ajoutées de SILO-150 à SILO-159. Un test de couverture vérifie que les cœurs connus sont bien
+ * dans le périmètre analysé, pour que la règle ne devienne pas vide sans que personne ne s'en aperçoive.
  */
 @AnalyzeClasses(packages = "com.moe.myfamilybudget", importOptions = ImportOption.DoNotIncludeTests.class)
 class ApplicationWithoutSiloCoreArchTest {
 
-    @ArchTest
-    static final ArchRule APPLICATION_DOES_NOT_USE_RETIREMENT_CORE = noClasses()
-            .that().resideInAPackage("com.moe.myfamilybudget.application..")
-            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.retirement.core..")
-            .as("application ne dépend pas du cœur du silo Retraite (SILO-150)");
+    private static final List<String> SILO_CORE_PACKAGES = List.of(
+            "com.moe.myfamilybudget.domain.retirement.core",
+            "com.moe.myfamilybudget.domain.tax.core",
+            "com.moe.myfamilybudget.domain.wealth.core",
+            "com.moe.myfamilybudget.domain.treasury.core",
+            "com.moe.myfamilybudget.domain.bankpointage.core",
+            "com.moe.myfamilybudget.domain.analysis.core",
+            "com.moe.myfamilybudget.domain.credit.core",
+            "com.moe.myfamilybudget.domain.notifications.core",
+            "com.moe.myfamilybudget.domain.market.core");
 
     @ArchTest
-    static final ArchRule APPLICATION_DOES_NOT_USE_TAX_CORE = noClasses()
+    static final ArchRule APPLICATION_DOES_NOT_USE_ANY_SILO_CORE = noClasses()
             .that().resideInAPackage("com.moe.myfamilybudget.application..")
-            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.tax.core..")
-            .as("application ne dépend pas du cœur du silo Fiscalité (SILO-151)");
+            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.*.core..")
+            .as("application ne dépend du cœur d'aucun silo (SILO-150 à SILO-160)");
 
     @ArchTest
-    static final ArchRule APPLICATION_DOES_NOT_USE_WEALTH_CORE = noClasses()
-            .that().resideInAPackage("com.moe.myfamilybudget.application..")
-            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.wealth.core..")
-            .as("application ne dépend pas du cœur du silo Patrimoine (SILO-152)");
-
-    @ArchTest
-    static final ArchRule APPLICATION_DOES_NOT_USE_TREASURY_CORE = noClasses()
-            .that().resideInAPackage("com.moe.myfamilybudget.application..")
-            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.treasury.core..")
-            .as("application ne dépend pas du cœur du silo Trésorerie (SILO-153)");
-
-    @ArchTest
-    static final ArchRule APPLICATION_DOES_NOT_USE_BANK_POINTAGE_CORE = noClasses()
-            .that().resideInAPackage("com.moe.myfamilybudget.application..")
-            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.bankpointage.core..")
-            .as("application ne dépend pas du cœur du silo Banque/Pointage (SILO-154)");
-
-    @ArchTest
-    static final ArchRule APPLICATION_DOES_NOT_USE_ANALYSIS_CORE = noClasses()
-            .that().resideInAPackage("com.moe.myfamilybudget.application..")
-            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.analysis.core..")
-            .as("application ne dépend pas du cœur du silo Analyse (SILO-155)");
-
-    @ArchTest
-    static final ArchRule APPLICATION_DOES_NOT_USE_CREDIT_CORE = noClasses()
-            .that().resideInAPackage("com.moe.myfamilybudget.application..")
-            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.credit.core..")
-            .as("application ne dépend pas du cœur du silo Crédit (SILO-156)");
-
-    @ArchTest
-    static final ArchRule APPLICATION_DOES_NOT_USE_NOTIFICATIONS_CORE = noClasses()
-            .that().resideInAPackage("com.moe.myfamilybudget.application..")
-            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.notifications.core..")
-            .as("application ne dépend pas du cœur du silo Notifications (SILO-158)");
-
-    @ArchTest
-    static final ArchRule APPLICATION_DOES_NOT_USE_MARKET_CORE = noClasses()
-            .that().resideInAPackage("com.moe.myfamilybudget.application..")
-            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.market.core..")
-            .as("application ne dépend pas du cœur du silo Marché (SILO-159)");
+    static void known_silo_cores_are_in_the_analyzed_scope(JavaClasses classes) {
+        for (String corePackage : SILO_CORE_PACKAGES) {
+            assertTrue(classes.containPackage(corePackage),
+                    "cœur de silo absent du périmètre analysé (règle vide ?) : " + corePackage);
+        }
+    }
 }

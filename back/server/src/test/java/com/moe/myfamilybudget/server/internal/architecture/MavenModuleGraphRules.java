@@ -24,8 +24,9 @@ import java.util.TreeSet;
  *   <li>(B) un silo ne dépend ni de l'orchestration ({@code application*}, {@code web}, {@code bootstrap}), ni de
  *       {@code persistence}, {@code server}, {@code transition-snapshot}, {@code api} ; il ne dépend de
  *       {@code infra-jpa} que s'il s'agit d'un {@code *-core} ;</li>
- *   <li>(C) {@code application*} et {@code web} ne dépendent d'aucun {@code *-core} de silo, ni de
- *       {@code infra-jpa}, {@code persistence}, {@code server} ;</li>
+ *   <li>(C) {@code application*} et {@code web} ne dépendent, parmi les silos, que de modules {@code *-api}
+ *       (aucun {@code *-core}, aucun reliquat {@code domain-xxx}) et ne dépendent ni de {@code infra-jpa}, ni de
+ *       {@code persistence}, ni de {@code server} (activée à fond par SILO-160) ;</li>
  *   <li>(D) le graphe est acyclique.</li>
  * </ol>
  */
@@ -80,8 +81,8 @@ final class MavenModuleGraphRules {
                                 + "ou du snapshot");
                     }
                 } else if (isApplicationSide(from)) {
-                    boolean siloCore = isSilo(to) && to.endsWith("-core");
-                    if (siloCore || to.equals("infra-jpa") || to.equals("persistence") || to.equals("server")) {
+                    boolean siloOtherThanApi = isSilo(to) && !to.endsWith("-api");
+                    if (siloOtherThanApi || to.equals("infra-jpa") || to.equals("persistence") || to.equals("server")) {
                         result.put(edge, "C : application et web ne dépendent que des API des silos");
                     }
                 }

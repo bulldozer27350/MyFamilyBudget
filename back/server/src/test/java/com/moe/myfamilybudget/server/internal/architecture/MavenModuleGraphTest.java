@@ -97,6 +97,32 @@ class MavenModuleGraphTest {
     }
 
     @Test
+    void rules_accept_application_depending_only_on_silo_apis() {
+        Map<String, Set<String>> graph = Map.of(
+                "application", Set.of("tax-api", "market-api", "transition-snapshot", "api"),
+                "web", Set.of("application-api", "api"),
+                "tax-api", Set.of(),
+                "market-api", Set.of(),
+                "transition-snapshot", Set.of(),
+                "application-api", Set.of(),
+                "api", Set.of());
+        assertTrue(MavenModuleGraphRules.forbiddenEdges(graph).isEmpty());
+    }
+
+    @Test
+    void rules_flag_application_depending_on_a_silo_module_that_is_not_an_api() {
+        Map<String, Set<String>> graph = Map.of(
+                "application", Set.of("domain-tax", "market-core", "tax-api"),
+                "domain-tax", Set.of(),
+                "market-core", Set.of(),
+                "tax-api", Set.of());
+        assertEquals(Set.of(
+                new Edge("application", "domain-tax"),
+                new Edge("application", "market-core")),
+                MavenModuleGraphRules.forbiddenEdges(graph).keySet());
+    }
+
+    @Test
     void rules_flag_a_silo_depending_on_orchestration_or_snapshot() {
         Map<String, Set<String>> graph = Map.of(
                 "domain-tax", Set.of("application", "transition-snapshot"),
