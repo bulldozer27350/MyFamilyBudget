@@ -18,13 +18,13 @@ import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
-import com.moe.myfamilybudget.persistence.converter.CashflowEntityMapper;
-import com.moe.myfamilybudget.persistence.repository.CashflowChargeRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowIncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowOneOffRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowTransferRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowVariableIncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowVariableOverrideRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowEntityMapper;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowChargeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowIncomeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowOneOffRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowTransferRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableIncomeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
 
 /**
  * DB-1060 : le modele JPA autonome du domaine Tresorerie (additif, sans lien avec le hub) doit restituer

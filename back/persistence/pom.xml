@@ -80,6 +80,12 @@
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>treasury-api</artifactId>
         </dependency>
+        <!-- SILO-216 : entités, repositories et mapper JPA du silo Trésorerie (transitoire : l'adaptateur et la
+             passerelle restent ici jusqu'à SILO-220 et SILO-230) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>treasury-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>credit-api</artifactId>

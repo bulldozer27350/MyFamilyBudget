@@ -1,18 +1,16 @@
-package com.moe.myfamilybudget.persistence.repository;
+package com.moe.myfamilybudget.domain.treasury.core.persistence;
 
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.moe.myfamilybudget.persistence.entity.CashflowVariableIncomeEntity;
-
 /**
  * Repository autonome du domaine Tresorerie (DB-1060), sans lien avec {@code BudgetDataEntity}.
  * Additif : pas encore branche sur les adapters (bascule en DB-1061).
  */
 @Repository
-public interface CashflowVariableIncomeRepository extends JpaRepository<CashflowVariableIncomeEntity, Long> {
+public interface CashflowVariableOverrideRepository extends JpaRepository<CashflowVariableOverrideEntity, Long> {
 
-    List<CashflowVariableIncomeEntity> findAllByOrderByPositionAsc();
+    List<CashflowVariableOverrideEntity> findAllByOrderByPositionAsc();
 }

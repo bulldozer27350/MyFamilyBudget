@@ -25,6 +25,12 @@ import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepositor
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowChargeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowIncomeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowOneOffRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowTransferRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableIncomeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
 
 import jakarta.annotation.PostConstruct;
 

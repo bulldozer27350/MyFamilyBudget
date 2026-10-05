@@ -11,12 +11,12 @@ import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.converter.CashflowEntityMapper;
-import com.moe.myfamilybudget.persistence.repository.CashflowChargeRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowIncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowOneOffRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowVariableIncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowVariableOverrideRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowEntityMapper;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowChargeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowIncomeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowOneOffRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableIncomeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 
 /**

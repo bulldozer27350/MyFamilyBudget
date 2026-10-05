@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.treasury.core.persistence;
 
 import java.math.BigDecimal;
 
@@ -10,17 +10,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * Revenu mensuel du domaine Tresorerie, cible JPA autonome (DB-1060).
+ * Charge mensuelle du domaine Tresorerie, cible JPA autonome (DB-1060).
  *
- * <p>Contrairement a {@link IncomeEntity}, cette entite n'a <strong>aucune relation vers
- * {@link BudgetDataEntity}</strong> : elle est la racine de son propre agregat. Elle est additive et n'est pas
- * encore utilisee par les adapters (bascule en DB-1061). Le chemin legacy (table {@code income}) reste
+ * <p>Contrairement a {@code ChargeEntity}, cette entite n'a <strong>aucune relation vers
+ * {@code BudgetDataEntity}</strong> : elle est la racine de son propre agregat. Elle est additive et n'est pas
+ * encore utilisee par les adapters (bascule en DB-1061). Le chemin legacy (table {@code charge}) reste
  * inchange. Cle technique generee, {@code uid} = identifiant metier (aucune hypothese d'unicite, comme dans le
  * chemin legacy) et {@code position} pour restituer la liste dans l'ordre de saisie.
  */
 @Entity
-@Table(name = "cashflow_income")
-public class CashflowIncomeEntity {
+@Table(name = "cashflow_charge")
+public class CashflowChargeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -53,7 +53,7 @@ public class CashflowIncomeEntity {
     @Column(name = "notes", length = 2000)
     private String notes;
 
-    public CashflowIncomeEntity() {}
+    public CashflowChargeEntity() {}
 
     public Long getId() {
         return id;

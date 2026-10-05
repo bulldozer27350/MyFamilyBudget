@@ -8,10 +8,16 @@
         SILO-153 (doc/architecture/21-plan-silotage.md) : cœur du silo Trésorerie (moteur de calcul
         `DefaultTresorerieCalculationService`, implémentation de l'interface de `treasury-api`).
 
-        Règle : ce module ne dépend que de `treasury-api` (et, plus tard, de `infra-jpa`, SILO-216). Pas de
-        `module-info` (décision D3) : visibilité tenue par le graphe Maven (règle C de `MavenModuleGraphTest`)
-        et ArchUnit. Seul le composition root (server) le référence ; `application` ne dépend que de
-        `treasury-api`. Le moteur n'est pas un @Component : son bean est déclaré par `DomainEngineConfig`.
+        SILO-216 : il porte aussi la persistance JPA autonome du silo (package `domain.treasury.core.persistence` :
+        entités `Cashflow*` (revenus, charges, ponctuels, virements, revenus variables, surcharges), repositories
+        Spring Data et mapper), découverte par le scan par défaut de Spring Boot (racine
+        `com.moe.myfamilybudget`). Le moteur reste sans Spring ni JPA.
+
+        Règle : ce module ne dépend que de `treasury-api` et de `infra-jpa` (configuration JPA commune, qui apporte
+        Spring Data JPA et Hibernate). Pas de `module-info` (décision D3) : visibilité tenue par le graphe Maven
+        (règle C de `MavenModuleGraphTest`) et ArchUnit. Seul le composition root (server) le référence ;
+        `application` ne dépend que de `treasury-api`. Le moteur n'est pas un @Component : son bean est déclaré par
+        `DomainEngineConfig`.
     -->
     <parent>
         <groupId>com.moe.myfamilybudget</groupId>
@@ -23,12 +29,16 @@
     <artifactId>treasury-core</artifactId>
     <packaging>jar</packaging>
     <name>treasury-core</name>
-    <description>Cœur du silo Trésorerie MyFamilyBudget (moteur de calcul pur, sans Spring ni JPA)</description>
+    <description>Cœur du silo Trésorerie MyFamilyBudget (moteur de calcul pur, et persistance JPA des revenus, charges, ponctuels, virements et variables)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>treasury-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
         </dependency>
 
         <dependency>

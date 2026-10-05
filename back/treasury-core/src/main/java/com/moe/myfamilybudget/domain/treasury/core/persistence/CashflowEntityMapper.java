@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.converter;
+package com.moe.myfamilybudget.domain.treasury.core.persistence;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,12 +11,6 @@ import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
-import com.moe.myfamilybudget.persistence.entity.CashflowChargeEntity;
-import com.moe.myfamilybudget.persistence.entity.CashflowIncomeEntity;
-import com.moe.myfamilybudget.persistence.entity.CashflowOneOffEntity;
-import com.moe.myfamilybudget.persistence.entity.CashflowTransferEntity;
-import com.moe.myfamilybudget.persistence.entity.CashflowVariableIncomeEntity;
-import com.moe.myfamilybudget.persistence.entity.CashflowVariableOverrideEntity;
 
 /**
  * Mapper du domaine Tresorerie entre les modeles de lignes ({@code Income}, {@code Charge}, {@code OneOffExpense},

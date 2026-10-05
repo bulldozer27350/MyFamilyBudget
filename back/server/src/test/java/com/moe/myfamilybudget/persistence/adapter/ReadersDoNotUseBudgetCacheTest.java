@@ -16,12 +16,12 @@ import org.springframework.context.ApplicationContext;
 
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.repository.CashflowChargeRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowIncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowOneOffRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowTransferRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowVariableIncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.CashflowVariableOverrideRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowChargeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowIncomeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowOneOffRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowTransferRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableIncomeRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
 import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;

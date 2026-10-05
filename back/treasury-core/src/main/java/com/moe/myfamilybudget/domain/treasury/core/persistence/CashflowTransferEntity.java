@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.treasury.core.persistence;
 
 import java.math.BigDecimal;
 
@@ -12,8 +12,8 @@ import jakarta.persistence.Table;
 /**
  * Virement vers un placement du domaine Tresorerie, cible JPA autonome (DB-1060).
  *
- * <p>Contrairement a {@link TransferEntity}, cette entite n'a <strong>aucune relation vers
- * {@link BudgetDataEntity}</strong> : elle est la racine de son propre agregat. Elle est additive et n'est pas
+ * <p>Contrairement a {@code TransferEntity}, cette entite n'a <strong>aucune relation vers
+ * {@code BudgetDataEntity}</strong> : elle est la racine de son propre agregat. Elle est additive et n'est pas
  * encore utilisee par les adapters (bascule en DB-1061). Le chemin legacy (table {@code transfer}) reste
  * inchange. Cle technique generee, {@code uid} = identifiant metier (aucune hypothese d'unicite, comme dans le
  * chemin legacy) et {@code position} pour restituer la liste dans l'ordre de saisie.
