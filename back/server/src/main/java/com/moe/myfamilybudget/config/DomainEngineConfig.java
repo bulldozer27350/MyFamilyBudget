@@ -11,9 +11,9 @@ import com.moe.myfamilybudget.domain.bankpointage.core.DefaultBankImportCalculat
 import com.moe.myfamilybudget.domain.bankpointage.core.DefaultPointageCalculationService;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.credit.core.DefaultLoanAdviceCalculationService;
-import com.moe.myfamilybudget.domain.notifications.rules.BalanceFloorRule;
-import com.moe.myfamilybudget.domain.notifications.rules.DebitThresholdRule;
-import com.moe.myfamilybudget.domain.notifications.rules.ObjectifReachableRule;
+import com.moe.myfamilybudget.domain.notifications.core.BalanceFloorRule;
+import com.moe.myfamilybudget.domain.notifications.core.DebitThresholdRule;
+import com.moe.myfamilybudget.domain.notifications.core.ObjectifReachableRule;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationService;
@@ -26,11 +26,12 @@ import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionServ
 import com.moe.myfamilybudget.domain.wealth.core.DefaultPlacementEvolutionService;
 
 /**
- * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080, MAVEN-090). SILO-150 à SILO-156 : les moteurs Retraite, Fiscalité, Patrimoine,
+ * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080, MAVEN-090). SILO-150 à SILO-158 : les moteurs Retraite, Fiscalité, Patrimoine,
  * Trésorerie, Banque/Pointage, Analyse et Crédit sont exposés sous leur interface ({@code retirement-api}, {@code tax-api},
  * {@code wealth-api}, {@code treasury-api}, {@code bank-pointage-api}, {@code analysis-api}, {@code credit-api}), leur implémentation vit dans
  * {@code retirement-core}, {@code tax-core}, {@code wealth-core}, {@code treasury-core}, {@code bank-pointage-core}
- * {@code analysis-core} et {@code credit-core}.
+ * {@code analysis-core} et {@code credit-core}. Les trois règles de notification (SILO-158) implémentent
+ * {@code NotificationRule} ({@code notifications-api}) et vivent dans {@code notifications-core}.
  *
  * <p>Les modules de domaine sont volontairement indépendants de Spring : leurs moteurs ne portent
  * plus {@code @Component}, c'est le composition root qui les expose comme beans.

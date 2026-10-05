@@ -207,10 +207,12 @@ le domaine Objectifs (paramètres, modèles d'objectif, ports `GoalReader`/`Goal
 au domaine Notifications (SILO-134). Les deux
 modules n'ont aucune dépendance vers un autre module du reactor ; le moteur Crédit est déclaré comme bean par
 `config/DomainEngineConfig`.
-Le domaine Notifications (contrat `NotificationRule`/`NotificationMessage`, `NotificationSettingsParameters`, règles pures
-`DebitThresholdRule`/`BalanceFloorRule`/`ObjectifReachableRule` et leurs entrées) vit dans `back/domain-notifications`
-(`com.moe.myfamilybudget.domain.notifications.*`) ; sa seule dépendance est `domain-goals` et ses trois règles sont
-déclarées comme beans par `config/DomainEngineConfig`. Le dispatch, la dédup, les canaux (Web Push) et la persistance des
+Le domaine Notifications vit dans `back/notifications-api` (contrat `NotificationRule`/`NotificationMessage`, clés
+`NotificationRuleKeys`, `NotificationSettingsParameters` et entrées des règles,
+`com.moe.myfamilybudget.domain.notifications.*`) et `back/notifications-core` (règles pures
+`DebitThresholdRule`/`BalanceFloorRule`/`ObjectifReachableRule`, SILO-158) ; il n'a aucune dépendance vers un autre
+module du reactor, ses trois règles sont déclarées comme beans par `config/DomainEngineConfig` et `application` ne
+connaît que l'API. Le dispatch, la dédup, les canaux (Web Push) et la persistance des
 paramètres restent dans `server`.
 Le snapshot global de transition (`BudgetDataModel`, `SettingsModel`) et les ports transverses (`BudgetReader`,
 `SettingsReader`, `BudgetMutationLock`, `EconomicAssumptionsWriter`, `SimulationSettingsWriter`) vivent dans

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        MAVEN-090 (doc/architecture/20-backlog-modules-maven-patchs.md) : domaine Notifications, devenu
+        `notifications-api` à SILO-158 (doc/architecture/21-plan-silotage.md) : contrat NotificationRule /
+        NotificationMessage, clés de règles, paramètres métier de notification et entrées des trois règles. Les
+        règles (DebitThresholdRule, BalanceFloorRule, ObjectifReachableRule) vivent dans `notifications-core`.
+
+        Notifications définit ses propres contrats d'entrée (SILO-134) : aucune dépendance vers un autre module du
+        reactor, ni vers Spring, JPA, Web Push, OpenAPI, PersistenceManager ou BudgetDataModel : seul le JDK est
+        utilisé en production, aucune dépendance de test (les tests vivent dans `notifications-core`). La dédup, le
+        dispatch, les canaux et la persistance des paramètres restent hors du module (SILO-180).
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>notifications-api</artifactId>
+    <packaging>jar</packaging>
+    <name>notifications-api</name>
+    <description>API du silo Notifications MyFamilyBudget (contrats, paramètres, entrées de règles ; sans Spring ni JPA)</description>
+
+</project>

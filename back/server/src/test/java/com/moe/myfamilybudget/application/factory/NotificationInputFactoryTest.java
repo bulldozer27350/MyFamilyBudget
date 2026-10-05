@@ -19,9 +19,9 @@ import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
-import com.moe.myfamilybudget.domain.notifications.rules.BalanceFloorRule;
-import com.moe.myfamilybudget.domain.notifications.rules.DebitThresholdRule;
-import com.moe.myfamilybudget.domain.notifications.rules.ObjectifReachableRule;
+import com.moe.myfamilybudget.domain.notifications.core.BalanceFloorRule;
+import com.moe.myfamilybudget.domain.notifications.core.DebitThresholdRule;
+import com.moe.myfamilybudget.domain.notifications.core.ObjectifReachableRule;
 
 /**
  * RF-702 : vérifie l'assemblage des trois entrées de notification et leur évaluation par les
