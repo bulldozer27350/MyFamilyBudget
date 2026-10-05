@@ -40,12 +40,18 @@ async function readJsFallbackFlag(page) {
 /**
  * Ouvre une page et attend la reponse backend correspondante (lecture critique).
  * Retourne la reponse. La page doit etre une URL relative au front (ex: '/overview.html').
+ *
+ * La page est d abord ramenee sur about:blank : une requete encore en vol du document precedent (par exemple la
+ * relecture que l ecran lance apres un import) ne peut plus satisfaire l attente armee juste apres. Sans cela, la
+ * reponse retournee pouvait appartenir a l ancien document, et son corps n etait alors plus lisible une fois la
+ * navigation faite (`Response body is not available for a response that was navigated away from`).
  * @param {import('@playwright/test').Page} page
  * @param {string} frontPath  ex: '/overview.html'
  * @param {string} apiPath    ex: '/overview'
  * @param {string} [method]   defaut : 'GET'
  */
 async function gotoAndExpectBackend(page, frontPath, apiPath, method = 'GET') {
+  await page.goto('about:blank');
   const backendCall = expectBackendCall(page, apiPath, method);
   await page.goto(FRONT + frontPath);
   await waitForReactMount(page);

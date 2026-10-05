@@ -113,6 +113,9 @@ test('scénario critique', async ({ page, request }) => {
 ```
 
 - Contexte vierge : Playwright fournit un contexte neuf par test ; `expectFreshBrowserState` le prouve.
+- `gotoAndExpectBackend` passe d'abord par `about:blank` : la réponse retournée est ainsi toujours celle du document
+  qui vient d'être ouvert, jamais une relecture encore en vol de la page précédente (cas de F1 après l'import, dont le
+  corps n'était plus lisible après la navigation).
 - `actAndExpectBackend(page, apiPath, method, action)` arme l'attente avant l'action (écritures critiques).
 - Un appel backend en échec fait remonter `[DISABLE_JS_FALLBACK]` dans la console au lieu d'un repli local.
 
