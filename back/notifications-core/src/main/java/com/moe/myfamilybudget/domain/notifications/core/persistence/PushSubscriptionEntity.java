@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.notifications.core.persistence;
 
 import java.time.Instant;
 

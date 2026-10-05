@@ -12,7 +12,7 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 /**
- * Garde-fou SILO-210 à SILO-216 (voir doc/architecture/21-plan-silotage.md) : la persistance JPA d'un silo
+ * Garde-fou SILO-210 à SILO-217 (voir doc/architecture/21-plan-silotage.md) : la persistance JPA d'un silo
  * ({@code com.moe.myfamilybudget.domain.<silo>.core.persistence}) ne connaît ni la persistance de transition, ni
  * {@code application}, ni {@code server}, ni le snapshot global, ni le contrat REST, ni un autre silo.
  */
@@ -29,7 +29,9 @@ class SiloPersistenceIsolationArchTest {
             "com.moe.myfamilybudget.domain.bankpointage.core.persistence",
             "com.moe.myfamilybudget.domain.credit.core.persistence",
             "com.moe.myfamilybudget.domain.wealth.core.persistence",
-            "com.moe.myfamilybudget.domain.treasury.core.persistence");
+            "com.moe.myfamilybudget.domain.treasury.core.persistence",
+            "com.moe.myfamilybudget.domain.notifications.core.persistence",
+            "com.moe.myfamilybudget.domain.market.core.persistence");
 
     @ArchTest
     static final ArchRule SILO_PERSISTENCE_DOES_NOT_USE_TRANSITION_LAYERS = noClasses()
@@ -117,6 +119,28 @@ class SiloPersistenceIsolationArchTest {
                     "com.moe.myfamilybudget.domain.goals..", "com.moe.myfamilybudget.domain.notifications..",
                     "com.moe.myfamilybudget.domain.market..")
             .as("la persistance du silo Trésorerie ne dépend d'aucun autre silo (D1, SILO-216)");
+
+    @ArchTest
+    static final ArchRule NOTIFICATIONS_PERSISTENCE_DOES_NOT_USE_OTHER_SILOS = noClasses()
+            .that().resideInAPackage("com.moe.myfamilybudget.domain.notifications.core.persistence..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "com.moe.myfamilybudget.domain.retirement..", "com.moe.myfamilybudget.domain.tax..",
+                    "com.moe.myfamilybudget.domain.wealth..", "com.moe.myfamilybudget.domain.treasury..",
+                    "com.moe.myfamilybudget.domain.bankpointage..", "com.moe.myfamilybudget.domain.analysis..",
+                    "com.moe.myfamilybudget.domain.credit..", "com.moe.myfamilybudget.domain.goals..",
+                    "com.moe.myfamilybudget.domain.market..")
+            .as("la persistance du silo Notifications ne dépend d'aucun autre silo (D1, SILO-217)");
+
+    @ArchTest
+    static final ArchRule MARKET_PERSISTENCE_DOES_NOT_USE_OTHER_SILOS = noClasses()
+            .that().resideInAPackage("com.moe.myfamilybudget.domain.market.core.persistence..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "com.moe.myfamilybudget.domain.retirement..", "com.moe.myfamilybudget.domain.tax..",
+                    "com.moe.myfamilybudget.domain.wealth..", "com.moe.myfamilybudget.domain.treasury..",
+                    "com.moe.myfamilybudget.domain.bankpointage..", "com.moe.myfamilybudget.domain.analysis..",
+                    "com.moe.myfamilybudget.domain.credit..", "com.moe.myfamilybudget.domain.goals..",
+                    "com.moe.myfamilybudget.domain.notifications..")
+            .as("la persistance du silo Marché ne dépend d'aucun autre silo (D1, SILO-217)");
 
     @ArchTest
     static void silo_persistence_packages_are_in_the_analyzed_scope(JavaClasses classes) {

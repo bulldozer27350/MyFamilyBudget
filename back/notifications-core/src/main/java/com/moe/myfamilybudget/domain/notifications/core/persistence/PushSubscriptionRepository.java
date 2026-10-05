@@ -1,11 +1,9 @@
-package com.moe.myfamilybudget.persistence.repository;
+package com.moe.myfamilybudget.domain.notifications.core.persistence;
 
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-
-import com.moe.myfamilybudget.persistence.entity.PushSubscriptionEntity;
 
 @Repository
 public interface PushSubscriptionRepository extends JpaRepository<PushSubscriptionEntity, String> {

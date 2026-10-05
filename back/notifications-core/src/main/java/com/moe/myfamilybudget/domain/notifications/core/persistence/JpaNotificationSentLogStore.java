@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification;
+package com.moe.myfamilybudget.domain.notifications.core.persistence;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -6,12 +6,10 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.domain.notifications.port.NotificationSentLogStore;
-import com.moe.myfamilybudget.persistence.entity.NotificationSentLogEntity;
-import com.moe.myfamilybudget.persistence.repository.NotificationSentLogRepository;
 
 /**
  * Implémentation JPA de {@link NotificationSentLogStore} : une ligne par clé de déduplication, remplacée à
- * chaque envoi (même table qu'avant SILO-180). Reste dans le composition root jusqu'à SILO-217.
+ * chaque envoi (même table qu'avant SILO-180).
  */
 @Component
 public class JpaNotificationSentLogStore implements NotificationSentLogStore {

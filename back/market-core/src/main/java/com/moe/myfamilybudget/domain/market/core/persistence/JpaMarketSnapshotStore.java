@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.marketdata;
+package com.moe.myfamilybudget.domain.market.core.persistence;
 
 import com.moe.myfamilybudget.domain.market.core.MarketSnapshotCodec;
 import com.moe.myfamilybudget.domain.market.model.MarketDataException;
@@ -11,8 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.moe.myfamilybudget.persistence.entity.MarketSnapshotEntity;
-import com.moe.myfamilybudget.persistence.repository.MarketSnapshotRepository;
 
 /**
  * Implémentation JPA de {@link MarketSnapshotStore} : une seule ligne, remplacée à chaque

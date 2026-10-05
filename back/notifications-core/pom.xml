@@ -11,7 +11,13 @@
         les paramètres (`DefaultNotificationSettingsService`, `NotificationSettingsCodec`) et le canal Web Push
         (`WebPushNotificationChannel`).
 
-        Règle : ce module ne dépend que de `notifications-api` (et, plus tard, de `infra-jpa`, SILO-217) ; les
+        SILO-217 : il porte aussi la persistance JPA autonome du silo (package `domain.notifications.core.persistence` :
+        entités des paramètres, du journal d'envoi et des abonnements Web Push, repositories Spring Data et
+        `Jpa*Store`, adaptateurs des ports `NotificationSettingsStore`, `NotificationSentLogStore` et
+        `PushSubscriptionStore`), découverte par le scan par défaut de Spring Boot (racine
+        `com.moe.myfamilybudget`).
+
+        Règle : ce module ne dépend que de `notifications-api` et de `infra-jpa` ; les
         bibliothèques tierces `web-push`, `bcprov` et `httpclient` (canal Web Push), `jackson-databind` et slf4j
         n'y sont pas du Spring ni du JPA. Pas de `module-info` (décision D3) : visibilité
         tenue par le graphe Maven (règle C de `MavenModuleGraphTest`) et ArchUnit. Seul le composition root
@@ -28,12 +34,16 @@
     <artifactId>notifications-core</artifactId>
     <packaging>jar</packaging>
     <name>notifications-core</name>
-    <description>Cœur du silo Notifications MyFamilyBudget (règles de notification pures, dispatch, paramètres et canal Web Push, sans Spring ni JPA)</description>
+    <description>Cœur du silo Notifications MyFamilyBudget (règles pures, dispatch, paramètres, canal Web Push, et persistance JPA des paramètres, du journal d'envoi et des abonnements)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>notifications-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
         </dependency>
 
         <dependency>

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification;
+package com.moe.myfamilybudget.domain.notifications.core.persistence;
 
 import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
 import java.time.Instant;
@@ -11,8 +11,6 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.domain.notifications.core.NotificationSettingsCodec;
 import com.moe.myfamilybudget.domain.notifications.port.NotificationSettingsStore;
-import com.moe.myfamilybudget.persistence.entity.NotificationSettingsEntity;
-import com.moe.myfamilybudget.persistence.repository.NotificationSettingsRepository;
 
 /**
  * Implémentation JPA de {@link NotificationSettingsStore} : une seule ligne, remplacée à chaque

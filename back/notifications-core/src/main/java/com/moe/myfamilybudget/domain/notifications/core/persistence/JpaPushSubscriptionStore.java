@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification;
+package com.moe.myfamilybudget.domain.notifications.core.persistence;
 
 import java.util.List;
 
@@ -6,12 +6,9 @@ import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.domain.notifications.model.PushSubscriptionModel;
 import com.moe.myfamilybudget.domain.notifications.port.PushSubscriptionStore;
-import com.moe.myfamilybudget.persistence.entity.PushSubscriptionEntity;
-import com.moe.myfamilybudget.persistence.repository.PushSubscriptionRepository;
 
 /**
- * Implémentation JPA de {@link PushSubscriptionStore} (même table qu'avant SILO-180). Reste dans le composition
- * root jusqu'à SILO-217.
+ * Implémentation JPA de {@link PushSubscriptionStore} (même table qu'avant SILO-180).
  */
 @Component
 public class JpaPushSubscriptionStore implements PushSubscriptionStore {
