@@ -37,7 +37,7 @@ import com.moe.myfamilybudget.persistence.repository.CashflowTransferRepository;
 import com.moe.myfamilybudget.persistence.repository.CashflowVariableIncomeRepository;
 import com.moe.myfamilybudget.persistence.repository.CashflowVariableOverrideRepository;
 import com.moe.myfamilybudget.persistence.repository.ChargeRepository;
-import com.moe.myfamilybudget.persistence.repository.CreditLoanRepository;
+import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;

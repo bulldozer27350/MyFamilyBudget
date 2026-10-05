@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.credit.core.persistence;
 
 import java.time.Instant;
 
@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 
 /**
  * Hypothèses de l'analyse des prêts modifiées par l'utilisateur, stockées en JSON (une ligne).
- * Colonne TEXT explicite et non {@code @Lob}, comme {@link MarketSnapshotEntity}.
+ * Colonne TEXT explicite et non {@code @Lob}, comme {@code MarketSnapshotEntity}.
  */
 @Entity
 @Table(name = "loan_advice_settings")

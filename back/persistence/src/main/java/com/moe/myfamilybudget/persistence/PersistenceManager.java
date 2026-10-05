@@ -21,6 +21,7 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepo
 import com.moe.myfamilybudget.persistence.repository.*;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
+import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 
 import jakarta.annotation.PostConstruct;
 

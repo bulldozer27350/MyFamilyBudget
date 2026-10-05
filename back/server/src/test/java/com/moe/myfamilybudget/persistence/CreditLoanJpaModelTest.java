@@ -13,9 +13,9 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
-import com.moe.myfamilybudget.persistence.converter.CreditLoanEntityMapper;
-import com.moe.myfamilybudget.persistence.entity.CreditLoanEntity;
-import com.moe.myfamilybudget.persistence.repository.CreditLoanRepository;
+import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanEntityMapper;
+import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanEntity;
+import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 
 /**
  * DB-1040 : le modele JPA autonome du domaine Credit (additif, sans lien avec le hub) doit restituer

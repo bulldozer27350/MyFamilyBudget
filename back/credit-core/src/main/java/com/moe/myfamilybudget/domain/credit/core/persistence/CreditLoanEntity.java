@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.credit.core.persistence;
 
 import java.math.BigDecimal;
 
@@ -10,8 +10,8 @@ import jakarta.persistence.Table;
 /**
  * Pret, cible JPA autonome du domaine Credit (DB-1040).
  *
- * <p>Contrairement a {@link LoanEntity}, cette entite n'a <strong>aucune relation vers
- * {@link BudgetDataEntity}</strong> : elle est la racine de son propre agregat. Elle est additive et
+ * <p>Contrairement a {@code LoanEntity}, cette entite n'a <strong>aucune relation vers
+ * {@code BudgetDataEntity}</strong> : elle est la racine de son propre agregat. Elle est additive et
  * est lue par {@code LoanPersistenceAdapter} depuis DB-1041. Le chemin legacy (table {@code loan}) reste
  * alimente en parallele pour permettre un retour arriere simple.
  *

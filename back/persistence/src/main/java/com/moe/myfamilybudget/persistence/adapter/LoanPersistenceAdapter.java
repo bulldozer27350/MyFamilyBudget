@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.converter.CreditLoanEntityMapper;
-import com.moe.myfamilybudget.persistence.repository.CreditLoanRepository;
+import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanEntityMapper;
+import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.credit.port.LoanWriter;
 import com.moe.myfamilybudget.domain.credit.port.LoanSnapshotWriter;

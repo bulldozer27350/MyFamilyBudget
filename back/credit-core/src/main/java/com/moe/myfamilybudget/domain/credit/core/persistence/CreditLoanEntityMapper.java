@@ -1,11 +1,10 @@
-package com.moe.myfamilybudget.persistence.converter;
+package com.moe.myfamilybudget.domain.credit.core.persistence;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
-import com.moe.myfamilybudget.persistence.entity.CreditLoanEntity;
 
 /**
  * Mapper du domaine Credit entre {@link LoanModel} et {@link CreditLoanEntity} (DB-1040).

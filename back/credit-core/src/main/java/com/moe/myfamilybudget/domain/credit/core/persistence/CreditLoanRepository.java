@@ -1,11 +1,9 @@
-package com.moe.myfamilybudget.persistence.repository;
+package com.moe.myfamilybudget.domain.credit.core.persistence;
 
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-
-import com.moe.myfamilybudget.persistence.entity.CreditLoanEntity;
 
 /**
  * Repository autonome du domaine Credit (DB-1040), sans lien avec {@code BudgetDataEntity}.

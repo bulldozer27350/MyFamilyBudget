@@ -8,8 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.moe.myfamilybudget.persistence.entity.LoanAdviceSettingsEntity;
-import com.moe.myfamilybudget.persistence.repository.LoanAdviceSettingsRepository;
+import com.moe.myfamilybudget.domain.credit.core.persistence.LoanAdviceSettingsEntity;
+import com.moe.myfamilybudget.domain.credit.core.persistence.LoanAdviceSettingsRepository;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 
 /**

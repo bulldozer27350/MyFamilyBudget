@@ -8,10 +8,15 @@
         SILO-156 (doc/architecture/21-plan-silotage.md) : cœur du silo Crédit (moteur de calcul
         `DefaultLoanAdviceCalculationService`, implémentation de l'interface de `credit-api`).
 
-        Règle : ce module ne dépend que de `credit-api`. Pas de `module-info` (décision D3) : visibilité tenue par
-        le graphe Maven (règle C de `MavenModuleGraphTest`) et ArchUnit. Seul le composition root (server) le
-        référence ; `application` ne dépend que de `credit-api`. Le moteur n'est pas un @Component : son bean est
-        déclaré par `DomainEngineConfig`.
+        SILO-214 : il porte aussi la persistance JPA autonome du silo (package `domain.credit.core.persistence` :
+        entités `credit_loan` et `loan_advice_settings`, repositories Spring Data et mapper des prêts), découverte
+        par le scan par défaut de Spring Boot (racine `com.moe.myfamilybudget`). Le moteur reste sans Spring ni JPA.
+
+        Règle : ce module ne dépend que de `credit-api` et de `infra-jpa` (configuration JPA commune, qui apporte
+        Spring Data JPA et Hibernate). Pas de `module-info` (décision D3) : visibilité tenue par le graphe Maven
+        (règle C de `MavenModuleGraphTest`) et ArchUnit. Seul le composition root (server) le référence ;
+        `application` ne dépend que de `credit-api`. Le moteur n'est pas un @Component : son bean est déclaré par
+        `DomainEngineConfig`.
     -->
     <parent>
         <groupId>com.moe.myfamilybudget</groupId>
@@ -23,12 +28,16 @@
     <artifactId>credit-core</artifactId>
     <packaging>jar</packaging>
     <name>credit-core</name>
-    <description>Cœur du silo Crédit MyFamilyBudget (moteur de conseil sur les prêts pur, sans Spring ni JPA)</description>
+    <description>Cœur du silo Crédit MyFamilyBudget (moteur de conseil sur les prêts pur, et persistance JPA des prêts et des hypothèses de l'analyse)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>credit-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
         </dependency>
 
         <dependency>
