@@ -87,7 +87,7 @@ dont plusieurs restent « à confirmer en CI » (compilation non vérifiée à l
 | Playwright (F1 à F6) | `bunx playwright install --with-deps chromium` puis `bun run test:e2e` | `bunx playwright install chromium` puis `bun run test:e2e` (démarre Spring Boot et `view/server.js` s'ils ne tournent pas) |
 | Aucun test ignoré | `node tests/gate/check-gate.js all` | `$env:MFB_REQUIRE_POSTGRES="true"; node tests/gate/check-gate.js all` |
 
-`check-gate.js static` peut être lancé seul sans rien exécuter ; `reports` lit `back/server/target/surefire-reports`
+`check-gate.js static` (qui inclut les contrôles de la Porte A, voir plus bas) peut être lancé seul sans rien exécuter ; `reports` lit `back/server/target/surefire-reports`
 et exige, en CI ou si `MFB_REQUIRE_POSTGRES=true`, que la variante PostgreSQL ait réellement tourné.
 
 ### Ce que le script de garde vérifie
@@ -97,6 +97,24 @@ et exige, en CI ou si `MFB_REQUIRE_POSTGRES=true`, que la variante PostgreSQL ai
 - aucun `test.skip`, `test.fixme`, `test.fail`, `test.slow`, `.only(` dans `tests/e2e`, et `retries: 0` dans `playwright.config.js` ;
 - ni `continue-on-error: true`, `-DskipTests`, `|| true` dans `ci-cd.yml`, ni `skipTests` / `testFailureIgnore` dans `pom.xml` ;
 - aucun test marqué `<skipped>` dans les rapports Surefire (hors variante PostgreSQL sur un poste local sans PostgreSQL).
+
+### Porte A : services isolés (SILO-190)
+
+Première des trois portes du silotage ([21-plan-silotage.md](21-plan-silotage.md)), franchie avant d'ouvrir `infra-jpa`
+(SILO-200). Elle se valide sur la même révision, en CI puis en local :
+
+| Contrôle de la porte | Vérifié par |
+|---|---|
+| build complet | `mvn -f back/server/pom.xml -B test` (ou `mvn -f back/pom.xml -B -pl server -am test`) |
+| ArchUnit au vert | même commande (`ApplicationWithoutSiloCoreArchTest`, `BudgetDataModelUsageArchTest`, `DomainBoundaryArchTest`, `PureLayerArchTest`, `MavenModuleGraphTest`…) |
+| aucune dépendance `application` vers un `*-core` | `node tests/gate/check-gate.js gate-a` (pom et sources d'`application`), règle C de `MavenModuleGraphTest` et ArchUnit |
+| aucun `BudgetDataModel` hors persistance | `node tests/gate/check-gate.js gate-a` (sources de production de tous les modules sauf `persistence` et `transition-snapshot`, qui porte le type jusqu'à SILO-230), `BudgetDataModelUsageArchTest` |
+| E2E sans repli | `bun run test:e2e` puis `node tests/gate/check-gate.js all` (aucun `test.skip`, `retries: 0`, variante PostgreSQL exécutée) |
+
+`gate-a` ne lit que les sources : commentaires et Javadoc sont ignorés, et une mention dans un test n'est pas comptée.
+La porte est franchie quand ces cinq lignes sont vertes sur la même révision de `main`.
+
+- [ ] Porte A : build complet, ArchUnit, `gate-a`, VT-500 et VT-600 verts sur la même révision (à cocher après la CI).
 
 ### Points de vigilance constatés
 

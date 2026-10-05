@@ -2,7 +2,8 @@
 
 // VT-600 : garde "aucun test obligatoire uniquement tolere ou desactive".
 //
-//   node tests/gate/check-gate.js static    Analyse des sources (aucune execution requise)
+//   node tests/gate/check-gate.js static    Analyse des sources (aucune execution requise), Porte A (SILO-190) incluse
+//   node tests/gate/check-gate.js gate-a    Controles statiques de la Porte A seuls (SILO-190)
 //   node tests/gate/check-gate.js reports   Analyse des rapports Surefire apres `mvn test`
 //   node tests/gate/check-gate.js all       static puis reports
 //
@@ -70,6 +71,13 @@ const WORKFLOW_FORBIDDEN = [
 ];
 const POM_FORBIDDEN = [/<skipTests>\s*true/i, /<testFailureIgnore>\s*true/i, /<skip>\s*true\s*<\/skip>/i];
 
+// Porte A (SILO-190, doc/architecture/21-plan-silotage.md) : silos isoles.
+const BACK = path.join(ROOT, 'back');
+const SILOS = ['retirement', 'tax', 'wealth', 'bank-pointage', 'treasury', 'analysis', 'credit', 'goals', 'notifications', 'market'];
+// Seuls modules autorises a referencer BudgetDataModel dans leurs sources de production (le type vit dans
+// transition-snapshot jusqu'a SILO-230 ; la persistance le manipule jusqu'a SILO-210 a SILO-216 et SILO-230).
+const BUDGET_DATA_MODEL_MODULES = ['persistence', 'transition-snapshot'];
+
 const violations = [];
 
 function rel(file) {
@@ -116,6 +124,8 @@ function checkStatic() {
   if (fs.existsSync(WORKFLOW)) scan(WORKFLOW, WORKFLOW_FORBIDDEN, 'yaml');
   POMS.forEach(pom => { if (fs.existsSync(pom)) scan(pom, POM_FORBIDDEN, 'xml'); });
 
+  checkPorteA();
+
   const config = path.join(ROOT, 'playwright.config.js');
   if (fs.existsSync(config)) {
     const retries = /retries\s*:\s*(\d+)/.exec(fs.readFileSync(config, 'utf8'));
@@ -123,6 +133,29 @@ function checkStatic() {
       violations.push(rel(config) + ' -> retries=' + retries[1] + ' : un test instable serait toleré au lieu d etre corrige');
     }
   }
+}
+
+/**
+ * Porte A (SILO-190) : controles statiques, sans execution. Le build complet, ArchUnit, les tests JS et les E2E sont
+ * verifies par les autres etapes de la CI ; ici :
+ *   1. `application` ne declare aucun `*-core` de silo (ni reliquat `domain-xxx`) dans son pom ;
+ *   2. aucune source de production d `application` ne reference un package `domain.<silo>.core` ;
+ *   3. aucun `BudgetDataModel` hors persistance (et transition-snapshot, qui le porte) dans les sources de production.
+ */
+function checkPorteA() {
+  const appPom = path.join(BACK, 'application', 'pom.xml');
+  if (fs.existsSync(appPom)) {
+    const coreDependency = new RegExp('<artifactId>\\s*(?:(?:' + SILOS.join('|') + ')-core|domain-[a-z-]+)\\s*</artifactId>');
+    scan(appPom, [coreDependency], 'xml');
+  }
+
+  const siloCorePackage = /com\.moe\.myfamilybudget\.domain\.[a-z]+\.core\b/;
+  walk(path.join(BACK, 'application', 'src', 'main'), '.java').forEach(f => scan(f, [siloCorePackage], 'java'));
+
+  fs.readdirSync(BACK, { withFileTypes: true })
+    .filter(e => e.isDirectory() && !BUDGET_DATA_MODEL_MODULES.includes(e.name))
+    .forEach(e => walk(path.join(BACK, e.name, 'src', 'main'), '.java')
+      .forEach(f => scan(f, [/\bBudgetDataModel\b/], 'java')));
 }
 
 function checkReports() {
@@ -159,10 +192,11 @@ function checkReports() {
 }
 
 const mode = process.argv[2] || 'all';
-if (!['static', 'reports', 'all'].includes(mode)) {
-  console.error('Usage : node tests/gate/check-gate.js static|reports|all');
+if (!['static', 'gate-a', 'reports', 'all'].includes(mode)) {
+  console.error('Usage : node tests/gate/check-gate.js static|gate-a|reports|all');
   process.exit(2);
 }
+if (mode === 'gate-a') checkPorteA();
 if (mode === 'static' || mode === 'all') checkStatic();
 if (mode === 'reports' || mode === 'all') checkReports();
 
