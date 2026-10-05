@@ -8,7 +8,8 @@ import org.springframework.stereotype.Repository;
 
 /**
  * Repository autonome du domaine Objectifs (DB-1020), sans lien avec {@code BudgetDataEntity}.
- * Lu par {@code GoalPersistenceAdapter} (DB-1021) ; alimente par {@code BudgetPersistenceGateway}.
+ * Lu et ecrit par {@link JpaGoalStore} (SILO-212, lot B1) ; relu au chargement du cache par
+ * {@code BudgetPersistenceGateway}.
  */
 @Repository
 public interface GoalRepository extends JpaRepository<GoalEntity, String> {

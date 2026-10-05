@@ -40,7 +40,7 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.GoalPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.persistence.adapter.LoanPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
@@ -404,7 +404,7 @@ class BusinessLogicIntegrationTest {
                 SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
-                new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));
+                new LoanPersistenceAdapter(persistenceManager), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 
         // trimestresDateYear=2025, salaire actif 2026..2053 = 28 annees * 4 = 112
@@ -431,7 +431,7 @@ class BusinessLogicIntegrationTest {
                 SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
-                new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));
+                new LoanPersistenceAdapter(persistenceManager), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 
         assertThat(proj.pensionBaseAnnuelle()).isGreaterThan(BigDecimal.ZERO);
@@ -453,7 +453,7 @@ class BusinessLogicIntegrationTest {
                 SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
-                new LoanPersistenceAdapter(persistenceManager), new GoalPersistenceAdapter(persistenceManager));
+                new LoanPersistenceAdapter(persistenceManager), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 
         MvcResult result = mockMvc.perform(get("/api/v1/overview").contextPath("/api/v1")).andExpect(status().isOk()).andReturn();

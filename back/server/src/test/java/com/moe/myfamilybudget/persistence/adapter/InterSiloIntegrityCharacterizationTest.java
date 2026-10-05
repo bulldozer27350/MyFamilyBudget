@@ -18,6 +18,7 @@ import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
@@ -37,7 +38,7 @@ import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRu
 class InterSiloIntegrityCharacterizationTest {
 
     private PatrimoinePersistenceAdapter patrimoine;
-    private GoalPersistenceAdapter goals;
+    private InMemoryGoalStore goals;
     private GoalCommandService goalCommands;
 
     @BeforeEach
@@ -45,7 +46,7 @@ class InterSiloIntegrityCharacterizationTest {
         PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         patrimoine = new PatrimoinePersistenceAdapter(persistenceManager);
-        goals = new GoalPersistenceAdapter(persistenceManager);
+        goals = new InMemoryGoalStore();
         goalCommands = new GoalCommandService(goals, goals, patrimoine, silos -> { },
                 RecordingTransactionRunner.direct());
     }

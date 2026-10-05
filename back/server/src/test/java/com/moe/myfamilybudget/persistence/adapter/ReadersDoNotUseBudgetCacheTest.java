@@ -27,7 +27,7 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRe
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
-import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
+import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
@@ -94,7 +94,7 @@ class ReadersDoNotUseBudgetCacheTest {
         BankPersistenceAdapter bank = new BankPersistenceAdapter(cache,
                 context.getBean(BankImportDocumentRepository.class));
         LoanPersistenceAdapter loans = new LoanPersistenceAdapter(cache, context.getBean(CreditLoanRepository.class));
-        GoalPersistenceAdapter goals = new GoalPersistenceAdapter(cache, context.getBean(GoalRepository.class));
+        GoalReader goals = context.getBean(GoalReader.class);
 
         assertThat(budget.getIncomes()).extracting(IncomeModel::id).containsExactly("inc_1070");
         assertThat(budget.getCharges()).isNotNull();

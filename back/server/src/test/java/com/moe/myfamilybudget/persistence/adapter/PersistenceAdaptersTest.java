@@ -121,10 +121,9 @@ class PersistenceAdaptersTest {
         }
 
         @Test
-        @DisplayName("Loan et Goal : aucune donnee")
-        void loansAndGoalsAreEmpty() {
+        @DisplayName("Loan : aucune donnee (les objectifs ne passent plus par le cache, SILO-212)")
+        void loansAreEmpty() {
             assertThat(new LoanPersistenceAdapter(persistenceManager).getLoans()).isEmpty();
-            assertThat(new GoalPersistenceAdapter(persistenceManager).getGoals()).isEmpty();
         }
 
         @Test
@@ -221,13 +220,9 @@ class PersistenceAdaptersTest {
         }
 
         @Test
-        @DisplayName("LoanPersistenceAdapter et GoalPersistenceAdapter relisent prets et objectifs (avec allocations)")
-        void loansAndGoalsRoundTrip() {
+        @DisplayName("LoanPersistenceAdapter relit les prets (les objectifs sont relus par JpaGoalStore, SILO-212)")
+        void loansRoundTrip() {
             assertThat(new LoanPersistenceAdapter(persistenceManager).getLoans()).containsExactly(LOAN);
-
-            List<ObjectifModel> goals = new GoalPersistenceAdapter(persistenceManager).getGoals();
-            assertThat(goals).containsExactly(GOAL);
-            assertThat(goals.get(0).allocations()).containsExactly(GOAL_ALLOCATION);
         }
 
         @Test
@@ -411,7 +406,6 @@ class PersistenceAdaptersTest {
             assertDefaultBrackets(new TaxPersistenceAdapter(persistenceManager).getTaxBrackets());
             assertThat(new BankPersistenceAdapter(persistenceManager).getBankImport().transactions()).isEmpty();
             assertThat(new LoanPersistenceAdapter(persistenceManager).getLoans()).isEmpty();
-            assertThat(new GoalPersistenceAdapter(persistenceManager).getGoals()).isEmpty();
             SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
             assertThat(settings.getEffectiveBirthYear()).isEqualTo(1985);
             assertThat(settings.retireAge()).isEqualTo(64);

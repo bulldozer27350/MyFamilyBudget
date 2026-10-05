@@ -20,8 +20,6 @@ import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
-import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
-import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
@@ -519,38 +517,6 @@ class BudgetMutationService {
                 resultRow.put("stepDate", stepDate);
 
                 return base.withLoans(list);
-            } else if ("objectifs".equalsIgnoreCase(listKey)) {
-                List<ObjectifModel> list = new ArrayList<>();
-                boolean found = false;
-
-                String label = getString(body, "label", "Nouvel objectif");
-                BigDecimal targetAmount = getBigDecimal(body, "targetAmount", BigDecimal.ZERO);
-                String targetDate = getString(body, "targetDate", "2027-01-01");
-                String notes = getString(body, "notes", "");
-                List<ObjectifAllocationModel> allocations = getObjectifAllocations(body);
-
-                ObjectifModel model = new ObjectifModel(uid, label, targetAmount, null, targetDate, "", notes,
-                        allocations);
-
-                for (ObjectifModel o : base.getEffectiveObjectifs()) {
-                    if (Objects.equals(o.id(), uid)) {
-                        list.add(model);
-                        found = true;
-                    } else {
-                        list.add(o);
-                    }
-                }
-                if (!found) {
-                    list.add(model);
-                }
-
-                resultRow.put("label", label);
-                resultRow.put("targetAmount", targetAmount);
-                resultRow.put("targetDate", targetDate);
-                resultRow.put("notes", notes);
-                resultRow.put("allocations", allocations);
-
-                return base.withObjectifs(list);
             }
 
             return base;
@@ -795,11 +761,6 @@ class BudgetMutationService {
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
                 return base.withLoans(list);
-            } else if ("objectifs".equalsIgnoreCase(listKey)) {
-                List<ObjectifModel> list = base.getEffectiveObjectifs().stream()
-                        .filter(r -> !Objects.equals(r.id(), id))
-                        .toList();
-                return base.withObjectifs(list);
             }
 
             return base;
@@ -1068,19 +1029,6 @@ class BudgetMutationService {
         replaceLoansSnapshot(null);
     }
 
-    /** Remplace les objectifs (les paramètres du domaine Objectifs ont leur propre stockage, RF-700). */
-    public void replaceGoalsSnapshot(List<ObjectifModel> goals) {
-        cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            return base.withObjectifs(orEmpty(goals));
-        });
-    }
-
-    /** Supprime tous les objectifs. */
-    public void resetGoalsSnapshot() {
-        replaceGoalsSnapshot(null);
-    }
-
     /** Remplace l'import bancaire ({@code null} accepté : absent, comme à l'import global). */
     public void replaceBankImportSnapshot(BankImportModel bankImport) {
         cacheStore.applyAndPersist(current -> {
@@ -1159,37 +1107,6 @@ class BudgetMutationService {
         return new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(), inflationRate, s.pivotDate(),
                 s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), s.sweepEnabled(),
                 s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
-    }
-
-    // --- Objectifs : allocations multi-comptes ---
-
-    /**
-     * Lit le champ "allocations" du corps de requête d'un objectif (tableau JSON
-     * {@code [{id, placementId, amount}, ...]}) envoyé par le tiroir d'édition. Un identifiant
-     * d'allocation absent ou vide (nouvelle ligne saisie côté tiroir) est généré ici.
-     */
-    @SuppressWarnings("unchecked")
-    private List<ObjectifAllocationModel> getObjectifAllocations(Map<String, Object> body) {
-        Object raw = body != null ? body.get("allocations") : null;
-        if (!(raw instanceof List<?> rawList)) {
-            return List.of();
-        }
-
-        List<ObjectifAllocationModel> allocations = new ArrayList<>();
-        for (Object item : rawList) {
-            if (!(item instanceof Map<?, ?>)) {
-                continue;
-            }
-            Map<String, Object> entry = (Map<String, Object>) item;
-            String allocationId = getString(entry, "id", null);
-            if (allocationId == null || allocationId.isBlank()) {
-                allocationId = UUID.randomUUID().toString();
-            }
-            String placementId = getString(entry, "placementId", "");
-            BigDecimal amount = getBigDecimal(entry, "amount", BigDecimal.ZERO);
-            allocations.add(new ObjectifAllocationModel(allocationId, placementId, amount));
-        }
-        return allocations;
     }
 
     // --- Utilitaires de conversion ---

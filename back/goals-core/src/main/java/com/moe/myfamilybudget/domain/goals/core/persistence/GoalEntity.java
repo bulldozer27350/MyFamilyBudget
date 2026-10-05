@@ -17,7 +17,7 @@ import jakarta.persistence.Table;
  * Objectif d'epargne, cible JPA autonome du domaine Objectifs (DB-1020).
  *
  * <p>Cette entite n'a <strong>aucune relation vers {@code BudgetDataEntity}</strong> : elle est la racine de
- * son propre agregat. Elle est lue par {@code GoalPersistenceAdapter} depuis DB-1021 et, depuis DB-1120,
+ * son propre agregat. Elle est lue et ecrite par {@link JpaGoalStore} (SILO-212, lot B1) et, depuis DB-1120,
  * c'est aussi la seule source de chargement du cache : les anciennes tables {@code objectif} /
  * {@code objectif_allocation} et leurs entites ont ete supprimees.
  */

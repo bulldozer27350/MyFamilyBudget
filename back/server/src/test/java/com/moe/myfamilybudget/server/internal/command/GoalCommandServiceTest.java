@@ -30,7 +30,7 @@ import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.GoalPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalWriter;
@@ -86,6 +86,17 @@ class GoalCommandServiceTest {
     }
 
     @Test
+    @DisplayName("SILO-212 : la suppression s'execute dans la transaction, apres la prise du verrou du silo Objectifs")
+    void deleteRunsInTransactionAfterLockingGoalsSilo() {
+        service.deleteGoalRow("goal_1");
+
+        assertThat(transactions.calls()).isEqualTo(1);
+        InOrder order = inOrder(lock, writer);
+        order.verify(lock).lockForCurrentTransaction(EnumSet.of(MutationSilo.GOALS));
+        order.verify(writer).deleteGoalRow("goal_1");
+    }
+
+    @Test
     @DisplayName("validation : un identifiant null est refuse et rien n'est ecrit")
     void nullIdIsRejectedWithoutWriting() {
         assertThatThrownBy(() -> service.deleteGoalRow(null)).isInstanceOf(IllegalArgumentException.class);
@@ -109,7 +120,7 @@ class GoalCommandServiceTest {
     void adapterWritesAreReadBackByReader() {
         PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        GoalPersistenceAdapter adapter = new GoalPersistenceAdapter(persistenceManager);
+        InMemoryGoalStore adapter = new InMemoryGoalStore();
         GoalCommandService realService = new GoalCommandService(adapter, adapter,
                 new PatrimoinePersistenceAdapter(persistenceManager), silos -> { }, RecordingTransactionRunner.direct());
 

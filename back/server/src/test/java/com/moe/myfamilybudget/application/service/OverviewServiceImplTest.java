@@ -30,7 +30,7 @@ import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.GoalPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.persistence.adapter.LoanPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
@@ -61,7 +61,7 @@ class OverviewServiceImplTest {
                 new TaxPersistenceAdapter(persistenceManager),
                 new BankPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager),
-                new GoalPersistenceAdapter(persistenceManager));
+                new InMemoryGoalStore());
     }
 
 

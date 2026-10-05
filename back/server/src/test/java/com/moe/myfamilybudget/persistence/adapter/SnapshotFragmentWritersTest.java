@@ -10,12 +10,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
@@ -34,7 +36,7 @@ class SnapshotFragmentWritersTest {
     private TresoreriePersistenceAdapter tresorerie;
     private PatrimoinePersistenceAdapter patrimoine;
     private LoanPersistenceAdapter loans;
-    private GoalPersistenceAdapter goals;
+    private InMemoryGoalStore goals;
     private BankPersistenceAdapter bank;
     private SimulationSettingsSnapshotAdapter simulation;
     private EconomicAssumptionsSnapshotAdapter economic;
@@ -48,7 +50,7 @@ class SnapshotFragmentWritersTest {
         tresorerie = new TresoreriePersistenceAdapter(persistenceManager);
         patrimoine = new PatrimoinePersistenceAdapter(persistenceManager);
         loans = new LoanPersistenceAdapter(persistenceManager);
-        goals = new GoalPersistenceAdapter(persistenceManager);
+        goals = new InMemoryGoalStore();
         bank = new BankPersistenceAdapter(persistenceManager);
         simulation = new SimulationSettingsSnapshotAdapter(persistenceManager);
         economic = new EconomicAssumptionsSnapshotAdapter(persistenceManager);
@@ -159,6 +161,9 @@ class SnapshotFragmentWritersTest {
     @Test
     @DisplayName("Patrimoine, prêts, objectifs, banque : replace(null) et reset laissent des données vides")
     void listBasedSilosResetToEmpty() {
+        goals.replace(List.of(new ObjectifModel("goal_1", "Voyage", new BigDecimal("1000"), "2027-01-01", "", "")));
+        assertThat(goals.getGoals()).extracting(ObjectifModel::id).containsExactly("goal_1");
+
         patrimoine.replace(null, null, null, null);
         loans.replace(null);
         goals.replace(null);
@@ -168,16 +173,17 @@ class SnapshotFragmentWritersTest {
         assertThat(persistenceManager.getBudgetData().getEffectiveRealEstate()).isEmpty();
         assertThat(persistenceManager.getBudgetData().getEffectiveTransfers()).isEmpty();
         assertThat(persistenceManager.getBudgetData().getEffectiveLoans()).isEmpty();
-        assertThat(persistenceManager.getBudgetData().getEffectiveObjectifs()).isEmpty();
+        assertThat(goals.getGoals()).isEmpty();
         assertThat(persistenceManager.getBudgetData().bankImport()).isNotNull();
 
+        goals.replace(List.of(new ObjectifModel("goal_2", "Voiture", new BigDecimal("8000"), "2028-01-01", "", "")));
         patrimoine.reset();
         loans.reset();
         goals.reset();
 
         assertThat(persistenceManager.getBudgetData().getEffectivePlacements()).isEmpty();
         assertThat(persistenceManager.getBudgetData().getEffectiveLoans()).isEmpty();
-        assertThat(persistenceManager.getBudgetData().getEffectiveObjectifs()).isEmpty();
+        assertThat(goals.getGoals()).isEmpty();
         assertThat(settings().birthYear()).isEqualTo(1985);
     }
 }

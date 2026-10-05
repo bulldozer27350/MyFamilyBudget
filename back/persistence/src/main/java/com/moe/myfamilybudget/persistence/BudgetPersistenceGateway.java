@@ -103,8 +103,9 @@ class BudgetPersistenceGateway {
     private final VariableOverrideRepository variableOverrideRepository;
     private final AssetCategoryRepository assetCategoryRepository;
     private final LoanRepository loanRepository;
-    // DB-1021 / DB-1120 : tables autonomes du domaine Objectifs, alimentees en ecriture a chaque sauvegarde du
-    // modele et seule source de chargement du cache (le hub ne porte plus les objectifs).
+    // DB-1120 : tables autonomes du domaine Objectifs, seule source de chargement du cache (le hub ne porte plus
+    // les objectifs). SILO-212 (lot B1) : elles ne sont plus alimentees ici, le silo les ecrit directement
+    // (JpaGoalStore) ; la copie des objectifs portee par le cache n'est plus autoritative ni consommee.
     private final GoalRepository goalRepository;
     // DB-1041 : table autonome du domaine Credit, meme principe que goalRepository.
     private final CreditLoanRepository creditLoanRepository;
@@ -331,7 +332,6 @@ class BudgetPersistenceGateway {
         saveVariableOverrides(model.variableOverrides(), entity);
         saveAssetCategories(model.assetCategories(), entity);
         saveLoans(model.loans(), entity);
-        syncGoals(model.objectifs());
         syncCreditLoans(model.loans());
         syncFiscal(model);
         syncPension(model.retirement());
@@ -350,31 +350,8 @@ class BudgetPersistenceGateway {
     }
 
     /**
-     * DB-1021 : remplace le contenu des tables {@code goal} / {@code goal_allocation} par les objectifs du
-     * modele, dans la transaction de l'appelant. Le {@code flush} apres la suppression est indispensable :
-     * Hibernate execute les insertions avant les suppressions, ce qui violerait la cle primaire (identifiant
-     * metier conserve) lors du remplacement d'un objectif existant. Un objectif sans identifiant ne peut etre
-     * adresse par aucune API : il reste dans le cache et le hub, mais n'est pas copie dans les nouvelles tables.
-     */
-    private void syncGoals(List<ObjectifModel> objectifs) {
-        goalRepository.deleteAll();
-        goalRepository.flush();
-        if (objectifs == null || objectifs.isEmpty()) {
-            return;
-        }
-        List<ObjectifModel> identified = objectifs.stream()
-                .filter(o -> o != null && o.id() != null)
-                .toList();
-        if (identified.size() != objectifs.size()) {
-            LOG.warn("{} objectif(s) sans identifiant ignore(s) lors de la synchronisation des tables Objectifs",
-                    objectifs.size() - identified.size());
-        }
-        goalRepository.saveAll(GoalEntityMapper.toEntities(identified));
-    }
-
-    /**
      * DB-1041 : remplace le contenu de la table {@code credit_loan} par les prets du modele, dans la
-     * transaction de l'appelant. Meme contrainte que {@link #syncGoals} : {@code flush} apres la suppression
+     * transaction de l'appelant. Meme contrainte que les autres synchronisations : {@code flush} apres la suppression
      * pour eviter la violation de la cle primaire metier. Un pret sans identifiant reste dans le cache et le
      * hub mais n'est pas copie dans la nouvelle table.
      */
@@ -396,7 +373,7 @@ class BudgetPersistenceGateway {
 
     /**
      * DB-1011 : remplace le contenu des quatre tables {@code fiscal_*} par la fiscalite du modele, dans la
-     * transaction de l'appelant ({@code flush} apres les suppressions, comme {@link #syncGoals}). Le bareme
+     * transaction de l'appelant ({@code flush} apres les suppressions, comme {@link #syncCreditLoans}). Le bareme
      * copie est le bareme <em>effectif</em> : si la liste du modele est vide, le bareme par defaut est ecrit,
      * de sorte que la lecture JPA restitue exactement ce que le cache expose.
      */
@@ -419,7 +396,7 @@ class BudgetPersistenceGateway {
 
     /**
      * DB-1001 : remplace le contenu des tables {@code pension_*} par la retraite du modele, dans la transaction de
-     * l'appelant ({@code flush} apres la suppression, comme {@link #syncGoals}). Une retraite absente du modele
+     * l'appelant ({@code flush} apres la suppression, comme {@link #syncCreditLoans}). Une retraite absente du modele
      * laisse les tables vides : la lecture JPA restitue alors {@code null}, comme le cache.
      */
     private void syncPension(RetirementModel retirement) {
@@ -433,7 +410,7 @@ class BudgetPersistenceGateway {
 
     /**
      * DB-1031 : remplace le document de la table {@code bank_import_document} par l'import bancaire du modele,
-     * dans la transaction de l'appelant ({@code flush} apres la suppression, comme {@link #syncGoals}). Une erreur
+     * dans la transaction de l'appelant ({@code flush} apres la suppression, comme {@link #syncCreditLoans}). Une erreur
      * de serialisation ou d'ecriture est propagee a l'appelant (FIX-010) : une ecriture en echec ne doit jamais
      * devenir une reussite en memoire.
      */
@@ -449,7 +426,7 @@ class BudgetPersistenceGateway {
     /**
      * DB-1051 : remplace le contenu des tables {@code wealth_*} (placements avec leur historique, biens
      * immobiliers, categories d'actifs) par le patrimoine du modele, dans la transaction de l'appelant
-     * ({@code flush} apres les suppressions, comme {@link #syncGoals}). Les listes sont copiees telles que le
+     * ({@code flush} apres les suppressions, comme {@link #syncCreditLoans}). Les listes sont copiees telles que le
      * cache les expose ({@code getEffective*}) : la lecture JPA restitue donc exactement le contenu du cache.
      * Les virements ne sont pas concernes : ils relevent de Tresorerie.
      */
@@ -468,7 +445,7 @@ class BudgetPersistenceGateway {
     /**
      * DB-1061 : remplace le contenu des six tables {@code cashflow_*} (revenus, charges, depenses ponctuelles,
      * virements, revenus variables, surcharges annuelles) par les lignes du modele, dans la transaction de
-     * l'appelant ({@code flush} apres les suppressions, comme {@link #syncGoals}). Les listes sont copiees telles
+     * l'appelant ({@code flush} apres les suppressions, comme {@link #syncCreditLoans}). Les listes sont copiees telles
      * que le cache les expose ({@code getEffective*}) : la lecture JPA restitue donc exactement son contenu.
      */
     private void syncCashflow(BudgetDataModel model) {

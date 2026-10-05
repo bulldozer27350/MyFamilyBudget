@@ -26,6 +26,11 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
  * ({@link TransactionRunner}), apres la prise des verrous des silos Patrimoine et Objectifs
  * ({@link SiloMutationLock}) : les lectures du controle et l'ecriture voient le meme etat.
  *
+ * <p>SILO-212 (lot B1) : les objectifs s'ecrivent directement dans leurs tables ({@code JpaGoalStore}), sans
+ * passer par le modele global. Une ecriture n'a donc plus d'autre garantie de serialisation et d'atomicite que
+ * celles prises ici : la suppression s'execute, comme la sauvegarde, dans une transaction du
+ * {@link TransactionRunner} apres la prise du verrou du silo Objectifs.
+ *
  * <p>L'identifiant issu de l'URL n'est jamais {@code null} cote REST : un {@code null} est une erreur de
  * programmation, refusee avant toute ecriture ({@link IllegalArgumentException}). Un corps {@code null}
  * reste accepte pour {@link #saveGoalRow} (creation d'un objectif par defaut, contrat historique de l'API).
@@ -35,6 +40,9 @@ public class GoalCommandService {
 
     /** Silos lus et ecrits par la sauvegarde d'un objectif (l'ordre de prise des verrous est celui de l'enum). */
     private static final Set<MutationSilo> SAVE_SILOS = EnumSet.of(MutationSilo.WEALTH, MutationSilo.GOALS);
+
+    /** Silo ecrit par la suppression d'un objectif. */
+    private static final Set<MutationSilo> DELETE_SILOS = EnumSet.of(MutationSilo.GOALS);
 
     private final GoalWriter goalWriter;
     private final GoalReader goalReader;
@@ -70,6 +78,10 @@ public class GoalCommandService {
         if (id == null) {
             throw new IllegalArgumentException("L'identifiant de l'objectif est obligatoire");
         }
-        goalWriter.deleteGoalRow(id);
+        transactionRunner.inTransaction(() -> {
+            siloMutationLock.lockForCurrentTransaction(DELETE_SILOS);
+            goalWriter.deleteGoalRow(id);
+            return null;
+        });
     }
 }

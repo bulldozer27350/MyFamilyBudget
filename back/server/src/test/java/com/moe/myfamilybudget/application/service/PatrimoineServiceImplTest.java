@@ -42,7 +42,7 @@ import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.GoalPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.persistence.adapter.LoanPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
@@ -54,6 +54,7 @@ class PatrimoineServiceImplTest {
     private PatrimoineServiceImpl service;
     private PatrimoineMapper mapper;
     private PersistenceManager persistenceManager;
+    private InMemoryGoalStore goalStore;
 
     @BeforeEach
     void setUp() {
@@ -61,12 +62,12 @@ class PatrimoineServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
-        GoalPersistenceAdapter goalAdapter = new GoalPersistenceAdapter(persistenceManager);
+        goalStore = new InMemoryGoalStore();
         service = new PatrimoineServiceImpl(
                 mapper, new DefaultPatrimoineProjectionService(), new DefaultPlacementEvolutionService(),
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
                 new LoanCommandService(new LoanPersistenceAdapter(persistenceManager)),
-                new GoalCommandService(goalAdapter, goalAdapter, new PatrimoinePersistenceAdapter(persistenceManager),
+                new GoalCommandService(goalStore, goalStore, new PatrimoinePersistenceAdapter(persistenceManager),
                         silos -> { }, RecordingTransactionRunner.direct()),
                 settingsAdapter,
                 settingsAdapter,
@@ -111,11 +112,11 @@ class PatrimoineServiceImplTest {
         goal.put("targetDate", "2027-07-01");
 
         assertEquals(HttpStatus.OK, service.savePatrimoineLigne("objectifs", goal).getStatusCode());
-        assertTrue(new GoalPersistenceAdapter(persistenceManager).getGoals().stream()
+        assertTrue(goalStore.getGoals().stream()
                 .anyMatch(o -> "goal_db041".equals(o.id())));
 
         assertEquals(HttpStatus.NO_CONTENT, service.deletePatrimoineLigne("objectifs", "goal_db041").getStatusCode());
-        assertFalse(new GoalPersistenceAdapter(persistenceManager).getGoals().stream()
+        assertFalse(goalStore.getGoals().stream()
                 .anyMatch(o -> "goal_db041".equals(o.id())));
     }
 

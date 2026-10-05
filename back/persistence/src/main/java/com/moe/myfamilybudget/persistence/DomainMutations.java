@@ -23,7 +23,6 @@ import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
-import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
@@ -284,18 +283,6 @@ public final class DomainMutations {
     public void resetLoansSnapshot() {
         mutationService.resetLoansSnapshot();
         publishMutated("resetLoansSnapshot");
-    }
-
-    /** Remplace les objectifs. */
-    public void replaceGoalsSnapshot(List<ObjectifModel> goals) {
-        mutationService.replaceGoalsSnapshot(goals);
-        publishMutated("replaceGoalsSnapshot");
-    }
-
-    /** Supprime tous les objectifs. */
-    public void resetGoalsSnapshot() {
-        mutationService.resetGoalsSnapshot();
-        publishMutated("resetGoalsSnapshot");
     }
 
     /** Remplace l'import bancaire. */

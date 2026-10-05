@@ -55,6 +55,7 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepositor
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
+import com.moe.myfamilybudget.domain.goals.core.persistence.JpaGoalStore;
 import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.persistence.repository.LoanRepository;
 import com.moe.myfamilybudget.persistence.repository.OneOffExpenseRepository;
@@ -105,6 +106,12 @@ class PersistenceAdaptersJpaRoundTripTest {
     @BeforeEach
     void startFromBlankDatabase() {
         writer.resetData();
+        // SILO-212 (lot B1) : les objectifs ne sont plus portes par le modele global, resetData() ne les vide plus.
+        goalStore().reset();
+    }
+
+    private JpaGoalStore goalStore() {
+        return context.getBean(JpaGoalStore.class);
     }
 
     // =========================================================================
@@ -132,14 +139,12 @@ class PersistenceAdaptersJpaRoundTripTest {
         writer.setBudgetData(writer.getBudgetData()
                 .withIncomes(List.of(other))
                 .withCharges(List.of())
-                .withPlacements(List.of())
-                .withObjectifs(List.of()));
+                .withPlacements(List.of()));
 
         PersistenceManager reader = freshReader();
         assertSameContent(jpaBudgetAdapter(reader).getIncomes(), List.of(other));
         assertThat(jpaBudgetAdapter(reader).getCharges()).isEmpty();
         assertThat(jpaPatrimoineAdapter(reader).getPlacements()).isEmpty();
-        assertThat(new GoalPersistenceAdapter(reader).getGoals()).isEmpty();
         // Les domaines non touches par le second import restent identiques.
         assertSameContent(new RetirementPersistenceAdapter(reader).getRetirement(), RETIREMENT);
         assertSameContent(new LoanPersistenceAdapter(reader).getLoans(), List.of(LOAN));
@@ -237,7 +242,6 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertDefaultBrackets(new TaxPersistenceAdapter(reader).getTaxBrackets());
         assertThat(new BankPersistenceAdapter(reader).getBankImport().transactions()).isEmpty();
         assertThat(new LoanPersistenceAdapter(reader).getLoans()).isEmpty();
-        assertThat(new GoalPersistenceAdapter(reader).getGoals()).isEmpty();
     }
 
     @Test
@@ -268,15 +272,15 @@ class PersistenceAdaptersJpaRoundTripTest {
 
         writer.setBudgetData(writer.getBudgetData()
                 .withPlacements(List.of(bare))
-                .withObjectifs(List.of(bareGoal))
                 .withRetirement(noPeople));
+        goalStore().replace(List.of(bareGoal));
 
         PersistenceManager reader = freshReader();
         List<PlacementModel> placements = jpaPatrimoineAdapter(reader).getPlacements();
         assertThat(placements).hasSize(1);
         assertThat(placements.get(0).id()).isEqualTo("plc_bare");
         assertThat(placements.get(0).history()).isNotNull().isEmpty();
-        List<ObjectifModel> goals = new GoalPersistenceAdapter(reader).getGoals();
+        List<ObjectifModel> goals = goalStore().getGoals();
         assertThat(goals).hasSize(1);
         assertThat(goals.get(0).id()).isEqualTo("goal_bare");
         assertThat(goals.get(0).allocations()).isNotNull().isEmpty();
@@ -292,65 +296,91 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     // =========================================================================
-    // DB-1021 -- Objectifs lus depuis les tables autonomes
+    // SILO-212 (lot B1) -- Objectifs ecrits et lus directement dans les tables autonomes
     // =========================================================================
 
-    private GoalPersistenceAdapter jpaGoalAdapter(PersistenceManager manager) {
-        return new GoalPersistenceAdapter(manager, context.getBean(GoalRepository.class));
-    }
-
     @Test
-    @DisplayName("DB-1021 -- import -> les objectifs sont recopies dans les tables autonomes et relus par JPA")
-    void importedGoalsAreReadFromGoalTables() {
-        writer.setBudgetData(referenceData());
+    @DisplayName("SILO-212 -- replace -> les objectifs sont ecrits dans les tables autonomes et relus par JPA")
+    void replacedGoalsAreReadFromGoalTables() {
+        goalStore().replace(List.of(GOAL));
 
         assertThat(context.getBean(GoalRepository.class).count()).isEqualTo(1);
-        List<ObjectifModel> goals = jpaGoalAdapter(freshReader()).getGoals();
+        List<ObjectifModel> goals = goalStore().getGoals();
         assertSameContent(goals, List.of(GOAL));
         assertThat(goals.get(0).allocations()).hasSize(1);
     }
 
     @Test
-    @DisplayName("DB-1021 -- creation, mise a jour et suppression d'un objectif sont visibles via la lecture JPA")
+    @DisplayName("SILO-212 -- creation, mise a jour et suppression d'un objectif sont visibles via la lecture JPA")
     void goalWritesAreVisibleThroughJpaReader() {
-        writer.setBudgetData(referenceData());
-        GoalPersistenceAdapter adapter = jpaGoalAdapter(writer);
+        JpaGoalStore store = goalStore();
+        store.replace(List.of(GOAL));
 
-        adapter.saveGoalRow(Map.of("id", "goal_2", "label", "Voiture", "targetAmount", bd("8000"),
+        store.saveGoalRow(Map.of("id", "goal_2", "label", "Voiture", "targetAmount", bd("8000"),
                 "targetDate", "2028-01-01"));
-        assertThat(adapter.getGoals()).extracting(ObjectifModel::id).containsExactlyInAnyOrder("goal_1", "goal_2");
+        assertThat(store.getGoals()).extracting(ObjectifModel::id).containsExactly("goal_1", "goal_2");
 
-        adapter.saveGoalRow(Map.of("id", "goal_2", "label", "Voiture neuve", "targetAmount", bd("9000"),
+        store.saveGoalRow(Map.of("id", "goal_2", "label", "Voiture neuve", "targetAmount", bd("9000"),
                 "targetDate", "2028-01-01"));
-        assertThat(adapter.getGoals()).filteredOn(g -> "goal_2".equals(g.id()))
+        assertThat(store.getGoals()).filteredOn(g -> "goal_2".equals(g.id()))
                 .singleElement()
                 .satisfies(g -> assertThat(g.label()).isEqualTo("Voiture neuve"));
+        assertThat(store.getGoals()).extracting(ObjectifModel::id).containsExactly("goal_1", "goal_2");
 
-        adapter.deleteGoalRow("goal_1");
-        assertThat(jpaGoalAdapter(freshReader()).getGoals()).extracting(ObjectifModel::id)
-                .containsExactly("goal_2");
+        store.deleteGoalRow("goal_1");
+        assertThat(store.getGoals()).extracting(ObjectifModel::id).containsExactly("goal_2");
+    }
+
+    @Test
+    @DisplayName("SILO-212 -- un objectif sans identifiant recoit un identifiant genere et ses allocations sont relues")
+    void goalWithoutIdGetsGeneratedIdAndKeepsAllocations() {
+        Map<String, Object> saved = goalStore().saveGoalRow(Map.of("label", "Reserve", "targetAmount", bd("1500"),
+                "allocations", List.of(Map.of("placementId", "plc_1", "amount", "250"))));
+
+        String id = String.valueOf(saved.get("id"));
+        assertThat(id).startsWith("pat_");
+        List<ObjectifModel> goals = goalStore().getGoals();
+        assertThat(goals).singleElement().satisfies(g -> {
+            assertThat(g.id()).isEqualTo(id);
+            assertThat(g.getEffectiveAllocations()).singleElement().satisfies(allocation -> {
+                assertThat(allocation.id()).isNotBlank();
+                assertThat(allocation.placementId()).isEqualTo("plc_1");
+                assertThat(allocation.amount()).isEqualByComparingTo("250");
+            });
+        });
     }
 
     @Test
     @DisplayName("DB-1120 -- au demarrage, les objectifs du cache sont recharges depuis les tables goal_*")
     void goalsAreReloadedFromGoalTablesOnStartup() {
-        writer.setBudgetData(referenceData());
+        goalStore().replace(List.of(GOAL));
 
         PersistenceManager restarted = freshReader();
 
         assertSameContent(restarted.getBudgetData().objectifs(), List.of(GOAL));
-        assertSameContent(jpaGoalAdapter(restarted).getGoals(), List.of(GOAL));
+        assertSameContent(goalStore().getGoals(), List.of(GOAL));
     }
 
     @Test
-    @DisplayName("DB-1021 -- reinitialisation -> les tables autonomes sont videes")
+    @DisplayName("SILO-212 -- reset -> les tables autonomes sont videes")
     void resetEmptiesGoalTables() {
-        writer.setBudgetData(referenceData());
+        goalStore().replace(List.of(GOAL));
 
-        writer.resetData();
+        goalStore().reset();
 
         assertThat(context.getBean(GoalRepository.class).count()).isZero();
-        assertThat(jpaGoalAdapter(writer).getGoals()).isEmpty();
+        assertThat(goalStore().getGoals()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("SILO-212 -- une ecriture du modele global ne touche plus aux tables Objectifs")
+    void globalModelWriteDoesNotTouchGoalTables() {
+        goalStore().replace(List.of(GOAL));
+
+        writer.setBudgetData(writer.getBudgetData().withObjectifs(List.of()));
+        writer.resetData();
+
+        assertSameContent(goalStore().getGoals(), List.of(GOAL));
     }
 
     // =========================================================================
@@ -984,9 +1014,6 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(bank.matchings(), BANK_IMPORT.matchings());
 
         assertSameContent(new LoanPersistenceAdapter(reader).getLoans(), List.of(LOAN));
-        List<ObjectifModel> goals = new GoalPersistenceAdapter(reader).getGoals();
-        assertSameContent(goals, List.of(GOAL));
-        assertThat(goals.get(0).allocations()).hasSize(1);
 
         SettingsModel settings = new SettingsPersistenceAdapter(reader).getSettings();
         assertThat(settings.birthYear()).isEqualTo(SETTINGS.birthYear());
@@ -1128,7 +1155,6 @@ class PersistenceAdaptersJpaRoundTripTest {
                 .withVariableOverrides(List.of(VARIABLE_OVERRIDE))
                 .withBankImport(BANK_IMPORT)
                 .withAssetCategories(List.of(ASSET_CATEGORY))
-                .withLoans(List.of(LOAN))
-                .withObjectifs(List.of(GOAL));
+                .withLoans(List.of(LOAN));
     }
 }
