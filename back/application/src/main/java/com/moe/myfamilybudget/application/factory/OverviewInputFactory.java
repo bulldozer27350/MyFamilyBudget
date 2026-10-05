@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.application.overview.OverviewInput;
@@ -60,6 +61,7 @@ public final class OverviewInputFactory {
     private final RetirementInputFactory retirementInputFactory;
     private final RetirementCalculationService retirementCalculationService;
 
+    @Autowired
     public OverviewInputFactory(RetirementCalculationService retirementCalculationService) {
         this(new TreasuryInputFactory(retirementCalculationService),
              new TresorerieCalculationService(),
