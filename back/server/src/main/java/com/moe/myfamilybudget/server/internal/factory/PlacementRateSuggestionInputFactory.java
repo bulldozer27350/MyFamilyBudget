@@ -8,7 +8,7 @@ import java.util.List;
 
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput.PlacementRateInput;
-import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
+import com.moe.myfamilybudget.domain.market.model.MarketRatesView;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 

@@ -16,9 +16,9 @@ import com.moe.myfamilybudget.api.model.SuggestionTauxPlacementDto;
 import com.moe.myfamilybudget.api.model.SuggestionsTauxDto;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
 import com.moe.myfamilybudget.server.internal.factory.PlacementRateSuggestionInputFactory;
-import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
-import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness.Status;
-import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRatesQuote;
+import com.moe.myfamilybudget.domain.market.model.MarketRatesView;
+import com.moe.myfamilybudget.domain.market.model.RegulatedRateFreshness.Status;
+import com.moe.myfamilybudget.domain.market.model.RegulatedRatesQuote;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 

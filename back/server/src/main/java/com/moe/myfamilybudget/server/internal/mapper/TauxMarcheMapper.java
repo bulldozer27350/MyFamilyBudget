@@ -11,12 +11,12 @@ import com.moe.myfamilybudget.api.model.CourbeTauxDto;
 import com.moe.myfamilybudget.api.model.TauxCreditImmobilierDto;
 import com.moe.myfamilybudget.api.model.TauxMarcheDto;
 import com.moe.myfamilybudget.api.model.TauxReglementesDto;
-import com.moe.myfamilybudget.server.internal.marketdata.MarketDataFreshness;
-import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
-import com.moe.myfamilybudget.server.internal.marketdata.MortgageRateQuote;
-import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness;
-import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRatesQuote;
-import com.moe.myfamilybudget.server.internal.marketdata.YieldCurveQuote;
+import com.moe.myfamilybudget.domain.market.model.MarketDataFreshness;
+import com.moe.myfamilybudget.domain.market.model.MarketRatesView;
+import com.moe.myfamilybudget.domain.market.model.MortgageRateQuote;
+import com.moe.myfamilybudget.domain.market.model.RegulatedRateFreshness;
+import com.moe.myfamilybudget.domain.market.model.RegulatedRatesQuote;
+import com.moe.myfamilybudget.domain.market.model.YieldCurveQuote;
 
 /**
  * Conversion de la vue des données de marché vers les DTOs OpenAPI (tag TauxMarche).

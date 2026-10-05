@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        SILO-159 (doc/architecture/21-plan-silotage.md) : API du silo Marché (décision D7), extraite de
+        `server` (package internal.marketdata) : instantanés et cotations (taux réglementés, taux des crédits
+        immobiliers, courbe des taux), règles de fraîcheur, exception, ports des sources et du stockage de
+        l'instantané, interface de service MarketDataService. Les clients HTTP, le codec JSON et
+        DefaultMarketDataService vivent dans `market-core`.
+
+        Aucune dépendance vers un autre module du reactor, ni vers Spring, JPA, Jackson, OpenAPI,
+        PersistenceManager ou BudgetDataModel : seul le JDK est utilisé en production, aucune dépendance de
+        test (les tests vivent dans `market-core`).
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>market-api</artifactId>
+    <packaging>jar</packaging>
+    <name>market-api</name>
+    <description>API du silo Marché MyFamilyBudget (cotations, fraîcheur, ports, interface de service ; sans Spring ni JPA)</description>
+
+</project>

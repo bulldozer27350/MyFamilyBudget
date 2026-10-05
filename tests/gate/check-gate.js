@@ -14,8 +14,8 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const BACKEND_TESTS = path.join(ROOT, 'back', 'server', 'src', 'test');
-// Tests unitaires des modules de domaine extraits du reactor (MAVEN-020 : domain-retirement devenu retirement-core (SILO-150), MAVEN-030 : domain-tax devenu tax-core (SILO-151), MAVEN-040 : domain-wealth devenu wealth-core (SILO-152), MAVEN-060 : domain-bank-pointage devenu bank-pointage-core (SILO-154), MAVEN-050 : domain-treasury devenu treasury-core (SILO-153), MAVEN-070 : domain-analysis devenu analysis-core (SILO-155), MAVEN-080 : domain-credit devenu credit-core (SILO-156), domain-goals devenu goals-api (SILO-157), MAVEN-090 : domain-notifications devenu notifications-core (SILO-158))
-const MODULE_TESTS = ['retirement-core', 'tax-core', 'wealth-core', 'bank-pointage-core', 'treasury-core', 'analysis-core', 'credit-core', 'goals-api', 'notifications-core'].map(m => path.join(ROOT, 'back', m, 'src', 'test'));
+// Tests unitaires des modules de domaine extraits du reactor (MAVEN-020 : domain-retirement devenu retirement-core (SILO-150), MAVEN-030 : domain-tax devenu tax-core (SILO-151), MAVEN-040 : domain-wealth devenu wealth-core (SILO-152), MAVEN-060 : domain-bank-pointage devenu bank-pointage-core (SILO-154), MAVEN-050 : domain-treasury devenu treasury-core (SILO-153), MAVEN-070 : domain-analysis devenu analysis-core (SILO-155), MAVEN-080 : domain-credit devenu credit-core (SILO-156), domain-goals devenu goals-api (SILO-157), MAVEN-090 : domain-notifications devenu notifications-core (SILO-158), silo Marché : market-core (SILO-159))
+const MODULE_TESTS = ['retirement-core', 'tax-core', 'wealth-core', 'bank-pointage-core', 'treasury-core', 'analysis-core', 'credit-core', 'goals-api', 'notifications-core', 'market-core'].map(m => path.join(ROOT, 'back', m, 'src', 'test'));
 const SUREFIRE_DIR = path.join(ROOT, 'back', 'server', 'target', 'surefire-reports');
 const E2E_DIR = path.join(ROOT, 'tests', 'e2e');
 const WORKFLOW = path.join(ROOT, '.github', 'workflows', 'ci-cd.yml');
@@ -38,6 +38,8 @@ const POMS = [
   path.join(ROOT, 'back', 'goals-api', 'pom.xml'),
   path.join(ROOT, 'back', 'notifications-api', 'pom.xml'),
   path.join(ROOT, 'back', 'notifications-core', 'pom.xml'),
+  path.join(ROOT, 'back', 'market-api', 'pom.xml'),
+  path.join(ROOT, 'back', 'market-core', 'pom.xml'),
   path.join(ROOT, 'back', 'api', 'pom.xml'),
   path.join(ROOT, 'back', 'transition-snapshot', 'pom.xml'),
   path.join(ROOT, 'back', 'application', 'pom.xml'),

@@ -11,7 +11,7 @@ import com.moe.myfamilybudget.api.model.SuggestionsTauxDto;
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
 import com.moe.myfamilybudget.server.internal.factory.PlacementRateSuggestionInputFactory;
 import com.moe.myfamilybudget.application.mapper.SuggestionsTauxMapper;
-import com.moe.myfamilybudget.server.internal.marketdata.MarketDataService;
+import com.moe.myfamilybudget.domain.market.calculation.MarketDataService;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 
 /**

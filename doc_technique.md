@@ -214,6 +214,11 @@ Le domaine Notifications vit dans `back/notifications-api` (contrat `Notificatio
 module du reactor, ses trois règles sont déclarées comme beans par `config/DomainEngineConfig` et `application` ne
 connaît que l'API. Le dispatch, la dédup, les canaux (Web Push) et la persistance des
 paramètres restent dans `server`.
+Le silo Marché (SILO-159) vit dans `back/market-api` (cotations, règles de fraîcheur, ports des sources et du stockage,
+interface `MarketDataService`, `com.moe.myfamilybudget.domain.market.*`) et `back/market-core` (clients Caisse des
+Dépôts, Banque de France et BCE, codec JSON de l'instantané, `DefaultMarketDataService`) ; leurs beans sont déclarés par
+`config/DomainEngineConfig`. Le planificateur et le stockage JPA de l'instantané restent dans `server` (SILO-170,
+SILO-217).
 Le snapshot global de transition (`BudgetDataModel`, `SettingsModel`) et les ports transverses (`BudgetReader`,
 `SettingsReader`, `BudgetMutationLock`, `EconomicAssumptionsWriter`, `SimulationSettingsWriter`) vivent dans
 `back/transition-snapshot` (`com.moe.myfamilybudget.transition.*`) ; aucun domaine n'en dépend. La couche applicative

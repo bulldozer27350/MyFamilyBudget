@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.server.internal.marketdata;
 
+import com.moe.myfamilybudget.domain.market.calculation.MarketDataService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;

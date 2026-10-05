@@ -110,6 +110,16 @@
             <artifactId>notifications-core</artifactId>
         </dependency>
 
+        <!-- Silo Marché : API (cotations, ports, interface de service) et cœur (clients, agrégation) ; SILO-159 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>market-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>market-core</artifactId>
+        </dependency>
+
         <!-- Snapshot global de transition : BudgetDataModel, SettingsModel et ports transverses (MAVEN-100) -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>

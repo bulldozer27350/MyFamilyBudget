@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        SILO-159 (doc/architecture/21-plan-silotage.md) : cœur du silo Marché : clients HTTP des sources publiques
+        (Caisse des Dépôts, Banque de France, BCE), codec JSON de l'instantané et DefaultMarketDataService,
+        implémentation de l'interface de `market-api`.
+
+        Règle : ce module ne dépend que de `market-api` (plus Jackson et SLF4J, bibliothèques techniques). Pas de
+        `module-info` (décision D3) : visibilité tenue par le graphe Maven (règle C de `MavenModuleGraphTest`) et
+        ArchUnit. Seul le composition root (server) le référence ; les clients et le service ne sont pas des
+        @Component : leurs beans sont déclarés par `DomainEngineConfig`, qui lui passe les propriétés
+        `myfamilybudget.market-data.*`. Le planificateur et le stockage JPA de l'instantané restent dans `server`
+        jusqu'à SILO-170 et SILO-217.
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>market-core</artifactId>
+    <packaging>jar</packaging>
+    <name>market-core</name>
+    <description>Cœur du silo Marché MyFamilyBudget (clients des sources publiques et agrégation, sans Spring ni JPA)</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>market-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

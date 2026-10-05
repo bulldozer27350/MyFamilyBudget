@@ -13,10 +13,10 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput.PlacementRateInput;
-import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
-import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness;
-import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRatesQuote;
-import com.moe.myfamilybudget.server.internal.marketdata.YieldCurveQuote;
+import com.moe.myfamilybudget.domain.market.model.MarketRatesView;
+import com.moe.myfamilybudget.domain.market.model.RegulatedRateFreshness;
+import com.moe.myfamilybudget.domain.market.model.RegulatedRatesQuote;
+import com.moe.myfamilybudget.domain.market.model.YieldCurveQuote;
 import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel;
 import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel.Item;
 import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel.Kind;

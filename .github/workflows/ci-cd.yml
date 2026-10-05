@@ -71,6 +71,8 @@ jobs:
             back/goals-api/pom.xml
             back/notifications-api/pom.xml
             back/notifications-core/pom.xml
+            back/market-api/pom.xml
+            back/market-core/pom.xml
             back/api/pom.xml
             back/transition-snapshot/pom.xml
             back/application/pom.xml

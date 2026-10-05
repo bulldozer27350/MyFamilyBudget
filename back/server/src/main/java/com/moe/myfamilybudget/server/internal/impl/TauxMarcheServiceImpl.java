@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.moe.myfamilybudget.api.controller.TauxMarcheApi;
 import com.moe.myfamilybudget.api.model.TauxMarcheDto;
 import com.moe.myfamilybudget.server.internal.mapper.TauxMarcheMapper;
-import com.moe.myfamilybudget.server.internal.marketdata.MarketDataService;
+import com.moe.myfamilybudget.domain.market.calculation.MarketDataService;
 
 /**
  * Contrôleur REST implémentant le contrat OpenAPI TauxMarcheApi (Tag: TauxMarche) : expose les

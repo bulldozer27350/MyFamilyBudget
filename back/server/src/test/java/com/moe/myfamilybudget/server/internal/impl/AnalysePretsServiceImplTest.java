@@ -13,9 +13,9 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 import com.moe.myfamilybudget.server.internal.impl.AnalysePretsServiceImpl.ResolvedMarketRate;
-import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
-import com.moe.myfamilybudget.server.internal.marketdata.MortgageRateQuote;
-import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness.Status;
+import com.moe.myfamilybudget.domain.market.model.MarketRatesView;
+import com.moe.myfamilybudget.domain.market.model.MortgageRateQuote;
+import com.moe.myfamilybudget.domain.market.model.RegulatedRateFreshness.Status;
 
 class AnalysePretsServiceImplTest {
 

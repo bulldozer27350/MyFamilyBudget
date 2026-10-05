@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
+import com.moe.myfamilybudget.domain.market.model.MarketRatesView;
 
 /**
  * Contrat d'entrée du moteur de suggestions de taux (RF-802, voir

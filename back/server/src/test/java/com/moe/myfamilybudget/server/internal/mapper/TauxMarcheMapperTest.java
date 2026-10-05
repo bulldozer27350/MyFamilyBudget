@@ -13,11 +13,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.api.model.TauxMarcheDto;
-import com.moe.myfamilybudget.server.internal.marketdata.MarketRatesView;
-import com.moe.myfamilybudget.server.internal.marketdata.MortgageRateQuote;
-import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRateFreshness.Status;
-import com.moe.myfamilybudget.server.internal.marketdata.RegulatedRatesQuote;
-import com.moe.myfamilybudget.server.internal.marketdata.YieldCurveQuote;
+import com.moe.myfamilybudget.domain.market.model.MarketRatesView;
+import com.moe.myfamilybudget.domain.market.model.MortgageRateQuote;
+import com.moe.myfamilybudget.domain.market.model.RegulatedRateFreshness.Status;
+import com.moe.myfamilybudget.domain.market.model.RegulatedRatesQuote;
+import com.moe.myfamilybudget.domain.market.model.YieldCurveQuote;
 
 class TauxMarcheMapperTest {
 

@@ -20,7 +20,7 @@
         Ce parent ne porte que des versions (properties, dependencyManagement, pluginManagement) :
         aucune dépendance ni aucun plugin n'est activé ici, pour ne rien imposer aux futurs modules.
         Les nouveaux modules sont ajoutés à la section <modules> au fil des items MAVEN-010 à MAVEN-130
-        (MAVEN-010 : domain-budget ; MAVEN-020 : domain-retirement, devenu retirement-api et retirement-core à SILO-150 ; MAVEN-030 : domain-tax, devenu tax-api et tax-core à SILO-151 ; MAVEN-040 : domain-wealth, devenu wealth-api et wealth-core à SILO-152 ; MAVEN-060 : domain-bank-pointage, devenu bank-pointage-api et bank-pointage-core à SILO-154 ; MAVEN-050 : domain-treasury, devenu treasury-api et treasury-core à SILO-153 ; MAVEN-070 : domain-analysis, devenu analysis-api et analysis-core à SILO-155 ; MAVEN-080 : domain-credit, devenu credit-api et credit-core à SILO-156, domain-goals, devenu goals-api à SILO-157 ; MAVEN-090 : domain-notifications, devenu notifications-api et notifications-core à SILO-158 ; MAVEN-100 : transition-snapshot, application ; MAVEN-110 : api ; MAVEN-120 : persistence).
+        (MAVEN-010 : domain-budget ; MAVEN-020 : domain-retirement, devenu retirement-api et retirement-core à SILO-150 ; MAVEN-030 : domain-tax, devenu tax-api et tax-core à SILO-151 ; MAVEN-040 : domain-wealth, devenu wealth-api et wealth-core à SILO-152 ; MAVEN-060 : domain-bank-pointage, devenu bank-pointage-api et bank-pointage-core à SILO-154 ; MAVEN-050 : domain-treasury, devenu treasury-api et treasury-core à SILO-153 ; MAVEN-070 : domain-analysis, devenu analysis-api et analysis-core à SILO-155 ; MAVEN-080 : domain-credit, devenu credit-api et credit-core à SILO-156, domain-goals, devenu goals-api à SILO-157 ; MAVEN-090 : domain-notifications, devenu notifications-api et notifications-core à SILO-158 ; silo Marché : market-api et market-core à SILO-159 ; MAVEN-100 : transition-snapshot, application ; MAVEN-110 : api ; MAVEN-120 : persistence).
     -->
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -54,6 +54,8 @@
         <module>goals-api</module>
         <module>notifications-api</module>
         <module>notifications-core</module>
+        <module>market-api</module>
+        <module>market-core</module>
         <module>api</module>
         <module>transition-snapshot</module>
         <module>application</module>
@@ -176,6 +178,16 @@
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>notifications-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moe.myfamilybudget</groupId>
+                <artifactId>market-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moe.myfamilybudget</groupId>
+                <artifactId>market-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
