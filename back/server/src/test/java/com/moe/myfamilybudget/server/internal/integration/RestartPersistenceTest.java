@@ -203,7 +203,8 @@ class RestartPersistenceTest {
                   "insurance": 20, "startDate": "2024-01-01", "endDate": "2044-01-01" }
                 """, 200);
         api.post("/patrimoine/objectifs", """
-                { "id": "goal_db011", "label": "Objectif DB-011", "targetAmount": 5000, "targetDate": "2027-06-01" }
+                { "id": "goal_db011", "label": "Objectif DB-011", "targetAmount": 5000, "targetDate": "2027-06-01",
+                  "allocations": [ { "id": "al_db011", "placementId": "plc_1", "amount": 2500 } ] }
                 """, 200);
 
         // Patrimoine (DB-030) : point d'historique de valorisation, de meme valeur que le solde deja ecrit
@@ -233,6 +234,13 @@ class RestartPersistenceTest {
         JsonNode goal = byId(budget.path("objectifs"), "goal_db011");
         assertThat(goal).as("objectif %s", moment).isNotNull();
         assertThat(goal.path("targetAmount").asDouble()).as("montant cible %s", moment).isCloseTo(5000.0, within(EPS));
+        // SILO-212 (lot B2) : l'allocation du compte (table goal_allocation) survit aussi au redemarrage.
+        JsonNode goalAllocations = goal.path("allocations");
+        assertThat(goalAllocations).as("allocations de l'objectif %s", moment).hasSize(1);
+        assertThat(goalAllocations.get(0).path("placementId").asText()).as("compte alloue %s", moment)
+                .isEqualTo("plc_1");
+        assertThat(goalAllocations.get(0).path("amount").asDouble()).as("montant alloue %s", moment)
+                .isCloseTo(2500.0, within(EPS));
 
         JsonNode patrimoine = api.getJson("/patrimoine");
         JsonNode loan = byId(patrimoine.path("loans"), "loan_db011");
