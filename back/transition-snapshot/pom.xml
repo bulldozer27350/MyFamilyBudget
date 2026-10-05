@@ -54,7 +54,7 @@
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-goals</artifactId>
+            <artifactId>goals-api</artifactId>
         </dependency>
 
         <dependency>

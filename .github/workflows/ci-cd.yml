@@ -68,7 +68,7 @@ jobs:
             back/analysis-core/pom.xml
             back/credit-api/pom.xml
             back/credit-core/pom.xml
-            back/domain-goals/pom.xml
+            back/goals-api/pom.xml
             back/domain-notifications/pom.xml
             back/api/pom.xml
             back/transition-snapshot/pom.xml

@@ -62,7 +62,7 @@
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-goals</artifactId>
+            <artifactId>goals-api</artifactId>
         </dependency>
 
         <!-- JPA/Hibernate, Spring Data JPA, transactions, stéréotypes, jakarta.annotation, slf4j -->

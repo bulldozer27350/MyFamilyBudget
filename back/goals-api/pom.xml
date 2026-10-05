@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        MAVEN-080 (doc/architecture/20-backlog-modules-maven-patchs.md) : domaine Objectifs, devenu `goals-api` à
+        SILO-157 (doc/architecture/21-plan-silotage.md) : paramètres, modèles d'objectif, ports
+        Reader/Writer/SnapshotWriter. Le silo n'a aucun moteur de calcul : il n'y a donc pas de `goals-core` à ce
+        stade ; le cœur (persistance JPA du silo) sera créé par SILO-212.
+
+        Aucune dépendance vers un autre module du reactor, ni vers Spring, JPA, OpenAPI,
+        PersistenceManager ou BudgetDataModel : seul le JDK est utilisé en production, aucune dépendance de
+        test.
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>goals-api</artifactId>
+    <packaging>jar</packaging>
+    <name>goals-api</name>
+    <description>API du silo Objectifs MyFamilyBudget (modèles, ports, paramètres ; sans Spring ni JPA)</description>
+
+</project>
