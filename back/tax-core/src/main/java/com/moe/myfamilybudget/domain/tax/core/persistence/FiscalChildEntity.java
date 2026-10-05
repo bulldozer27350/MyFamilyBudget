@@ -1,6 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
-
-import java.math.BigDecimal;
+package com.moe.myfamilybudget.domain.tax.core.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,16 +8,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * Impot reel saisi pour une annee, cible JPA autonome du domaine Fiscalite (DB-1010).
+ * Enfant a charge du foyer fiscal, cible JPA autonome du domaine Fiscalite (DB-1010).
  *
- * <p>Aucune relation vers {@link BudgetDataEntity} : additive, pas encore utilisee par
+ * <p>Aucune relation vers {@code BudgetDataEntity} : additive, pas encore utilisee par
  * {@code TaxPersistenceAdapter} (bascule en DB-1011). Le chemin legacy reste inchange. Cle technique
  * generee (aucune hypothese d'unicite sur les champs metier, comme dans le chemin legacy) et {@code position}
  * pour restituer la liste dans l'ordre de saisie.
  */
 @Entity
-@Table(name = "fiscal_actual_override")
-public class FiscalActualOverrideEntity {
+@Table(name = "fiscal_child")
+public class FiscalChildEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,13 +26,16 @@ public class FiscalActualOverrideEntity {
     @Column(name = "position", nullable = false)
     private int position;
 
-    @Column(name = "year_value")
-    private Integer year;
+    @Column(name = "uid", length = 64)
+    private String uid;
 
-    @Column(name = "amount", precision = 19, scale = 2)
-    private BigDecimal amount;
+    @Column(name = "name")
+    private String name;
 
-    public FiscalActualOverrideEntity() {}
+    @Column(name = "birth_year")
+    private Integer birthYear;
+
+    public FiscalChildEntity() {}
 
     public Long getId() {
         return id;
@@ -52,19 +53,27 @@ public class FiscalActualOverrideEntity {
         this.position = position;
     }
 
-    public Integer getYear() {
-        return year;
+    public String getUid() {
+        return uid;
     }
 
-    public void setYear(Integer year) {
-        this.year = year;
+    public void setUid(String uid) {
+        this.uid = uid;
     }
 
-    public BigDecimal getAmount() {
-        return amount;
+    public String getName() {
+        return name;
     }
 
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Integer getBirthYear() {
+        return birthYear;
+    }
+
+    public void setBirthYear(Integer birthYear) {
+        this.birthYear = birthYear;
     }
 }

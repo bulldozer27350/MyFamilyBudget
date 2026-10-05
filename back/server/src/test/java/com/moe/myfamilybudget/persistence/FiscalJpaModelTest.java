@@ -15,11 +15,11 @@ import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.persistence.converter.FiscalEntityMapper;
-import com.moe.myfamilybudget.persistence.repository.FiscalActualOverrideRepository;
-import com.moe.myfamilybudget.persistence.repository.FiscalBracketRepository;
-import com.moe.myfamilybudget.persistence.repository.FiscalChildRepository;
-import com.moe.myfamilybudget.persistence.repository.FiscalRateOverrideRepository;
+import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalEntityMapper;
+import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
+import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
+import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
+import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
 
 /**
  * DB-1010 : le modele JPA autonome du domaine Fiscalite (additif, sans lien avec le hub) doit restituer

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.tax.core.persistence;
 
 import java.math.BigDecimal;
 
@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 /**
  * Tranche du bareme fiscal (plafond {@code upTo} nul = derniere tranche), cible JPA autonome du domaine Fiscalite (DB-1010).
  *
- * <p>Aucune relation vers {@link BudgetDataEntity} : additive, pas encore utilisee par
+ * <p>Aucune relation vers {@code BudgetDataEntity} : additive, pas encore utilisee par
  * {@code TaxPersistenceAdapter} (bascule en DB-1011). Le chemin legacy reste inchange. Cle technique
  * generee (aucune hypothese d'unicite sur les champs metier, comme dans le chemin legacy) et {@code position}
  * pour restituer la liste dans l'ordre de saisie.

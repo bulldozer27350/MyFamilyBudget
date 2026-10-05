@@ -8,9 +8,13 @@
         SILO-151 (doc/architecture/21-plan-silotage.md) : cœur du silo Fiscalité (moteur de calcul
         `DefaultTaxCalculationService`, implémentation de l'interface de `tax-api`).
 
-        Règle : ce module ne dépend que de `tax-api` (et, plus tard, de `infra-jpa`, SILO-211). Pas de
-        `module-info` (décision D3) : visibilité tenue par le graphe Maven (règle C de `MavenModuleGraphTest`)
-        et ArchUnit. Seul le composition root (server) le référence ; `application` ne dépend que de `tax-api`.
+        SILO-211 : il porte aussi la persistance JPA autonome du silo (package `domain.tax.core.persistence` :
+        entités `fiscal_*`, repositories Spring Data et mapper entité/modèle), découverte par le scan par défaut
+        de Spring Boot (racine `com.moe.myfamilybudget`).
+
+        Règle : ce module ne dépend que de `tax-api` et de `infra-jpa` (configuration JPA commune, qui apporte
+        Spring Data JPA et Hibernate). Pas de `module-info` (décision D3) : visibilité tenue par le graphe Maven
+        (règle C de `MavenModuleGraphTest`) et ArchUnit. Seul le composition root (server) le référence ; `application` ne dépend que de `tax-api`.
         Le moteur n'est pas un @Component : son bean est déclaré par `DomainEngineConfig`.
     -->
     <parent>
@@ -23,12 +27,16 @@
     <artifactId>tax-core</artifactId>
     <packaging>jar</packaging>
     <name>tax-core</name>
-    <description>Cœur du silo Fiscalité MyFamilyBudget (moteur de calcul pur, sans Spring ni JPA)</description>
+    <description>Cœur du silo Fiscalité MyFamilyBudget (moteur de calcul et persistance JPA des tables fiscal_*)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>tax-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
         </dependency>
 
         <dependency>

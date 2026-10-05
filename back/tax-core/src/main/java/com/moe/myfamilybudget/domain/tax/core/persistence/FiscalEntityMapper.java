@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.converter;
+package com.moe.myfamilybudget.domain.tax.core.persistence;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,10 +9,6 @@ import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.persistence.entity.FiscalActualOverrideEntity;
-import com.moe.myfamilybudget.persistence.entity.FiscalBracketEntity;
-import com.moe.myfamilybudget.persistence.entity.FiscalChildEntity;
-import com.moe.myfamilybudget.persistence.entity.FiscalRateOverrideEntity;
 
 /**
  * Mapper du domaine Fiscalite entre les modeles ({@code Tax*Model}) et les entites autonomes

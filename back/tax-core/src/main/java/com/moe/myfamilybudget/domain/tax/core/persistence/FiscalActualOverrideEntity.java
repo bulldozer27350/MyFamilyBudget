@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.tax.core.persistence;
 
 import java.math.BigDecimal;
 
@@ -10,16 +10,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * Taux d'imposition force pour une annee, cible JPA autonome du domaine Fiscalite (DB-1010).
+ * Impot reel saisi pour une annee, cible JPA autonome du domaine Fiscalite (DB-1010).
  *
- * <p>Aucune relation vers {@link BudgetDataEntity} : additive, pas encore utilisee par
+ * <p>Aucune relation vers {@code BudgetDataEntity} : additive, pas encore utilisee par
  * {@code TaxPersistenceAdapter} (bascule en DB-1011). Le chemin legacy reste inchange. Cle technique
  * generee (aucune hypothese d'unicite sur les champs metier, comme dans le chemin legacy) et {@code position}
  * pour restituer la liste dans l'ordre de saisie.
  */
 @Entity
-@Table(name = "fiscal_rate_override")
-public class FiscalRateOverrideEntity {
+@Table(name = "fiscal_actual_override")
+public class FiscalActualOverrideEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,10 +31,10 @@ public class FiscalRateOverrideEntity {
     @Column(name = "year_value")
     private Integer year;
 
-    @Column(name = "rate", precision = 19, scale = 8)
-    private BigDecimal rate;
+    @Column(name = "amount", precision = 19, scale = 2)
+    private BigDecimal amount;
 
-    public FiscalRateOverrideEntity() {}
+    public FiscalActualOverrideEntity() {}
 
     public Long getId() {
         return id;
@@ -60,11 +60,11 @@ public class FiscalRateOverrideEntity {
         this.year = year;
     }
 
-    public BigDecimal getRate() {
-        return rate;
+    public BigDecimal getAmount() {
+        return amount;
     }
 
-    public void setRate(BigDecimal rate) {
-        this.rate = rate;
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
     }
 }
