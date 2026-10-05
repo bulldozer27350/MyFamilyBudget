@@ -106,7 +106,9 @@ final class DomainBoundaryRules {
 
     /** Domaine Analyse (consommateur final). */
     static final DescribedPredicate<JavaClass> ANALYSE = topLevelNameMatching("le domaine Analyse",
-            "Analyse\\w*|AnalysisPeriod");
+            "Analyse\\w*|AnalysisPeriod")
+            .or(resideInAPackage("com.moe.myfamilybudget.domain.analysis.."))
+            .as("le domaine Analyse");
 
     /** Domaine Overview (agrégateur final). */
     static final DescribedPredicate<JavaClass> OVERVIEW = topLevelNameMatching("le domaine Overview",
