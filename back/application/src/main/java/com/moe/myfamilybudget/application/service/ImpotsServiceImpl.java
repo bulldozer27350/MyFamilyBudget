@@ -15,7 +15,7 @@ import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
-import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculator;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationService;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 import com.moe.myfamilybudget.application.model.TaxResultModel;
@@ -61,6 +61,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
     private final TaxMapper taxMapper;
     private final RetirementInputFactory retirementInputFactory;
     private final RetirementCalculationService retirementCalculationService;
+    private final TaxCalculationService taxCalculationService;
     private final TaxCommandService taxCommandService;
     private final SettingsCommandRouter settingsCommandRouter;
     private final SettingsReader settingsReader;
@@ -79,6 +80,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
             TaxMapper taxMapper,
             RetirementInputFactory retirementInputFactory,
             RetirementCalculationService retirementCalculationService,
+            TaxCalculationService taxCalculationService,
             TaxCommandService taxCommandService,
             SettingsCommandRouter settingsCommandRouter,
             SettingsReader settingsReader,
@@ -95,6 +97,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
         this.taxMapper = taxMapper;
         this.retirementInputFactory = retirementInputFactory;
         this.retirementCalculationService = retirementCalculationService;
+        this.taxCalculationService = taxCalculationService;
         this.taxCommandService = taxCommandService;
         this.settingsCommandRouter = settingsCommandRouter;
         this.settingsReader = settingsReader;
@@ -145,8 +148,8 @@ public class ImpotsServiceImpl implements ImpotsApi {
                 brackets,
                 rateOverrides,
                 actualOverrides), period, retirement);
-        List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(input);
-        List<TaxYearlyModel> taxPreview = TaxCalculator.buildTaxPreview(
+        List<TaxYearlyModel> taxYearly = taxCalculationService.computeTaxYearly(input);
+        List<TaxYearlyModel> taxPreview = taxCalculationService.buildTaxPreview(
                 taxYearly, java.time.LocalDate.now().getYear());
         TaxResultModel resultModel = new TaxResultModel(
                 children,

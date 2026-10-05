@@ -42,7 +42,7 @@
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-tax</artifactId>
+            <artifactId>tax-api</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>

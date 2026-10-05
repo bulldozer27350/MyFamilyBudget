@@ -41,6 +41,7 @@ import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationService;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
@@ -91,6 +92,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
             TresorerieMapper mapper,
             TresorerieCommandService tresorerieCommandService,
             RetirementCalculationService retirementCalculationService,
+            TaxCalculationService taxCalculationService,
             RetirementSettingsReader retirementSettingsReader,
             TaxSettingsReader taxSettingsReader,
             TresorerieSettingsReader tresorerieSettingsReader,
@@ -103,7 +105,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
         this.mapper = mapper;
         this.tresorerieCommandService = tresorerieCommandService;
         this.calculationService = new TresorerieCalculationService();
-        this.treasuryInputFactory = new TreasuryInputFactory(retirementCalculationService);
+        this.treasuryInputFactory = new TreasuryInputFactory(retirementCalculationService, taxCalculationService);
         this.retirementSettingsReader = retirementSettingsReader;
         this.taxSettingsReader = taxSettingsReader;
         this.tresorerieSettingsReader = tresorerieSettingsReader;

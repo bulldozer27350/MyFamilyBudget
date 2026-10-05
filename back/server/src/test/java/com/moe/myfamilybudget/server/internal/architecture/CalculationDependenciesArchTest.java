@@ -29,7 +29,7 @@ import com.moe.myfamilybudget.application.model.PointageModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
-import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculator;
+import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
@@ -96,13 +96,13 @@ class CalculationDependenciesArchTest {
                     + "plus aucune violation n'existe depuis RF-901, voir la javadoc de cette classe");
 
     /**
-     * Garde-fou du domaine Fiscalité (RF-203) : {@link TaxCalculator} ne reçoit que
+     * Garde-fou du domaine Fiscalité (RF-203) : {@link DefaultTaxCalculationService} ne reçoit que
      * {@code TaxCalculationInput} et ne connaît aucun modèle persistant. Règle stricte (sans gel) :
      * le domaine ne présente aucune violation préexistante.
      */
     @ArchTest
     static final ArchRule TAX_ENGINE_DOES_NOT_DEPEND_ON_PERSISTENT_MODELS = noClasses()
-            .that().areAssignableTo(TaxCalculator.class)
+            .that().areAssignableTo(DefaultTaxCalculationService.class)
             .should().dependOnClassesThat().belongToAnyOf(
                     BudgetDataModel.class,
                     SettingsModel.class,
@@ -113,7 +113,7 @@ class CalculationDependenciesArchTest {
                     TaxBracketModel.class,
                     TaxRateOverrideModel.class,
                     TaxActualOverrideModel.class)
-            .as("TaxCalculator ne doit dépendre d'aucun modèle persistant : il consomme uniquement "
+            .as("DefaultTaxCalculationService ne doit dépendre d'aucun modèle persistant : il consomme uniquement "
                     + "TaxCalculationInput (doc/architecture/04-domaine-fiscalite.md)");
 
     /**

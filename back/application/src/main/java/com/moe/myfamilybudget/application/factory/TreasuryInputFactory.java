@@ -45,7 +45,7 @@ import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
-import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculator;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationService;
 import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
@@ -62,7 +62,7 @@ import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
  * <p><b>Purement additive, non branchée.</b> {@code TresorerieCalculationService} continue de
  * calculer lui-même sa projection jusqu'au branchement (RF-401). L'horizon, l'impôt et les
  * pensions sont composés à partir des contrats déjà stables des autres domaines
- * ({@code TaxInputFactory}/{@code TaxCalculator} pour la Fiscalité RF-203,
+ * ({@code TaxInputFactory}/{@code TaxCalculationService} pour la Fiscalité RF-203,
  * {@code RetirementInputFactory}/{@code RetirementCalculationService} pour la Retraite RF-101),
  * pour ne pas dupliquer une deuxième fois leurs règles de calcul (voir {@code computeTaxYearly}
  * dans {@code TresorerieCalculationService}, qui deviendra ce chemin lors du branchement).
@@ -74,11 +74,17 @@ public final class TreasuryInputFactory {
 
     private final RetirementInputFactory retirementInputFactory = new RetirementInputFactory();
     private final RetirementCalculationService retirementCalculationService;
+    private final TaxCalculationService taxCalculationService;
 
-    /** SILO-150 : le moteur Retraite est fourni (interface de {@code retirement-api}), jamais instancié ici. */
-    public TreasuryInputFactory(RetirementCalculationService retirementCalculationService) {
+    /**
+     * SILO-150, SILO-151 : les moteurs Retraite et Fiscalité sont fournis (interfaces de {@code retirement-api}
+     * et {@code tax-api}), jamais instanciés ici.
+     */
+    public TreasuryInputFactory(RetirementCalculationService retirementCalculationService,
+            TaxCalculationService taxCalculationService) {
         this.retirementCalculationService =
                 Objects.requireNonNull(retirementCalculationService, "retirementCalculationService");
+        this.taxCalculationService = Objects.requireNonNull(taxCalculationService, "taxCalculationService");
     }
 
     /**
@@ -164,7 +170,7 @@ public final class TreasuryInputFactory {
         RetirementProjection retirement = retirementCalculationService.compute(retirementInputFactory.create(
                 retirementSettings, data.retirement(), data.incomes(), data.taxChildren().size()));
         TaxCalculationInput taxInput = TaxInputFactory.from(taxSources(data), taxPeriod, retirement);
-        List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(taxInput);
+        List<TaxYearlyModel> taxYearly = taxCalculationService.computeTaxYearly(taxInput);
         Map<Integer, BigDecimal> regularIncomes = taxInput.incomes().stream()
                 .collect(Collectors.toMap(AnnualTaxIncome::year, AnnualTaxIncome::amount, BigDecimal::add));
         Map<Integer, BigDecimal> varIncomes = taxInput.variableIncomes().stream()

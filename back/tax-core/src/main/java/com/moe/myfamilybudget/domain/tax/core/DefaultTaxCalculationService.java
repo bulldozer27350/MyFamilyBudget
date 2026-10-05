@@ -1,18 +1,29 @@
-package com.moe.myfamilybudget.domain.tax.calculation;
+package com.moe.myfamilybudget.domain.tax.core;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import com.moe.myfamilybudget.domain.tax.calculation.AnnualTaxIncome;
+import com.moe.myfamilybudget.domain.tax.calculation.AnnualVariableIncome;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxActualOverride;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxBracket;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationService;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxRateOverride;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxablePensionIncome;
 import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 
 /**
  * Moteur de calcul domaine métier pour la fiscalité (Impôts).
  * Manipule exclusivement {@link TaxCalculationInput} et les records du contrat Fiscalité
  * (aucun modèle persistant) et utilise BigDecimal avec RoundingMode.HALF_UP.
+ *
+ * <p>SILO-151 : implémentation de {@link TaxCalculationService} (interface publiée par {@code tax-api}) ;
+ * seul le composition root connaît cette classe. Calcul inchangé (ex-{@code TaxCalculator}, méthodes statiques).
  */
-public class TaxCalculator {
+public class DefaultTaxCalculationService implements TaxCalculationService {
 
     /**
      * Calcule les parts fiscales à partir du contrat Fiscalité, qui transporte uniquement
@@ -38,7 +49,8 @@ public class TaxCalculator {
      * <p>Unique point d'entrée du moteur (RF-203) : il ne reçoit que le contrat
      * {@link TaxCalculationInput}, construit en amont par {@code TaxInputFactory}.
      */
-    public static List<TaxYearlyModel> computeTaxYearly(TaxCalculationInput input) {
+    @Override
+    public List<TaxYearlyModel> computeTaxYearly(TaxCalculationInput input) {
         if (input == null || input.period() == null || input.household() == null) {
             return List.of();
         }
@@ -129,7 +141,8 @@ public class TaxCalculator {
     /**
      * Sélectionne la fenêtre de prévisualisation (jusqu'à 6 ans à partir de l'année courante ou les 6 dernières).
      */
-    public static List<TaxYearlyModel> buildTaxPreview(List<TaxYearlyModel> taxYearly, int currentYear) {
+    @Override
+    public List<TaxYearlyModel> buildTaxPreview(List<TaxYearlyModel> taxYearly, int currentYear) {
         if (taxYearly == null || taxYearly.isEmpty()) {
             return List.of();
         }

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        MAVEN-030 puis SILO-151 (doc/architecture/21-plan-silotage.md) : API du silo Fiscalité
+        (interface de service TaxCalculationService, entrée/paramètres, projection TaxProjection, modèles
+        fiscaux, ports Reader/Writer). Le moteur vit dans `tax-core`. Nom de module Java inchangé
+        (`com.moe.myfamilybudget.domain.tax`).
+
+        SILO-130 (D1) : aucune dépendance vers un autre domaine ; la pension imposable est portée par le
+        contrat propre TaxablePensionIncome, traduit par la couche application.
+        Aucune dépendance vers Spring, JPA, OpenAPI, PersistenceManager ou BudgetDataModel.
+        Aucune dépendance de test : le module ne contient que des contrats, testés par `tax-core`.
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>tax-api</artifactId>
+    <packaging>jar</packaging>
+    <name>tax-api</name>
+    <description>API du silo Fiscalité MyFamilyBudget (contrats, ports, interface de service ; sans Spring ni JPA)</description>
+
+</project>

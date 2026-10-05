@@ -56,7 +56,8 @@ jobs:
             back/pom.xml
             back/retirement-api/pom.xml
             back/retirement-core/pom.xml
-            back/domain-tax/pom.xml
+            back/tax-api/pom.xml
+            back/tax-core/pom.xml
             back/domain-wealth/pom.xml
             back/domain-bank-pointage/pom.xml
             back/domain-treasury/pom.xml

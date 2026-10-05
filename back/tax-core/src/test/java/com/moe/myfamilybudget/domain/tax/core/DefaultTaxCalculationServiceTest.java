@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.tax.calculation;
+package com.moe.myfamilybudget.domain.tax.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -10,13 +10,25 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.domain.tax.calculation.AnnualTaxIncome;
+import com.moe.myfamilybudget.domain.tax.calculation.AnnualVariableIncome;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxActualOverride;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxBracket;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxHouseholdParameters;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxRateOverride;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxablePensionIncome;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationService;
 import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
 
 /**
  * Tests de composant du moteur fiscal (RF-203) : uniquement {@link TaxCalculationInput}, aucun
  * {@code BudgetDataModel}, aucun contexte Spring.
  */
-class TaxCalculatorTest {
+class DefaultTaxCalculationServiceTest {
+
+    private final TaxCalculationService calculator = new DefaultTaxCalculationService();
 
     private static final int YEAR = 2026;
 
@@ -62,7 +74,7 @@ class TaxCalculatorTest {
     @Test
     @DisplayName("computeTaxYearly() : impôt prévisionnel, abattement et barème progressif")
     void testForecastWithAbattementAndBrackets() {
-        TaxYearlyModel y = only(TaxCalculator.computeTaxYearly(
+        TaxYearlyModel y = only(calculator.computeTaxYearly(
                 salaryInput(new BigDecimal("48000"), List.of(), standardBrackets())));
 
         assertThat(y.year()).isEqualTo(YEAR);
@@ -85,7 +97,7 @@ class TaxCalculatorTest {
                 List.of(new TaxRateOverride(YEAR, new BigDecimal("0.08"))),
                 List.of(new TaxActualOverride(YEAR, new BigDecimal("3500.00"))));
 
-        TaxYearlyModel y = only(TaxCalculator.computeTaxYearly(input));
+        TaxYearlyModel y = only(calculator.computeTaxYearly(input));
 
         assertThat(y.taxForecast()).isEqualByComparingTo("4640.00");
         assertThat(y.taxActual()).isEqualByComparingTo("3500.00");
@@ -104,7 +116,7 @@ class TaxCalculatorTest {
                 List.of(new TaxablePensionIncome(YEAR, new BigDecimal("10000"))),
                 List.of(), List.of());
 
-        TaxYearlyModel y = only(TaxCalculator.computeTaxYearly(input));
+        TaxYearlyModel y = only(calculator.computeTaxYearly(input));
 
         // brut 45000 ; quotient 22500 ; (22500 - 10000) * 0,20 = 2500 ; x 2 parts = 5000
         assertThat(y.taxableIncome()).isEqualByComparingTo("45000.00");
@@ -122,7 +134,7 @@ class TaxCalculatorTest {
                         new AnnualTaxIncome(YEAR, new BigDecimal("28000"))),
                 List.of(), List.of(), List.of(), List.of());
 
-        assertThat(only(TaxCalculator.computeTaxYearly(input)).taxForecast()).isEqualByComparingTo("4640.00");
+        assertThat(only(calculator.computeTaxYearly(input)).taxForecast()).isEqualByComparingTo("4640.00");
     }
 
     @Test
@@ -130,20 +142,20 @@ class TaxCalculatorTest {
     void testPartsWithChildren() {
         BigDecimal salary = new BigDecimal("48000");
 
-        assertThat(only(TaxCalculator.computeTaxYearly(salaryInput(salary, List.of(), standardBrackets()))).parts())
+        assertThat(only(calculator.computeTaxYearly(salaryInput(salary, List.of(), standardBrackets()))).parts())
                 .isEqualTo(2.0);
-        assertThat(only(TaxCalculator.computeTaxYearly(salaryInput(salary, List.of(2015), standardBrackets()))).parts())
+        assertThat(only(calculator.computeTaxYearly(salaryInput(salary, List.of(2015), standardBrackets()))).parts())
                 .isEqualTo(2.5);
-        assertThat(only(TaxCalculator.computeTaxYearly(
+        assertThat(only(calculator.computeTaxYearly(
                 salaryInput(salary, List.of(2015, 2018), standardBrackets()))).parts()).isEqualTo(3.0);
         // 3e enfant rattaché : +1 part
-        assertThat(only(TaxCalculator.computeTaxYearly(
+        assertThat(only(calculator.computeTaxYearly(
                 salaryInput(salary, List.of(2015, 2018, 2020), standardBrackets()))).parts()).isEqualTo(4.0);
         // Enfant de 21 ans (2005) : n'est plus rattaché
-        assertThat(only(TaxCalculator.computeTaxYearly(
+        assertThat(only(calculator.computeTaxYearly(
                 salaryInput(salary, List.of(2015, 2005), standardBrackets()))).parts()).isEqualTo(2.5);
         // Année de naissance inconnue : ignorée
-        assertThat(only(TaxCalculator.computeTaxYearly(
+        assertThat(only(calculator.computeTaxYearly(
                 salaryInput(salary, Arrays.asList(null, 2015), standardBrackets()))).parts()).isEqualTo(2.5);
     }
 
@@ -154,7 +166,7 @@ class TaxCalculatorTest {
                 new TaxBracket(null, new BigDecimal("0.20")),
                 new TaxBracket(new BigDecimal("10000"), BigDecimal.ZERO));
 
-        TaxYearlyModel y = only(TaxCalculator.computeTaxYearly(
+        TaxYearlyModel y = only(calculator.computeTaxYearly(
                 salaryInput(new BigDecimal("48000"), List.of(), unsorted)));
 
         assertThat(y.taxForecast()).isEqualByComparingTo("4640.00");
@@ -163,12 +175,12 @@ class TaxCalculatorTest {
     @Test
     @DisplayName("computeTaxYearly() : revenu sous le premier plafond ou barème vide -> impôt nul")
     void testZeroTax() {
-        TaxYearlyModel belowThreshold = only(TaxCalculator.computeTaxYearly(
+        TaxYearlyModel belowThreshold = only(calculator.computeTaxYearly(
                 salaryInput(new BigDecimal("15000"), List.of(), standardBrackets())));
         // 15000 - 10 % = 13500 ; quotient 6750 < 10000 -> tranche à 0 %
         assertThat(belowThreshold.taxForecast()).isEqualByComparingTo("0.00");
 
-        TaxYearlyModel noBrackets = only(TaxCalculator.computeTaxYearly(
+        TaxYearlyModel noBrackets = only(calculator.computeTaxYearly(
                 salaryInput(new BigDecimal("48000"), List.of(), List.of())));
         assertThat(noBrackets.taxForecast()).isEqualByComparingTo("0.00");
     }
@@ -179,7 +191,7 @@ class TaxCalculatorTest {
         TaxCalculationInput input = input(new TaxSimulationPeriod(YEAR, YEAR), new BigDecimal("0.10"),
                 List.of(), standardBrackets(), List.of(), List.of(), List.of(), List.of(), List.of());
 
-        TaxYearlyModel y = only(TaxCalculator.computeTaxYearly(input));
+        TaxYearlyModel y = only(calculator.computeTaxYearly(input));
 
         assertThat(y.taxableIncome()).isEqualByComparingTo("0.00");
         assertThat(y.taxForecast()).isEqualByComparingTo("0.00");
@@ -194,7 +206,7 @@ class TaxCalculatorTest {
                 standardBrackets(), List.of(new AnnualTaxIncome(YEAR, new BigDecimal("48000"))),
                 List.of(), List.of(), List.of(), List.of());
 
-        TaxYearlyModel y = only(TaxCalculator.computeTaxYearly(input));
+        TaxYearlyModel y = only(calculator.computeTaxYearly(input));
 
         assertThat(y.taxableIncome()).isEqualByComparingTo("48000.00");
         // quotient 24000 ; (24000 - 10000) * 0,20 = 2800 ; x 2 parts = 5600
@@ -209,7 +221,7 @@ class TaxCalculatorTest {
                 List.of(new AnnualTaxIncome(2027, new BigDecimal("48000"))),
                 List.of(), List.of(), List.of(), List.of());
 
-        List<TaxYearlyModel> result = TaxCalculator.computeTaxYearly(input);
+        List<TaxYearlyModel> result = calculator.computeTaxYearly(input);
 
         assertThat(result).extracting(TaxYearlyModel::year).containsExactly(2026, 2027, 2028);
         assertThat(result.get(0).taxForecast()).isEqualByComparingTo("0.00");
@@ -220,8 +232,8 @@ class TaxCalculatorTest {
     @Test
     @DisplayName("computeTaxYearly() : entrée ou période absente -> liste vide")
     void testNullInput() {
-        assertThat(TaxCalculator.computeTaxYearly(null)).isEmpty();
-        assertThat(TaxCalculator.computeTaxYearly(input(null, BigDecimal.ZERO, List.of(), List.of(),
+        assertThat(calculator.computeTaxYearly(null)).isEmpty();
+        assertThat(calculator.computeTaxYearly(input(null, BigDecimal.ZERO, List.of(), List.of(),
                 List.of(), List.of(), List.of(), List.of(), List.of()))).isEmpty();
     }
 
@@ -237,7 +249,7 @@ class TaxCalculatorTest {
     @Test
     @DisplayName("buildTaxPreview() : fenêtre à partir de l'année courante")
     void testBuildTaxPreview() {
-        List<TaxYearlyModel> preview = TaxCalculator.buildTaxPreview(yearly(2023, 2029), 2026);
+        List<TaxYearlyModel> preview = calculator.buildTaxPreview(yearly(2023, 2029), 2026);
 
         assertThat(preview).extracting(TaxYearlyModel::year).containsExactly(2026, 2027, 2028, 2029);
     }
@@ -245,7 +257,7 @@ class TaxCalculatorTest {
     @Test
     @DisplayName("buildTaxPreview() : plafonnée à 6 ans")
     void testBuildTaxPreviewCappedAtSixYears() {
-        List<TaxYearlyModel> preview = TaxCalculator.buildTaxPreview(yearly(2026, 2035), 2026);
+        List<TaxYearlyModel> preview = calculator.buildTaxPreview(yearly(2026, 2035), 2026);
 
         assertThat(preview).extracting(TaxYearlyModel::year).containsExactly(2026, 2027, 2028, 2029, 2030, 2031);
     }
@@ -253,9 +265,9 @@ class TaxCalculatorTest {
     @Test
     @DisplayName("buildTaxPreview() : tout dans le passé -> les 6 dernières années ; vide -> vide")
     void testBuildTaxPreviewAllPastAndEmpty() {
-        assertThat(TaxCalculator.buildTaxPreview(yearly(2019, 2025), 2030))
+        assertThat(calculator.buildTaxPreview(yearly(2019, 2025), 2030))
                 .extracting(TaxYearlyModel::year).containsExactly(2020, 2021, 2022, 2023, 2024, 2025);
-        assertThat(TaxCalculator.buildTaxPreview(List.of(), 2026)).isEmpty();
-        assertThat(TaxCalculator.buildTaxPreview(null, 2026)).isEmpty();
+        assertThat(calculator.buildTaxPreview(List.of(), 2026)).isEmpty();
+        assertThat(calculator.buildTaxPreview(null, 2026)).isEmpty();
     }
 }

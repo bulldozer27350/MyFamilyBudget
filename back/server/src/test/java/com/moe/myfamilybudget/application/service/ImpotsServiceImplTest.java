@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
+import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.application.command.TaxCommandService;
@@ -49,6 +50,7 @@ class ImpotsServiceImplTest {
                 mapper,
                 new RetirementInputFactory(),
                 new DefaultRetirementCalculationService(),
+                new DefaultTaxCalculationService(),
                 new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)),
                 SettingsCommandRouterTestFactory.of(persistenceManager,
                         new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore())),

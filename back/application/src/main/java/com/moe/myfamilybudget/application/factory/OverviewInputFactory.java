@@ -25,7 +25,7 @@ import com.moe.myfamilybudget.domain.wealth.calculation.RealEstateProjection;
 import com.moe.myfamilybudget.domain.wealth.calculation.RealEstateProjection.RealEstateItemProjection;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationInput;
-import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculator;
+import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationService;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxProjection;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.domain.treasury.calculation.TreasuryProjection;
@@ -60,14 +60,17 @@ public final class OverviewInputFactory {
     private final PatrimoineProjectionService patrimoineProjectionService;
     private final RetirementInputFactory retirementInputFactory;
     private final RetirementCalculationService retirementCalculationService;
+    private final TaxCalculationService taxCalculationService;
 
     @Autowired
-    public OverviewInputFactory(RetirementCalculationService retirementCalculationService) {
-        this(new TreasuryInputFactory(retirementCalculationService),
+    public OverviewInputFactory(RetirementCalculationService retirementCalculationService,
+            TaxCalculationService taxCalculationService) {
+        this(new TreasuryInputFactory(retirementCalculationService, taxCalculationService),
              new TresorerieCalculationService(),
              new PatrimoineProjectionService(),
              new RetirementInputFactory(),
-             retirementCalculationService);
+             retirementCalculationService,
+             taxCalculationService);
     }
 
     public OverviewInputFactory(
@@ -75,12 +78,14 @@ public final class OverviewInputFactory {
             TresorerieCalculationService tresorerieCalculationService,
             PatrimoineProjectionService patrimoineProjectionService,
             RetirementInputFactory retirementInputFactory,
-            RetirementCalculationService retirementCalculationService) {
+            RetirementCalculationService retirementCalculationService,
+            TaxCalculationService taxCalculationService) {
         this.treasuryInputFactory = Objects.requireNonNull(treasuryInputFactory, "treasuryInputFactory");
         this.tresorerieCalculationService = Objects.requireNonNull(tresorerieCalculationService, "tresorerieCalculationService");
         this.patrimoineProjectionService = Objects.requireNonNull(patrimoineProjectionService, "patrimoineProjectionService");
         this.retirementInputFactory = Objects.requireNonNull(retirementInputFactory, "retirementInputFactory");
         this.retirementCalculationService = Objects.requireNonNull(retirementCalculationService, "retirementCalculationService");
+        this.taxCalculationService = Objects.requireNonNull(taxCalculationService, "taxCalculationService");
     }
 
     /**
@@ -119,7 +124,7 @@ public final class OverviewInputFactory {
         int endYear = treasuryInput.period().endYear();
         TaxSimulationPeriod taxPeriod = new TaxSimulationPeriod(startYear, endYear);
         TaxCalculationInput taxInput = TaxInputFactory.from(taxSources(t), taxPeriod, retirementProjection);
-        List<TaxYearlyModel> taxYearly = TaxCalculator.computeTaxYearly(taxInput);
+        List<TaxYearlyModel> taxYearly = taxCalculationService.computeTaxYearly(taxInput);
         TaxProjection taxProjection = new TaxProjection(taxYearly.stream()
                 .map(y -> new TaxProjection.Withholding(y.year(), y.withheld(), y.taxActual()))
                 .toList());

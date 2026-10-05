@@ -34,10 +34,14 @@
             <artifactId>retirement-core</artifactId>
         </dependency>
 
-        <!-- Domaine Fiscalité : calculateur, projection, modèles et ports (MAVEN-030) -->
+        <!-- Silo Fiscalité : API (contrats, ports, interface de service) et cœur (moteur) ; SILO-151 -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-tax</artifactId>
+            <artifactId>tax-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>tax-core</artifactId>
         </dependency>
 
         <!-- Domaine Patrimoine : moteurs de projection, modèles et ports (MAVEN-040) -->

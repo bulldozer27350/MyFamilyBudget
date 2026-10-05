@@ -1,6 +1,7 @@
 package com.moe.myfamilybudget.server.internal.factory;
 
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
+import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
 import com.moe.myfamilybudget.application.factory.TreasuryInputFactory;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,7 +34,7 @@ import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
  */
 class TreasuryInputFactoryTest {
 
-    private final TreasuryInputFactory factory = new TreasuryInputFactory(new DefaultRetirementCalculationService());
+    private final TreasuryInputFactory factory = new TreasuryInputFactory(new DefaultRetirementCalculationService(), new DefaultTaxCalculationService());
 
     private static SettingsModel settings() {
         return new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), null, "manual", new BigDecimal("1500"),

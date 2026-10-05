@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
+import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
 import com.moe.myfamilybudget.api.model.CashflowYearDto;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
@@ -48,6 +49,7 @@ class OverviewServiceImplTest {
         overviewService = new OverviewServiceImpl(
                 mapper,
                 new DefaultRetirementCalculationService(),
+                new DefaultTaxCalculationService(),
                 SettingsReaderTestFactory.of(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),
