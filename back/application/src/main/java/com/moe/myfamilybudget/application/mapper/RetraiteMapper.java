@@ -17,12 +17,13 @@ import com.moe.myfamilybudget.api.model.RetirementDto;
 import com.moe.myfamilybudget.api.model.RetirementPersonDto;
 import com.moe.myfamilybudget.api.model.SalaryHistoryDto;
 import com.moe.myfamilybudget.api.model.SettingsDto;
-import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
-import com.moe.myfamilybudget.application.model.RetraitePersonWithProjectionModel;
-import com.moe.myfamilybudget.application.model.RetraiteResultModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraiteIncomeModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraitePersonWithProjectionModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraiteProjectionModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraiteResultModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSalaryHistoryModel;
+import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSettingsModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
-import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 
 @Component
 public class RetraiteMapper {
@@ -64,7 +65,7 @@ public class RetraiteMapper {
 
                     List<Map<String, Object>> salList = new ArrayList<>();
                     if (person.salaryHistory() != null) {
-                        for (RetirementModel.SalaryHistoryModel sh : person.salaryHistory()) {
+                        for (RetraiteSalaryHistoryModel sh : person.salaryHistory()) {
                             Map<String, Object> shMap = new HashMap<>();
                             shMap.put("year", sh.year());
                             shMap.put("salary", sh.salary());
@@ -103,7 +104,7 @@ public class RetraiteMapper {
         return response;
     }
 
-    public Map<String, Object> toProjectionMap(RetirementProjectionModel proj) {
+    public Map<String, Object> toProjectionMap(RetraiteProjectionModel proj) {
         if (proj == null) return new HashMap<>();
         Map<String, Object> projMap = new HashMap<>();
         projMap.put("ageDepart", proj.ageDepart());
@@ -175,7 +176,7 @@ public class RetraiteMapper {
         return new RetirementModel(people, pass2026, passGrowthRate, agircPointValue, agircPointDateGlobal, agircPointGrowthRate);
     }
 
-    private IncomeDto toIncomeDto(IncomeModel m) {
+    private IncomeDto toIncomeDto(RetraiteIncomeModel m) {
         if (m == null) return null;
         IncomeDto dto = new IncomeDto();
         dto.setId(m.id());
@@ -189,7 +190,7 @@ public class RetraiteMapper {
         return dto;
     }
 
-    private SettingsDto toSettingsDto(SettingsModel model, RetraiteResultModel.RetirementWithProjectionsModel retirement) {
+    private SettingsDto toSettingsDto(RetraiteSettingsModel model, RetraiteResultModel.RetirementWithProjectionsModel retirement) {
         if (model == null) return null;
         SettingsDto dto = new SettingsDto();
         dto.setBirthYear(model.birthYear());

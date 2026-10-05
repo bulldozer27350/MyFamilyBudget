@@ -1,18 +1,17 @@
-package com.moe.myfamilybudget.application.model;
+package com.moe.myfamilybudget.application.usecase.retirement;
 
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import java.math.BigDecimal;
 import java.util.List;
-import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 
 /**
- * Modèle de domaine représentant les données de retraite complètes avec projections.
+ * Modèle applicatif de la réponse Retraite : données de retraite avec projections, année de départ,
+ * revenus et paramètres généraux.
  */
 public record RetraiteResultModel(
     RetirementWithProjectionsModel retirement,
     Integer retireYear,
-    List<IncomeModel> incomes,
-    SettingsModel settings
+    List<RetraiteIncomeModel> incomes,
+    RetraiteSettingsModel settings
 ) {
     public record RetirementWithProjectionsModel(
         List<RetraitePersonWithProjectionModel> people,

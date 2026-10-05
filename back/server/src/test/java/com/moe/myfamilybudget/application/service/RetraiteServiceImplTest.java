@@ -26,8 +26,8 @@ import com.moe.myfamilybudget.domain.retirement.calculation.RetirementPersonInpu
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.application.mapper.RetraiteMapper;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
-import com.moe.myfamilybudget.application.model.RetraiteResultModel;
 import com.moe.myfamilybudget.application.command.RetirementCommandService;
+import com.moe.myfamilybudget.application.usecase.DefaultRetirementUseCase;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
@@ -51,14 +51,15 @@ class RetraiteServiceImplTest {
         calculationService = new DefaultRetirementCalculationService();
         service = new RetraiteServiceImpl(
                 mapper,
-                new RetirementInputFactory(),
-                calculationService,
-                new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager)),
-                SettingsReaderTestFactory.of(persistenceManager),
-                new SettingsPersistenceAdapter(persistenceManager),
-                new RetirementPersistenceAdapter(persistenceManager),
-                new TaxPersistenceAdapter(persistenceManager),
-                new BudgetPersistenceAdapter(persistenceManager));
+                new DefaultRetirementUseCase(
+                        new RetirementInputFactory(),
+                        calculationService,
+                        SettingsReaderTestFactory.of(persistenceManager),
+                        new SettingsPersistenceAdapter(persistenceManager),
+                        new RetirementPersistenceAdapter(persistenceManager),
+                        new TaxPersistenceAdapter(persistenceManager),
+                        new BudgetPersistenceAdapter(persistenceManager)),
+                new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager)));
     }
 
     @Test
@@ -175,17 +176,5 @@ class RetraiteServiceImplTest {
 
         assertNotNull(projection);
         assertThat(projection.majoration()).isEqualTo(new BigDecimal("1.10"));
-    }
-
-    @Test
-    @DisplayName("buildRetraiteResult() renvoie un modèle valide enrichi des projections")
-    void testBuildRetraiteResult() {
-        RetraiteResultModel result = service.buildRetraiteResult();
-
-        assertNotNull(result);
-        assertNotNull(result.retirement());
-        assertNotNull(result.retireYear());
-        assertNotNull(result.incomes());
-        assertNotNull(result.settings());
     }
 }

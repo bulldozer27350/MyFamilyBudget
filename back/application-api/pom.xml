@@ -9,7 +9,8 @@
         l'application expose et exige, sans DTO OpenAPI ni `ResponseEntity` : pour l'instant les ports
         transactionnels (`TransactionRunner`, `SiloMutationLock`, `MutationSilo`, package
         `com.moe.myfamilybudget.application.port`, déplacés depuis `application` sans changer de package). Les cas
-        d'usage et les modèles applicatifs (pilote Retraite) suivent au lot B.
+        d'usage et les modèles applicatifs (pilote Retraite : `RetirementUseCase` et ses modèles, package
+        `com.moe.myfamilybudget.application.usecase.retirement`) ont été ajoutés au lot B.
 
         Aucune dépendance vers un autre module du reactor, ni vers Spring, JPA, OpenAPI, PersistenceManager ou
         BudgetDataModel : seul le JDK est utilisé en production. `module-info` présent (décision D3).
