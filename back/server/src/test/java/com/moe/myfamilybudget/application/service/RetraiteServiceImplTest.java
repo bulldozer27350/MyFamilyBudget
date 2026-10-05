@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationInput;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementParameters;
@@ -47,7 +48,7 @@ class RetraiteServiceImplTest {
         mapper = new RetraiteMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        calculationService = new RetirementCalculationService();
+        calculationService = new DefaultRetirementCalculationService();
         service = new RetraiteServiceImpl(
                 mapper,
                 new RetirementInputFactory(),

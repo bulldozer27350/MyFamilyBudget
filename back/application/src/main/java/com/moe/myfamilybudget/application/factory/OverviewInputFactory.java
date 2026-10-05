@@ -60,12 +60,12 @@ public final class OverviewInputFactory {
     private final RetirementInputFactory retirementInputFactory;
     private final RetirementCalculationService retirementCalculationService;
 
-    public OverviewInputFactory() {
-        this(new TreasuryInputFactory(),
+    public OverviewInputFactory(RetirementCalculationService retirementCalculationService) {
+        this(new TreasuryInputFactory(retirementCalculationService),
              new TresorerieCalculationService(),
              new PatrimoineProjectionService(),
              new RetirementInputFactory(),
-             new RetirementCalculationService());
+             retirementCalculationService);
     }
 
     public OverviewInputFactory(

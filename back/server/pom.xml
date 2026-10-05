@@ -24,10 +24,14 @@
     <dependencies>
         <!-- Modèles du budget de base (MAVEN-010) -->
 
-        <!-- Domaine Retraite : moteur, projections, modèle et ports (MAVEN-020) -->
+        <!-- Silo Retraite : API (contrats, ports, interface de service) et cœur (moteur) ; SILO-150 -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-retirement</artifactId>
+            <artifactId>retirement-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>retirement-core</artifactId>
         </dependency>
 
         <!-- Domaine Fiscalité : calculateur, projection, modèles et ports (MAVEN-030) -->

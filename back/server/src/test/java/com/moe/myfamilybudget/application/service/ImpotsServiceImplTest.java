@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.application.command.TaxCommandService;
@@ -47,7 +48,7 @@ class ImpotsServiceImplTest {
         service = new ImpotsServiceImpl(
                 mapper,
                 new RetirementInputFactory(),
-                new RetirementCalculationService(),
+                new DefaultRetirementCalculationService(),
                 new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)),
                 SettingsCommandRouterTestFactory.of(persistenceManager,
                         new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore())),

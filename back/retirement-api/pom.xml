@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        MAVEN-020 puis SILO-150 (doc/architecture/21-plan-silotage.md) : API du silo Retraite
+        (interface de service `RetirementCalculationService`, entrées/paramètres du moteur, projections
+        publiées, modèle et ports Reader/Writer). Le moteur vit dans `retirement-core`.
+
+        Règle : ce module ne dépend d'aucun autre module du reactor, ni de Spring, JPA, OpenAPI,
+        PersistenceManager ou BudgetDataModel. Son nom de module Java (`module-info`) reste
+        `com.moe.myfamilybudget.domain.retirement`. Aucune dépendance de test : il ne contient que des
+        contrats, testés par `retirement-core`.
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>retirement-api</artifactId>
+    <packaging>jar</packaging>
+    <name>retirement-api</name>
+    <description>API du silo Retraite MyFamilyBudget (contrats, ports, interface de service ; sans Spring ni JPA)</description>
+
+</project>

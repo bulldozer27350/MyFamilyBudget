@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.retirement.calculation;
+package com.moe.myfamilybudget.domain.retirement.core;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -7,11 +7,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.moe.myfamilybudget.domain.retirement.calculation.AnnualSalaryProjection;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationInput;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementParameters;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementPersonInput;
+import com.moe.myfamilybudget.domain.retirement.calculation.SalaryHistoryEntry;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 
 /**
- * Moteur de calcul retraite centralisé (RF-101, voir doc/architecture/03-domaine-retraite.md).
+ * Moteur de calcul retraite centralisé (RF-101, voir doc/architecture/03-domaine-retraite.md), implémentation
+ * de l'interface {@link RetirementCalculationService} publiée par {@code retirement-api} (SILO-150 : cœur du
+ * silo Retraite, seul le module de démarrage le connaît).
  *
  * Unique propriétaire du calcul de projection retraite backend : {@code RetraiteServiceImpl}
  * délègue désormais entièrement à ce moteur, qui devient la version canonique du calcul
@@ -23,7 +31,7 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
  * autre modèle persistant, conformément au garde-fou ArchUnit RF-001
  * (doc/architecture/00-principes.md).
  */
-public class RetirementCalculationService {
+public class DefaultRetirementCalculationService implements RetirementCalculationService {
 
     private static final int TRIMESTRES_REQUIS = 172;
     private static final int AGE_TAUX_PLEIN_AUTO = 67;
@@ -33,6 +41,7 @@ public class RetirementCalculationService {
     private static final BigDecimal TAUX_MINORE_PLANCHER = new BigDecimal("0.375");
     private static final BigDecimal MAJORATION_3_ENFANTS = new BigDecimal("0.10");
 
+    @Override
     public RetirementProjection compute(RetirementCalculationInput input) {
         List<RetirementProjectionModel> people = input.people().stream()
             .map(person -> computePerson(person, input.retireYear(), input.parameters(), input.eligibleChildrenCount()))

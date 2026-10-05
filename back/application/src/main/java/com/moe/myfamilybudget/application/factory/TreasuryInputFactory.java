@@ -73,7 +73,13 @@ public final class TreasuryInputFactory {
     private static final int DEFAULT_START_YEAR = 2026;
 
     private final RetirementInputFactory retirementInputFactory = new RetirementInputFactory();
-    private final RetirementCalculationService retirementCalculationService = new RetirementCalculationService();
+    private final RetirementCalculationService retirementCalculationService;
+
+    /** SILO-150 : le moteur Retraite est fourni (interface de {@code retirement-api}), jamais instancié ici. */
+    public TreasuryInputFactory(RetirementCalculationService retirementCalculationService) {
+        this.retirementCalculationService =
+                Objects.requireNonNull(retirementCalculationService, "retirementCalculationService");
+    }
 
     /**
      * Fragments nécessaires à la projection de trésorerie (SILO-113). Les listes absentes sont lues comme

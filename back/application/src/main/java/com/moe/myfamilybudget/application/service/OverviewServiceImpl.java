@@ -72,6 +72,7 @@ public class OverviewServiceImpl implements OverviewApi {
 
     public OverviewServiceImpl(
             OverviewMapper mapper,
+            RetirementCalculationService retirementCalculationService,
             SettingsReader settingsReader,
             BudgetReader budgetReader,
             PatrimoineReader patrimoineReader,
@@ -81,10 +82,10 @@ public class OverviewServiceImpl implements OverviewApi {
             LoanReader loanReader,
             GoalReader goalReader) {
         this.mapper = mapper;
-        this.inputFactory = new OverviewInputFactory();
+        this.inputFactory = new OverviewInputFactory(retirementCalculationService);
         this.calculationService = new OverviewCalculationService();
         this.retirementInputFactory = new RetirementInputFactory();
-        this.retirementCalculationService = new RetirementCalculationService();
+        this.retirementCalculationService = retirementCalculationService;
         this.settingsReader = settingsReader;
         this.budgetReader = budgetReader;
         this.patrimoineReader = patrimoineReader;

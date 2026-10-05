@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.retirement.calculation;
+package com.moe.myfamilybudget.domain.retirement.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -11,6 +11,12 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.domain.retirement.calculation.AnnualSalaryProjection;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationInput;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementParameters;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementPersonInput;
+import com.moe.myfamilybudget.domain.retirement.calculation.SalaryHistoryEntry;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 
@@ -19,12 +25,12 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
  * doc/architecture/03-domaine-retraite.md) : uniquement {@link RetirementCalculationInput},
  * aucun {@code BudgetDataModel}, aucun contexte Spring.
  */
-class RetirementCalculationServiceTest {
+class DefaultRetirementCalculationServiceTest {
 
     private static final RetirementParameters DEFAULT_PARAMETERS = new RetirementParameters(null, null, null, null, null);
     private static final LocalDate TRIMESTRES_DATE = LocalDate.of(2025, 1, 1);
 
-    private final RetirementCalculationService service = new RetirementCalculationService();
+    private final RetirementCalculationService service = new DefaultRetirementCalculationService();
 
     private static RetirementPersonInput person(int birthYear, int trimestresValides, BigDecimal agircPoints) {
         return person(birthYear, trimestresValides, agircPoints, List.of(), List.of());

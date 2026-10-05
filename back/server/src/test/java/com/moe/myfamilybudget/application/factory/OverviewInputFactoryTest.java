@@ -8,6 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.application.overview.OverviewInput;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjection;
 import com.moe.myfamilybudget.domain.wealth.calculation.RealEstateProjection;
@@ -29,7 +30,7 @@ import com.moe.myfamilybudget.domain.wealth.model.ScenarioAmountsModel;
  */
 class OverviewInputFactoryTest {
 
-    private final OverviewInputFactory factory = new OverviewInputFactory();
+    private final OverviewInputFactory factory = new OverviewInputFactory(new DefaultRetirementCalculationService());
 
     private static SettingsModel settings() {
         return new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", new BigDecimal("5000"),

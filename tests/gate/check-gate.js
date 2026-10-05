@@ -14,14 +14,15 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const BACKEND_TESTS = path.join(ROOT, 'back', 'server', 'src', 'test');
-// Tests unitaires des modules de domaine extraits du reactor (MAVEN-020 : domain-retirement, MAVEN-030 : domain-tax, MAVEN-040 : domain-wealth, MAVEN-060 : domain-bank-pointage, MAVEN-050 : domain-treasury, MAVEN-070 : domain-analysis, MAVEN-080 : domain-credit, domain-goals, MAVEN-090 : domain-notifications)
-const MODULE_TESTS = ['domain-retirement', 'domain-tax', 'domain-wealth', 'domain-bank-pointage', 'domain-treasury', 'domain-analysis', 'domain-credit', 'domain-goals', 'domain-notifications'].map(m => path.join(ROOT, 'back', m, 'src', 'test'));
+// Tests unitaires des modules de domaine extraits du reactor (MAVEN-020 : domain-retirement devenu retirement-core (SILO-150), MAVEN-030 : domain-tax, MAVEN-040 : domain-wealth, MAVEN-060 : domain-bank-pointage, MAVEN-050 : domain-treasury, MAVEN-070 : domain-analysis, MAVEN-080 : domain-credit, domain-goals, MAVEN-090 : domain-notifications)
+const MODULE_TESTS = ['retirement-core', 'domain-tax', 'domain-wealth', 'domain-bank-pointage', 'domain-treasury', 'domain-analysis', 'domain-credit', 'domain-goals', 'domain-notifications'].map(m => path.join(ROOT, 'back', m, 'src', 'test'));
 const SUREFIRE_DIR = path.join(ROOT, 'back', 'server', 'target', 'surefire-reports');
 const E2E_DIR = path.join(ROOT, 'tests', 'e2e');
 const WORKFLOW = path.join(ROOT, '.github', 'workflows', 'ci-cd.yml');
 const POMS = [
   path.join(ROOT, 'back', 'pom.xml'),
-  path.join(ROOT, 'back', 'domain-retirement', 'pom.xml'),
+  path.join(ROOT, 'back', 'retirement-api', 'pom.xml'),
+  path.join(ROOT, 'back', 'retirement-core', 'pom.xml'),
   path.join(ROOT, 'back', 'domain-tax', 'pom.xml'),
   path.join(ROOT, 'back', 'domain-wealth', 'pom.xml'),
   path.join(ROOT, 'back', 'domain-bank-pointage', 'pom.xml'),

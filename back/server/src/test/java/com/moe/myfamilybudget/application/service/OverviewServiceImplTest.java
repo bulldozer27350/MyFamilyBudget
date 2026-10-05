@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.api.model.CashflowYearDto;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
@@ -46,6 +47,7 @@ class OverviewServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         overviewService = new OverviewServiceImpl(
                 mapper,
+                new DefaultRetirementCalculationService(),
                 SettingsReaderTestFactory.of(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),

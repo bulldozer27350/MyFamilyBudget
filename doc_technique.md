@@ -172,9 +172,11 @@ Depuis MAVEN-010, le backend est un reactor Maven (`back/pom.xml`). Les modèles
 `com.moe.myfamilybudget.domain.treasury.model`, `domain-budget` ayant été dissous par SILO-140), sans
 dépendance Spring/JPA/OpenAPI ; `server` en dépend.
 Le domaine Retraite (moteur de calcul, projections, modèle, ports Reader/Writer) vit de même dans
-`back/domain-retirement` (`com.moe.myfamilybudget.domain.retirement.*`) ; son bean Spring est déclaré
-par `config/DomainEngineConfig` dans `server`. Le domaine Fiscalité vit dans `back/domain-tax`
-(`com.moe.myfamilybudget.domain.tax.*`) et ne dépend que du contrat de projection de `domain-retirement`.
+`back/retirement-api` (contrats, ports et interface `RetirementCalculationService`,
+`com.moe.myfamilybudget.domain.retirement.*`) et `back/retirement-core` (moteur
+`DefaultRetirementCalculationService`, SILO-150) ; son bean Spring est déclaré par
+`config/DomainEngineConfig` dans `server`, `application` ne connaît que l'interface. Le domaine Fiscalité vit dans `back/domain-tax`
+(`com.moe.myfamilybudget.domain.tax.*`) et ne dépend que du contrat de projection de `retirement-api`.
 Le domaine Patrimoine (moteurs de projection patrimoniale et d'évolution des placements, modèles, ports)
 vit dans `back/domain-wealth` (`com.moe.myfamilybudget.domain.wealth.*`) et ne dépend d'aucun autre module du reactor ;
 ses deux moteurs sont déclarés comme beans par `config/DomainEngineConfig`.

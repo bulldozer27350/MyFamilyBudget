@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.api.model.ChargeDto;
 import com.moe.myfamilybudget.api.model.IncomeDto;
 import com.moe.myfamilybudget.api.model.OneOffExpenseDto;
@@ -68,6 +69,7 @@ class TresorerieServiceImplTest {
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         service = new TresorerieServiceImpl(
                 mapper, new TresorerieCommandService(new TresoreriePersistenceAdapter(persistenceManager)),
+                new DefaultRetirementCalculationService(),
                 settingsAdapter,
                 settingsAdapter,
                 settingsAdapter,

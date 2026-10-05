@@ -54,7 +54,8 @@ jobs:
           cache: maven
           cache-dependency-path: |
             back/pom.xml
-            back/domain-retirement/pom.xml
+            back/retirement-api/pom.xml
+            back/retirement-core/pom.xml
             back/domain-tax/pom.xml
             back/domain-wealth/pom.xml
             back/domain-bank-pointage/pom.xml
