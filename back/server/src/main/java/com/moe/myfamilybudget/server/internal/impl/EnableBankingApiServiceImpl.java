@@ -11,9 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.EnableBankingApi;
-import com.moe.myfamilybudget.server.internal.enablebanking.EnableBankingException;
-import com.moe.myfamilybudget.server.internal.enablebanking.EnableBankingSyncResult;
-import com.moe.myfamilybudget.server.internal.enablebanking.EnableBankingSyncService;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.EnableBankingSyncService;
+import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingException;
+import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingSyncResult;
 
 /**
  * Implémentation du contrat OpenAPI {@code EnableBankingApi} (tag "Enable Banking") : déclenche

@@ -1,5 +1,6 @@
-package com.moe.myfamilybudget.server.internal.enablebanking;
+package com.moe.myfamilybudget.domain.bankpointage.core.enablebanking;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;

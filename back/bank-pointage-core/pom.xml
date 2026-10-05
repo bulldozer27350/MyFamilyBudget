@@ -13,8 +13,8 @@
         `module-info` (décision D3) : visibilité tenue par le graphe Maven (règle C de `MavenModuleGraphTest`)
         et ArchUnit. Seul le composition root (server) le référence ; `application` ne dépend que de
         `bank-pointage-api`. Les moteurs ne sont pas des @Component : leurs beans sont déclarés par
-        `DomainEngineConfig`. Seule dépendance de production en plus de l'API : slf4j-api (journalisation,
-        version gérée par le BOM du parent).
+        `DomainEngineConfig`. Dépendances de production en plus de l'API : slf4j-api (journalisation) et
+        jackson-databind (lecture des réponses Enable Banking, SILO-170), versions gérées par le BOM du parent.
     -->
     <parent>
         <groupId>com.moe.myfamilybudget</groupId>
@@ -26,12 +26,16 @@
     <artifactId>bank-pointage-core</artifactId>
     <packaging>jar</packaging>
     <name>bank-pointage-core</name>
-    <description>Cœur du silo Banque/Pointage MyFamilyBudget (moteurs de calcul purs, sans Spring ni JPA)</description>
+    <description>Cœur du silo Banque/Pointage MyFamilyBudget (moteurs de calcul purs et intégration Enable Banking, sans Spring ni JPA)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>bank-pointage-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

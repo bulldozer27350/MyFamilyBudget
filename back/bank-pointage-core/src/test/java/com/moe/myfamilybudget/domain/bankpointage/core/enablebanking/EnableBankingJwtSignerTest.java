@@ -1,5 +1,6 @@
-package com.moe.myfamilybudget.server.internal.enablebanking;
+package com.moe.myfamilybudget.domain.bankpointage.core.enablebanking;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;

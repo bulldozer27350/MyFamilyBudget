@@ -1,5 +1,6 @@
-package com.moe.myfamilybudget.server.internal.enablebanking;
+package com.moe.myfamilybudget.domain.bankpointage.core.enablebanking;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -10,8 +11,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.stereotype.Component;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -19,15 +18,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Appels HTTP vers l'API Enable Banking (soldes, transactions). Un nouveau jeton JWT est demandé
  * à chaque appel : sa génération est purement locale (signature RSA), donc sans coût réseau.
  */
-@Component
-class EnableBankingClient {
+public class EnableBankingClient {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final EnableBankingConfig config;
     private final HttpClient httpClient;
 
-    EnableBankingClient(EnableBankingConfig config) {
+    public EnableBankingClient(EnableBankingConfig config) {
         this.config = config;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(config.timeout())

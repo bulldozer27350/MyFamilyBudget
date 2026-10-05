@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.enablebanking;
+package com.moe.myfamilybudget.domain.bankpointage.model;
 
 /**
  * Erreur d'accès ou de lecture Enable Banking (réseau, HTTP, certificat illisible, format

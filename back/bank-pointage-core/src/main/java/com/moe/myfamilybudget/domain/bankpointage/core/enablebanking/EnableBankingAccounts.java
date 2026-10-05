@@ -1,5 +1,6 @@
-package com.moe.myfamilybudget.server.internal.enablebanking;
+package com.moe.myfamilybudget.domain.bankpointage.core.enablebanking;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

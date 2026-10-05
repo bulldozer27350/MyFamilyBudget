@@ -3,8 +3,9 @@ package com.moe.myfamilybudget.domain.bankpointage.port;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 
 /**
- * Port d'ecriture pour le domaine Banque / Import (DB-040). Seul le command service du domaine
- * ({@code BankImportCommandService}) l'utilise : il isole le domaine du {@code PersistenceManager} et
+ * Port d'ecriture pour le domaine Banque / Import (DB-040). Utilisé par le command service du domaine
+ * ({@code BankImportCommandService}) et, depuis SILO-170, par la synchronisation Enable Banking
+ * ({@code bank-pointage-core}) : il isole le domaine du {@code PersistenceManager} et
  * prepare la bascule JPA (DB-1031) sans changer l'appelant.
  *
  * <p>Le format JSON interne de {@code BankImportEntity} reste une decision de la persistance Banque :

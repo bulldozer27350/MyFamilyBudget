@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.enablebanking;
+package com.moe.myfamilybudget.domain.bankpointage.core.enablebanking;
 
 import java.math.BigDecimal;
 import java.util.List;

@@ -1,5 +1,6 @@
-package com.moe.myfamilybudget.server.internal.enablebanking;
+package com.moe.myfamilybudget.domain.bankpointage.core.enablebanking;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -10,11 +11,6 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
-import jakarta.annotation.PostConstruct;
 
 /**
  * Centralise la configuration Enable Banking et détermine, une seule fois au démarrage, si la
@@ -26,7 +22,6 @@ import jakarta.annotation.PostConstruct;
  * sans elle (voir {@link #isConfigured()}), exactement comme les sources de données de marché
  * sans clé d'API (voir {@code myfamilybudget.market-data}).
  */
-@Component
 public class EnableBankingConfig {
 
     private static final Logger log = LoggerFactory.getLogger(EnableBankingConfig.class);
@@ -42,13 +37,8 @@ public class EnableBankingConfig {
     private String unavailableReason;
     private EnableBankingJwtSigner signer;
 
-    @Autowired
-    public EnableBankingConfig(
-            @Value("${myfamilybudget.enable-banking.application-id:}") String applicationId,
-            @Value("${myfamilybudget.enable-banking.private-key-path:}") String privateKeyPath,
-            @Value("${myfamilybudget.enable-banking.accounts:}") String accountsRaw,
-            @Value("${myfamilybudget.enable-banking.api-base-url:https://api.enablebanking.com}") String apiBaseUrl,
-            @Value("${myfamilybudget.enable-banking.timeout-seconds:15}") int timeoutSeconds) {
+    public EnableBankingConfig(String applicationId, String privateKeyPath, String accountsRaw,
+            String apiBaseUrl, int timeoutSeconds) {
         this(applicationId, privateKeyPath, accountsRaw, apiBaseUrl, timeoutSeconds, Clock.systemUTC());
     }
 
@@ -62,8 +52,8 @@ public class EnableBankingConfig {
         this.clock = clock;
     }
 
-    @PostConstruct
-    void init() {
+    /** À appeler une fois au démarrage (méthode d'initialisation du bean déclaré par le composition root). */
+    public void init() {
         if (applicationId.isEmpty()) {
             disable("MYFAMILYBUDGET_ENABLE_BANKING_APPLICATION_ID n'est pas renseignée.");
             return;

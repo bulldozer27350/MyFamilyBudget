@@ -41,6 +41,15 @@ class ApplicationWithoutSiloCoreArchTest {
             .as("application ne dépend du cœur d'aucun silo (SILO-150 à SILO-160)");
 
     @ArchTest
+    static final ArchRule ENABLE_BANKING_CORE_DOES_NOT_USE_SERVER_APPLICATION_OR_PERSISTENCE = noClasses()
+            .that().resideInAPackage("com.moe.myfamilybudget.domain.bankpointage.core.enablebanking..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "com.moe.myfamilybudget.server..", "com.moe.myfamilybudget.application..",
+                    "com.moe.myfamilybudget.persistence..", "org.springframework..")
+            .as("l'intégration Enable Banking du silo Banque ne dépend ni de server, ni d'application, "
+                    + "ni de la persistance, ni de Spring (SILO-170)");
+
+    @ArchTest
     static void known_silo_cores_are_in_the_analyzed_scope(JavaClasses classes) {
         for (String corePackage : SILO_CORE_PACKAGES) {
             assertTrue(classes.containPackage(corePackage),

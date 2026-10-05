@@ -1,37 +1,37 @@
-package com.moe.myfamilybudget.server.internal.enablebanking;
+package com.moe.myfamilybudget.domain.bankpointage.core.enablebanking;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.moe.myfamilybudget.server.internal.enablebanking.EnableBankingSyncResult.AccountResult;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculationService;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.EnableBankingSyncService;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
-import com.moe.myfamilybudget.application.command.BankImportCommandService;
-import com.moe.myfamilybudget.persistence.entity.EnableBankingSyncStateEntity;
-import com.moe.myfamilybudget.persistence.repository.EnableBankingSyncStateRepository;
+import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingException;
+import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingSyncResult;
+import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingSyncResult.AccountResult;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
+import com.moe.myfamilybudget.domain.bankpointage.port.EnableBankingSyncStateStore;
 
 /**
  * Récupère les transactions bancaires via Enable Banking (DSP2) et les importe, en réutilisant
  * directement {@link BankImportCalculationService#importTransactions} — le même moteur que l'import CSV
  * manuel, avec la même déduplication (date + libellé + montant). Contrairement à un script
  * externe, aucun appel HTTP n'est nécessaire ici pour "revenir" vers l'application : le mapping
- * et la persistance se font dans le même processus.
+ * et la persistance se font dans le même processus. La persistance passe par les ports du silo Banque
+ * ({@link BankWriter}, {@link EnableBankingSyncStateStore}) ; le câblage Spring est fait par le composition root.
  */
-@Service
-public class EnableBankingSyncService {
+public class DefaultEnableBankingSyncService implements EnableBankingSyncService {
 
-    private static final Logger log = LoggerFactory.getLogger(EnableBankingSyncService.class);
+    private static final Logger log = LoggerFactory.getLogger(DefaultEnableBankingSyncService.class);
 
     /**
      * Recouvrement de sécurité (en jours) appliqué à la date de dernière synchronisation, pour ne
@@ -44,34 +44,37 @@ public class EnableBankingSyncService {
     private final EnableBankingConfig config;
     private final EnableBankingClient client;
     private final BankReader bankReader;
-    private final EnableBankingSyncStateRepository stateRepository;
-    private final BankImportCommandService bankImportCommandService;
+    private final EnableBankingSyncStateStore stateStore;
+    private final BankWriter bankWriter;
     private final BankImportCalculationService bankImportCalculationService;
 
-    public EnableBankingSyncService(
+    public DefaultEnableBankingSyncService(
             EnableBankingConfig config,
             EnableBankingClient client,
             BankReader bankReader,
-            EnableBankingSyncStateRepository stateRepository,
-            BankImportCommandService bankImportCommandService,
+            EnableBankingSyncStateStore stateStore,
+            BankWriter bankWriter,
             BankImportCalculationService bankImportCalculationService) {
         this.config = config;
         this.client = client;
         this.bankReader = bankReader;
-        this.stateRepository = stateRepository;
-        this.bankImportCommandService = bankImportCommandService;
+        this.stateStore = stateStore;
+        this.bankWriter = bankWriter;
         this.bankImportCalculationService = bankImportCalculationService;
     }
 
+    @Override
     public boolean isConfigured() {
         return config.isConfigured();
     }
 
+    @Override
     public String unavailableReason() {
         return config.unavailableReason();
     }
 
     /** @throws EnableBankingException si la synchronisation n'est pas configurée */
+    @Override
     public EnableBankingSyncResult sync() {
         if (!config.isConfigured()) {
             throw new EnableBankingException(config.unavailableReason());
@@ -86,8 +89,7 @@ public class EnableBankingSyncService {
 
     private AccountResult syncAccount(EnableBankingAccounts.Account account) {
         log.info("=== Synchronisation Enable Banking : {} ===", account.label());
-        Optional<EnableBankingSyncStateEntity> previousState = stateRepository.findById(account.uid());
-        String lastBookingDate = previousState.map(EnableBankingSyncStateEntity::getLastBookingDate).orElse(null);
+        String lastBookingDate = stateStore.findLastBookingDate(account.uid()).orElse(null);
 
         String dateFrom = null;
         if (lastBookingDate != null) {
@@ -144,7 +146,7 @@ public class EnableBankingSyncService {
                 allTransactions,
                 current.pendingOperations(),
                 current.matchings());
-        bankImportCommandService.updateBankImport(updatedModel);
+        bankWriter.updateBankImport(updatedModel);
 
         String latestBookingDate = rows.stream()
                 .map(row -> row.get(0))
@@ -152,7 +154,7 @@ public class EnableBankingSyncService {
                 .max(String::compareTo)
                 .map(latest -> (lastBookingDate != null && lastBookingDate.compareTo(latest) > 0) ? lastBookingDate : latest)
                 .orElse(lastBookingDate);
-        stateRepository.save(new EnableBankingSyncStateEntity(account.uid(), latestBookingDate, Instant.now()));
+        stateStore.save(account.uid(), latestBookingDate, Instant.now());
 
         log.info("Import terminé pour {} : {} importée(s), {} doublon(s) ignoré(s), {} catégorisée(s) automatiquement",
                 account.label(), summary.imported(), summary.duplicates(), summary.autoCategorized());

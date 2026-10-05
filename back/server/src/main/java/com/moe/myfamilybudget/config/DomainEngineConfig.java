@@ -7,9 +7,16 @@ import org.springframework.context.annotation.Configuration;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService;
 import com.moe.myfamilybudget.domain.analysis.core.DefaultAnalyseCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculationService;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.EnableBankingSyncService;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.core.DefaultBankImportCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.core.DefaultPointageCalculationService;
+import com.moe.myfamilybudget.domain.bankpointage.core.enablebanking.DefaultEnableBankingSyncService;
+import com.moe.myfamilybudget.domain.bankpointage.core.enablebanking.EnableBankingClient;
+import com.moe.myfamilybudget.domain.bankpointage.core.enablebanking.EnableBankingConfig;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
+import com.moe.myfamilybudget.domain.bankpointage.port.EnableBankingSyncStateStore;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.credit.core.DefaultLoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.market.calculation.MarketDataService;
@@ -36,7 +43,9 @@ import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionServ
 import com.moe.myfamilybudget.domain.wealth.core.DefaultPlacementEvolutionService;
 
 /**
- * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080, MAVEN-090). SILO-150 à SILO-159 : les moteurs Retraite, Fiscalité, Patrimoine,
+ * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080, MAVEN-090). SILO-170 : l'intégration Enable Banking du silo Banque
+ * ({@code EnableBankingConfig}, {@code EnableBankingClient}, {@code DefaultEnableBankingSyncService}, dans
+ * {@code bank-pointage-core}) est câblée ici avec les propriétés {@code myfamilybudget.enable-banking.*}. SILO-150 à SILO-159 : les moteurs Retraite, Fiscalité, Patrimoine,
  * Trésorerie, Banque/Pointage, Analyse et Crédit sont exposés sous leur interface ({@code retirement-api}, {@code tax-api},
  * {@code wealth-api}, {@code treasury-api}, {@code bank-pointage-api}, {@code analysis-api}, {@code credit-api}), leur implémentation vit dans
  * {@code retirement-core}, {@code tax-core}, {@code wealth-core}, {@code treasury-core}, {@code bank-pointage-core}
@@ -109,6 +118,29 @@ public class DomainEngineConfig {
     @Bean
     public ObjectifReachableRule objectifReachableRule() {
         return new ObjectifReachableRule();
+    }
+
+    @Bean(initMethod = "init")
+    public EnableBankingConfig enableBankingConfig(
+            @Value("${myfamilybudget.enable-banking.application-id:}") String applicationId,
+            @Value("${myfamilybudget.enable-banking.private-key-path:}") String privateKeyPath,
+            @Value("${myfamilybudget.enable-banking.accounts:}") String accountsRaw,
+            @Value("${myfamilybudget.enable-banking.api-base-url:https://api.enablebanking.com}") String apiBaseUrl,
+            @Value("${myfamilybudget.enable-banking.timeout-seconds:15}") int timeoutSeconds) {
+        return new EnableBankingConfig(applicationId, privateKeyPath, accountsRaw, apiBaseUrl, timeoutSeconds);
+    }
+
+    @Bean
+    public EnableBankingClient enableBankingClient(EnableBankingConfig config) {
+        return new EnableBankingClient(config);
+    }
+
+    @Bean
+    public EnableBankingSyncService enableBankingSyncService(EnableBankingConfig config, EnableBankingClient client,
+            BankReader bankReader, BankWriter bankWriter, EnableBankingSyncStateStore stateStore,
+            BankImportCalculationService bankImportCalculationService) {
+        return new DefaultEnableBankingSyncService(config, client, bankReader, stateStore, bankWriter,
+                bankImportCalculationService);
     }
 
     @Bean

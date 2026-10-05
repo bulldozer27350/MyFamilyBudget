@@ -7,10 +7,13 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.moe.myfamilybudget.domain.bankpointage.calculation.EnableBankingSyncService;
+import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingException;
+
 /**
  * Synchronise périodiquement les comptes Enable Banking, tant que l'application (conteneur
  * Docker ou distribution portable) reste ouverte. Ne fait rien tant que le certificat et
- * l'{@code application_id} n'ont pas été fournis (voir {@link EnableBankingConfig}) : la
+ * l'{@code application_id} n'ont pas été fournis (voir {@code EnableBankingConfig}, {@code bank-pointage-core}) : la
  * distribution portable destinée à un tiers reste donc silencieuse par défaut, sans risque de
  * fuite ni d'appel réseau inattendu.
  *
