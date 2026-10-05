@@ -5,8 +5,8 @@ import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.converter.PensionEntityMapper;
-import com.moe.myfamilybudget.persistence.repository.PensionPlanRepository;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionEntityMapper;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementWriter;

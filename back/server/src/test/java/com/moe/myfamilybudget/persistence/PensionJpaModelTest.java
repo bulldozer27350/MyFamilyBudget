@@ -14,10 +14,10 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.RetirementPersonModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.SalaryHistoryModel;
-import com.moe.myfamilybudget.persistence.converter.PensionEntityMapper;
-import com.moe.myfamilybudget.persistence.entity.PensionPersonEntity;
-import com.moe.myfamilybudget.persistence.entity.PensionPlanEntity;
-import com.moe.myfamilybudget.persistence.repository.PensionPlanRepository;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionEntityMapper;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPersonEntity;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanEntity;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 
 /**
  * DB-1000 : le modele JPA autonome du domaine Retraite (additif, sans lien avec le hub) doit restituer les

@@ -58,7 +58,7 @@ import com.moe.myfamilybudget.persistence.repository.GoalRepository;
 import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.persistence.repository.LoanRepository;
 import com.moe.myfamilybudget.persistence.repository.OneOffExpenseRepository;
-import com.moe.myfamilybudget.persistence.repository.PensionPlanRepository;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.persistence.repository.SettingsRepository;

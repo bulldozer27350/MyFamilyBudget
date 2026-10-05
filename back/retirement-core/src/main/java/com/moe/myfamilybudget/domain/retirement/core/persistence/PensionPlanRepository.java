@@ -1,11 +1,10 @@
-package com.moe.myfamilybudget.persistence.repository;
+package com.moe.myfamilybudget.domain.retirement.core.persistence;
 
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.moe.myfamilybudget.persistence.entity.PensionPlanEntity;
 
 /**
  * Repository autonome du domaine Retraite (DB-1000), sans lien avec {@code BudgetDataEntity}.

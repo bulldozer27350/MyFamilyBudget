@@ -33,7 +33,7 @@ import com.moe.myfamilybudget.persistence.converter.BankImportDocumentMapper;
 import com.moe.myfamilybudget.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.persistence.converter.FiscalEntityMapper;
 import com.moe.myfamilybudget.persistence.converter.GoalEntityMapper;
-import com.moe.myfamilybudget.persistence.converter.PensionEntityMapper;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionEntityMapper;
 import com.moe.myfamilybudget.persistence.repository.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.persistence.repository.FiscalActualOverrideRepository;
@@ -41,7 +41,7 @@ import com.moe.myfamilybudget.persistence.repository.FiscalBracketRepository;
 import com.moe.myfamilybudget.persistence.repository.FiscalChildRepository;
 import com.moe.myfamilybudget.persistence.repository.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.persistence.repository.GoalRepository;
-import com.moe.myfamilybudget.persistence.repository.PensionPlanRepository;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 
 /**
  * VT-340 -- Atomicite des mutations multi-domaines. Import, reinitialisation et sauvegarde des parametres

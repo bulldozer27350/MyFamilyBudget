@@ -28,7 +28,7 @@ import com.moe.myfamilybudget.persistence.repository.FiscalBracketRepository;
 import com.moe.myfamilybudget.persistence.repository.FiscalChildRepository;
 import com.moe.myfamilybudget.persistence.repository.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.persistence.repository.GoalRepository;
-import com.moe.myfamilybudget.persistence.repository.PensionPlanRepository;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.WealthCategoryRepository;
 import com.moe.myfamilybudget.persistence.repository.WealthPlacementRepository;
 import com.moe.myfamilybudget.persistence.repository.WealthRealEstateRepository;

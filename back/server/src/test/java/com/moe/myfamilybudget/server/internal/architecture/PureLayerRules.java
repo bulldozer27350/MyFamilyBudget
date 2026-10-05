@@ -44,6 +44,13 @@ final class PureLayerRules {
                     .or(simpleNameEndingWith("SettingsService"))
                     .or(simpleNameEndingWith("SettingsStore"));
 
+    /**
+     * Persistance JPA d'un silo (SILO-210) : entités, repositories et mappers du package
+     * {@code domain.<silo>.core.persistence}. Ce n'est pas une couche pure : elle est exclue des règles ci-dessous.
+     */
+    private static final DescribedPredicate<JavaClass> SILO_PERSISTENCE =
+            resideInAPackage("com.moe.myfamilybudget.domain.*.core.persistence..");
+
     /** Moteurs, calculateurs, résultats et règles de notification : tout sauf l'infra de paramétrage. */
     static final DescribedPredicate<JavaClass> PURE_LAYER =
             resideInAPackage("..internal.calculation..").and(not(SETTINGS_INFRASTRUCTURE))
@@ -60,8 +67,9 @@ final class PureLayerRules {
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.credit.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.goals.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.notifications.."))
+                    .and(not(SILO_PERSISTENCE))
                     .as("les couches pures (internal.calculation hors infra de paramétrage, "
-                            + "internal.model, transition.model, application.model, application.overview, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, domain.notifications)");
+                            + "internal.model, transition.model, application.model, application.overview, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, domain.notifications, hors persistance de silo domain.*.core.persistence)");
 
     static final ArchRule NO_BUDGET_DATA_MODEL = noClasses()
             .that(PURE_LAYER)

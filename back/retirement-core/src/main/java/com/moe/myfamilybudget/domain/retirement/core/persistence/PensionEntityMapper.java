@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.converter;
+package com.moe.myfamilybudget.domain.retirement.core.persistence;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,9 +6,6 @@ import java.util.List;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.RetirementPersonModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.SalaryHistoryModel;
-import com.moe.myfamilybudget.persistence.entity.PensionPersonEntity;
-import com.moe.myfamilybudget.persistence.entity.PensionPlanEntity;
-import com.moe.myfamilybudget.persistence.entity.PensionSalaryEntity;
 
 /**
  * Mapper du domaine Retraite entre {@link RetirementModel} et {@link PensionPlanEntity} (DB-1000).

@@ -8,8 +8,12 @@
         SILO-150 (doc/architecture/21-plan-silotage.md) : cœur du silo Retraite (moteur de calcul
         `DefaultRetirementCalculationService`, implémentation de l'interface de `retirement-api`).
 
-        Règle : ce module ne dépend que de `retirement-api` (et, plus tard, de `infra-jpa` pour la
-        persistance du silo, SILO-210). Pas de `module-info` (décision D3) : sa visibilité est tenue par le
+        SILO-210 : il porte aussi la persistance JPA autonome du silo (package `domain.retirement.core.persistence` :
+        entités `pension_*`, repository Spring Data et mapper entité/modèle), découverte par le scan par défaut de
+        Spring Boot (racine `com.moe.myfamilybudget`).
+
+        Règle : ce module ne dépend que de `retirement-api` et de `infra-jpa` (configuration JPA commune, qui
+        apporte Spring Data JPA et Hibernate). Pas de `module-info` (décision D3) : sa visibilité est tenue par le
         graphe Maven (règle C de `MavenModuleGraphTest`) et ArchUnit. Seul le composition root (server) le
         référence ; `application` ne dépend que de `retirement-api`. Le moteur n'est pas un @Component :
         son bean est déclaré par `DomainEngineConfig`.
@@ -24,12 +28,16 @@
     <artifactId>retirement-core</artifactId>
     <packaging>jar</packaging>
     <name>retirement-core</name>
-    <description>Cœur du silo Retraite MyFamilyBudget (moteur de calcul pur, sans Spring ni JPA)</description>
+    <description>Cœur du silo Retraite MyFamilyBudget (moteur de calcul et persistance JPA des tables pension_*)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>retirement-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
         </dependency>
 
         <dependency>
