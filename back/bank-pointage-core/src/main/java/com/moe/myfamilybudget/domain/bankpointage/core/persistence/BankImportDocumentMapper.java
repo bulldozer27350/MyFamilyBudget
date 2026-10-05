@@ -1,10 +1,9 @@
-package com.moe.myfamilybudget.persistence.converter;
+package com.moe.myfamilybudget.domain.bankpointage.core.persistence;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.persistence.entity.BankImportDocumentEntity;
 
 /**
  * Mapper du domaine Banque entre {@link BankImportModel} et {@link BankImportDocumentEntity} (DB-1030).

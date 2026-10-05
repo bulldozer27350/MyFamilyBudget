@@ -26,7 +26,7 @@ import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
-import com.moe.myfamilybudget.persistence.converter.BankImportDocumentMapper;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentMapper;
 import com.moe.myfamilybudget.persistence.converter.CashflowEntityMapper;
 import com.moe.myfamilybudget.persistence.converter.CreditLoanEntityMapper;
 import com.moe.myfamilybudget.persistence.converter.EntityModelConverter;
@@ -36,7 +36,7 @@ import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionEntityMa
 import com.moe.myfamilybudget.persistence.converter.WealthEntityMapper;
 import com.moe.myfamilybudget.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
-import com.moe.myfamilybudget.persistence.repository.BankImportDocumentRepository;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.persistence.repository.CashflowChargeRepository;
 import com.moe.myfamilybudget.persistence.repository.CashflowIncomeRepository;

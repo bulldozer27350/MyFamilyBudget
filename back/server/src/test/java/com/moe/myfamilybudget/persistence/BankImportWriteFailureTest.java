@@ -28,7 +28,7 @@ import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
-import com.moe.myfamilybudget.persistence.repository.BankImportDocumentRepository;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.persistence.repository.CashflowChargeRepository;
 import com.moe.myfamilybudget.persistence.repository.CashflowIncomeRepository;

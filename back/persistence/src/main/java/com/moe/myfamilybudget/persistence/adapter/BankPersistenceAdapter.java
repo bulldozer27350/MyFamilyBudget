@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.converter.BankImportDocumentMapper;
-import com.moe.myfamilybudget.persistence.repository.BankImportDocumentRepository;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentMapper;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankSnapshotWriter;

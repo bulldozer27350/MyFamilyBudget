@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.bankpointage.core.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
  * Import bancaire (categories, regles, transactions, operations en attente, rapprochements), cible JPA
  * autonome du domaine Banque (DB-1030).
  *
- * <p>Cette entite n'a <strong>aucune relation vers {@link BudgetDataEntity}</strong> : elle est la racine de
+ * <p>Cette entite n'a <strong>aucune relation vers {@code BudgetDataEntity}</strong> : elle est la racine de
  * son propre agregat (singleton fonctionnel : une seule ligne, lue par {@code findFirstByOrderByIdAsc}). Elle est
  * lue par {@code BankPersistenceAdapter} depuis DB-1031 et, depuis DB-1130, c'est aussi la seule source de
  * chargement du cache : l'ancienne table {@code bank_import} et son entite ont ete supprimees.

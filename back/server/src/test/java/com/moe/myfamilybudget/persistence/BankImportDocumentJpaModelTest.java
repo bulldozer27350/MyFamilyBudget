@@ -22,9 +22,9 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.Category
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingLinkModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.MatchingModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel.PendingOperationModel;
-import com.moe.myfamilybudget.persistence.converter.BankImportDocumentMapper;
-import com.moe.myfamilybudget.persistence.entity.BankImportDocumentEntity;
-import com.moe.myfamilybudget.persistence.repository.BankImportDocumentRepository;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentMapper;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentEntity;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 
 /**
  * DB-1030 : le modele JPA autonome du domaine Banque (additif, sans lien avec le hub) doit restituer l'import

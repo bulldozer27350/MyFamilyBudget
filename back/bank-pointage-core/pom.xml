@@ -9,9 +9,14 @@
         `DefaultBankImportCalculationService` et `DefaultPointageCalculationService`, implémentations des
         interfaces de `bank-pointage-api`).
 
-        Règle : ce module ne dépend que de `bank-pointage-api` (et, plus tard, de `infra-jpa`, SILO-213). Pas de
-        `module-info` (décision D3) : visibilité tenue par le graphe Maven (règle C de `MavenModuleGraphTest`)
-        et ArchUnit. Seul le composition root (server) le référence ; `application` ne dépend que de
+        SILO-213 : il porte aussi la persistance JPA autonome du silo (package `domain.bankpointage.core.persistence` :
+        entités `bank_import_document` et état de synchronisation Enable Banking, repositories Spring Data, mapper
+        du document d'import et `JpaEnableBankingSyncStateStore`), découverte par le scan par défaut de Spring Boot
+        (racine `com.moe.myfamilybudget`). Le package `core.enablebanking` reste sans Spring ni JPA.
+
+        Règle : ce module ne dépend que de `bank-pointage-api` et de `infra-jpa` (configuration JPA commune, qui
+        apporte Spring Data JPA et Hibernate). Pas de `module-info` (décision D3) : visibilité tenue par le graphe
+        Maven (règle C de `MavenModuleGraphTest`) et ArchUnit. Seul le composition root (server) le référence ; `application` ne dépend que de
         `bank-pointage-api`. Les moteurs ne sont pas des @Component : leurs beans sont déclarés par
         `DomainEngineConfig`. Dépendances de production en plus de l'API : slf4j-api (journalisation) et
         jackson-databind (lecture des réponses Enable Banking, SILO-170), versions gérées par le BOM du parent.
@@ -26,12 +31,16 @@
     <artifactId>bank-pointage-core</artifactId>
     <packaging>jar</packaging>
     <name>bank-pointage-core</name>
-    <description>Cœur du silo Banque/Pointage MyFamilyBudget (moteurs de calcul purs et intégration Enable Banking, sans Spring ni JPA)</description>
+    <description>Cœur du silo Banque/Pointage MyFamilyBudget (moteurs de calcul purs, intégration Enable Banking sans Spring, et persistance JPA du document d'import bancaire)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>bank-pointage-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

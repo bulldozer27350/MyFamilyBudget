@@ -23,7 +23,7 @@ import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
 import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
-import com.moe.myfamilybudget.persistence.repository.BankImportDocumentRepository;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.persistence.repository.CashflowChargeRepository;
 import com.moe.myfamilybudget.persistence.repository.CashflowIncomeRepository;

@@ -1,9 +1,8 @@
-package com.moe.myfamilybudget.persistence.repository;
+package com.moe.myfamilybudget.domain.bankpointage.core.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.moe.myfamilybudget.persistence.entity.EnableBankingSyncStateEntity;
 
 @Repository
 public interface EnableBankingSyncStateRepository extends JpaRepository<EnableBankingSyncStateEntity, String> {

@@ -32,7 +32,7 @@ import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepo
 import com.moe.myfamilybudget.persistence.repository.WealthCategoryRepository;
 import com.moe.myfamilybudget.persistence.repository.WealthPlacementRepository;
 import com.moe.myfamilybudget.persistence.repository.WealthRealEstateRepository;
-import com.moe.myfamilybudget.persistence.repository.BankImportDocumentRepository;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 
 /**

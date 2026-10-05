@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.enablebanking;
+package com.moe.myfamilybudget.domain.bankpointage.core.persistence;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -6,12 +6,10 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.domain.bankpointage.port.EnableBankingSyncStateStore;
-import com.moe.myfamilybudget.persistence.entity.EnableBankingSyncStateEntity;
-import com.moe.myfamilybudget.persistence.repository.EnableBankingSyncStateRepository;
 
 /**
  * Implémentation JPA de {@link EnableBankingSyncStateStore} : une ligne par compte, remplacée à chaque
- * synchronisation (même table qu'avant SILO-170). Reste dans le composition root jusqu'à SILO-213.
+ * synchronisation (même table qu'avant SILO-170). Rejoint le silo Banque avec SILO-213.
  */
 @Component
 public class JpaEnableBankingSyncStateStore implements EnableBankingSyncStateStore {
