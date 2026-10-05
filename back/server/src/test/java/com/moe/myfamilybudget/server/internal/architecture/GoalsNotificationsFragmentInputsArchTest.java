@@ -11,7 +11,8 @@ import com.tngtech.archunit.lang.ArchRule;
  * Garde-fou SILO-118 (voir doc/architecture/21-plan-silotage.md) : les silos Objectifs et Notifications
  * construisent leurs entrées à partir de fragments lus via les ports de lecture ({@code GoalReader},
  * {@code BankReader}, {@code PatrimoineReader}, {@code TresorerieSettingsReader}) et de leurs propres
- * paramètres ({@code ObjectifsSettingsService}, {@code NotificationSettingsService}).
+ * paramètres ({@code ObjectifsSettingsService}, {@code NotificationSettingsService}). Depuis SILO-180, l'assemblage des entrées
+ * est porté par {@code application.notification.NotificationCheckService}, couvert par la même règle.
  *
  * <p>Aucune de leurs classes ne doit revenir aux types globaux de transition : {@code BudgetDataModel},
  * {@code SettingsModel}, {@code SettingsReader} ou son assembleur {@code SettingsModelAssembler}. Règle
@@ -26,6 +27,7 @@ class GoalsNotificationsFragmentInputsArchTest {
                     + "domain\\.goals\\..*"
                     + "|domain\\.notifications\\..*"
                     + "|server\\.internal\\.notification\\..*"
+                    + "|application\\.notification\\..*"
                     + "|server\\.internal\\.impl\\.NotificationsServiceImpl"
                     + "|server\\.internal\\.mapper\\.NotificationsMapper"
                     + "|server\\.internal\\.calculation\\.JpaObjectifsSettingsStore"

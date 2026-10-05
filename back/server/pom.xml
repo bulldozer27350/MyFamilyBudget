@@ -196,25 +196,6 @@
             <artifactId>archunit-junit5</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!--
-            Web Push (notifications push mobile via PWA, RFC 8291/8292) — voir
-            WebPushNotificationChannel. bcprov-jdk18on est une dépendance requise par web-push
-            pour le chiffrement AES128GCM/ECDH ; httpclient est déjà une dépendance transitive de
-            web-push mais est explicitée ici pour fiabiliser la résolution.
-        -->
-        <dependency>
-            <groupId>nl.martijndwars</groupId>
-            <artifactId>web-push</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk18on</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-        </dependency>
     </dependencies>
 
     <build>

@@ -1,36 +1,32 @@
-package com.moe.myfamilybudget.server.internal.notification;
+package com.moe.myfamilybudget.domain.notifications.core;
 
+import com.moe.myfamilybudget.domain.notifications.calculation.NotificationSettingsService;
+import com.moe.myfamilybudget.domain.notifications.port.NotificationSettingsStore;
 import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
-import org.springframework.stereotype.Service;
 
 /**
  * Paramètres de notification modifiables depuis l'onglet "Notifications" des paramètres généraux.
  * Sans enregistrement, {@link NotificationSettingsParameters#defaults()} s'applique.
  */
-@Service
-public class NotificationSettingsService {
+public class DefaultNotificationSettingsService implements NotificationSettingsService {
 
     private final NotificationSettingsStore store;
 
-    public NotificationSettingsService(NotificationSettingsStore store) {
+    public DefaultNotificationSettingsService(NotificationSettingsStore store) {
         this.store = store;
     }
 
-    /** Paramètres en vigueur : enregistrés s'ils existent, sinon les valeurs par défaut. */
+    @Override
     public NotificationSettingsParameters current() {
         return store.load().orElseGet(NotificationSettingsParameters::defaults);
     }
 
-    /** Valeurs par défaut. */
+    @Override
     public NotificationSettingsParameters defaults() {
         return NotificationSettingsParameters.defaults();
     }
 
-    /**
-     * Valide puis enregistre les paramètres.
-     *
-     * @throws IllegalArgumentException si un seuil est invalide (traduit en 400)
-     */
+    @Override
     public NotificationSettingsParameters save(NotificationSettingsParameters parameters) {
         parameters.validate();
         store.save(parameters);

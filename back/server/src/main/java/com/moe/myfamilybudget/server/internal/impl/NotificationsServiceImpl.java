@@ -14,11 +14,11 @@ import com.moe.myfamilybudget.api.model.NotificationVerificationResultDto;
 import com.moe.myfamilybudget.api.model.PushPublicKeyDto;
 import com.moe.myfamilybudget.api.model.PushSubscriptionDto;
 import com.moe.myfamilybudget.server.internal.mapper.NotificationsMapper;
-import com.moe.myfamilybudget.server.internal.notification.NotificationDispatchService;
+import com.moe.myfamilybudget.application.notification.NotificationCheckService;
+import com.moe.myfamilybudget.domain.notifications.calculation.NotificationSettingsService;
+import com.moe.myfamilybudget.domain.notifications.model.PushSubscriptionModel;
+import com.moe.myfamilybudget.domain.notifications.port.PushSubscriptionStore;
 import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
-import com.moe.myfamilybudget.server.internal.notification.NotificationSettingsService;
-import com.moe.myfamilybudget.persistence.entity.PushSubscriptionEntity;
-import com.moe.myfamilybudget.persistence.repository.PushSubscriptionRepository;
 
 /**
  * Contrôleur REST implémentant le contrat OpenAPI NotificationsApi (tag Notifications) : façade
@@ -28,19 +28,19 @@ import com.moe.myfamilybudget.persistence.repository.PushSubscriptionRepository;
 public class NotificationsServiceImpl implements NotificationsApi {
 
     private final NotificationSettingsService settingsService;
-    private final NotificationDispatchService dispatchService;
-    private final PushSubscriptionRepository subscriptionRepository;
+    private final NotificationCheckService checkService;
+    private final PushSubscriptionStore subscriptionStore;
     private final NotificationsMapper mapper;
 
     @Value("${myfamilybudget.notifications.push.vapid-public-key:}")
     private String vapidPublicKey;
 
     public NotificationsServiceImpl(NotificationSettingsService settingsService,
-            NotificationDispatchService dispatchService, PushSubscriptionRepository subscriptionRepository,
+            NotificationCheckService checkService, PushSubscriptionStore subscriptionStore,
             NotificationsMapper mapper) {
         this.settingsService = settingsService;
-        this.dispatchService = dispatchService;
-        this.subscriptionRepository = subscriptionRepository;
+        this.checkService = checkService;
+        this.subscriptionStore = subscriptionStore;
         this.mapper = mapper;
     }
 
@@ -58,7 +58,7 @@ public class NotificationsServiceImpl implements NotificationsApi {
 
     @Override
     public ResponseEntity<NotificationVerificationResultDto> verifyNotifications() {
-        int sent = dispatchService.runManualCheck();
+        int sent = checkService.runManualCheck();
         NotificationVerificationResultDto dto = new NotificationVerificationResultDto();
         dto.setAlertsSent(sent);
         return ResponseEntity.ok(dto);
@@ -78,17 +78,18 @@ public class NotificationsServiceImpl implements NotificationsApi {
                 || body.getKeys().getAuth() == null) {
             throw new IllegalArgumentException("Abonnement push incomplet (endpoint et clés requis).");
         }
-        subscriptionRepository.findByEndpoint(body.getEndpoint()).ifPresentOrElse(
-                existing -> { /* déjà enregistré : endpoint stable, rien à faire */ },
-                () -> subscriptionRepository.save(new PushSubscriptionEntity(
-                        UUID.randomUUID().toString(), body.getEndpoint(),
-                        body.getKeys().getP256dh(), body.getKeys().getAuth(), Instant.now())));
+        if (!subscriptionStore.existsByEndpoint(body.getEndpoint())) {
+            // Déjà enregistré sinon : endpoint stable, rien à faire.
+            subscriptionStore.save(new PushSubscriptionModel(
+                    UUID.randomUUID().toString(), body.getEndpoint(),
+                    body.getKeys().getP256dh(), body.getKeys().getAuth(), Instant.now()));
+        }
         return ResponseEntity.noContent().build();
     }
 
     @Override
     public ResponseEntity<Void> unregisterPushSubscription(String endpoint) {
-        subscriptionRepository.deleteByEndpoint(endpoint);
+        subscriptionStore.deleteByEndpoint(endpoint);
         return ResponseEntity.noContent().build();
     }
 }

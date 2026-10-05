@@ -59,7 +59,7 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
  * Notifications depuis RF-703 : les règles ({@code domain.notifications}, module {@code domain-notifications}) n'avaient plus
  * de dépendance au budget depuis RF-702, le domaine est protégé par
  * {@link #NOTIFICATION_RULES_DO_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée (le
- * {@code NotificationDispatchService}, qui assemble les entrées, n'est pas concerné : sa lecture du
+ * {@code NotificationCheckService}, qui assemble les entrées, n'est pas concerné : sa lecture du
  * budget relève des ports de lecture RF-B00/RF-B01). Et pour le domaine Crédit depuis RF-803 : le
  * store gelé ne contient aucune violation Crédit (les deux moteurs, {@code LoanAdviceCalculationService}
  * et {@code PlacementRateSuggestionService}, ne dépendent plus du budget depuis RF-801/RF-802) ; ils
@@ -158,7 +158,7 @@ class CalculationDependenciesArchTest {
 
     /**
      * Garde-fou du service applicatif de notifications (NOTIF-010) : le package {@code internal.notification}
-     * (dont {@code NotificationDispatchService}) lit le budget uniquement via les ports de lecture
+     * (adaptateurs JPA et écoute des mutations du budget depuis SILO-180) ne lit le budget que via les ports de lecture
      * ({@code internal.port}) et ne dépend ni de {@link PersistenceManager} ni de {@link BudgetDataModel}.
      * La règle ne vise volontairement pas {@code internal.factory} : les factories d'assemblage peuvent
      * légitimement manipuler les modèles pendant la transition. Règle stricte (sans gel).

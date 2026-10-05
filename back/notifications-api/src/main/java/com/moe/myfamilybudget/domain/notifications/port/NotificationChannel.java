@@ -1,18 +1,17 @@
-package com.moe.myfamilybudget.server.internal.notification;
+package com.moe.myfamilybudget.domain.notifications.port;
 
 import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
+import com.moe.myfamilybudget.domain.notifications.model.NotificationRule;
 
 /**
  * Un canal de transmission d'une notification déjà décidée par une {@link NotificationRule}.
  *
- * Comme {@link NotificationRule}, chaque implémentation est un
- * {@code @org.springframework.stereotype.Component} injecté automatiquement par Spring sous la
- * forme d'une {@code List<NotificationChannel>} dans {@link NotificationDispatchService} : ajouter
- * un canal (email, SMS...) n'implique aucune modification du dispatcher, seulement une nouvelle
- * classe implémentant cette interface.
+ * Les canaux sont fournis au dispatcher sous la forme d'une {@code List<NotificationChannel>} par le
+ * composition root ({@code DomainEngineConfig}) : ajouter un canal (email, SMS...) n'implique aucune
+ * modification du dispatcher, seulement une nouvelle classe implémentant cette interface et son bean.
  *
- * Seul {@code WebPushNotificationChannel} (push mobile via Web Push / PWA) est fourni pour
- * l'instant.
+ * Seul {@code WebPushNotificationChannel} (push mobile via Web Push / PWA, dans {@code notifications-core})
+ * est fourni pour l'instant.
  */
 public interface NotificationChannel {
 

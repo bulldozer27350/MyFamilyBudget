@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification;
+package com.moe.myfamilybudget.domain.notifications.core;
 
 import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
 import java.math.BigDecimal;
@@ -13,12 +13,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * précision, indépendante de la configuration Jackson de l'application) — même approche que
  * {@code LoanAdviceSettingsCodec}.
  */
-final class NotificationSettingsCodec {
+public final class NotificationSettingsCodec {
 
     private NotificationSettingsCodec() {
     }
 
-    static String toJson(NotificationSettingsParameters p, ObjectMapper mapper) {
+    public static String toJson(NotificationSettingsParameters p, ObjectMapper mapper) {
         ObjectNode root = mapper.createObjectNode();
         root.put("debitThresholdEnabled", Boolean.TRUE.equals(p.debitThresholdEnabled()));
         root.put("debitThresholdAmount", p.debitThresholdAmount().toPlainString());
@@ -42,7 +42,7 @@ final class NotificationSettingsCodec {
      *
      * @throws IllegalStateException si le contenu est illisible ou un montant est manquant
      */
-    static NotificationSettingsParameters fromJson(String json, ObjectMapper mapper) {
+    public static NotificationSettingsParameters fromJson(String json, ObjectMapper mapper) {
         try {
             JsonNode root = mapper.readTree(json);
             NotificationSettingsParameters defaults = NotificationSettingsParameters.defaults();

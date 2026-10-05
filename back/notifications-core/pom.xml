@@ -7,9 +7,13 @@
     <!--
         SILO-158 (doc/architecture/21-plan-silotage.md) : cœur du silo Notifications (règles pures
         `DebitThresholdRule`, `BalanceFloorRule` et `ObjectifReachableRule`, implémentations de
-        `NotificationRule` de `notifications-api`).
+        `NotificationRule` de `notifications-api`). SILO-180 y ajoute le dispatch (`DefaultNotificationDispatchService`),
+        les paramètres (`DefaultNotificationSettingsService`, `NotificationSettingsCodec`) et le canal Web Push
+        (`WebPushNotificationChannel`).
 
-        Règle : ce module ne dépend que de `notifications-api`. Pas de `module-info` (décision D3) : visibilité
+        Règle : ce module ne dépend que de `notifications-api` (et, plus tard, de `infra-jpa`, SILO-217) ; les
+        bibliothèques tierces `web-push`, `bcprov` et `httpclient` (canal Web Push), `jackson-databind` et slf4j
+        n'y sont pas du Spring ni du JPA. Pas de `module-info` (décision D3) : visibilité
         tenue par le graphe Maven (règle C de `MavenModuleGraphTest`) et ArchUnit. Seul le composition root
         (server) le référence ; `application` ne dépend que de `notifications-api`. Les règles ne sont pas des
         @Component : leurs beans sont déclarés par `DomainEngineConfig`.
@@ -24,12 +28,38 @@
     <artifactId>notifications-core</artifactId>
     <packaging>jar</packaging>
     <name>notifications-core</name>
-    <description>Cœur du silo Notifications MyFamilyBudget (règles de notification pures, sans Spring ni JPA)</description>
+    <description>Cœur du silo Notifications MyFamilyBudget (règles de notification pures, dispatch, paramètres et canal Web Push, sans Spring ni JPA)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>notifications-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <!--
+            Web Push (notifications push mobile via PWA, RFC 8291/8292) — voir WebPushNotificationChannel.
+            bcprov-jdk18on est requis par web-push pour le chiffrement AES128GCM/ECDH ; httpclient est déjà une
+            dépendance transitive de web-push mais est explicitée ici pour fiabiliser la résolution.
+        -->
+        <dependency>
+            <groupId>nl.martijndwars</groupId>
+            <artifactId>web-push</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
         </dependency>
 
         <dependency>

@@ -1,9 +1,12 @@
 package com.moe.myfamilybudget.config;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService;
 import com.moe.myfamilybudget.domain.analysis.core.DefaultAnalyseCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculationService;
@@ -28,9 +31,18 @@ import com.moe.myfamilybudget.domain.market.port.MarketSnapshotStore;
 import com.moe.myfamilybudget.domain.market.port.MortgageRateProvider;
 import com.moe.myfamilybudget.domain.market.port.RegulatedRatesProvider;
 import com.moe.myfamilybudget.domain.market.port.YieldCurveProvider;
+import com.moe.myfamilybudget.domain.notifications.calculation.NotificationDispatchService;
+import com.moe.myfamilybudget.domain.notifications.calculation.NotificationSettingsService;
 import com.moe.myfamilybudget.domain.notifications.core.BalanceFloorRule;
 import com.moe.myfamilybudget.domain.notifications.core.DebitThresholdRule;
+import com.moe.myfamilybudget.domain.notifications.core.DefaultNotificationDispatchService;
+import com.moe.myfamilybudget.domain.notifications.core.DefaultNotificationSettingsService;
 import com.moe.myfamilybudget.domain.notifications.core.ObjectifReachableRule;
+import com.moe.myfamilybudget.domain.notifications.core.channel.WebPushNotificationChannel;
+import com.moe.myfamilybudget.domain.notifications.port.NotificationChannel;
+import com.moe.myfamilybudget.domain.notifications.port.NotificationSentLogStore;
+import com.moe.myfamilybudget.domain.notifications.port.NotificationSettingsStore;
+import com.moe.myfamilybudget.domain.notifications.port.PushSubscriptionStore;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationService;
@@ -43,7 +55,9 @@ import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionServ
 import com.moe.myfamilybudget.domain.wealth.core.DefaultPlacementEvolutionService;
 
 /**
- * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080, MAVEN-090). SILO-170 : l'intégration Enable Banking du silo Banque
+ * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080, MAVEN-090). SILO-180 : le dispatch, les paramètres et le canal Web Push du silo Notifications (dans
+ * {@code notifications-core}) sont câblés ici ; le contrôle automatique après mutation du budget reste dans
+ * {@code NotificationBudgetMutationListener}. SILO-170 : l'intégration Enable Banking du silo Banque
  * ({@code EnableBankingConfig}, {@code EnableBankingClient}, {@code DefaultEnableBankingSyncService}, dans
  * {@code bank-pointage-core}) est câblée ici avec les propriétés {@code myfamilybudget.enable-banking.*}. SILO-150 à SILO-159 : les moteurs Retraite, Fiscalité, Patrimoine,
  * Trésorerie, Banque/Pointage, Analyse et Crédit sont exposés sous leur interface ({@code retirement-api}, {@code tax-api},
@@ -118,6 +132,34 @@ public class DomainEngineConfig {
     @Bean
     public ObjectifReachableRule objectifReachableRule() {
         return new ObjectifReachableRule();
+    }
+
+    @Bean
+    public NotificationSettingsService notificationSettingsService(NotificationSettingsStore store) {
+        return new DefaultNotificationSettingsService(store);
+    }
+
+    /**
+     * Canal Web Push : se désactive silencieusement sans clés VAPID (propriétés
+     * {@code myfamilybudget.notifications.push.*}).
+     */
+    @Bean
+    public WebPushNotificationChannel webPushNotificationChannel(PushSubscriptionStore subscriptionStore,
+            ObjectMapper objectMapper,
+            @Value("${myfamilybudget.notifications.push.vapid-public-key:}") String vapidPublicKey,
+            @Value("${myfamilybudget.notifications.push.vapid-private-key:}") String vapidPrivateKey,
+            @Value("${myfamilybudget.notifications.push.vapid-subject:}") String vapidSubject) {
+        return new WebPushNotificationChannel(subscriptionStore, objectMapper, vapidPublicKey, vapidPrivateKey,
+                vapidSubject);
+    }
+
+    @Bean
+    public NotificationDispatchService notificationDispatchService(DebitThresholdRule debitThresholdRule,
+            BalanceFloorRule balanceFloorRule, ObjectifReachableRule objectifReachableRule,
+            List<NotificationChannel> channels, NotificationSettingsService settingsService,
+            NotificationSentLogStore sentLogStore) {
+        return new DefaultNotificationDispatchService(debitThresholdRule, balanceFloorRule, objectifReachableRule,
+                channels, settingsService, sentLogStore);
     }
 
     @Bean(initMethod = "init")

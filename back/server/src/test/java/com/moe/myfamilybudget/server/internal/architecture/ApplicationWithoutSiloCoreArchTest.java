@@ -50,6 +50,17 @@ class ApplicationWithoutSiloCoreArchTest {
                     + "ni de la persistance, ni de Spring (SILO-170)");
 
     @ArchTest
+    static final ArchRule NOTIFICATIONS_CORE_DOES_NOT_USE_SERVER_APPLICATION_PERSISTENCE_OR_SPRING = noClasses()
+            .that().resideInAPackage("com.moe.myfamilybudget.domain.notifications.core..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "com.moe.myfamilybudget.server..", "com.moe.myfamilybudget.application..",
+                    "com.moe.myfamilybudget.persistence..", "org.springframework..",
+                    "com.moe.myfamilybudget.domain.bankpointage..", "com.moe.myfamilybudget.domain.goals..",
+                    "com.moe.myfamilybudget.domain.wealth..", "com.moe.myfamilybudget.domain.treasury..")
+            .as("le cœur du silo Notifications (dispatch, paramètres, canal Web Push) ne dépend ni de server, "
+                    + "ni d'application, ni de la persistance, ni de Spring, ni d'un autre silo (SILO-180)");
+
+    @ArchTest
     static void known_silo_cores_are_in_the_analyzed_scope(JavaClasses classes) {
         for (String corePackage : SILO_CORE_PACKAGES) {
             assertTrue(classes.containPackage(corePackage),

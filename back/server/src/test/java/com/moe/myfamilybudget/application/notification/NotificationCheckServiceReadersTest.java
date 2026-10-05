@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification;
+package com.moe.myfamilybudget.application.notification;
 
 import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
 import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
@@ -27,18 +27,21 @@ import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.notifications.core.BalanceFloorRule;
 import com.moe.myfamilybudget.domain.notifications.core.DebitThresholdRule;
 import com.moe.myfamilybudget.domain.notifications.core.ObjectifReachableRule;
-import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
-import com.moe.myfamilybudget.persistence.repository.NotificationSentLogRepository;
+import com.moe.myfamilybudget.domain.notifications.calculation.NotificationSettingsService;
+import com.moe.myfamilybudget.domain.notifications.core.DefaultNotificationDispatchService;
+import com.moe.myfamilybudget.domain.notifications.port.NotificationChannel;
+import com.moe.myfamilybudget.domain.notifications.port.NotificationSentLogStore;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
 
 /**
- * NOTIF-010 : {@code NotificationDispatchService} lit le budget uniquement via les ports de lecture, et
- * seulement pour les règles actives. Les règles et la factory restent testées séparément.
+ * NOTIF-010, déplacé par SILO-180 : {@code NotificationCheckService} (application) lit le budget uniquement via
+ * les ports de lecture, et seulement pour les règles actives (le dispatch du silo n'appelle l'assemblage d'une
+ * règle que si elle est active). Les règles et la factory restent testées séparément.
  */
-class NotificationDispatchServiceReadersTest {
+class NotificationCheckServiceReadersTest {
 
     private BankReader bankReader;
     private TresorerieSettingsReader settingsReader;
@@ -46,8 +49,8 @@ class NotificationDispatchServiceReadersTest {
     private PatrimoineReader patrimoineReader;
     private NotificationSettingsService settingsService;
     private NotificationChannel channel;
-    private NotificationSentLogRepository sentLogRepository;
-    private NotificationDispatchService service;
+    private NotificationSentLogStore sentLogStore;
+    private NotificationCheckService service;
 
     @BeforeEach
     void setUp() {
@@ -57,11 +60,12 @@ class NotificationDispatchServiceReadersTest {
         patrimoineReader = mock(PatrimoineReader.class);
         settingsService = mock(NotificationSettingsService.class);
         channel = mock(NotificationChannel.class);
-        sentLogRepository = mock(NotificationSentLogRepository.class);
+        sentLogStore = mock(NotificationSentLogStore.class);
 
-        service = new NotificationDispatchService(new DebitThresholdRule(), new BalanceFloorRule(),
-                new ObjectifReachableRule(), List.of(channel), settingsService, bankReader, settingsReader,
-                goalReader, patrimoineReader, sentLogRepository);
+        service = new NotificationCheckService(
+                new DefaultNotificationDispatchService(new DebitThresholdRule(), new BalanceFloorRule(),
+                        new ObjectifReachableRule(), List.of(channel), settingsService, sentLogStore),
+                bankReader, settingsReader, goalReader, patrimoineReader);
     }
 
     @Test
@@ -131,14 +135,14 @@ class NotificationDispatchServiceReadersTest {
     }
 
     @Test
-    @DisplayName("Déclenchement automatique après commit : mêmes lectures par ports")
+    @DisplayName("Déclenchement automatique : mêmes lectures par ports")
     void automaticTriggerUsesReaders() {
         enable(true, false, false);
         when(bankReader.getBankImport()).thenReturn(new BankImportModel(
                 List.of(new BankTransactionModel("t1", LocalDate.now().toString(), "Garage", new BigDecimal("-900"))),
                 List.of(), List.of()));
 
-        service.onBudgetMutated(new BudgetMutatedEvent("test"));
+        assertThat(service.runAutomaticCheck()).isEqualTo(1);
 
         verify(bankReader).getBankImport();
         verify(channel).send(any(NotificationMessage.class));

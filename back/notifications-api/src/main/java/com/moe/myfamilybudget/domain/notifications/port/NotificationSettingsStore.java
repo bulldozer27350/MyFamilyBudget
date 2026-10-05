@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification;
+package com.moe.myfamilybudget.domain.notifications.port;
 
 import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
 import java.util.Optional;

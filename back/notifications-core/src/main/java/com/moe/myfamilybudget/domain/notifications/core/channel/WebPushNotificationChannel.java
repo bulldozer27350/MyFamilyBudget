@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.notification.channel;
+package com.moe.myfamilybudget.domain.notifications.core.channel;
 
 import java.security.Security;
 import java.util.List;
@@ -8,15 +8,13 @@ import org.apache.http.HttpResponse;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.moe.myfamilybudget.server.internal.notification.NotificationChannel;
 import com.moe.myfamilybudget.domain.notifications.model.NotificationMessage;
-import com.moe.myfamilybudget.persistence.entity.PushSubscriptionEntity;
-import com.moe.myfamilybudget.persistence.repository.PushSubscriptionRepository;
+import com.moe.myfamilybudget.domain.notifications.model.PushSubscriptionModel;
+import com.moe.myfamilybudget.domain.notifications.port.NotificationChannel;
+import com.moe.myfamilybudget.domain.notifications.port.PushSubscriptionStore;
 
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;
@@ -36,8 +34,11 @@ import nl.martijndwars.webpush.Subscription;
  * Sans clés VAPID configurées (variables d'environnement absentes), le canal se désactive
  * silencieusement au démarrage — même logique de dégradation gracieuse que la synchronisation
  * Enable Banking ou la clé API Banque de France.
+ *
+ * Depuis SILO-180, cette classe vit dans {@code notifications-core}, sans Spring ni JPA : les abonnements passent
+ * par le port {@link PushSubscriptionStore} et les clés VAPID (propriétés
+ * {@code myfamilybudget.notifications.push.*}) sont fournies par le composition root ({@code DomainEngineConfig}).
  */
-@Component
 public class WebPushNotificationChannel implements NotificationChannel {
 
     private static final Logger LOG = LoggerFactory.getLogger(WebPushNotificationChannel.class);
@@ -46,15 +47,13 @@ public class WebPushNotificationChannel implements NotificationChannel {
         Security.addProvider(new BouncyCastleProvider());
     }
 
-    private final PushSubscriptionRepository subscriptionRepository;
+    private final PushSubscriptionStore subscriptionStore;
     private final ObjectMapper objectMapper;
     private final PushService pushService;
 
-    public WebPushNotificationChannel(PushSubscriptionRepository subscriptionRepository, ObjectMapper objectMapper,
-            @Value("${myfamilybudget.notifications.push.vapid-public-key:}") String vapidPublicKey,
-            @Value("${myfamilybudget.notifications.push.vapid-private-key:}") String vapidPrivateKey,
-            @Value("${myfamilybudget.notifications.push.vapid-subject:}") String vapidSubject) {
-        this.subscriptionRepository = subscriptionRepository;
+    public WebPushNotificationChannel(PushSubscriptionStore subscriptionStore, ObjectMapper objectMapper,
+            String vapidPublicKey, String vapidPrivateKey, String vapidSubject) {
+        this.subscriptionStore = subscriptionStore;
         this.objectMapper = objectMapper;
         this.pushService = buildPushService(vapidPublicKey, vapidPrivateKey, vapidSubject);
     }
@@ -85,29 +84,29 @@ public class WebPushNotificationChannel implements NotificationChannel {
         if (pushService == null) {
             return;
         }
-        List<PushSubscriptionEntity> subscriptions = subscriptionRepository.findAll();
+        List<PushSubscriptionModel> subscriptions = subscriptionStore.findAll();
         if (subscriptions.isEmpty()) {
             return;
         }
         String payload = toPayload(message);
-        for (PushSubscriptionEntity sub : subscriptions) {
+        for (PushSubscriptionModel sub : subscriptions) {
             sendTo(sub, payload);
         }
     }
 
-    private void sendTo(PushSubscriptionEntity sub, String payload) {
+    private void sendTo(PushSubscriptionModel sub, String payload) {
         try {
-            Subscription.Keys keys = new Subscription.Keys(sub.getP256dh(), sub.getAuth());
-            Subscription subscription = new Subscription(sub.getEndpoint(), keys);
+            Subscription.Keys keys = new Subscription.Keys(sub.p256dh(), sub.auth());
+            Subscription subscription = new Subscription(sub.endpoint(), keys);
             HttpResponse response = pushService.send(new Notification(subscription, payload));
             int status = response.getStatusLine().getStatusCode();
             if (status == 404 || status == 410) {
                 // Abonnement expiré ou révoqué côté navigateur : nettoyage.
-                subscriptionRepository.deleteById(sub.getId());
+                subscriptionStore.deleteById(sub.id());
             }
         } catch (Exception e) {
             LOG.warn("Échec de l'envoi push vers un abonnement (endpoint tronqué : {})",
-                    truncate(sub.getEndpoint()), e);
+                    truncate(sub.endpoint()), e);
         }
     }
 
