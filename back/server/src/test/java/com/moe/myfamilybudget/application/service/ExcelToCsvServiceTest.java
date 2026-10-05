@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
+import com.moe.myfamilybudget.domain.bankpointage.core.DefaultBankImportCalculationService;
 import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
@@ -41,7 +42,8 @@ class ExcelToCsvServiceTest {
         pm.init();
         StatementBankImportMapper mapper = new StatementBankImportMapper();
         controller = new StatementBankImportServiceImpl(
-                new BankPersistenceAdapter(pm), new BankImportCommandService(new BankPersistenceAdapter(pm)), mapper, service);
+                new BankPersistenceAdapter(pm), new BankImportCommandService(new BankPersistenceAdapter(pm)), mapper, service,
+                new DefaultBankImportCalculationService());
     }
 
     @Test
@@ -124,7 +126,7 @@ class ExcelToCsvServiceTest {
                 xlsxBytes);
 
         String csv = service.convert(file, "releve.xlsx");
-        java.util.List<java.util.List<String>> rows = com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculator.parseCSVText(csv, ";");
+        java.util.List<java.util.List<String>> rows = new DefaultBankImportCalculationService().parseCSVText(csv, ";");
         java.util.List<java.util.List<String>> dataRows = rows.subList(1, rows.size());
 
         // Existing transactions in DB (with date "2026-01-15" and "2026-01-16")
@@ -139,7 +141,7 @@ class ExcelToCsvServiceTest {
                 );
 
         com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel summary =
-                com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculator.importTransactions(
+                new DefaultBankImportCalculationService().importTransactions(
                         dataRows,
                         java.util.List.of("date", "label", "amount", "type"),
                         mapping,

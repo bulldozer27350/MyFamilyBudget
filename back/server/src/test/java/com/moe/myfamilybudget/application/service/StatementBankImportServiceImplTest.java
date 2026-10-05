@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
+import com.moe.myfamilybudget.domain.bankpointage.core.DefaultBankImportCalculationService;
 import com.moe.myfamilybudget.api.model.BankTransactionSplitDto;
 import com.moe.myfamilybudget.api.model.ImportBankTransactionsRequestDto;
 import com.moe.myfamilybudget.api.model.ReconcilePendingOperations200Response;
@@ -38,11 +39,11 @@ class StatementBankImportServiceImplTest {
         StatementBankImportMapper mapper = new StatementBankImportMapper();
         service = new StatementBankImportServiceImpl(
                 new BankPersistenceAdapter(persistenceManager), new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)),
-                mapper, new ExcelToCsvService());
+                mapper, new ExcelToCsvService(), new DefaultBankImportCalculationService());
         pendingService = new PendingOperationsServiceImpl(
                 new BankPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 SettingsReaderTestFactory.of(persistenceManager), new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)),
-                mapper);
+                mapper, new DefaultBankImportCalculationService());
     }
 
     @Test

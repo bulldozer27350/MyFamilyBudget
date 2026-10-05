@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        MAVEN-060 puis SILO-154 (doc/architecture/21-plan-silotage.md) : API du silo Banque/Pointage
+        (interfaces de service BankImportCalculationService et PointageCalculationService, modèle d'import
+        bancaire, contrats d'entrée, ligne budgétaire neutre, ports Reader/Writer). Les moteurs
+        `DefaultBankImportCalculationService` et `DefaultPointageCalculationService` vivent dans
+        `bank-pointage-core`. Nom de module Java inchangé (`com.moe.myfamilybudget.domain.bankpointage`).
+
+        Aucune dépendance vers un autre module du reactor, ni vers Spring, JPA, OpenAPI,
+        PersistenceManager ou BudgetDataModel. Aucune dépendance de production ni de test : le module ne
+        contient que des contrats, testés par `bank-pointage-core` (slf4j-api passe dans le cœur).
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>bank-pointage-api</artifactId>
+    <packaging>jar</packaging>
+    <name>bank-pointage-api</name>
+    <description>API du silo Banque/Pointage MyFamilyBudget (contrats, ports, interfaces de service ; sans Spring ni JPA)</description>
+
+</project>

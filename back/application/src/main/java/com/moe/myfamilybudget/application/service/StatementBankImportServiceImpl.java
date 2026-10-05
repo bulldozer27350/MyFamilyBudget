@@ -23,7 +23,7 @@ import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.application.error.DataParsingException;
 import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
-import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculator;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
@@ -48,15 +48,18 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
     private final BankImportCommandService bankImportCommandService;
     private final StatementBankImportMapper mapper;
     private final ExcelToCsvService excelToCsvService;
+    private final BankImportCalculationService bankImportCalculationService;
 
     public StatementBankImportServiceImpl(BankReader bankReader,
                                           BankImportCommandService bankImportCommandService,
                                           StatementBankImportMapper mapper,
-                                          ExcelToCsvService excelToCsvService) {
+                                          ExcelToCsvService excelToCsvService,
+                                          BankImportCalculationService bankImportCalculationService) {
         this.bankReader = bankReader;
         this.bankImportCommandService = bankImportCommandService;
         this.mapper = mapper;
         this.excelToCsvService = excelToCsvService;
+        this.bankImportCalculationService = bankImportCalculationService;
     }
 
     // ---------------------------------------------------------------------------
@@ -116,12 +119,12 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         if (mappingModel.labelCol() != null) colRoles.add("label");
         if (mappingModel.amountCol() != null) colRoles.add("amount");
 
-        List<List<String>> rawRows = BankImportCalculator.parseCSVText(csvText, mappingModel.delimiter());
+        List<List<String>> rawRows = bankImportCalculationService.parseCSVText(csvText, mappingModel.delimiter());
         if (mappingModel.hasHeader() && !rawRows.isEmpty()) {
             rawRows = rawRows.subList(1, rawRows.size());
         }
 
-        BankImportSummaryModel summary = BankImportCalculator.importTransactions(
+        BankImportSummaryModel summary = bankImportCalculationService.importTransactions(
                 rawRows, colRoles, mappingModel, current.transactions(), current.rules()
         );
 
@@ -157,7 +160,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         }
 
         try {
-            BankImportSummaryModel summary = BankImportCalculator.importTransactions(
+            BankImportSummaryModel summary = bankImportCalculationService.importTransactions(
                     request.getRawRows(),
                     request.getColRoles(),
                     mappingModel,
@@ -197,7 +200,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         BankImportModel current = bankReader.getBankImport();
         List<BankImportModel.BankImportRuleModel> rules = current.rules() != null ? current.rules() : Collections.emptyList();
 
-        List<BankImportModel.BankTransactionModel> categorized = BankImportCalculator.applyRulesToTransactions(List.of(tx), rules);
+        List<BankImportModel.BankTransactionModel> categorized = bankImportCalculationService.applyRulesToTransactions(List.of(tx), rules);
         BankImportModel.BankTransactionModel finalTx = (!categorized.isEmpty()) ? categorized.get(0) : tx;
 
         List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>(
@@ -421,7 +424,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
             }
         }
 
-        List<BankImportModel.BankTransactionModel> finalTxs = BankImportCalculator.applyRulesToTransactions(updatedTxs, newRules);
+        List<BankImportModel.BankTransactionModel> finalTxs = bankImportCalculationService.applyRulesToTransactions(updatedTxs, newRules);
 
         BankImportModel updatedModel = new BankImportModel(
                 current.columnMapping(),
@@ -442,7 +445,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         List<BankImportModel.BankTransactionModel> currentTxs = current.transactions() != null ? current.transactions() : Collections.emptyList();
         List<BankImportModel.BankImportRuleModel> currentRules = current.rules() != null ? current.rules() : Collections.emptyList();
 
-        List<BankImportModel.BankTransactionModel> recalculated = BankImportCalculator.applyRulesToTransactions(currentTxs, currentRules);
+        List<BankImportModel.BankTransactionModel> recalculated = bankImportCalculationService.applyRulesToTransactions(currentTxs, currentRules);
 
         BankImportModel updatedModel = new BankImportModel(
                 current.columnMapping(),

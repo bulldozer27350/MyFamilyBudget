@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.domain.bankpointage.core.DefaultPointageCalculationService;
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
 import com.moe.myfamilybudget.domain.treasury.core.DefaultTresorerieCalculationService;
@@ -74,6 +75,7 @@ class TresorerieServiceImplTest {
                 new DefaultRetirementCalculationService(),
                 new DefaultTaxCalculationService(),
                 new DefaultTresorerieCalculationService(),
+                new DefaultPointageCalculationService(),
                 settingsAdapter,
                 settingsAdapter,
                 settingsAdapter,

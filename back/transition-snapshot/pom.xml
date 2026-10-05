@@ -46,7 +46,7 @@
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-bank-pointage</artifactId>
+            <artifactId>bank-pointage-api</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>

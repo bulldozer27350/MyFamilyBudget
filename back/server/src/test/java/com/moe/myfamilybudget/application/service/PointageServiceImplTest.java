@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.domain.bankpointage.core.DefaultPointageCalculationService;
 import com.moe.myfamilybudget.application.mapper.PointageMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
@@ -34,7 +35,8 @@ class PointageServiceImplTest {
         service = new PointageServiceImpl(
                 new BankPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), SettingsReaderTestFactory.of(persistenceManager),
-                new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)), new PointageMapper());
+                new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)), new PointageMapper(),
+                new DefaultPointageCalculationService());
     }
 
     @Test

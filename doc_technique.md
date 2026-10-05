@@ -182,9 +182,12 @@ et `PlacementEvolutionService`, `com.moe.myfamilybudget.domain.wealth.*`) et `ba
 `DefaultPatrimoineProjectionService` et `DefaultPlacementEvolutionService`, règles de pause des versements, SILO-152) ;
 il ne dépend d'aucun autre module du reactor, ses deux moteurs sont déclarés comme beans par `config/DomainEngineConfig`
 et `application` ne connaît que les interfaces.
-Le domaine Banque/Pointage (modèle d'import bancaire, `BankImportCalculator`, `PointageCalculator`, contrats
-d'entrée, ports) vit dans `back/domain-bank-pointage` (`com.moe.myfamilybudget.domain.bankpointage.*`), sans
-dépendance vers un autre module du reactor ; Enable Banking, adapters JPA et contrôleurs restent dans `server`.
+Le domaine Banque/Pointage vit dans `back/bank-pointage-api` (modèle d'import bancaire, contrats d'entrée, ports,
+interfaces `BankImportCalculationService` et `PointageCalculationService`,
+`com.moe.myfamilybudget.domain.bankpointage.*`) et `back/bank-pointage-core` (moteurs
+`DefaultBankImportCalculationService` et `DefaultPointageCalculationService`, SILO-154), sans dépendance vers un autre
+module du reactor ; ses moteurs sont déclarés comme beans par `config/DomainEngineConfig` et `application` ne connaît
+que les interfaces ; Enable Banking, adapters JPA et contrôleurs restent dans `server`.
 Le domaine Trésorerie vit dans `back/treasury-api` (interface `TresorerieCalculationService`, contrats d'entrée/sortie,
 modèles, ports, `com.moe.myfamilybudget.domain.treasury.*`) et `back/treasury-core` (moteur
 `DefaultTresorerieCalculationService`, SILO-153) ; il ne dépend d'aucun autre module du reactor et porte ses propres

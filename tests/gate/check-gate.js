@@ -14,8 +14,8 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const BACKEND_TESTS = path.join(ROOT, 'back', 'server', 'src', 'test');
-// Tests unitaires des modules de domaine extraits du reactor (MAVEN-020 : domain-retirement devenu retirement-core (SILO-150), MAVEN-030 : domain-tax devenu tax-core (SILO-151), MAVEN-040 : domain-wealth devenu wealth-core (SILO-152), MAVEN-060 : domain-bank-pointage, MAVEN-050 : domain-treasury devenu treasury-core (SILO-153), MAVEN-070 : domain-analysis, MAVEN-080 : domain-credit, domain-goals, MAVEN-090 : domain-notifications)
-const MODULE_TESTS = ['retirement-core', 'tax-core', 'wealth-core', 'domain-bank-pointage', 'treasury-core', 'domain-analysis', 'domain-credit', 'domain-goals', 'domain-notifications'].map(m => path.join(ROOT, 'back', m, 'src', 'test'));
+// Tests unitaires des modules de domaine extraits du reactor (MAVEN-020 : domain-retirement devenu retirement-core (SILO-150), MAVEN-030 : domain-tax devenu tax-core (SILO-151), MAVEN-040 : domain-wealth devenu wealth-core (SILO-152), MAVEN-060 : domain-bank-pointage devenu bank-pointage-core (SILO-154), MAVEN-050 : domain-treasury devenu treasury-core (SILO-153), MAVEN-070 : domain-analysis, MAVEN-080 : domain-credit, domain-goals, MAVEN-090 : domain-notifications)
+const MODULE_TESTS = ['retirement-core', 'tax-core', 'wealth-core', 'bank-pointage-core', 'treasury-core', 'domain-analysis', 'domain-credit', 'domain-goals', 'domain-notifications'].map(m => path.join(ROOT, 'back', m, 'src', 'test'));
 const SUREFIRE_DIR = path.join(ROOT, 'back', 'server', 'target', 'surefire-reports');
 const E2E_DIR = path.join(ROOT, 'tests', 'e2e');
 const WORKFLOW = path.join(ROOT, '.github', 'workflows', 'ci-cd.yml');
@@ -27,7 +27,8 @@ const POMS = [
   path.join(ROOT, 'back', 'tax-core', 'pom.xml'),
   path.join(ROOT, 'back', 'wealth-api', 'pom.xml'),
   path.join(ROOT, 'back', 'wealth-core', 'pom.xml'),
-  path.join(ROOT, 'back', 'domain-bank-pointage', 'pom.xml'),
+  path.join(ROOT, 'back', 'bank-pointage-api', 'pom.xml'),
+  path.join(ROOT, 'back', 'bank-pointage-core', 'pom.xml'),
   path.join(ROOT, 'back', 'treasury-api', 'pom.xml'),
   path.join(ROOT, 'back', 'treasury-core', 'pom.xml'),
   path.join(ROOT, 'back', 'domain-analysis', 'pom.xml'),

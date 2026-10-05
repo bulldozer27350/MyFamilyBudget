@@ -12,7 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * Convertit une transaction Enable Banking (JSON) en ligne {@code (date, libellé, type, montant)}
- * dans le format attendu par {@code BankImportCalculator.importTransactions}
+ * dans le format attendu par {@code BankImportCalculationService.importTransactions}
  * ({@code colRoles = ["date", "label", "type", "amount"]}).
  */
 final class EnableBankingTransactionMapper {

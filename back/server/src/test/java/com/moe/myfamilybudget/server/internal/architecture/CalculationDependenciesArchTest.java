@@ -24,7 +24,7 @@ import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculator;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculationService;
 import com.moe.myfamilybudget.application.model.PointageModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
@@ -117,7 +117,7 @@ class CalculationDependenciesArchTest {
                     + "TaxCalculationInput (doc/architecture/04-domaine-fiscalite.md)");
 
     /**
-     * Garde-fou du domaine Pointage (RF-502) : {@link PointageCalculator} ne reçoit que
+     * Garde-fou du domaine Pointage (RF-502) : {@link PointageCalculationService} ne reçoit que
      * {@code PointageInput} (et les types de {@code BankImportModel}, calculateur déjà pur) ; il ne
      * connaît ni le budget, ni les charges, revenus, placements, paramètres, ni le modèle de lecture
      * {@link PointageModel} de {@code GET /pointage}. Règle stricte (sans gel) : le domaine ne
@@ -125,7 +125,7 @@ class CalculationDependenciesArchTest {
      */
     @ArchTest
     static final ArchRule POINTAGE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
-            .that().areAssignableTo(PointageCalculator.class)
+            .that().areAssignableTo(PointageCalculationService.class)
             .should().dependOnClassesThat().belongToAnyOf(
                     BudgetDataModel.class,
                     ChargeModel.class,
@@ -133,7 +133,7 @@ class CalculationDependenciesArchTest {
                     PlacementModel.class,
                     SettingsModel.class,
                     PointageModel.class)
-            .as("PointageCalculator ne doit dépendre d'aucun modèle du budget : il consomme uniquement "
+            .as("PointageCalculationService ne doit dépendre d'aucun modèle du budget : il consomme uniquement "
                     + "PointageInput (doc/architecture/07-domaine-banque-pointage.md)");
 
     /**

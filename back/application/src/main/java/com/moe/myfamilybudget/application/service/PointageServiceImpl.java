@@ -11,7 +11,7 @@ import com.moe.myfamilybudget.api.controller.PointageApi;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.application.mapper.PointageMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculator;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculationService;
 import com.moe.myfamilybudget.application.model.PointageModel;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
@@ -37,6 +37,7 @@ public class PointageServiceImpl implements PointageApi {
     private final SettingsReader settingsReader;
     private final BankImportCommandService bankImportCommandService;
     private final PointageMapper mapper;
+    private final PointageCalculationService pointageCalculationService;
 
     public PointageServiceImpl(
             BankReader bankReader,
@@ -44,13 +45,15 @@ public class PointageServiceImpl implements PointageApi {
             PatrimoineReader patrimoineReader,
             SettingsReader settingsReader,
             BankImportCommandService bankImportCommandService,
-            PointageMapper mapper) {
+            PointageMapper mapper,
+            PointageCalculationService pointageCalculationService) {
         this.bankReader = bankReader;
         this.budgetReader = budgetReader;
         this.patrimoineReader = patrimoineReader;
         this.settingsReader = settingsReader;
         this.bankImportCommandService = bankImportCommandService;
         this.mapper = mapper;
+        this.pointageCalculationService = pointageCalculationService;
     }
 
     @Override
@@ -80,7 +83,7 @@ public class PointageServiceImpl implements PointageApi {
         List<BankImportModel.MatchingLinkModel> newLinks = mapper.toMatchingLinks(body);
         BankImportModel currentImport = bankReader.getBankImport();
 
-        BankImportModel updatedImport = PointageCalculator.updateMatchingForMonth(currentImport, monthISO, newLinks);
+        BankImportModel updatedImport = pointageCalculationService.updateMatchingForMonth(currentImport, monthISO, newLinks);
         bankImportCommandService.updateBankImport(updatedImport);
 
         return ResponseEntity.ok().build();

@@ -13,7 +13,7 @@ import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
  * couche application pour l'écran de pointage (le front calcule encore lui-même ses lignes du mois).
  *
  * <p>Depuis RF-501, ce n'est plus une entrée de calcul : aucun calculateur ne le consomme. Le moteur
- * de pointage ({@link PointageCalculator}) travaille sur
+ * de pointage ({@code PointageCalculationService}) travaille sur
  * {@link com.moe.myfamilybudget.domain.bankpointage.calculation.PointageInput}, qui ne porte ni charges,
  * ni revenus, ni placements, ni paramètres. Ce modèle ne peut disparaître qu'avec une évolution du
  * contrat {@code GET /pointage}, hors périmètre de RF-501.

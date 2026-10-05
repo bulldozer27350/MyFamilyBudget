@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.moe.myfamilybudget.server.internal.enablebanking.EnableBankingSyncResult.AccountResult;
-import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculator;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
@@ -23,7 +23,7 @@ import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 
 /**
  * Récupère les transactions bancaires via Enable Banking (DSP2) et les importe, en réutilisant
- * directement {@link BankImportCalculator#importTransactions} — le même moteur que l'import CSV
+ * directement {@link BankImportCalculationService#importTransactions} — le même moteur que l'import CSV
  * manuel, avec la même déduplication (date + libellé + montant). Contrairement à un script
  * externe, aucun appel HTTP n'est nécessaire ici pour "revenir" vers l'application : le mapping
  * et la persistance se font dans le même processus.
@@ -46,18 +46,21 @@ public class EnableBankingSyncService {
     private final BankReader bankReader;
     private final EnableBankingSyncStateRepository stateRepository;
     private final BankImportCommandService bankImportCommandService;
+    private final BankImportCalculationService bankImportCalculationService;
 
     public EnableBankingSyncService(
             EnableBankingConfig config,
             EnableBankingClient client,
             BankReader bankReader,
             EnableBankingSyncStateRepository stateRepository,
-            BankImportCommandService bankImportCommandService) {
+            BankImportCommandService bankImportCommandService,
+            BankImportCalculationService bankImportCalculationService) {
         this.config = config;
         this.client = client;
         this.bankReader = bankReader;
         this.stateRepository = stateRepository;
         this.bankImportCommandService = bankImportCommandService;
+        this.bankImportCalculationService = bankImportCalculationService;
     }
 
     public boolean isConfigured() {
@@ -125,7 +128,7 @@ public class EnableBankingSyncService {
         BankImportModel.BankColumnMappingModel mapping = new BankImportModel.BankColumnMappingModel(
                 ";", "YYYY-MM-DD", false, null, null, null, null);
 
-        BankImportSummaryModel summary = BankImportCalculator.importTransactions(
+        BankImportSummaryModel summary = bankImportCalculationService.importTransactions(
                 rows, COL_ROLES, mapping,
                 current.transactions() != null ? current.transactions() : Collections.emptyList(),
                 current.rules());

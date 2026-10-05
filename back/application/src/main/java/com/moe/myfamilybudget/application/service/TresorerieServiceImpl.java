@@ -31,7 +31,7 @@ import com.moe.myfamilybudget.domain.treasury.model.CategoryOptionModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculator;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculationService;
 import com.moe.myfamilybudget.domain.treasury.model.RealAverageModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieResultModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSuggestionModel;
@@ -76,6 +76,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
 
     private final TresorerieMapper mapper;
     private final TresorerieCalculationService calculationService;
+    private final PointageCalculationService pointageCalculationService;
     private final TreasuryInputFactory treasuryInputFactory;
     private final TresorerieCommandService tresorerieCommandService;
     private final RetirementSettingsReader retirementSettingsReader;
@@ -94,6 +95,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
             RetirementCalculationService retirementCalculationService,
             TaxCalculationService taxCalculationService,
             TresorerieCalculationService tresorerieCalculationService,
+            PointageCalculationService pointageCalculationService,
             RetirementSettingsReader retirementSettingsReader,
             TaxSettingsReader taxSettingsReader,
             TresorerieSettingsReader tresorerieSettingsReader,
@@ -106,6 +108,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
         this.mapper = mapper;
         this.tresorerieCommandService = tresorerieCommandService;
         this.calculationService = tresorerieCalculationService;
+        this.pointageCalculationService = pointageCalculationService;
         this.treasuryInputFactory = new TreasuryInputFactory(retirementCalculationService, taxCalculationService);
         this.retirementSettingsReader = retirementSettingsReader;
         this.taxSettingsReader = taxSettingsReader;
@@ -283,7 +286,7 @@ public class TresorerieServiceImpl implements TresorerieApi {
 
                 BigDecimal sum = BigDecimal.ZERO;
                 for (String refId : l.txIds()) {
-                    BigDecimal amt = PointageCalculator.resolveAmount(refId, txById);
+                    BigDecimal amt = pointageCalculationService.resolveAmount(refId, txById);
                     if (amt != null) {
                         sum = sum.add("revenu".equals(kind) ? amt : amt.negate());
                     }

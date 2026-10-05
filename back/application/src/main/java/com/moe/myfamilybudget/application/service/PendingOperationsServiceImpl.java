@@ -14,7 +14,7 @@ import com.moe.myfamilybudget.api.model.ReconcilePendingOperations200Response;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.AutoMatchResultModel;
-import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculator;
+import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
@@ -38,18 +38,21 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
     private final SettingsReader settingsReader;
     private final BankImportCommandService bankImportCommandService;
     private final StatementBankImportMapper mapper;
+    private final BankImportCalculationService bankImportCalculationService;
 
     public PendingOperationsServiceImpl(
             BankReader bankReader,
             BudgetReader budgetReader,
             SettingsReader settingsReader,
             BankImportCommandService bankImportCommandService,
-            StatementBankImportMapper mapper) {
+            StatementBankImportMapper mapper,
+            BankImportCalculationService bankImportCalculationService) {
         this.bankReader = bankReader;
         this.budgetReader = budgetReader;
         this.settingsReader = settingsReader;
         this.bankImportCommandService = bankImportCommandService;
         this.mapper = mapper;
+        this.bankImportCalculationService = bankImportCalculationService;
     }
 
     // ---------------------------------------------------------------------------
@@ -71,7 +74,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
     @Override
     public ResponseEntity<ReconcilePendingOperations200Response> reconcilePendingOperations(Object body) {
         BankImportModel current = bankReader.getBankImport();
-        AutoMatchResultModel matchResult = BankImportCalculator.autoMatchPendingOperations(
+        AutoMatchResultModel matchResult = bankImportCalculationService.autoMatchPendingOperations(
                 current.pendingOperations(), current.transactions()
         );
 
@@ -140,7 +143,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         boolean usePurchaseDate = Boolean.parseBoolean(String.valueOf(configMap.getOrDefault("usePurchaseDate", map.getOrDefault("usePurchaseDate", false))));
 
         BankImportModel current = bankReader.getBankImport();
-        com.moe.myfamilybudget.domain.bankpointage.model.PendingImportSummaryModel summary = BankImportCalculator.importPendingCB(
+        com.moe.myfamilybudget.domain.bankpointage.model.PendingImportSummaryModel summary = bankImportCalculationService.importPendingCB(
                 rawRows,
                 colRoles,
                 dateFormat,
@@ -172,7 +175,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
 
         if (manualOpId != null && !manualOpId.isBlank()) {
             BankImportModel current = bankReader.getBankImport();
-            List<BankImportModel.PendingOperationModel> mergedList = BankImportCalculator.mergePendingOperation(
+            List<BankImportModel.PendingOperationModel> mergedList = bankImportCalculationService.mergePendingOperation(
                     manualOpId,
                     bankOp,
                     current.pendingOperations()
@@ -197,7 +200,7 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
             BankImportModel current = bankReader.getBankImport();
             BankImportModel.PendingOperationModel resolvedOp = op;
             if ((op.categoryId() == null || op.categoryId().isBlank()) && (op.splits() == null || op.splits().isEmpty())) {
-                List<BankImportModel.PendingOperationModel> rulesApplied = BankImportCalculator.applyRulesToPendingOperations(
+                List<BankImportModel.PendingOperationModel> rulesApplied = bankImportCalculationService.applyRulesToPendingOperations(
                         List.of(op), current.rules()
                 );
                 if (!rulesApplied.isEmpty()) {

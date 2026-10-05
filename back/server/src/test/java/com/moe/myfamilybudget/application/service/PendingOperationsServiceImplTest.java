@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.domain.bankpointage.core.DefaultBankImportCalculationService;
 import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
@@ -32,7 +33,7 @@ class PendingOperationsServiceImplTest {
         service = new PendingOperationsServiceImpl(
                 new BankPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 SettingsReaderTestFactory.of(persistenceManager), new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)),
-                new StatementBankImportMapper());
+                new StatementBankImportMapper(), new DefaultBankImportCalculationService());
     }
 
     @Test

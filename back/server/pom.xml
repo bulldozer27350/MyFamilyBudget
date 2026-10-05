@@ -54,10 +54,14 @@
             <artifactId>wealth-core</artifactId>
         </dependency>
 
-        <!-- Domaine Banque/Pointage : import bancaire, pointage, ports (MAVEN-060) -->
+        <!-- Silo Banque/Pointage : API (contrats, ports, interfaces de service) et cœur (moteurs) ; SILO-154 -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-bank-pointage</artifactId>
+            <artifactId>bank-pointage-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>bank-pointage-core</artifactId>
         </dependency>
 
         <!-- Silo Trésorerie : API (contrats, ports, interfaces de service) et cœur (moteur) ; SILO-153 -->
