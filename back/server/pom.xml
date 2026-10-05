@@ -74,10 +74,14 @@
             <artifactId>treasury-core</artifactId>
         </dependency>
 
-        <!-- Domaine Analyse : calculateur Réel vs Prévisionnel, contrat d'entrée et modèles de résultat (MAVEN-070) -->
+        <!-- Silo Analyse : API (contrat d'entrée, modèles de résultat, interface de service) et cœur (moteur) ; SILO-155 -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-analysis</artifactId>
+            <artifactId>analysis-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>analysis-core</artifactId>
         </dependency>
 
         <!-- Domaine Crédit : moteur de conseil prêts, contrats, modèles et ports (MAVEN-080) -->

@@ -194,9 +194,11 @@ modèles, ports, `com.moe.myfamilybudget.domain.treasury.*`) et `back/treasury-c
 contrats d'entrée (`TreasuryTaxProjection`, `TreasuryPensionProjection`, `TreasuryPlacementCashflow`), traduits par
 `application`. Son moteur est déclaré comme bean par `config/DomainEngineConfig` et `application` ne connaît que
 l'interface.
-Le domaine Analyse (`AnalyseCalculator`, contrat d'entrée `AnalyseInput`, modèles de résultat) vit dans
-`back/domain-analysis` (`com.moe.myfamilybudget.domain.analysis.*`) ; consommateur final, il ne dépend d'aucun
-autre module du reactor et porte ses propres types d'entrée.
+Le domaine Analyse vit dans `back/analysis-api` (interface `AnalyseCalculationService`, contrat d'entrée `AnalyseInput`,
+modèles de résultat, `com.moe.myfamilybudget.domain.analysis.*`) et `back/analysis-core` (moteur
+`DefaultAnalyseCalculationService`, SILO-155) ; consommateur final, il ne dépend d'aucun autre module du reactor et
+porte ses propres types d'entrée. Son moteur est déclaré comme bean par `config/DomainEngineConfig` et `application`
+ne connaît que l'interface.
 Le domaine Crédit (`LoanAdviceCalculationService`, contrats `LoanAdviceInput`/`LoanInput`, modèles de prêt et de
 résultat, ports `LoanReader`/`LoanWriter`) vit dans `back/domain-credit` (`com.moe.myfamilybudget.domain.credit.*`) ;
 le domaine Objectifs (paramètres, modèles d'objectif, ports `GoalReader`/`GoalWriter`) vit dans `back/domain-goals`

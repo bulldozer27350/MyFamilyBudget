@@ -20,7 +20,8 @@ COPY back/bank-pointage-api/pom.xml back/bank-pointage-api/pom.xml
 COPY back/bank-pointage-core/pom.xml back/bank-pointage-core/pom.xml
 COPY back/treasury-api/pom.xml back/treasury-api/pom.xml
 COPY back/treasury-core/pom.xml back/treasury-core/pom.xml
-COPY back/domain-analysis/pom.xml back/domain-analysis/pom.xml
+COPY back/analysis-api/pom.xml back/analysis-api/pom.xml
+COPY back/analysis-core/pom.xml back/analysis-core/pom.xml
 COPY back/domain-credit/pom.xml back/domain-credit/pom.xml
 COPY back/domain-goals/pom.xml back/domain-goals/pom.xml
 COPY back/domain-notifications/pom.xml back/domain-notifications/pom.xml
@@ -48,7 +49,8 @@ COPY back/bank-pointage-api back/bank-pointage-api
 COPY back/bank-pointage-core back/bank-pointage-core
 COPY back/treasury-api back/treasury-api
 COPY back/treasury-core back/treasury-core
-COPY back/domain-analysis back/domain-analysis
+COPY back/analysis-api back/analysis-api
+COPY back/analysis-core back/analysis-core
 COPY back/domain-credit back/domain-credit
 COPY back/domain-goals back/domain-goals
 COPY back/domain-notifications back/domain-notifications

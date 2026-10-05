@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.analysis.calculation;
+package com.moe.myfamilybudget.domain.analysis.core;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -14,6 +14,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseInput;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisBudgetLine;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisCategory;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisMatching;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisPendingOperation;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisPeriod;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisRealAverage;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisTransaction;
+import com.moe.myfamilybudget.domain.analysis.calculation.BudgetLineKind;
+import com.moe.myfamilybudget.domain.analysis.calculation.MonthlyBudgetLines;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseKpiModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseDriftRowModel;
@@ -25,14 +36,15 @@ import com.moe.myfamilybudget.domain.analysis.model.AnalyseCategorySummaryModel;
  * Calculateur metier pour l'analyse Reel vs Previsionnel et derives (RF-601).
  * Isole de toute API REST ou DTO et de tout modele persistant (BudgetDataModel).
  * Opere exclusivement sur {@link AnalyseInput}.
+ *
+ * <p>SILO-155 : implementation de {@link AnalyseCalculationService} ({@code analysis-api}), hebergee dans
+ * {@code analysis-core} ; l'ancienne methode statique {@code AnalyseCalculator.computeAnalyse} devient une
+ * methode d'instance de l'interface (calcul inchange, helpers prives restes statiques).
  */
-public final class AnalyseCalculator {
+public final class DefaultAnalyseCalculationService implements AnalyseCalculationService {
 
-    private AnalyseCalculator() {
-        // Utility class
-    }
-
-    public static AnalyseResultModel computeAnalyse(AnalyseInput input) {
+    @Override
+    public AnalyseResultModel computeAnalyse(AnalyseInput input) {
         if (input == null) {
             input = new AnalyseInput(null, null, null, null, null, null, null);
         }

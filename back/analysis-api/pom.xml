@@ -5,14 +5,15 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!--
-        MAVEN-070 (doc/architecture/20-backlog-modules-maven-patchs.md) : domaine Analyse
-        (calculateur Réel vs Prévisionnel, contrat d'entrée AnalyseInput, modèles de résultat).
+        MAVEN-070 (doc/architecture/20-backlog-modules-maven-patchs.md) : domaine Analyse, devenu `analysis-api`
+        à SILO-155 (doc/architecture/21-plan-silotage.md) : contrat d'entrée AnalyseInput et ses types, modèles
+        de résultat et interface de service AnalyseCalculationService. Le moteur (DefaultAnalyseCalculationService)
+        vit dans `analysis-core`.
 
         Silo isolé (SILO-133) : Analyse définit ses propres contrats d'entrée (AnalysisTransaction,
         AnalysisCategory, AnalysisMatching, AnalysisPendingOperation, AnalysisBudgetLine) et n'a aucune
         dépendance de production vers un autre silo. Aucune dépendance vers Spring, JPA, OpenAPI,
-        PersistenceManager ni BudgetDataModel.
-        Dépendances de test uniquement : JUnit 5 et AssertJ.
+        PersistenceManager ni BudgetDataModel, aucune dépendance de test (les tests vivent dans `analysis-core`).
     -->
     <parent>
         <groupId>com.moe.myfamilybudget</groupId>
@@ -21,22 +22,9 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>domain-analysis</artifactId>
+    <artifactId>analysis-api</artifactId>
     <packaging>jar</packaging>
-    <name>domain-analysis</name>
-    <description>Domaine Analyse MyFamilyBudget (calculateur pur, sans Spring ni JPA)</description>
+    <name>analysis-api</name>
+    <description>API du silo Analyse MyFamilyBudget (contrats, modèles, interface de service ; sans Spring ni JPA)</description>
 
-    <dependencies>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
 </project>

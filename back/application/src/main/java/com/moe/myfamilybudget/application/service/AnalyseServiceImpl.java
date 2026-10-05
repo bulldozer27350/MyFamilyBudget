@@ -9,7 +9,7 @@ import com.moe.myfamilybudget.application.factory.AnalyseInputFactory;
 import com.moe.myfamilybudget.application.factory.PointageInputFactory;
 import com.moe.myfamilybudget.application.mapper.AnalyseMapper;
 import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
-import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
@@ -40,6 +40,8 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code BudgetFacadeView} assemblée ici. SILO-115 : plus aucun {@code BudgetDataModel} ; la vue de façade
  * est assemblée directement depuis les ports et {@link SettingsReader} n'est conservé que pour le bloc
  * {@code settings} de la réponse REST (contrat inchangé) et le taux d'inflation des lignes budgétaires.
+ * SILO-155 : le moteur est reçu sous son interface ({@link AnalyseCalculationService}, {@code analysis-api}) ;
+ * son implémentation vit dans {@code analysis-core} et est câblée par le composition root.
  */
 @RestController
 public class AnalyseServiceImpl implements AnalyseApi {
@@ -55,6 +57,7 @@ public class AnalyseServiceImpl implements AnalyseApi {
     private final LoanReader loanReader;
     private final BankReader bankReader;
     private final GoalReader goalReader;
+    private final AnalyseCalculationService analyseCalculationService;
 
     public AnalyseServiceImpl(
             AnalyseMapper analyseMapper,
@@ -66,7 +69,8 @@ public class AnalyseServiceImpl implements AnalyseApi {
             TaxReader taxReader,
             LoanReader loanReader,
             BankReader bankReader,
-            GoalReader goalReader) {
+            GoalReader goalReader,
+            AnalyseCalculationService analyseCalculationService) {
         this.analyseMapper = analyseMapper;
         this.objectifsSettingsService = objectifsSettingsService;
         this.analyseInputFactory = new AnalyseInputFactory();
@@ -78,6 +82,7 @@ public class AnalyseServiceImpl implements AnalyseApi {
         this.loanReader = loanReader;
         this.bankReader = bankReader;
         this.goalReader = goalReader;
+        this.analyseCalculationService = analyseCalculationService;
     }
 
     @Override
@@ -91,7 +96,7 @@ public class AnalyseServiceImpl implements AnalyseApi {
         PointageInputFactory.Sources sources = new PointageInputFactory.Sources(
                 charges, incomes, placements, settings != null ? settings.inflationRate() : null);
         AnalyseInput input = analyseInputFactory.from(bankImport, sources, monthsBack);
-        AnalyseResultModel resultModel = AnalyseCalculator.computeAnalyse(input);
+        AnalyseResultModel resultModel = analyseCalculationService.computeAnalyse(input);
 
         BudgetFacadeView view = new BudgetFacadeView(
                 settings, incomes, charges, placements, patrimoineReader.getRealEstate(),

@@ -33,7 +33,7 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
  *
  * <p>Cette classe vit dans {@code internal.factory}, hors du package {@code internal.calculation}
  * gardé par ArchUnit. Elle est aussi la source des lignes actives pour Analyse tant que RF-601 n'a
- * pas déplacé cette composition en amont d'{@code AnalyseCalculator}.
+ * pas déplacé cette composition en amont d'{@code AnalyseCalculationService}.
  */
 public final class PointageInputFactory {
 

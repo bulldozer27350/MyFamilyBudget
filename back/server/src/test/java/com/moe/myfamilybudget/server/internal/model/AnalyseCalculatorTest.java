@@ -12,7 +12,8 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService;
+import com.moe.myfamilybudget.domain.analysis.core.DefaultAnalyseCalculationService;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseCategorySummaryModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseLandingRowModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
@@ -26,6 +27,8 @@ import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 
 class AnalyseCalculatorTest {
+
+    private final AnalyseCalculationService calculator = new DefaultAnalyseCalculationService();
 
     /** SILO-115 : la factory reçoit des fragments, pas le snapshot global. */
     private static PointageInputFactory.Sources sources(BudgetDataModel data) {
@@ -80,7 +83,7 @@ class AnalyseCalculatorTest {
                 List.of(matching)
         );
 
-        AnalyseResultModel result = AnalyseCalculator.computeAnalyse(new AnalyseInputFactory().from(bankImport, sources(data), 12));
+        AnalyseResultModel result = calculator.computeAnalyse(new AnalyseInputFactory().from(bankImport, sources(data), 12));
 
         assertThat(result).isNotNull();
         assertThat(result.kpis()).isNotNull();
@@ -140,7 +143,7 @@ class AnalyseCalculatorTest {
                 List.of(matching)
         );
 
-        AnalyseResultModel result = AnalyseCalculator.computeAnalyse(new AnalyseInputFactory().from(bankImport, sources(data), 12));
+        AnalyseResultModel result = calculator.computeAnalyse(new AnalyseInputFactory().from(bankImport, sources(data), 12));
 
         assertThat(result).isNotNull();
         // Check total expenses and compressible

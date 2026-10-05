@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.analysis.calculation;
+package com.moe.myfamilybudget.domain.analysis.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,6 +11,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseInput;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisBudgetLine;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisCategory;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisMatching;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisPendingOperation;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisPeriod;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalysisTransaction;
+import com.moe.myfamilybudget.domain.analysis.calculation.BudgetLineKind;
+import com.moe.myfamilybudget.domain.analysis.calculation.MonthlyBudgetLines;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseDriftRowModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseLandingRowModel;
@@ -18,12 +27,14 @@ import com.moe.myfamilybudget.domain.analysis.model.AnalyseMonthlyCompareModel;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseCategorySummaryModel;
 
 /**
- * RF-602 : tests de composant pour {@link AnalyseCalculator}, construits uniquement avec
+ * RF-602 : tests de composant pour {@link DefaultAnalyseCalculationService}, construits uniquement avec
  * {@link AnalyseInput} -- aucun {@code BudgetDataModel}, aucune charge/revenu/placement/reglages
  * du budget et aucun contexte Spring.
  */
-@DisplayName("AnalyseCalculator - tests de composant sur AnalyseInput")
-class AnalyseCalculatorComponentTest {
+@DisplayName("DefaultAnalyseCalculationService - tests de composant sur AnalyseInput")
+class DefaultAnalyseCalculationServiceComponentTest {
+
+    private final DefaultAnalyseCalculationService service = new DefaultAnalyseCalculationService();
 
     private static final LocalDate REF_DATE = LocalDate.of(2026, 8, 15);
     private static final String CURRENT_MONTH_ISO = "2026-08";
@@ -75,7 +86,7 @@ class AnalyseCalculatorComponentTest {
         @Test
         @DisplayName("Entree nulle geree sans NullPointerException")
         void nullInput() {
-            AnalyseResultModel result = AnalyseCalculator.computeAnalyse(null);
+            AnalyseResultModel result = service.computeAnalyse(null);
             assertThat(result).isNotNull();
             assertThat(result.kpis()).isNotNull();
             assertThat(result.landingData()).isEmpty();
@@ -97,7 +108,7 @@ class AnalyseCalculatorComponentTest {
                     Collections.emptyList()
             );
 
-            AnalyseResultModel result = AnalyseCalculator.computeAnalyse(input);
+            AnalyseResultModel result = service.computeAnalyse(input);
             assertThat(result).isNotNull();
             assertThat(result.currentMonthISO()).isEqualTo("2026-08");
             assertThat(result.currentMonthLabel()).isEqualTo("août 2026");
@@ -134,7 +145,7 @@ class AnalyseCalculatorComponentTest {
                     Collections.emptyList()
             );
 
-            AnalyseResultModel result = AnalyseCalculator.computeAnalyse(input);
+            AnalyseResultModel result = service.computeAnalyse(input);
 
             assertThat(result.kpis().totalExpenses()).isEqualByComparingTo("1160.00");
             assertThat(result.kpis().totalIncome()).isEqualByComparingTo("3500.00");
@@ -172,7 +183,7 @@ class AnalyseCalculatorComponentTest {
                     Collections.emptyList()
             );
 
-            AnalyseResultModel result = AnalyseCalculator.computeAnalyse(input);
+            AnalyseResultModel result = service.computeAnalyse(input);
 
             assertThat(result.kpis().totalExpenses()).isEqualByComparingTo("100.00");
             assertThat(result.kpis().compressibleTotal()).isEqualByComparingTo("30.00");
@@ -212,7 +223,7 @@ class AnalyseCalculatorComponentTest {
                     List.of(lineKind("c1", "charge"), lineKind("c2", "charge"))
             );
 
-            AnalyseResultModel result = AnalyseCalculator.computeAnalyse(input);
+            AnalyseResultModel result = service.computeAnalyse(input);
 
             assertThat(result.landingData()).hasSize(2);
 
@@ -264,7 +275,7 @@ class AnalyseCalculatorComponentTest {
                     List.of(lineKind("c1", "charge"))
             );
 
-            AnalyseResultModel result = AnalyseCalculator.computeAnalyse(input);
+            AnalyseResultModel result = service.computeAnalyse(input);
 
             assertThat(result.monthlyCompareData()).hasSize(3);
 
@@ -309,7 +320,7 @@ class AnalyseCalculatorComponentTest {
                     List.of(lineKind("c1", "charge"))
             );
 
-            AnalyseResultModel result = AnalyseCalculator.computeAnalyse(input);
+            AnalyseResultModel result = service.computeAnalyse(input);
 
             assertThat(result.driftRows()).hasSize(1);
             AnalyseDriftRowModel drift = result.driftRows().get(0);

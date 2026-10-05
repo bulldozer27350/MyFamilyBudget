@@ -28,7 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * <p>Fige la coherence entre l'import bancaire (transactions, categories, ventilations, operations
  * en cours), le pointage ({@code GET /pointage}, {@code PUT /pointage/matchings/{monthISO}}) et
  * l'analyse ({@code GET /analyse}). Les valeurs attendues caracterisent le comportement actuel de
- * {@code AnalyseCalculator} (voir doc/architecture/07-domaine-banque-pointage.md et
+ * {@code DefaultAnalyseCalculationService} (voir doc/architecture/07-domaine-banque-pointage.md et
  * 08-domaine-analyse.md).
  *
  * <p>Le dataset est construit relativement au mois courant (M0) et au mois precedent (M1) car

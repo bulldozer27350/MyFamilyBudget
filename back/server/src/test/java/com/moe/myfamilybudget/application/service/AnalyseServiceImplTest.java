@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 
 import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
 import com.moe.myfamilybudget.application.mapper.AnalyseMapper;
+import com.moe.myfamilybudget.domain.analysis.core.DefaultAnalyseCalculationService;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
@@ -44,7 +45,8 @@ class AnalyseServiceImplTest {
                 new TaxPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager),
                 new BankPersistenceAdapter(persistenceManager),
-                new GoalPersistenceAdapter(persistenceManager));
+                new GoalPersistenceAdapter(persistenceManager),
+                new DefaultAnalyseCalculationService());
     }
 
     @Test

@@ -11,7 +11,7 @@ import com.tngtech.archunit.lang.ArchRule;
  * Garde-fou SILO-150 (voir doc/architecture/21-plan-silotage.md) : {@code application} ne connaît que l'API du
  * silo Retraite ({@code retirement-api}), jamais son cœur ({@code com.moe.myfamilybudget.domain.retirement.core}).
  * Le moteur est fourni par injection ; seuls le composition root et les tests le référencent. La règle est
- * étendue silo par silo (Fiscalité : SILO-151 ; Patrimoine : SILO-152 ; Trésorerie : SILO-153 ; Banque/Pointage : SILO-154 ; autres silos : SILO-155 à SILO-159) (puis généralisée par SILO-160).
+ * étendue silo par silo (Fiscalité : SILO-151 ; Patrimoine : SILO-152 ; Trésorerie : SILO-153 ; Banque/Pointage : SILO-154 ; Analyse : SILO-155 ; autres silos : SILO-156 à SILO-159) (puis généralisée par SILO-160).
  */
 @AnalyzeClasses(packages = "com.moe.myfamilybudget", importOptions = ImportOption.DoNotIncludeTests.class)
 class ApplicationWithoutSiloCoreArchTest {
@@ -45,4 +45,10 @@ class ApplicationWithoutSiloCoreArchTest {
             .that().resideInAPackage("com.moe.myfamilybudget.application..")
             .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.bankpointage.core..")
             .as("application ne dépend pas du cœur du silo Banque/Pointage (SILO-154)");
+
+    @ArchTest
+    static final ArchRule APPLICATION_DOES_NOT_USE_ANALYSIS_CORE = noClasses()
+            .that().resideInAPackage("com.moe.myfamilybudget.application..")
+            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.domain.analysis.core..")
+            .as("application ne dépend pas du cœur du silo Analyse (SILO-155)");
 }

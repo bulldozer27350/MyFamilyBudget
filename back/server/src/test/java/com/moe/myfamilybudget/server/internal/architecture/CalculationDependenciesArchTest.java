@@ -13,7 +13,7 @@ import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionServic
 import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
 import com.moe.myfamilybudget.domain.treasury.calculation.TresorerieCalculationService;
 import com.moe.myfamilybudget.application.factory.AssetBucketResolver;
-import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator;
+import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
@@ -74,7 +74,7 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
  * domaine Overview depuis RF-901 : {@code OverviewCalculationService} consomme exclusivement
  * {@code OverviewInput} depuis RF-901 ; il est protégé par
  * {@link #OVERVIEW_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée (RF-902). Et pour le
- * domaine Analyse depuis RF-601 : {@code AnalyseCalculator} consomme exclusivement
+ * domaine Analyse depuis RF-601 : {@code AnalyseCalculationService} consomme exclusivement
  * {@code AnalyseInput} depuis RF-601 ; il est protégé par
  * {@link #ANALYSE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS}, non gelée (RF-602).
  *
@@ -256,14 +256,14 @@ class CalculationDependenciesArchTest {
                     + "(doc/architecture/11-domaine-overview.md)");
 
     /**
-     * Garde-fou du domaine Analyse (RF-602) : {@link AnalyseCalculator} ne reçoit que
+     * Garde-fou du domaine Analyse (RF-602) : {@link AnalyseCalculationService} ne reçoit que
      * {@code AnalyseInput} (et les types de {@code BankImportModel}, calculateur déjà pur) ; il ne
      * connaît ni le budget, ni les charges, revenus, placements, paramètres, ni {@code BudgetDataModel}.
      * Règle stricte (sans gel) : le domaine ne présente aucune violation préexistante depuis RF-601.
      */
     @ArchTest
     static final ArchRule ANALYSE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
-            .that().areAssignableTo(AnalyseCalculator.class)
+            .that().areAssignableTo(AnalyseCalculationService.class)
             .should().dependOnClassesThat().belongToAnyOf(
                     BudgetDataModel.class,
                     SettingsModel.class,
@@ -272,7 +272,7 @@ class CalculationDependenciesArchTest {
                     PlacementModel.class,
                     VariableIncomeModel.class,
                     VariableOverrideModel.class)
-            .as("AnalyseCalculator ne doit dépendre d'aucun modèle du budget : il consomme uniquement "
+            .as("AnalyseCalculationService ne doit dépendre d'aucun modèle du budget : il consomme uniquement "
                     + "AnalyseInput (doc/architecture/08-domaine-analyse.md)");
 
     /**

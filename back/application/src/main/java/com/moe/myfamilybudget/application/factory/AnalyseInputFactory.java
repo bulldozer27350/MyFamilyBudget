@@ -35,7 +35,7 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
  * Banque/Pointage (transactions, categories, rapprochements, operations en cours, lignes budgetaires) vers
  * ceux d'Analyse.
  *
- * <p>Isole {@link com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculator} de toute dependance
+ * <p>Isole {@link com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService} de toute dependance
  * aux modeles de persistance et aux reglages du budget.
  */
 @Component
