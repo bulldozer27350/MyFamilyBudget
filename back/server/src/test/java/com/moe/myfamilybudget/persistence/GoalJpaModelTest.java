@@ -14,10 +14,10 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
-import com.moe.myfamilybudget.persistence.converter.GoalEntityMapper;
-import com.moe.myfamilybudget.persistence.entity.GoalAllocationEntity;
-import com.moe.myfamilybudget.persistence.entity.GoalEntity;
-import com.moe.myfamilybudget.persistence.repository.GoalRepository;
+import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntityMapper;
+import com.moe.myfamilybudget.domain.goals.core.persistence.GoalAllocationEntity;
+import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntity;
+import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 
 /**
  * DB-1020 : le modele JPA autonome du domaine Objectifs (additif, sans lien avec le hub) doit

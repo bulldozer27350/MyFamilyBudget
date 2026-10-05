@@ -94,10 +94,14 @@
             <artifactId>credit-core</artifactId>
         </dependency>
 
-        <!-- Domaine Objectifs : paramètres, contrats, modèles et ports (MAVEN-080) -->
+        <!-- Silo Objectifs : API (paramètres, contrats, modèles, ports) et cœur (persistance JPA) ; SILO-157, SILO-212 -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>goals-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>goals-core</artifactId>
         </dependency>
 
         <!-- Silo Notifications : API (contrats, paramètres, entrées de règles) et cœur (règles) ; SILO-158 -->

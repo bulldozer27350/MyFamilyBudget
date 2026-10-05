@@ -203,7 +203,7 @@ Le domaine Crédit vit dans `back/credit-api` (interface `LoanAdviceCalculationS
 `LoanAdviceInput`/`LoanInput`, modèles de prêt et de résultat, ports `LoanReader`/`LoanWriter`,
 `com.moe.myfamilybudget.domain.credit.*`) et `back/credit-core` (moteur `DefaultLoanAdviceCalculationService`, SILO-156) ;
 le domaine Objectifs (paramètres, modèles d'objectif, ports `GoalReader`/`GoalWriter`) vit dans `back/goals-api`
-(`com.moe.myfamilybudget.domain.goals.*`) ; les contrats `ObjectifReachableInput`/`PlacementBalanceSnapshot` appartiennent
+(`com.moe.myfamilybudget.domain.goals.*`) et `back/goals-core` (persistance JPA du silo, SILO-212) ; les contrats `ObjectifReachableInput`/`PlacementBalanceSnapshot` appartiennent
 au domaine Notifications (SILO-134). Les deux
 modules n'ont aucune dépendance vers un autre module du reactor ; le moteur Crédit est déclaré comme bean par
 `config/DomainEngineConfig`.

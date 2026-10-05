@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.converter;
+package com.moe.myfamilybudget.domain.goals.core.persistence;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,8 +6,6 @@ import java.util.Objects;
 
 import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
-import com.moe.myfamilybudget.persistence.entity.GoalAllocationEntity;
-import com.moe.myfamilybudget.persistence.entity.GoalEntity;
 
 /**
  * Mapper du domaine Objectifs entre {@link ObjectifModel} et {@link GoalEntity} (DB-1020).

@@ -40,7 +40,7 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.persistence.converter.BankImportDocumentMapper;
 import com.moe.myfamilybudget.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalEntityMapper;
-import com.moe.myfamilybudget.persistence.converter.GoalEntityMapper;
+import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntityMapper;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionEntityMapper;
 import com.moe.myfamilybudget.persistence.repository.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
@@ -48,7 +48,7 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRe
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
-import com.moe.myfamilybudget.persistence.repository.GoalRepository;
+import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 
 /**

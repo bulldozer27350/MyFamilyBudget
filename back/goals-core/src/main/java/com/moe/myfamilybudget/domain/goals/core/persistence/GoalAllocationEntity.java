@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.goals.core.persistence;
 
 import java.math.BigDecimal;
 

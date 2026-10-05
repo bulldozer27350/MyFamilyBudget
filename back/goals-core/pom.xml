@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        SILO-212 (doc/architecture/21-plan-silotage.md) : cœur du silo Objectifs. Le silo n'a aucun moteur de
+        calcul : ce module ne porte que la persistance JPA autonome du silo (package
+        `domain.goals.core.persistence` : entités `goal`, `goal_allocation` et `objectifs_settings`, repositories
+        Spring Data et mapper entité/modèle), découverte par le scan par défaut de Spring Boot (racine
+        `com.moe.myfamilybudget`).
+
+        Règle : ce module ne dépend que de `goals-api` et de `infra-jpa` (configuration JPA commune, qui apporte
+        Spring Data JPA et Hibernate). Pas de `module-info` (décision D3) : visibilité tenue par le graphe Maven
+        (règle C de `MavenModuleGraphTest`) et ArchUnit. `application` ne dépend que de `goals-api`.
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>goals-core</artifactId>
+    <packaging>jar</packaging>
+    <name>goals-core</name>
+    <description>Cœur du silo Objectifs MyFamilyBudget (persistance JPA des tables goal, goal_allocation et objectifs_settings)</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>goals-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
+        </dependency>
+    </dependencies>
+</project>

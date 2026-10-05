@@ -50,7 +50,7 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRe
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
-import com.moe.myfamilybudget.persistence.repository.GoalRepository;
+import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.persistence.repository.LoanRepository;
 import com.moe.myfamilybudget.persistence.repository.OneOffExpenseRepository;

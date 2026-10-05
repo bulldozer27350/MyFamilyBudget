@@ -1,11 +1,10 @@
-package com.moe.myfamilybudget.persistence.repository;
+package com.moe.myfamilybudget.domain.goals.core.persistence;
 
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.moe.myfamilybudget.persistence.entity.GoalEntity;
 
 /**
  * Repository autonome du domaine Objectifs (DB-1020), sans lien avec {@code BudgetDataEntity}.

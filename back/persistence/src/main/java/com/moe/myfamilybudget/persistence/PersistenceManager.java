@@ -19,6 +19,7 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepositor
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.persistence.repository.*;
+import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 
 import jakarta.annotation.PostConstruct;
 

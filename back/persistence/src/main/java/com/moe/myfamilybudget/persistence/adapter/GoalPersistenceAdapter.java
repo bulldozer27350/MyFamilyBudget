@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.converter.GoalEntityMapper;
-import com.moe.myfamilybudget.persistence.repository.GoalRepository;
+import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntityMapper;
+import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalWriter;
 import com.moe.myfamilybudget.domain.goals.port.GoalSnapshotWriter;

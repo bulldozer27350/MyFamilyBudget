@@ -13,8 +13,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import com.moe.myfamilybudget.persistence.entity.ObjectifsSettingsEntity;
-import com.moe.myfamilybudget.persistence.repository.ObjectifsSettingsRepository;
+import com.moe.myfamilybudget.domain.goals.core.persistence.ObjectifsSettingsEntity;
+import com.moe.myfamilybudget.domain.goals.core.persistence.ObjectifsSettingsRepository;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 
 class JpaObjectifsSettingsStoreTest {
