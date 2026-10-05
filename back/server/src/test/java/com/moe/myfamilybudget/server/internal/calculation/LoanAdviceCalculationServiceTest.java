@@ -21,6 +21,7 @@ import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RepayVer
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.domain.credit.core.DefaultLoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceInput;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 
@@ -33,7 +34,7 @@ class LoanAdviceCalculationServiceTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 9, 19);
     private static final double EUR = 0.02;
 
-    private final LoanAdviceCalculationService service = new LoanAdviceCalculationService();
+    private final LoanAdviceCalculationService service = new DefaultLoanAdviceCalculationService();
 
     private static final List<AssetCategoryModel> CATEGORIES = List.of(
             new AssetCategoryModel("c1", "💶", "Livrets", "cash"),
@@ -63,7 +64,7 @@ class LoanAdviceCalculationServiceTest {
     }
 
     private static double projectCrd(LoanModel loan, LocalDate target) {
-        return LoanAdviceCalculationService.projectCrd(LoanAdviceInputFactory.toLoanInput(loan), target);
+        return new DefaultLoanAdviceCalculationService().projectCrd(LoanAdviceInputFactory.toLoanInput(loan), target);
     }
 
     // ------------------------------------------------------------------ CRD projeté
@@ -310,11 +311,11 @@ class LoanAdviceCalculationServiceTest {
     @Test
     @DisplayName("parseDate() accepte YYYY-MM-DD et YYYY-MM, rejette le reste")
     void parseDateFormats() {
-        assertEquals(LocalDate.of(2026, 9, 1), LoanAdviceCalculationService.parseDate("2026-09-01"));
-        assertEquals(LocalDate.of(2026, 9, 1), LoanAdviceCalculationService.parseDate("2026-09"));
-        assertNull(LoanAdviceCalculationService.parseDate("demain"));
-        assertNull(LoanAdviceCalculationService.parseDate(null));
-        assertNull(LoanAdviceCalculationService.parseDate(" "));
+        assertEquals(LocalDate.of(2026, 9, 1), service.parseDate("2026-09-01"));
+        assertEquals(LocalDate.of(2026, 9, 1), service.parseDate("2026-09"));
+        assertNull(service.parseDate("demain"));
+        assertNull(service.parseDate(null));
+        assertNull(service.parseDate(" "));
     }
 
     // ------------------------------------------------------------------ mensualité lissée (palier)

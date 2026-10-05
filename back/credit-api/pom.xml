@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        MAVEN-080 (doc/architecture/20-backlog-modules-maven-patchs.md) : domaine Crédit, devenu `credit-api` à
+        SILO-156 (doc/architecture/21-plan-silotage.md) : contrats d'entrée, modèles de prêt et de résultat, ports
+        Reader/Writer et interface de service LoanAdviceCalculationService. Le moteur
+        (DefaultLoanAdviceCalculationService) vit dans `credit-core`.
+
+        Aucune dépendance vers un autre module du reactor, ni vers Spring, JPA, OpenAPI,
+        PersistenceManager ou BudgetDataModel : seul le JDK est utilisé en production, aucune dépendance de
+        test (les tests vivent dans `credit-core`).
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>credit-api</artifactId>
+    <packaging>jar</packaging>
+    <name>credit-api</name>
+    <description>API du silo Crédit MyFamilyBudget (contrats, modèles, ports, interface de service ; sans Spring ni JPA)</description>
+
+</project>

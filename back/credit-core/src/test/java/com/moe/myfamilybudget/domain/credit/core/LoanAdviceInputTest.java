@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.credit.calculation;
+package com.moe.myfamilybudget.domain.credit.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
@@ -7,6 +7,10 @@ import java.time.LocalDate;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceInput;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.calculation.LiquidPlacementAlternative;
 
 class LoanAdviceInputTest {
 

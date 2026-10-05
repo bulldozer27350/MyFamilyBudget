@@ -22,7 +22,8 @@ COPY back/treasury-api/pom.xml back/treasury-api/pom.xml
 COPY back/treasury-core/pom.xml back/treasury-core/pom.xml
 COPY back/analysis-api/pom.xml back/analysis-api/pom.xml
 COPY back/analysis-core/pom.xml back/analysis-core/pom.xml
-COPY back/domain-credit/pom.xml back/domain-credit/pom.xml
+COPY back/credit-api/pom.xml back/credit-api/pom.xml
+COPY back/credit-core/pom.xml back/credit-core/pom.xml
 COPY back/domain-goals/pom.xml back/domain-goals/pom.xml
 COPY back/domain-notifications/pom.xml back/domain-notifications/pom.xml
 COPY back/api/pom.xml back/api/pom.xml
@@ -51,7 +52,8 @@ COPY back/treasury-api back/treasury-api
 COPY back/treasury-core back/treasury-core
 COPY back/analysis-api back/analysis-api
 COPY back/analysis-core back/analysis-core
-COPY back/domain-credit back/domain-credit
+COPY back/credit-api back/credit-api
+COPY back/credit-core back/credit-core
 COPY back/domain-goals back/domain-goals
 COPY back/domain-notifications back/domain-notifications
 COPY back/api back/api

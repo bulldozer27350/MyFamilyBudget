@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.api.model.AnalysePretDto;
 import com.moe.myfamilybudget.api.model.AnalysePretsDto;
-import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.domain.credit.core.DefaultLoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 import com.moe.myfamilybudget.application.factory.LoanAdviceInputFactory;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel;
@@ -25,7 +25,7 @@ class AnalysePretsMapperTest {
     void mapsResult() {
         LoanModel loan = new LoanModel("r", "Résidence", new BigDecimal("250000"), new BigDecimal("0.045"),
                 new BigDecimal("1450"), new BigDecimal("50"), "2026-09-01", null);
-        LoanAdviceResultModel result = new LoanAdviceCalculationService().compute(
+        LoanAdviceResultModel result = new DefaultLoanAdviceCalculationService().compute(
                 LoanAdviceInputFactory.from(List.of(loan), List.of(), List.of(),
                         LoanAdviceParameters.defaults(new BigDecimal("0.03")), null, LocalDate.of(2026, 9, 19)));
 

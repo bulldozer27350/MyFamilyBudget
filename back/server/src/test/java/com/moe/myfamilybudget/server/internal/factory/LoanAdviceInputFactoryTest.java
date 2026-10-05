@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.credit.calculation.LiquidPlacementAlternative;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.domain.credit.core.DefaultLoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceInput;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanInput;
@@ -80,7 +81,7 @@ class LoanAdviceInputFactoryTest {
     @Test
     @DisplayName("Le taux de marché de l'entrée prime sur celui des hypothèses")
     void testMarketRateOfInputWins() {
-        LoanAdviceCalculationService service = new LoanAdviceCalculationService();
+        LoanAdviceCalculationService service = new DefaultLoanAdviceCalculationService();
         LoanAdviceInput input = LoanAdviceInputFactory.from(List.of(loan()), List.of(), List.of(),
                 LoanAdviceParameters.defaults(bd("0.05")), bd("0.03"), TODAY);
 

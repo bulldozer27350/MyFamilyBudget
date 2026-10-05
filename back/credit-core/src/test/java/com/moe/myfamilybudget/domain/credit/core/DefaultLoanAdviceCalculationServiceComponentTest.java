@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.credit.calculation;
+package com.moe.myfamilybudget.domain.credit.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -11,6 +11,10 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.domain.credit.calculation.LiquidPlacementAlternative;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceInput;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanInput;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.LoanItem;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RepayVerdict;
@@ -21,12 +25,12 @@ import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RepayVer
  * {@code BudgetDataModel}, sans modèle persistant, sans factory et sans contexte Spring. Les
  * valeurs attendues sont celles, calculées indépendamment, de {@code LoanAdviceCalculationServiceTest}.
  */
-class LoanAdviceCalculationServiceComponentTest {
+class DefaultLoanAdviceCalculationServiceComponentTest {
 
     private static final LocalDate TODAY = LocalDate.of(2026, 9, 19);
     private static final double EUR = 0.02;
 
-    private final LoanAdviceCalculationService service = new LoanAdviceCalculationService();
+    private final DefaultLoanAdviceCalculationService service = new DefaultLoanAdviceCalculationService();
 
     private static BigDecimal bd(String v) {
         return new BigDecimal(v);
@@ -51,7 +55,7 @@ class LoanAdviceCalculationServiceComponentTest {
     @Test
     @DisplayName("projectCrd() : une échéance de septembre appliquée sur un prêt référencé au 1er septembre")
     void projectCrdSingleStep() {
-        assertEquals(149665.00, LoanAdviceCalculationService.projectCrd(loanA(), TODAY), EUR);
+        assertEquals(149665.00, service.projectCrd(loanA(), TODAY), EUR);
     }
 
     @Test

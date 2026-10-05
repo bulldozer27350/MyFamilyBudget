@@ -84,10 +84,14 @@
             <artifactId>analysis-core</artifactId>
         </dependency>
 
-        <!-- Domaine Crédit : moteur de conseil prêts, contrats, modèles et ports (MAVEN-080) -->
+        <!-- Silo Crédit : API (contrats, modèles, ports, interface de service) et cœur (moteur) ; SILO-156 -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-credit</artifactId>
+            <artifactId>credit-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>credit-core</artifactId>
         </dependency>
 
         <!-- Domaine Objectifs : paramètres, contrats, modèles et ports (MAVEN-080) -->

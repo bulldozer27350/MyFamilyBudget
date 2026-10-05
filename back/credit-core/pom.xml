@@ -5,11 +5,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!--
-        MAVEN-080 (doc/architecture/20-backlog-modules-maven-patchs.md) : domaine Crédit (moteur LoanAdviceCalculationService, contrats d'entrée, modèles de prêt et de résultat, ports Reader/Writer).
+        SILO-156 (doc/architecture/21-plan-silotage.md) : cœur du silo Crédit (moteur de calcul
+        `DefaultLoanAdviceCalculationService`, implémentation de l'interface de `credit-api`).
 
-        Aucune dépendance vers un autre module du reactor, ni vers Spring, JPA, OpenAPI,
-        PersistenceManager ou BudgetDataModel : seul le JDK est utilisé en production.
-        Dépendances de test uniquement : JUnit 5 et AssertJ.
+        Règle : ce module ne dépend que de `credit-api`. Pas de `module-info` (décision D3) : visibilité tenue par
+        le graphe Maven (règle C de `MavenModuleGraphTest`) et ArchUnit. Seul le composition root (server) le
+        référence ; `application` ne dépend que de `credit-api`. Le moteur n'est pas un @Component : son bean est
+        déclaré par `DomainEngineConfig`.
     -->
     <parent>
         <groupId>com.moe.myfamilybudget</groupId>
@@ -18,12 +20,17 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>domain-credit</artifactId>
+    <artifactId>credit-core</artifactId>
     <packaging>jar</packaging>
-    <name>domain-credit</name>
-    <description>Domaine Crédit MyFamilyBudget (moteur de conseil sur les prêts, pur, sans Spring ni JPA)</description>
+    <name>credit-core</name>
+    <description>Cœur du silo Crédit MyFamilyBudget (moteur de conseil sur les prêts pur, sans Spring ni JPA)</description>
 
     <dependencies>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>credit-api</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

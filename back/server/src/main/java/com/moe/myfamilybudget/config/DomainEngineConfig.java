@@ -10,6 +10,7 @@ import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculatio
 import com.moe.myfamilybudget.domain.bankpointage.core.DefaultBankImportCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.core.DefaultPointageCalculationService;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.domain.credit.core.DefaultLoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.notifications.rules.BalanceFloorRule;
 import com.moe.myfamilybudget.domain.notifications.rules.DebitThresholdRule;
 import com.moe.myfamilybudget.domain.notifications.rules.ObjectifReachableRule;
@@ -25,11 +26,11 @@ import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionServ
 import com.moe.myfamilybudget.domain.wealth.core.DefaultPlacementEvolutionService;
 
 /**
- * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080, MAVEN-090). SILO-150 à SILO-155 : les moteurs Retraite, Fiscalité, Patrimoine,
- * Trésorerie, Banque/Pointage et Analyse sont exposés sous leur interface ({@code retirement-api}, {@code tax-api},
- * {@code wealth-api}, {@code treasury-api}, {@code bank-pointage-api}, {@code analysis-api}), leur implémentation vit dans
+ * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080, MAVEN-090). SILO-150 à SILO-156 : les moteurs Retraite, Fiscalité, Patrimoine,
+ * Trésorerie, Banque/Pointage, Analyse et Crédit sont exposés sous leur interface ({@code retirement-api}, {@code tax-api},
+ * {@code wealth-api}, {@code treasury-api}, {@code bank-pointage-api}, {@code analysis-api}, {@code credit-api}), leur implémentation vit dans
  * {@code retirement-core}, {@code tax-core}, {@code wealth-core}, {@code treasury-core}, {@code bank-pointage-core}
- * et {@code analysis-core}.
+ * {@code analysis-core} et {@code credit-core}.
  *
  * <p>Les modules de domaine sont volontairement indépendants de Spring : leurs moteurs ne portent
  * plus {@code @Component}, c'est le composition root qui les expose comme beans.
@@ -79,7 +80,7 @@ public class DomainEngineConfig {
 
     @Bean
     public LoanAdviceCalculationService loanAdviceCalculationService() {
-        return new LoanAdviceCalculationService();
+        return new DefaultLoanAdviceCalculationService();
     }
 
     @Bean

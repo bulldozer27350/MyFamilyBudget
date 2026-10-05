@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.domain.credit.calculation;
+package com.moe.myfamilybudget.domain.credit.core;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -9,6 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import com.moe.myfamilybudget.domain.credit.calculation.LiquidPlacementAlternative;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceInput;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanInput;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.Assumptions;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.LoanItem;
@@ -37,8 +42,12 @@ import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.Repaymen
  * </ul>
  * Calcul en double précision (estimation) ; les sorties sont arrondies (2 décimales pour les
  * montants, 6 pour les taux).
+ *
+ * <p>SILO-156 : implémentation de {@link LoanAdviceCalculationService} ({@code credit-api}), hébergée dans
+ * {@code credit-core} ; les fonctions publiques statiques {@code projectCrd} et {@code parseDate} deviennent des
+ * méthodes d'instance de l'interface (calcul inchangé, helpers privés restés statiques).
  */
-public class LoanAdviceCalculationService {
+public class DefaultLoanAdviceCalculationService implements LoanAdviceCalculationService {
 
     private static final int MAX_SIMULATION_MONTHS = 600;
     private static final double EPSILON = 0.005;
@@ -57,6 +66,7 @@ public class LoanAdviceCalculationService {
     private record Schedule(int months, double totalInterest, boolean horizonKnown) {
     }
 
+    @Override
     public LoanAdviceResultModel compute(LoanAdviceInput input) {
         LoanAdviceParameters params = input.parameters();
         LocalDate today = input.today();
@@ -266,7 +276,8 @@ public class LoanAdviceCalculationService {
      * projectLoanCrdToDate() de calculations.js (un pas par mois, du mois de référence au mois cible
      * inclus) pour que le serveur et l'affichage local restent cohérents.
      */
-    public static double projectCrd(LoanInput loan, LocalDate target) {
+    @Override
+    public double projectCrd(LoanInput loan, LocalDate target) {
         double crd = value(loan.crd());
         if (crd <= 0) {
             return 0;
@@ -364,7 +375,8 @@ public class LoanAdviceCalculationService {
         return (to.getYear() - from.getYear()) * 12 + (to.getMonthValue() - from.getMonthValue());
     }
 
-    public static LocalDate parseDate(String text) {
+    @Override
+    public LocalDate parseDate(String text) {
         if (text == null || text.isBlank()) {
             return null;
         }
