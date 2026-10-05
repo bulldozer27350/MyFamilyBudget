@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        SILO-200 (doc/architecture/21-plan-silotage.md) : module d'infrastructure JPA commun aux silos.
+
+        Il ne porte que la configuration technique d'Hibernate (stratégie de nommage physique) : aucun type
+        métier, aucune entité, aucun repository, aucune dépendance vers un autre module du reactor. Les silos
+        (`*-core`) pourront en dépendre à partir de SILO-210 ; `application*` et `web` ne le voient jamais
+        (règle C de `MavenModuleGraphTest`). Pas de `module-info` (décision D3 : module Spring/JPA).
+
+        La source de données (URL, pilote, identifiants) reste dans les `application*.yml` du composition root :
+        c'est de la configuration d'exécution, pas du code.
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>infra-jpa</artifactId>
+    <packaging>jar</packaging>
+    <name>infra-jpa</name>
+    <description>Configuration JPA/Hibernate commune aux silos MyFamilyBudget (aucun type métier)</description>
+
+    <dependencies>
+        <!-- JPA/Hibernate, Spring Data JPA, auto-configuration Spring Boot -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

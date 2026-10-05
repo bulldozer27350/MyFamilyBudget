@@ -138,6 +138,12 @@
             <artifactId>persistence</artifactId>
         </dependency>
 
+        <!-- Configuration JPA/Hibernate commune aux silos : stratégie de nommage, aucun type métier (SILO-200) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
+        </dependency>
+
         <!-- Contrat REST : DTO et interfaces Spring générés depuis openapi.yaml (MAVEN-110) ;
              apporte aussi jackson-databind-nullable et swagger-annotations -->
         <dependency>

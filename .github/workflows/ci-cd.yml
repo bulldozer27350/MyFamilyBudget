@@ -74,6 +74,7 @@ jobs:
             back/market-api/pom.xml
             back/market-core/pom.xml
             back/api/pom.xml
+            back/infra-jpa/pom.xml
             back/transition-snapshot/pom.xml
             back/application/pom.xml
             back/persistence/pom.xml
