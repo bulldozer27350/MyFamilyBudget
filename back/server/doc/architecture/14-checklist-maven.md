@@ -114,7 +114,7 @@ Première des trois portes du silotage ([21-plan-silotage.md](21-plan-silotage.m
 `gate-a` ne lit que les sources : commentaires et Javadoc sont ignorés, et une mention dans un test n'est pas comptée.
 La porte est franchie quand ces cinq lignes sont vertes sur la même révision de `main`.
 
-- [ ] Porte A : build complet, ArchUnit, `gate-a`, VT-500 et VT-600 verts sur la même révision (à cocher après la CI).
+- [x] Porte A : build complet, ArchUnit, `gate-a`, VT-500 et VT-600 verts sur la même révision (CI verte le 5 octobre 2026, après le correctif de `gotoAndExpectBackend`).
 
 ### Points de vigilance constatés
 
