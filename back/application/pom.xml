@@ -44,7 +44,7 @@
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-wealth</artifactId>
+            <artifactId>wealth-api</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>

@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
+import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionService;
 import com.moe.myfamilybudget.application.service.OverviewServiceImpl;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
@@ -397,7 +398,7 @@ class BusinessLogicIntegrationTest {
 
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
-        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(),
+        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
@@ -423,7 +424,7 @@ class BusinessLogicIntegrationTest {
 
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
-        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(),
+        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
@@ -444,7 +445,7 @@ class BusinessLogicIntegrationTest {
         importMockBudget();
         BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
-        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(),
+        OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),

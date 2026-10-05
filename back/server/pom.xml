@@ -44,10 +44,14 @@
             <artifactId>tax-core</artifactId>
         </dependency>
 
-        <!-- Domaine Patrimoine : moteurs de projection, modèles et ports (MAVEN-040) -->
+        <!-- Silo Patrimoine : API (contrats, ports, interfaces de service) et cœur (moteurs) ; SILO-152 -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>domain-wealth</artifactId>
+            <artifactId>wealth-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>wealth-core</artifactId>
         </dependency>
 
         <!-- Domaine Banque/Pointage : import bancaire, pointage, ports (MAVEN-060) -->

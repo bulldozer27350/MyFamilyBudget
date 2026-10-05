@@ -177,9 +177,11 @@ Le domaine Retraite (moteur de calcul, projections, modèle, ports Reader/Writer
 `DefaultRetirementCalculationService`, SILO-150) ; son bean Spring est déclaré par
 `config/DomainEngineConfig` dans `server`, `application` ne connaît que l'interface. Le domaine Fiscalité vit dans `back/tax-api` (contrats, ports, interface `TaxCalculationService`) et `back/tax-core` (moteur `DefaultTaxCalculationService`, SILO-151)
 (`com.moe.myfamilybudget.domain.tax.*`) et ne dépend que du contrat de projection de `retirement-api`.
-Le domaine Patrimoine (moteurs de projection patrimoniale et d'évolution des placements, modèles, ports)
-vit dans `back/domain-wealth` (`com.moe.myfamilybudget.domain.wealth.*`) et ne dépend d'aucun autre module du reactor ;
-ses deux moteurs sont déclarés comme beans par `config/DomainEngineConfig`.
+Le domaine Patrimoine vit dans `back/wealth-api` (contrats, modèles, ports, interfaces `PatrimoineProjectionService`
+et `PlacementEvolutionService`, `com.moe.myfamilybudget.domain.wealth.*`) et `back/wealth-core` (moteurs
+`DefaultPatrimoineProjectionService` et `DefaultPlacementEvolutionService`, règles de pause des versements, SILO-152) ;
+il ne dépend d'aucun autre module du reactor, ses deux moteurs sont déclarés comme beans par `config/DomainEngineConfig`
+et `application` ne connaît que les interfaces.
 Le domaine Banque/Pointage (modèle d'import bancaire, `BankImportCalculator`, `PointageCalculator`, contrats
 d'entrée, ports) vit dans `back/domain-bank-pointage` (`com.moe.myfamilybudget.domain.bankpointage.*`), sans
 dépendance vers un autre module du reactor ; Enable Banking, adapters JPA et contrôleurs restent dans `server`.

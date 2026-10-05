@@ -27,6 +27,8 @@ import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
+import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionService;
+import com.moe.myfamilybudget.domain.wealth.core.DefaultPlacementEvolutionService;
 import com.moe.myfamilybudget.application.command.GoalCommandService;
 import com.moe.myfamilybudget.application.command.LoanCommandService;
 import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
@@ -59,7 +61,7 @@ class PatrimoineServiceImplTest {
         persistenceManager.init();
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         service = new PatrimoineServiceImpl(
-                mapper, new PatrimoineProjectionService(), new PlacementEvolutionService(),
+                mapper, new DefaultPatrimoineProjectionService(), new DefaultPlacementEvolutionService(),
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
                 new LoanCommandService(new LoanPersistenceAdapter(persistenceManager)),
                 new GoalCommandService(new GoalPersistenceAdapter(persistenceManager)),

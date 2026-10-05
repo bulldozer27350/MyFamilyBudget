@@ -13,11 +13,13 @@ import com.moe.myfamilybudget.domain.tax.calculation.TaxCalculationService;
 import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
+import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionService;
+import com.moe.myfamilybudget.domain.wealth.core.DefaultPlacementEvolutionService;
 
 /**
- * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080, MAVEN-090). SILO-150, SILO-151 : les moteurs Retraite et Fiscalité sont exposés sous leur
- * interface ({@code retirement-api}, {@code tax-api}), leur implémentation vit dans {@code retirement-core} et
- * {@code tax-core}.
+ * Déclaration des beans Spring des moteurs de domaine extraits en modules Maven (MAVEN-020, MAVEN-040, MAVEN-080, MAVEN-090). SILO-150, SILO-151, SILO-152 : les moteurs Retraite, Fiscalité et Patrimoine sont exposés
+ * sous leur interface ({@code retirement-api}, {@code tax-api}, {@code wealth-api}), leur implémentation vit dans
+ * {@code retirement-core}, {@code tax-core} et {@code wealth-core}.
  *
  * <p>Les modules de domaine sont volontairement indépendants de Spring : leurs moteurs ne portent
  * plus {@code @Component}, c'est le composition root qui les expose comme beans.
@@ -37,12 +39,12 @@ public class DomainEngineConfig {
 
     @Bean
     public PatrimoineProjectionService patrimoineProjectionService() {
-        return new PatrimoineProjectionService();
+        return new DefaultPatrimoineProjectionService();
     }
 
     @Bean
     public PlacementEvolutionService placementEvolutionService() {
-        return new PlacementEvolutionService();
+        return new DefaultPlacementEvolutionService();
     }
 
     @Bean

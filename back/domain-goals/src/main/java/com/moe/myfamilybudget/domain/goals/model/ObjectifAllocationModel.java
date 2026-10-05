@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 /**
  * Une part d'un objectif d'épargne alimentée par un compte donné : {@code placementId} référence
- * un placement (vue Patrimoine, simple identifiant : aucune dépendance vers {@code domain-wealth}),
+ * un placement (vue Patrimoine, simple identifiant : aucune dépendance vers {@code wealth-api}),
  * {@code amount} est le montant de ce compte réservé à l'objectif.
  *
  * Un objectif peut regrouper plusieurs allocations (un même objectif alimenté par plusieurs
