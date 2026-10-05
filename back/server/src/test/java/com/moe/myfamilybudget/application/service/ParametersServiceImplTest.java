@@ -18,10 +18,10 @@ import org.springframework.http.ResponseEntity;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.application.mapper.SettingsMapper;
 import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
+import com.moe.myfamilybudget.config.SiloMutationLockRegistry;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.BudgetMutationLockAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
@@ -50,7 +50,7 @@ class ParametersServiceImplTest {
                 mapper,
                 objectifsSettingsService,
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
-                new BudgetMutationLockAdapter(persistenceManager),
+                new SiloMutationLockRegistry(persistenceManager::lockForCurrentTransaction),
                 SettingsCommandRouterTestFactory.of(persistenceManager, objectifsSettingsService),
                 RecordingTransactionRunner.direct());
     }

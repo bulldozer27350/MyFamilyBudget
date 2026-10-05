@@ -1,11 +1,16 @@
 package com.moe.myfamilybudget.application.snapshot;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 import org.springframework.stereotype.Service;
 
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
 import com.moe.myfamilybudget.application.mapper.BudgetSnapshotFragments;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
+import com.moe.myfamilybudget.application.port.MutationSilo;
+import com.moe.myfamilybudget.application.port.SiloMutationLock;
 import com.moe.myfamilybudget.application.port.TransactionRunner;
 import com.moe.myfamilybudget.application.factory.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
@@ -22,7 +27,6 @@ import com.moe.myfamilybudget.domain.tax.port.TaxSnapshotWriter;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSnapshotWriter;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
-import com.moe.myfamilybudget.transition.port.BudgetMutationLock;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.transition.port.EconomicAssumptionsSnapshotWriter;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
@@ -39,8 +43,8 @@ import com.moe.myfamilybudget.transition.port.SimulationSettingsSnapshotWriter;
  * port {@code reset} de chaque silo. Le format JSON est inchangé.
  *
  * <p>VT-340 : import et reset écrivent dans plusieurs silos puis dans les paramètres Objectifs ; ils sont
- * transactionnels pour que l'échec d'une écriture annule les précédentes (base et cache mémoire). Le verrou
- * du budget est pris en premier.
+ * transactionnels pour que l'échec d'une écriture annule les précédentes (base et cache mémoire). SILO-206 : les
+ * verrous des silos écrits (tous, ici) sont pris en premier, via {@link SiloMutationLock}.
  *
  * <p>SILO-205 : la transaction est ouverte via le port {@link TransactionRunner} (plus d'{@code @Transactional}) ;
  * le verrou reste la première instruction exécutée dans la transaction.
@@ -48,7 +52,9 @@ import com.moe.myfamilybudget.transition.port.SimulationSettingsSnapshotWriter;
 @Service
 public class GlobalBudgetSnapshotService {
 
-    private final BudgetMutationLock budgetMutationLock;
+    private static final Set<MutationSilo> ALL_SILOS = EnumSet.allOf(MutationSilo.class);
+
+    private final SiloMutationLock siloMutationLock;
     private final TransactionRunner transactionRunner;
     private final OverviewMapper overviewMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
@@ -71,7 +77,7 @@ public class GlobalBudgetSnapshotService {
     private final BankSnapshotWriter bankWriter;
 
     public GlobalBudgetSnapshotService(
-            BudgetMutationLock budgetMutationLock,
+            SiloMutationLock siloMutationLock,
             OverviewMapper overviewMapper,
             ObjectifsSettingsService objectifsSettingsService,
             SettingsReader settingsReader,
@@ -92,7 +98,7 @@ public class GlobalBudgetSnapshotService {
             GoalSnapshotWriter goalWriter,
             BankSnapshotWriter bankWriter,
             TransactionRunner transactionRunner) {
-        this.budgetMutationLock = budgetMutationLock;
+        this.siloMutationLock = siloMutationLock;
         this.transactionRunner = transactionRunner;
         this.overviewMapper = overviewMapper;
         this.objectifsSettingsService = objectifsSettingsService;
@@ -127,7 +133,7 @@ public class GlobalBudgetSnapshotService {
     public BudgetDataDto importSnapshot(BudgetDataDto body) {
         return transactionRunner.inTransaction(() -> {
             if (body != null) {
-                budgetMutationLock.lockForCurrentTransaction();
+                siloMutationLock.lockForCurrentTransaction(ALL_SILOS);
                 BudgetSnapshotFragments f = overviewMapper.toSnapshotFragments(body);
                 retirementWriter.replace(f.retirementSettings(), f.retirement());
                 taxWriter.replace(f.taxSettings(), f.taxChildren(), f.taxBrackets(), f.taxRateOverrides(),
@@ -149,7 +155,7 @@ public class GlobalBudgetSnapshotService {
     /** Réinitialisation du budget complet et des paramètres Objectifs (même transaction). */
     public BudgetDataDto reset() {
         return transactionRunner.inTransaction(() -> {
-            budgetMutationLock.lockForCurrentTransaction();
+            siloMutationLock.lockForCurrentTransaction(ALL_SILOS);
             retirementWriter.reset();
             taxWriter.reset();
             tresorerieWriter.reset();

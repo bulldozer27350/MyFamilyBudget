@@ -7,7 +7,7 @@
     <!--
         MAVEN-100 (doc/architecture/20-backlog-modules-maven-patchs.md), option B : module de transition qui porte
         le snapshot global `BudgetDataModel`, `SettingsModel` et les ports transverses de lecture/écriture
-        (`BudgetReader`, `SettingsReader`, `BudgetMutationLock`, `EconomicAssumptionsWriter`,
+        (`BudgetReader`, `SettingsReader`, `EconomicAssumptionsWriter`,
         `SimulationSettingsWriter`).
 
         Il dépend uniquement des modules de domaine dont il agrège les modèles ; aucun module de domaine ne dépend

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
+import com.moe.myfamilybudget.application.port.SiloMutationLock;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankSnapshotWriter;
@@ -29,7 +30,6 @@ import com.moe.myfamilybudget.domain.treasury.port.TresorerieSnapshotWriter;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
-import com.moe.myfamilybudget.transition.port.BudgetMutationLock;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.transition.port.EconomicAssumptionsSnapshotWriter;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
@@ -50,11 +50,11 @@ class GlobalBudgetSnapshotTransactionTest {
         lockCalledInTransaction = new ArrayList<>();
         writerCalledInTransaction = new ArrayList<>();
 
-        BudgetMutationLock lock = mock(BudgetMutationLock.class);
+        SiloMutationLock lock = mock(SiloMutationLock.class);
         doAnswer(invocation -> {
             lockCalledInTransaction.add(runner.isActive());
             return null;
-        }).when(lock).lockForCurrentTransaction();
+        }).when(lock).lockForCurrentTransaction(any());
         BankSnapshotWriter bank = mock(BankSnapshotWriter.class);
         doAnswer(invocation -> {
             writerCalledInTransaction.add(runner.isActive());

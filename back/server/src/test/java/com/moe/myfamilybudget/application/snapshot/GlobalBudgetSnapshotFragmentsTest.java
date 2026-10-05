@@ -8,12 +8,17 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
+import com.moe.myfamilybudget.application.port.MutationSilo;
+import com.moe.myfamilybudget.application.port.SiloMutationLock;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
@@ -29,7 +34,6 @@ import com.moe.myfamilybudget.domain.tax.port.TaxSnapshotWriter;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSnapshotWriter;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
-import com.moe.myfamilybudget.transition.port.BudgetMutationLock;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.transition.port.EconomicAssumptionsSnapshotWriter;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
@@ -42,7 +46,10 @@ import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRu
  */
 class GlobalBudgetSnapshotFragmentsTest {
 
-    private BudgetMutationLock lock;
+    /** SILO-206 : import et reset écrivent tous les silos, donc les verrouillent tous. */
+    private static final Set<MutationSilo> ALL_SILOS = EnumSet.allOf(MutationSilo.class);
+
+    private SiloMutationLock lock;
     private ObjectifsSettingsService objectifs;
     private RetirementSnapshotWriter retirement;
     private TaxSnapshotWriter tax;
@@ -57,7 +64,7 @@ class GlobalBudgetSnapshotFragmentsTest {
 
     @BeforeEach
     void setUp() {
-        lock = mock(BudgetMutationLock.class);
+        lock = mock(SiloMutationLock.class);
         objectifs = mock(ObjectifsSettingsService.class);
         retirement = mock(RetirementSnapshotWriter.class);
         tax = mock(TaxSnapshotWriter.class);
@@ -82,7 +89,7 @@ class GlobalBudgetSnapshotFragmentsTest {
 
         InOrder order = inOrder(lock, retirement, tax, tresorerie, simulation, economic, patrimoine, loans,
                 goals, bank, objectifs);
-        order.verify(lock).lockForCurrentTransaction();
+        order.verify(lock).lockForCurrentTransaction(ALL_SILOS);
         order.verify(retirement).replace(any(), any());
         order.verify(tax).replace(any(), anyList(), anyList(), anyList(), anyList());
         order.verify(tresorerie).replace(any(), anyList(), anyList(), anyList(), anyList(), anyList());
@@ -114,7 +121,7 @@ class GlobalBudgetSnapshotFragmentsTest {
 
         InOrder order = inOrder(lock, retirement, tax, tresorerie, simulation, economic, patrimoine, loans,
                 goals, bank, objectifs);
-        order.verify(lock).lockForCurrentTransaction();
+        order.verify(lock).lockForCurrentTransaction(ALL_SILOS);
         order.verify(retirement).reset();
         order.verify(tax).reset();
         order.verify(tresorerie).reset();
@@ -125,6 +132,6 @@ class GlobalBudgetSnapshotFragmentsTest {
         order.verify(goals).reset();
         order.verify(bank).reset();
         order.verify(objectifs).reset();
-        verify(lock).lockForCurrentTransaction();
+        verify(lock).lockForCurrentTransaction(ALL_SILOS);
     }
 }

@@ -1,7 +1,9 @@
 package com.moe.myfamilybudget.application.service;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,8 @@ import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.application.command.SettingsCommandRouter;
 import com.moe.myfamilybudget.application.mapper.SettingsMapper;
+import com.moe.myfamilybudget.application.port.MutationSilo;
+import com.moe.myfamilybudget.application.port.SiloMutationLock;
 import com.moe.myfamilybudget.application.port.TransactionRunner;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.application.model.SettingsCalculator;
@@ -19,7 +23,6 @@ import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.application.model.SettingsResultModel;
 import com.moe.myfamilybudget.domain.wealth.port.AssetCategoryField;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
-import com.moe.myfamilybudget.transition.port.BudgetMutationLock;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
@@ -33,8 +36,9 @@ import com.moe.myfamilybudget.transition.port.SettingsReader;
  * <p>SET-020 : le routage des champs vers leur owner (Retraite, Fiscalité, Trésorerie, Objectifs, Simulation,
  * Hypothèses économiques) est délégué à {@link SettingsCommandRouter} ; l'atomicité reste portée ici.
  *
- * <p>DB-061 : le verrou de mutation du budget (VT-350b), pris en premier par {@code saveSettings}, passe par
- * le port transverse {@link BudgetMutationLock} et non plus par la commande Fiscalité.
+ * <p>DB-061 / SILO-206 : le verrou de mutation (VT-350b), pris en premier par {@code saveSettings}, passe par
+ * le port {@link SiloMutationLock} et ne porte plus que sur les silos que la requête écrit (owners des champs,
+ * Patrimoine pour les catégories d'actifs) ; une requête sans écriture ne verrouille rien.
  *
  * <p>VT-340 : {@code saveSettings} s'exécute dans une transaction — une mise à jour touchant plusieurs
  * propriétaires (Objectifs, Fiscalité/Paramètres) est appliquée en entier ou pas du tout. SILO-205 : la
@@ -51,7 +55,7 @@ public class ParametersServiceImpl implements ParametresApi {
     private final SettingsMapper settingsMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
     private final PatrimoineCommandService patrimoineCommandService;
-    private final BudgetMutationLock budgetMutationLock;
+    private final SiloMutationLock siloMutationLock;
     private final SettingsCommandRouter settingsCommandRouter;
     private final TransactionRunner transactionRunner;
 
@@ -63,7 +67,7 @@ public class ParametersServiceImpl implements ParametresApi {
             SettingsMapper settingsMapper,
             ObjectifsSettingsService objectifsSettingsService,
             PatrimoineCommandService patrimoineCommandService,
-            BudgetMutationLock budgetMutationLock,
+            SiloMutationLock siloMutationLock,
             SettingsCommandRouter settingsCommandRouter,
             TransactionRunner transactionRunner) {
         this.settingsReader = settingsReader;
@@ -73,7 +77,7 @@ public class ParametersServiceImpl implements ParametresApi {
         this.settingsMapper = settingsMapper;
         this.objectifsSettingsService = objectifsSettingsService;
         this.patrimoineCommandService = patrimoineCommandService;
-        this.budgetMutationLock = budgetMutationLock;
+        this.siloMutationLock = siloMutationLock;
         this.settingsCommandRouter = settingsCommandRouter;
         this.transactionRunner = transactionRunner;
     }
@@ -98,7 +102,10 @@ public class ParametersServiceImpl implements ParametresApi {
     }
 
     private ResponseEntity<Void> applySettings(Object body) {
-        budgetMutationLock.lockForCurrentTransaction();
+        Set<MutationSilo> silos = silosTouchedBy(body);
+        if (!silos.isEmpty()) {
+            siloMutationLock.lockForCurrentTransaction(silos);
+        }
         if (body instanceof Map<?, ?> map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> typedMap = (Map<String, Object>) map;
@@ -132,6 +139,35 @@ public class ParametersServiceImpl implements ParametresApi {
             }
         }
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Silos écrits par {@code body} : reflète exactement les branches de {@link #applySettings}, pour que le
+     * verrou soit pris avant toute écriture et sur les seuls silos concernés (SILO-206).
+     */
+    private static Set<MutationSilo> silosTouchedBy(Object body) {
+        Set<MutationSilo> silos = EnumSet.noneOf(MutationSilo.class);
+        if (!(body instanceof Map<?, ?> map)) {
+            return silos;
+        }
+        String action = map.get("action") != null ? String.valueOf(map.get("action")) : null;
+        if ("updateAssetCategory".equals(action)
+                || (map.containsKey("assetCategoryId") && map.containsKey("field"))
+                || "addAssetCategory".equals(action)
+                || "removeAssetCategory".equals(action)) {
+            silos.add(MutationSilo.WEALTH);
+        } else if (map.containsKey("field") && map.get("field") != null) {
+            addSiloOf(silos, String.valueOf(map.get("field")));
+        } else if (map.containsKey("settings") && map.get("settings") instanceof Map<?, ?> settings) {
+            for (Object key : settings.keySet()) {
+                addSiloOf(silos, String.valueOf(key));
+            }
+        }
+        return silos;
+    }
+
+    private static void addSiloOf(Set<MutationSilo> silos, String field) {
+        SettingsCommandRouter.ownerOf(field).ifPresent(owner -> silos.add(owner.silo()));
     }
 
     /**

@@ -220,7 +220,7 @@ Dépôts, Banque de France et BCE, codec JSON de l'instantané, `DefaultMarketDa
 `config/DomainEngineConfig`. Le planificateur et le stockage JPA de l'instantané restent dans `server` (SILO-170,
 SILO-217).
 Le snapshot global de transition (`BudgetDataModel`, `SettingsModel`) et les ports transverses (`BudgetReader`,
-`SettingsReader`, `BudgetMutationLock`, `EconomicAssumptionsWriter`, `SimulationSettingsWriter`) vivent dans
+`SettingsReader`, `EconomicAssumptionsWriter`, `SimulationSettingsWriter`) vivent dans
 `back/transition-snapshot` (`com.moe.myfamilybudget.transition.*`) ; aucun domaine n'en dépend. La couche applicative
 (commands, factories d'Input, `ObjectifsSettingsService`) vit dans `back/application`
 (`com.moe.myfamilybudget.application.*`) ; elle dépend des domaines et de `transition-snapshot`, jamais de `server`.
