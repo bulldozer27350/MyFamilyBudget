@@ -45,6 +45,7 @@ const POMS = [
   path.join(ROOT, 'back', 'api', 'pom.xml'),
   path.join(ROOT, 'back', 'infra-jpa', 'pom.xml'),
   path.join(ROOT, 'back', 'transition-snapshot', 'pom.xml'),
+  path.join(ROOT, 'back', 'application-api', 'pom.xml'),
   path.join(ROOT, 'back', 'application', 'pom.xml'),
   path.join(ROOT, 'back', 'persistence', 'pom.xml'),
   path.join(ROOT, 'back', 'server', 'pom.xml'),

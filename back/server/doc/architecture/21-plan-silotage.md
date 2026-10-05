@@ -424,12 +424,14 @@ un patch qui rencontre un arbitrage non tranché devient un patch « bloqué » 
 
 ### SILO-300 à SILO-340 : application et web
 - **SILO-300** : `application-api` (interfaces de cas d'usage et modèles applicatifs, sans DTO OpenAPI ni `ResponseEntity`), pilote Retraite.
+  - **Livré (SILO-300, lot A)** : vérification faite le 5 octobre 2026 sur `main` @ `78c02b9`. Nouveau module `application-api` (avec `module-info`, nom de module Java `com.moe.myfamilybudget.application.api`, D3 ; aucune dépendance vers un autre module du reactor, ni Spring, JPA ou OpenAPI) qui reçoit, par `git mv` et sans changer de package (`com.moe.myfamilybudget.application.port`, aucun import modifié), les ports `TransactionRunner` (SILO-205), `SiloMutationLock` et `MutationSilo` (SILO-206). `application` et `server` en dépendent (`server` implémente les ports). Reactor, `dependencyManagement`, Dockerfile, CI et `tests/gate/check-gate.js` suivent le nouveau module. Règle de graphe : `application-api` est du côté application (règle C : seuls les `*-api` des silos). Garde-fou `ApplicationApiIndependenceArchTest` : le package de l'API ne dépend ni de Spring, JPA, OpenAPI généré, ni de l'implémentation d'`application`, de `persistence`, `config`, `server`, `transition` ou des silos, avec un test de couverture (règle non vide). Aucun code de production modifié, contrat REST inchangé.
+  - **Reste (lot B, pilote Retraite)** : interface de cas d'usage `RetirementUseCase` et modèles applicatifs de la réponse (`RetraiteResultModel`, `RetraitePersonWithProjectionModel`) dans `application-api` (nouveau package ; les règles ArchUnit indexées sur `application.model` et `application.service` sont à adapter dans le même patch) ; `RetraiteServiceImpl` ne garde que la conversion DTO et la `ResponseEntity`, la logique de `buildRetraiteResult` passe dans une implémentation du cas d'usage. Point d'attention : le bloc `settings` de la réponse porte `SettingsModel` (`transition-snapshot`), à composer côté application-api sans l'exposer, ou à laisser transitoire jusqu'à SILO-100/SILO-230.
 - Le découpage OpenAPI par domaine (RF-C00) est **déjà terminé** pour tous les domaines : aucun patch dédié.
 - **SILO-310 à SILO-319** : par fonctionnalité, le contrôleur (qui implémente l'interface `*Api` générée) et le mapper DTO ↔ modèle applicatif passent dans `web` ; le service d'`application` ne renvoie plus de `ResponseEntity`.
 - **SILO-320** : module `web` complet (contrôleurs, `GlobalExceptionHandler`, CORS, `HeartbeatController`).
 - **SILO-330** : module `bootstrap` (`ServerApplication`, `DesktopLauncher`, configuration, câblage des implémentations, `TransactionRunner`).
 - **SILO-340** : `module-info` sur `application-*` et `web`, règles de visibilité complètes. **SILO-350** : CI sélective. **SILO-390** : Porte C (E2E, Docker, matrice de dépendances).
-- **Statut** : [x] Non commencé
+- **Statut** : [ ] Non commencé / [x] Démarré (SILO-300 lot A livré) / [ ] En attente de réponse / [ ] Annulé / [ ] Terminé
 
 ## 9. Risques et points d'attention
 

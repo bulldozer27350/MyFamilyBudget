@@ -32,6 +32,11 @@
     <description>Couche applicative MyFamilyBudget (commands, factories d'Input, assemblers), sans JPA ni OpenAPI</description>
 
     <dependencies>
+        <!-- API applicative : ports transactionnels (SILO-300) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>application-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>transition-snapshot</artifactId>

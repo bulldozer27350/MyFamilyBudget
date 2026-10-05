@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        SILO-300 (doc/architecture/21-plan-silotage.md), lot A : API applicative. Ce module porte ce que
+        l'application expose et exige, sans DTO OpenAPI ni `ResponseEntity` : pour l'instant les ports
+        transactionnels (`TransactionRunner`, `SiloMutationLock`, `MutationSilo`, package
+        `com.moe.myfamilybudget.application.port`, déplacés depuis `application` sans changer de package). Les cas
+        d'usage et les modèles applicatifs (pilote Retraite) suivent au lot B.
+
+        Aucune dépendance vers un autre module du reactor, ni vers Spring, JPA, OpenAPI, PersistenceManager ou
+        BudgetDataModel : seul le JDK est utilisé en production. `module-info` présent (décision D3).
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>application-api</artifactId>
+    <packaging>jar</packaging>
+    <name>application-api</name>
+    <description>API applicative MyFamilyBudget (ports transactionnels, cas d'usage ; sans Spring, JPA ni OpenAPI)</description>
+
+</project>
