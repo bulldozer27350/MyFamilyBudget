@@ -61,9 +61,9 @@ import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
 import com.moe.myfamilybudget.persistence.repository.TransferRepository;
 import com.moe.myfamilybudget.persistence.repository.VariableIncomeRepository;
 import com.moe.myfamilybudget.persistence.repository.VariableOverrideRepository;
-import com.moe.myfamilybudget.persistence.repository.WealthCategoryRepository;
-import com.moe.myfamilybudget.persistence.repository.WealthPlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.WealthRealEstateRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 
 /**
  * VT-330 -- Protege l'ordre voulu {@code DB -> memoire} de {@code BudgetCacheStore.applyAndPersist} :

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.wealth.core.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 
 /**
  * Categorie d'actifs du domaine Patrimoine, cible JPA autonome (DB-1050). Aucune relation vers
- * {@link BudgetDataEntity} ; additive, pas encore utilisee par {@code PatrimoinePersistenceAdapter}
+ * {@code BudgetDataEntity} ; additive, pas encore utilisee par {@code PatrimoinePersistenceAdapter}
  * (bascule en DB-1051). Le chemin legacy ({@code asset_category}) reste inchange. L'icone est un emoji : la
  * colonne doit accepter l'UTF-8 sur 4 octets (cas par defaut de H2 et de PostgreSQL en UTF8).
  */

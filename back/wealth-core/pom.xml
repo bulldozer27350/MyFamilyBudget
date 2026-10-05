@@ -9,10 +9,16 @@
         `DefaultPatrimoineProjectionService` et `DefaultPlacementEvolutionService`, règles de pause des
         versements `ContributionPauseRules`, implémentations des interfaces de `wealth-api`).
 
-        Règle : ce module ne dépend que de `wealth-api` (et, plus tard, de `infra-jpa`, SILO-215). Pas de
-        `module-info` (décision D3) : visibilité tenue par le graphe Maven (règle C de `MavenModuleGraphTest`)
-        et ArchUnit. Seul le composition root (server) le référence ; `application` ne dépend que de
-        `wealth-api`. Les moteurs ne sont pas des @Component : leurs beans sont déclarés par `DomainEngineConfig`.
+        SILO-215 : il porte aussi la persistance JPA autonome du silo (package `domain.wealth.core.persistence` :
+        entités `wealth_category`, `wealth_placement`, historique de valorisation et `wealth_real_estate`,
+        repositories Spring Data et mapper), découverte par le scan par défaut de Spring Boot (racine
+        `com.moe.myfamilybudget`). Les moteurs restent sans Spring ni JPA.
+
+        Règle : ce module ne dépend que de `wealth-api` et de `infra-jpa` (configuration JPA commune, qui apporte
+        Spring Data JPA et Hibernate). Pas de `module-info` (décision D3) : visibilité tenue par le graphe Maven
+        (règle C de `MavenModuleGraphTest`) et ArchUnit. Seul le composition root (server) le référence ;
+        `application` ne dépend que de `wealth-api`. Les moteurs ne sont pas des @Component : leurs beans sont
+        déclarés par `DomainEngineConfig`.
     -->
     <parent>
         <groupId>com.moe.myfamilybudget</groupId>
@@ -24,12 +30,16 @@
     <artifactId>wealth-core</artifactId>
     <packaging>jar</packaging>
     <name>wealth-core</name>
-    <description>Cœur du silo Patrimoine MyFamilyBudget (moteurs de calcul purs, sans Spring ni JPA)</description>
+    <description>Cœur du silo Patrimoine MyFamilyBudget (moteurs de calcul purs, et persistance JPA des placements, de l'immobilier et des catégories d'actifs)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>wealth-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
         </dependency>
 
         <dependency>

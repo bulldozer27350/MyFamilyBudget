@@ -33,7 +33,7 @@ import com.moe.myfamilybudget.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalEntityMapper;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntityMapper;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionEntityMapper;
-import com.moe.myfamilybudget.persistence.converter.WealthEntityMapper;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthEntityMapper;
 import com.moe.myfamilybudget.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
@@ -60,9 +60,9 @@ import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.persistence.repository.TransferRepository;
 import com.moe.myfamilybudget.persistence.repository.VariableIncomeRepository;
 import com.moe.myfamilybudget.persistence.repository.VariableOverrideRepository;
-import com.moe.myfamilybudget.persistence.repository.WealthCategoryRepository;
-import com.moe.myfamilybudget.persistence.repository.WealthPlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.WealthRealEstateRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 
 /**
  * Passerelle vers la couche JPA : seule classe qui parle directement aux repositories Spring Data.

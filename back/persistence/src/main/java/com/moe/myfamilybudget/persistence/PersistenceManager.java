@@ -22,6 +22,9 @@ import com.moe.myfamilybudget.persistence.repository.*;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 
 import jakarta.annotation.PostConstruct;
 

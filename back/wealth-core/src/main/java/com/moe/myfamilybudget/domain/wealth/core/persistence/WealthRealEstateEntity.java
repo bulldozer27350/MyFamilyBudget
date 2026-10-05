@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.wealth.core.persistence;
 
 import java.math.BigDecimal;
 
@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
 
 /**
  * Bien immobilier du domaine Patrimoine, cible JPA autonome (DB-1050). Aucune relation vers
- * {@link BudgetDataEntity} ; additive, pas encore utilisee par {@code PatrimoinePersistenceAdapter}
+ * {@code BudgetDataEntity} ; additive, pas encore utilisee par {@code PatrimoinePersistenceAdapter}
  * (bascule en DB-1051). Le chemin legacy ({@code real_estate}) reste inchange. Taux de croissance annuel en
  * {@code NUMERIC(19,8)}.
  */

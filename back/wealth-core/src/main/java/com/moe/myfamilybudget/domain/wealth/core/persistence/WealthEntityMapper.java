@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.converter;
+package com.moe.myfamilybudget.domain.wealth.core.persistence;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,10 +9,6 @@ import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.persistence.entity.WealthCategoryEntity;
-import com.moe.myfamilybudget.persistence.entity.WealthPlacementEntity;
-import com.moe.myfamilybudget.persistence.entity.WealthPlacementHistoryEntity;
-import com.moe.myfamilybudget.persistence.entity.WealthRealEstateEntity;
 
 /**
  * Mapper du domaine Patrimoine entre les modeles ({@link PlacementModel}, {@link RealEstateModel},

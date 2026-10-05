@@ -16,10 +16,10 @@ import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.persistence.converter.WealthEntityMapper;
-import com.moe.myfamilybudget.persistence.repository.WealthCategoryRepository;
-import com.moe.myfamilybudget.persistence.repository.WealthPlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.WealthRealEstateRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthEntityMapper;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 
 /**
  * DB-1050 : le modele JPA autonome du domaine Patrimoine (additif, sans lien avec le hub) doit restituer

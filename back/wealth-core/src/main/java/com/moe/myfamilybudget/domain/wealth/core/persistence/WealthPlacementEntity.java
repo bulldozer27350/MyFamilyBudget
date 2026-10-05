@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.persistence.entity;
+package com.moe.myfamilybudget.domain.wealth.core.persistence;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -18,8 +18,8 @@ import jakarta.persistence.Table;
 /**
  * Placement / compte du domaine Patrimoine, cible JPA autonome (DB-1050).
  *
- * <p>Contrairement a {@link PlacementEntity}, cette entite n'a <strong>aucune relation vers
- * {@link BudgetDataEntity}</strong> : elle est la racine de son propre agregat (avec l'historique de
+ * <p>Contrairement a {@code PlacementEntity}, cette entite n'a <strong>aucune relation vers
+ * {@code BudgetDataEntity}</strong> : elle est la racine de son propre agregat (avec l'historique de
  * valorisation). Elle est additive et n'est pas encore utilisee par {@code PatrimoinePersistenceAdapter}
  * (bascule en DB-1051). Le chemin legacy ({@code placement}, {@code placement_history_entry}) reste inchange.
  * Cle technique generee, {@code uid} = identifiant metier (aucune hypothese d'unicite, comme dans le chemin

@@ -29,9 +29,9 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
-import com.moe.myfamilybudget.persistence.repository.WealthCategoryRepository;
-import com.moe.myfamilybudget.persistence.repository.WealthPlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.WealthRealEstateRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 
