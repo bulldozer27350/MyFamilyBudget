@@ -18,6 +18,7 @@ import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.transition.port.BudgetMutationLock;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
  * DB-061 -- {@code saveSettings} prend le verrou de mutation du budget (port {@link BudgetMutationLock}, VT-350b)
@@ -34,7 +35,7 @@ class ParametersServiceImplLockTest {
         ParametersServiceImpl service = new ParametersServiceImpl(
                 mock(SettingsReader.class), mock(PatrimoineReader.class), mock(BankReader.class),
                 mock(RetirementReader.class), new SettingsMapper(), mock(ObjectifsSettingsService.class), mock(PatrimoineCommandService.class),
-                lock, router);
+                lock, router, RecordingTransactionRunner.direct());
 
         service.saveSettings(Map.of("field", "retireAge", "value", 62));
 

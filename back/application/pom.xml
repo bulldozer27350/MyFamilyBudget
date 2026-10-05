@@ -14,8 +14,8 @@
         MavenModuleGraphRules et ApplicationWithoutSiloCoreArchTest, SILO-160 ; les moteurs sont fournis par
         injection depuis `server`), `transition-snapshot` (BudgetDataModel, SettingsModel
         et ports transverses), `api` (contrat REST généré, MAVEN-110 : DTO et interfaces `*Api` implémentées par
-        les services ; apporte spring-web et Jakarta Validation), `spring-context` et `spring-tx`
-        (stéréotypes, @Transactional), `poi-ooxml` (lecture Excel de l'import bancaire) et `slf4j-api`.
+        les services ; apporte spring-web et Jakarta Validation), `spring-context`
+        (stéréotypes ; plus de `spring-tx` depuis SILO-205 : la transaction passe par le port `TransactionRunner`), `poi-ooxml` (lecture Excel de l'import bancaire) et `slf4j-api`.
         Aucune dépendance vers JPA, PersistenceManager, `persistence` ni vers le module `server`.
         Aucun domaine pur ne dépend de ce module.
     -->
@@ -82,10 +82,6 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-tx</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>

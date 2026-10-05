@@ -1,12 +1,12 @@
 package com.moe.myfamilybudget.application.snapshot;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
 import com.moe.myfamilybudget.application.mapper.BudgetSnapshotFragments;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
+import com.moe.myfamilybudget.application.port.TransactionRunner;
 import com.moe.myfamilybudget.application.factory.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
@@ -41,11 +41,15 @@ import com.moe.myfamilybudget.transition.port.SimulationSettingsSnapshotWriter;
  * <p>VT-340 : import et reset écrivent dans plusieurs silos puis dans les paramètres Objectifs ; ils sont
  * transactionnels pour que l'échec d'une écriture annule les précédentes (base et cache mémoire). Le verrou
  * du budget est pris en premier.
+ *
+ * <p>SILO-205 : la transaction est ouverte via le port {@link TransactionRunner} (plus d'{@code @Transactional}) ;
+ * le verrou reste la première instruction exécutée dans la transaction.
  */
 @Service
 public class GlobalBudgetSnapshotService {
 
     private final BudgetMutationLock budgetMutationLock;
+    private final TransactionRunner transactionRunner;
     private final OverviewMapper overviewMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
     private final SettingsReader settingsReader;
@@ -86,8 +90,10 @@ public class GlobalBudgetSnapshotService {
             PatrimoineSnapshotWriter patrimoineWriter,
             LoanSnapshotWriter loanWriter,
             GoalSnapshotWriter goalWriter,
-            BankSnapshotWriter bankWriter) {
+            BankSnapshotWriter bankWriter,
+            TransactionRunner transactionRunner) {
         this.budgetMutationLock = budgetMutationLock;
+        this.transactionRunner = transactionRunner;
         this.overviewMapper = overviewMapper;
         this.objectifsSettingsService = objectifsSettingsService;
         this.settingsReader = settingsReader;
@@ -118,42 +124,44 @@ public class GlobalBudgetSnapshotService {
      * Import du budget complet. Un corps {@code null} n'écrit rien et renvoie l'état courant.
      * Écrit chaque silo puis les paramètres Objectifs dans la même transaction.
      */
-    @Transactional
     public BudgetDataDto importSnapshot(BudgetDataDto body) {
-        if (body != null) {
-            budgetMutationLock.lockForCurrentTransaction();
-            BudgetSnapshotFragments f = overviewMapper.toSnapshotFragments(body);
-            retirementWriter.replace(f.retirementSettings(), f.retirement());
-            taxWriter.replace(f.taxSettings(), f.taxChildren(), f.taxBrackets(), f.taxRateOverrides(),
-                    f.taxActualOverrides());
-            tresorerieWriter.replace(f.tresorerieSettings(), f.incomes(), f.charges(), f.oneoff(),
-                    f.variableIncomes(), f.variableOverrides());
-            simulationWriter.replace(f.simulationSettings());
-            economicAssumptionsWriter.replace(f.economicAssumptions());
-            patrimoineWriter.replace(f.placements(), f.realEstate(), f.transfers(), f.assetCategories());
-            loanWriter.replace(f.loans());
-            goalWriter.replace(f.goals());
-            bankWriter.replace(f.bankImport());
-            objectifsSettingsService.save(f.objectifsParameters());
-        }
-        return export();
+        return transactionRunner.inTransaction(() -> {
+            if (body != null) {
+                budgetMutationLock.lockForCurrentTransaction();
+                BudgetSnapshotFragments f = overviewMapper.toSnapshotFragments(body);
+                retirementWriter.replace(f.retirementSettings(), f.retirement());
+                taxWriter.replace(f.taxSettings(), f.taxChildren(), f.taxBrackets(), f.taxRateOverrides(),
+                        f.taxActualOverrides());
+                tresorerieWriter.replace(f.tresorerieSettings(), f.incomes(), f.charges(), f.oneoff(),
+                        f.variableIncomes(), f.variableOverrides());
+                simulationWriter.replace(f.simulationSettings());
+                economicAssumptionsWriter.replace(f.economicAssumptions());
+                patrimoineWriter.replace(f.placements(), f.realEstate(), f.transfers(), f.assetCategories());
+                loanWriter.replace(f.loans());
+                goalWriter.replace(f.goals());
+                bankWriter.replace(f.bankImport());
+                objectifsSettingsService.save(f.objectifsParameters());
+            }
+            return export();
+        });
     }
 
     /** Réinitialisation du budget complet et des paramètres Objectifs (même transaction). */
-    @Transactional
     public BudgetDataDto reset() {
-        budgetMutationLock.lockForCurrentTransaction();
-        retirementWriter.reset();
-        taxWriter.reset();
-        tresorerieWriter.reset();
-        simulationWriter.reset();
-        economicAssumptionsWriter.reset();
-        patrimoineWriter.reset();
-        loanWriter.reset();
-        goalWriter.reset();
-        bankWriter.reset();
-        objectifsSettingsService.reset();
-        return export();
+        return transactionRunner.inTransaction(() -> {
+            budgetMutationLock.lockForCurrentTransaction();
+            retirementWriter.reset();
+            taxWriter.reset();
+            tresorerieWriter.reset();
+            simulationWriter.reset();
+            economicAssumptionsWriter.reset();
+            patrimoineWriter.reset();
+            loanWriter.reset();
+            goalWriter.reset();
+            bankWriter.reset();
+            objectifsSettingsService.reset();
+            return export();
+        });
     }
 
     /** Vue de façade assemblée fragment par fragment depuis les ports de lecture (SILO-119, lot A). */

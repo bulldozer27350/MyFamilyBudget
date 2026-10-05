@@ -5,7 +5,6 @@ import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.ParametresApi;
@@ -13,6 +12,7 @@ import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.application.command.SettingsCommandRouter;
 import com.moe.myfamilybudget.application.mapper.SettingsMapper;
+import com.moe.myfamilybudget.application.port.TransactionRunner;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.application.model.SettingsCalculator;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
@@ -36,8 +36,9 @@ import com.moe.myfamilybudget.transition.port.SettingsReader;
  * <p>DB-061 : le verrou de mutation du budget (VT-350b), pris en premier par {@code saveSettings}, passe par
  * le port transverse {@link BudgetMutationLock} et non plus par la commande Fiscalité.
  *
- * <p>VT-340 : {@code saveSettings} est {@code @Transactional} — une mise à jour touchant plusieurs
- * propriétaires (Objectifs, Fiscalité/Paramètres) est appliquée en entier ou pas du tout.
+ * <p>VT-340 : {@code saveSettings} s'exécute dans une transaction — une mise à jour touchant plusieurs
+ * propriétaires (Objectifs, Fiscalité/Paramètres) est appliquée en entier ou pas du tout. SILO-205 : la
+ * transaction est ouverte via le port {@link TransactionRunner} (plus d'{@code @Transactional}).
  */
 @Service
 @RestController
@@ -52,6 +53,7 @@ public class ParametersServiceImpl implements ParametresApi {
     private final PatrimoineCommandService patrimoineCommandService;
     private final BudgetMutationLock budgetMutationLock;
     private final SettingsCommandRouter settingsCommandRouter;
+    private final TransactionRunner transactionRunner;
 
     public ParametersServiceImpl(
             SettingsReader settingsReader,
@@ -62,7 +64,8 @@ public class ParametersServiceImpl implements ParametresApi {
             ObjectifsSettingsService objectifsSettingsService,
             PatrimoineCommandService patrimoineCommandService,
             BudgetMutationLock budgetMutationLock,
-            SettingsCommandRouter settingsCommandRouter) {
+            SettingsCommandRouter settingsCommandRouter,
+            TransactionRunner transactionRunner) {
         this.settingsReader = settingsReader;
         this.patrimoineReader = patrimoineReader;
         this.bankReader = bankReader;
@@ -72,6 +75,7 @@ public class ParametersServiceImpl implements ParametresApi {
         this.patrimoineCommandService = patrimoineCommandService;
         this.budgetMutationLock = budgetMutationLock;
         this.settingsCommandRouter = settingsCommandRouter;
+        this.transactionRunner = transactionRunner;
     }
 
     @Override
@@ -89,8 +93,11 @@ public class ParametersServiceImpl implements ParametresApi {
     }
 
     @Override
-    @Transactional
     public ResponseEntity<Void> saveSettings(Object body) {
+        return transactionRunner.inTransaction(() -> applySettings(body));
+    }
+
+    private ResponseEntity<Void> applySettings(Object body) {
         budgetMutationLock.lockForCurrentTransaction();
         if (body instanceof Map<?, ?> map) {
             @SuppressWarnings("unchecked")

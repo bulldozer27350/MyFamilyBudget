@@ -34,6 +34,7 @@ import com.moe.myfamilybudget.transition.port.BudgetReader;
 import com.moe.myfamilybudget.transition.port.EconomicAssumptionsSnapshotWriter;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
 import com.moe.myfamilybudget.transition.port.SimulationSettingsSnapshotWriter;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
  * SILO-119 (lot B2) : l'import et le reset appellent le port {@code replace}/{@code reset} de chaque silo,
@@ -71,7 +72,7 @@ class GlobalBudgetSnapshotFragmentsTest {
                 mock(SettingsReader.class), mock(BudgetReader.class), mock(PatrimoineReader.class),
                 mock(RetirementReader.class), mock(TaxReader.class), mock(BankReader.class),
                 mock(LoanReader.class), mock(GoalReader.class), retirement, tax, tresorerie, simulation,
-                economic, patrimoine, loans, goals, bank);
+                economic, patrimoine, loans, goals, bank, RecordingTransactionRunner.direct());
     }
 
     @Test
