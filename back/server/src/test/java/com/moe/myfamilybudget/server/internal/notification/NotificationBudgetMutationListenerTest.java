@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.application.notification.NotificationCheckService;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportMutatedEvent;
 import com.moe.myfamilybudget.domain.goals.model.GoalsMutatedEvent;
 import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
 
@@ -29,6 +30,17 @@ class NotificationBudgetMutationListenerTest {
         NotificationCheckService checkService = mock(NotificationCheckService.class);
 
         new NotificationBudgetMutationListener(checkService).onGoalsMutated(new GoalsMutatedEvent("saveGoalRow"));
+
+        verify(checkService).runAutomaticCheck();
+    }
+
+    @Test
+    @DisplayName("Mutation de l'import bancaire : le contrôle automatique est lancé")
+    void bankImportMutationTriggersAutomaticCheck() {
+        NotificationCheckService checkService = mock(NotificationCheckService.class);
+
+        new NotificationBudgetMutationListener(checkService)
+                .onBankImportMutated(new BankImportMutatedEvent("updateBankImport"));
 
         verify(checkService).runAutomaticCheck();
     }

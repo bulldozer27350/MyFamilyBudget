@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService;
 import com.moe.myfamilybudget.domain.analysis.core.DefaultAnalyseCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculationService;
@@ -18,7 +19,6 @@ import com.moe.myfamilybudget.domain.bankpointage.core.enablebanking.DefaultEnab
 import com.moe.myfamilybudget.domain.bankpointage.core.enablebanking.EnableBankingClient;
 import com.moe.myfamilybudget.domain.bankpointage.core.enablebanking.EnableBankingConfig;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
-import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
 import com.moe.myfamilybudget.domain.bankpointage.port.EnableBankingSyncStateStore;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.credit.core.DefaultLoanAdviceCalculationService;
@@ -177,12 +177,16 @@ public class DomainEngineConfig {
         return new EnableBankingClient(config);
     }
 
+    /**
+     * SILO-213 (lot B) : la synchronisation ecrit l'import bancaire par {@link BankImportCommandService}, qui prend
+     * le verrou du silo Banque/Pointage et ouvre la transaction : le {@code BankWriter} du silo ne les porte plus.
+     */
     @Bean
     public EnableBankingSyncService enableBankingSyncService(EnableBankingConfig config, EnableBankingClient client,
-            BankReader bankReader, BankWriter bankWriter, EnableBankingSyncStateStore stateStore,
-            BankImportCalculationService bankImportCalculationService) {
-        return new DefaultEnableBankingSyncService(config, client, bankReader, stateStore, bankWriter,
-                bankImportCalculationService);
+            BankReader bankReader, BankImportCommandService bankImportCommandService,
+            EnableBankingSyncStateStore stateStore, BankImportCalculationService bankImportCalculationService) {
+        return new DefaultEnableBankingSyncService(config, client, bankReader, stateStore,
+                bankImportCommandService::updateBankImport, bankImportCalculationService);
     }
 
     @Bean

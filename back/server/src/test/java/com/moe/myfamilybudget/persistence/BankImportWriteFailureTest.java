@@ -3,15 +3,13 @@ package com.moe.myfamilybudget.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.clearInvocations;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
-import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,51 +18,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.transaction.PlatformTransactionManager;
 
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
-import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentEntity;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
-import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowChargeRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowIncomeRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowOneOffRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowTransferRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableIncomeRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
-import com.moe.myfamilybudget.persistence.repository.ChargeRepository;
-import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
-import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
-import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.LoanRepository;
-import com.moe.myfamilybudget.persistence.repository.OneOffExpenseRepository;
-import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
-import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
-import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
-import com.moe.myfamilybudget.persistence.repository.TransferRepository;
-import com.moe.myfamilybudget.persistence.repository.VariableIncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.VariableOverrideRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.JpaBankStore;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportMutatedEvent;
 
 /**
- * FIX-010 -- Une ecriture BankImport en echec ne devient pas une reussite en memoire.
+ * FIX-010 -- Une ecriture BankImport en echec ne devient pas une reussite.
  *
- * <p>{@code BudgetPersistenceGateway.saveBankImport} (table legacy {@code bank_import}) et
- * {@code syncBankImport} (table autonome {@code bank_import_document}) absorbaient auparavant les erreurs.
- * VT-330 avait laisse ce cas hors perimetre : les repositories BankImport y etaient des mocks inertes.
- * Ici, chacun des deux repositories est mis en panne a son tour et l'exception d'origine doit remonter
- * telle quelle, sans modifier l'etat memoire ni publier de {@link BudgetMutatedEvent}.
+ * <p>SILO-213 (lot B) : l'import bancaire s'ecrit directement par {@link JpaBankStore} dans la table autonome
+ * {@code bank_import_document} ; il n'est plus reecrit avec le modele global. Le repository est mis en panne a
+ * chaque etape (suppression, insertion) et l'exception d'origine doit remonter telle quelle, sans publier de
+ * {@link BankImportMutatedEvent}.
  */
 class BankImportWriteFailureTest {
 
@@ -72,119 +39,55 @@ class BankImportWriteFailureTest {
 
     private static final BankImportModel NEW_BANK_IMPORT = new BankImportModel(List.of(), List.of(), List.of());
 
-    private BudgetDataRepository budgetDataRepository;
-    private BankImportDocumentRepository bankImportDocumentRepository;
+    private BankImportDocumentRepository repository;
     private ApplicationEventPublisher eventPublisher;
-    private PersistenceManager persistenceManager;
-
-    private BudgetPersistenceAdapter budgetAdapter;
-    private BankPersistenceAdapter bankAdapter;
-
-    private BudgetDataModel before;
+    private JpaBankStore store;
 
     @BeforeEach
     void setUp() {
-        budgetDataRepository = mock(BudgetDataRepository.class);
-        bankImportDocumentRepository = mock(BankImportDocumentRepository.class);
+        repository = mock(BankImportDocumentRepository.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
-        doAnswer(invocation -> invocation.getArgument(0)).when(budgetDataRepository).save(any());
-
-        persistenceManager = new PersistenceManager(
-                budgetDataRepository,
-                mock(SettingsRepository.class),
-                mock(IncomeRepository.class),
-                mock(ChargeRepository.class),
-                mock(PlacementRepository.class),
-                mock(RealEstateRepository.class),
-                mock(OneOffExpenseRepository.class),
-                mock(TransferRepository.class),
-                mock(VariableIncomeRepository.class),
-                mock(VariableOverrideRepository.class),
-                mock(AssetCategoryRepository.class),
-                mock(LoanRepository.class),
-                mock(GoalRepository.class),
-                mock(CreditLoanRepository.class),
-                mock(FiscalChildRepository.class),
-                mock(FiscalBracketRepository.class),
-                mock(FiscalRateOverrideRepository.class),
-                mock(FiscalActualOverrideRepository.class),
-                mock(PensionPlanRepository.class),
-                bankImportDocumentRepository,
-                mock(WealthPlacementRepository.class),
-                mock(WealthRealEstateRepository.class),
-                mock(WealthCategoryRepository.class),
-                mock(CashflowIncomeRepository.class),
-                mock(CashflowChargeRepository.class),
-                mock(CashflowOneOffRepository.class),
-                mock(CashflowTransferRepository.class),
-                mock(CashflowVariableIncomeRepository.class),
-                mock(CashflowVariableOverrideRepository.class),
-                mock(PlatformTransactionManager.class),
-                eventPublisher);
-        persistenceManager.init();
-
-        budgetAdapter = new BudgetPersistenceAdapter(persistenceManager);
-        bankAdapter = new BankPersistenceAdapter(persistenceManager);
-
-        persistenceManager.write(m -> m.addTresorerieRow("incomes",
-                Map.of("id", "inc_seed", "label", "Salaire", "monthly", new BigDecimal("2500"))));
-
-        before = persistenceManager.getBudgetData();
-        clearInvocations(eventPublisher);
+        store = new JpaBankStore(repository, eventPublisher);
     }
 
     @Test
-    @DisplayName("Table autonome bank_import_document en echec : l'exception d'origine remonte, la memoire reste inchangee")
-    void documentTableFailureIsPropagated() {
-        doThrow(DB_DOWN).when(bankImportDocumentRepository).save(any());
+    @DisplayName("Insertion du document en echec : l'exception d'origine remonte, aucun evenement")
+    void documentInsertFailureIsPropagated() {
+        doThrow(DB_DOWN).when(repository).save(any());
 
-        assertEveryMutationFailsAndLeavesMemoryUntouched();
+        assertEveryWriteFailsWithoutEvent();
     }
 
     @Test
-    @DisplayName("Suppression du document precedent en echec : l'exception d'origine remonte, la memoire reste inchangee")
-    void documentTableDeleteFailureIsPropagated() {
-        doThrow(DB_DOWN).when(bankImportDocumentRepository).deleteAll();
+    @DisplayName("Suppression du document precedent en echec : l'exception d'origine remonte, rien n'est insere")
+    void documentDeleteFailureIsPropagated() {
+        doThrow(DB_DOWN).when(repository).deleteAll();
 
-        assertEveryMutationFailsAndLeavesMemoryUntouched();
+        assertEveryWriteFailsWithoutEvent();
+        verify(repository, never()).save(any());
     }
 
     @Test
-    @DisplayName("Une fois la base revenue, la meme mutation aboutit et publie un seul evenement")
+    @DisplayName("Une fois la base revenue, la meme ecriture aboutit et publie un seul evenement")
     void writeSucceedsOnceBankImportRecovers() {
-        doThrow(DB_DOWN).when(bankImportDocumentRepository).save(any());
-        assertThatThrownBy(() -> persistenceManager.write(m -> m.updateBankImport(NEW_BANK_IMPORT))).isSameAs(DB_DOWN);
+        doThrow(DB_DOWN).when(repository).save(any());
+        assertThatThrownBy(() -> store.updateBankImport(NEW_BANK_IMPORT)).isSameAs(DB_DOWN);
         verifyNoInteractions(eventPublisher);
 
-        reset(bankImportDocumentRepository);
-        persistenceManager.write(m -> m.updateBankImport(NEW_BANK_IMPORT));
+        reset(repository);
+        store.updateBankImport(NEW_BANK_IMPORT);
 
-        assertThat(bankAdapter.getBankImport()).isEqualTo(NEW_BANK_IMPORT);
-        assertThat(persistenceManager.getBudgetData()).isNotSameAs(before);
-        verify(eventPublisher).publishEvent(any(BudgetMutatedEvent.class));
+        verify(repository).save(any(BankImportDocumentEntity.class));
+        verify(eventPublisher).publishEvent(any(BankImportMutatedEvent.class));
     }
 
-    /**
-     * Toute sauvegarde reecrit l'integralite du modele, BankImport compris : une mutation sans rapport avec la
-     * banque doit donc echouer elle aussi (et non reussir en memoire alors que la base est incoherente).
-     */
-    private void assertEveryMutationFailsAndLeavesMemoryUntouched() {
-        List<IncomeModel> incomes = budgetAdapter.getIncomes();
-        BankImportModel bankImport = bankAdapter.getBankImport();
+    private void assertEveryWriteFailsWithoutEvent() {
+        Map<String, Runnable> writes = new LinkedHashMap<>();
+        writes.put("updateBankImport", () -> store.updateBankImport(NEW_BANK_IMPORT));
+        writes.put("replace", () -> store.replace(NEW_BANK_IMPORT));
+        writes.put("reset", store::reset);
 
-        Map<String, Runnable> mutations = new LinkedHashMap<>();
-        mutations.put("updateBankImport", () -> persistenceManager.write(m -> m.updateBankImport(NEW_BANK_IMPORT)));
-        mutations.put("addTresorerieRow", () -> persistenceManager.write(m -> m.addTresorerieRow("incomes",
-                Map.of("id", "inc_new", "label", "Prime", "monthly", new BigDecimal("999")))));
-        mutations.put("setBudgetData", () -> persistenceManager.setBudgetData(before.withBankImport(NEW_BANK_IMPORT)));
-
-        mutations.forEach((name, mutation) -> {
-            assertThatThrownBy(mutation::run).as(name).isSameAs(DB_DOWN);
-
-            assertThat(persistenceManager.getBudgetData()).as(name).isSameAs(before);
-            assertThat(budgetAdapter.getIncomes()).as(name).isEqualTo(incomes);
-            assertThat(bankAdapter.getBankImport()).as(name).isSameAs(bankImport);
-        });
+        writes.forEach((name, write) -> assertThatThrownBy(write::run).as(name).isSameAs(DB_DOWN));
 
         verifyNoInteractions(eventPublisher);
     }

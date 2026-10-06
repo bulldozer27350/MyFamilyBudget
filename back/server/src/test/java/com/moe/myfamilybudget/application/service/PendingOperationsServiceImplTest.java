@@ -15,13 +15,16 @@ import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
-import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 @DisplayName("PendingOperationsServiceImpl OpenAPI Controller Unit Tests")
 class PendingOperationsServiceImplTest {
+
+    private final InMemoryBankStore bankStore = new InMemoryBankStore();
 
     private PendingOperationsServiceImpl service;
     private PersistenceManager persistenceManager;
@@ -31,8 +34,8 @@ class PendingOperationsServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new PendingOperationsServiceImpl(
-                new BankPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
-                SettingsReaderTestFactory.of(persistenceManager), new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)),
+                bankStore, new BudgetPersistenceAdapter(persistenceManager),
+                SettingsReaderTestFactory.of(persistenceManager), new BankImportCommandService(bankStore, silos -> { }, RecordingTransactionRunner.direct()),
                 new StatementBankImportMapper(), new DefaultBankImportCalculationService());
     }
 
@@ -71,7 +74,7 @@ class PendingOperationsServiceImplTest {
         assertThat(summary).isNotNull();
         assertThat(summary.get("imported")).isEqualTo(1);
 
-        BankImportModel updated = persistenceManager.getBankImport();
+        BankImportModel updated = bankStore.getBankImport();
         assertThat(updated.pendingOperations()).hasSize(1);
         assertThat(updated.pendingOperations().get(0).label()).isEqualTo("CB RESTAURANT LE BISTROT");
     }
@@ -99,7 +102,7 @@ class PendingOperationsServiceImplTest {
         ResponseEntity<Void> forceResponse = service.forceImportPendingOperation(newOp);
         assertThat(forceResponse.getStatusCode().is2xxSuccessful()).isTrue();
 
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankStore.getBankImport();
         assertThat(current.pendingOperations()).hasSize(1);
         BankImportModel.PendingOperationModel saved = current.pendingOperations().get(0);
         assertThat(saved.id()).isEqualTo("op_test_1");
@@ -130,7 +133,7 @@ class PendingOperationsServiceImplTest {
         assertThat(updateResponse.getStatusCode().is2xxSuccessful()).isTrue();
 
         // 3. Verify in persistence
-        BankImportModel afterUpdate = persistenceManager.getBankImport();
+        BankImportModel afterUpdate = bankStore.getBankImport();
         assertThat(afterUpdate.pendingOperations()).hasSize(1);
         BankImportModel.PendingOperationModel updatedOp = afterUpdate.pendingOperations().get(0);
         assertThat(updatedOp.id()).isEqualTo("op_test_1");

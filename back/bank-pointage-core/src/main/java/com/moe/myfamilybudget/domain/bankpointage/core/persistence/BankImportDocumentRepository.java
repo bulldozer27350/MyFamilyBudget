@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 
 /**
  * Repository autonome du domaine Banque (DB-1030), sans lien avec {@code BudgetDataEntity}.
- * Additif : pas encore branche sur {@code BankPersistenceAdapter} (bascule en DB-1031).
+ * Lu et ecrit directement par {@code JpaBankStore} (SILO-213, lot B).
  */
 @Repository
 public interface BankImportDocumentRepository extends JpaRepository<BankImportDocumentEntity, Long> {

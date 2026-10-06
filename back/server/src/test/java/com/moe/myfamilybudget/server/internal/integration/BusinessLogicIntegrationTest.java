@@ -38,7 +38,7 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.persistence.adapter.LoanPersistenceAdapter;
@@ -403,7 +403,7 @@ class BusinessLogicIntegrationTest {
                 new DefaultTresorerieCalculationService(),
                 SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
-                new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
+                new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
                 new LoanPersistenceAdapter(persistenceManager), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 
@@ -430,7 +430,7 @@ class BusinessLogicIntegrationTest {
                 new DefaultTresorerieCalculationService(),
                 SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
-                new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
+                new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
                 new LoanPersistenceAdapter(persistenceManager), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 
@@ -452,7 +452,7 @@ class BusinessLogicIntegrationTest {
                 new DefaultTresorerieCalculationService(),
                 SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
-                new TaxPersistenceAdapter(persistenceManager), new BankPersistenceAdapter(persistenceManager),
+                new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
                 new LoanPersistenceAdapter(persistenceManager), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 

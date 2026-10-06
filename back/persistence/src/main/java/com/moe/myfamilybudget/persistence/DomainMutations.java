@@ -7,7 +7,6 @@ import java.util.Map;
 import org.springframework.context.ApplicationEventPublisher;
 
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
@@ -208,14 +207,6 @@ public final class DomainMutations {
         publishMutated("deletePlacementHistoryEntry");
     }
 
-    /**
-     * Met à jour les données d'import bancaire.
-     */
-    public void updateBankImport(BankImportModel bankImport) {
-        mutationService.updateBankImport(bankImport);
-        publishMutated("updateBankImport");
-    }
-
     // --- SILO-119 (lot B1) : remplacement et reinitialisation par silo ---
 
     /** Remplace les parametres Retraite et le plan de retraite. */
@@ -283,18 +274,6 @@ public final class DomainMutations {
     public void resetLoansSnapshot() {
         mutationService.resetLoansSnapshot();
         publishMutated("resetLoansSnapshot");
-    }
-
-    /** Remplace l'import bancaire. */
-    public void replaceBankImportSnapshot(BankImportModel bankImport) {
-        mutationService.replaceBankImportSnapshot(bankImport);
-        publishMutated("replaceBankImportSnapshot");
-    }
-
-    /** Remet l'import bancaire a vide. */
-    public void resetBankImportSnapshot() {
-        mutationService.resetBankImportSnapshot();
-        publishMutated("resetBankImportSnapshot");
     }
 
     /** Remplace le parametre de simulation. */

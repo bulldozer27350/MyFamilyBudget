@@ -50,7 +50,7 @@ import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewCellModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
 import com.moe.myfamilybudget.application.command.TresorerieCommandService;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
@@ -59,6 +59,8 @@ import com.moe.myfamilybudget.persistence.adapter.TresoreriePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class TresorerieServiceImplTest {
+
+    private final InMemoryBankStore bankStore = new InMemoryBankStore();
 
     private TresorerieServiceImpl service;
     private TresorerieMapper mapper;
@@ -84,7 +86,7 @@ class TresorerieServiceImplTest {
                 new TaxPersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),
-                new BankPersistenceAdapter(persistenceManager));
+                bankStore);
     }
 
     // -------------------------------------------------------------------------

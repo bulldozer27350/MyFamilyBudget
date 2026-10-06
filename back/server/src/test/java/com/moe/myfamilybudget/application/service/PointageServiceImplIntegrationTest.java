@@ -15,7 +15,8 @@ import com.moe.myfamilybudget.application.mapper.PointageMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
-import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
@@ -23,6 +24,8 @@ import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTest
 
 @DisplayName("PointageServiceImpl Integration Test")
 class PointageServiceImplIntegrationTest {
+
+    private final InMemoryBankStore bankStore = new InMemoryBankStore();
 
     private PointageServiceImpl service;
     private PersistenceManager persistenceManager;
@@ -32,9 +35,9 @@ class PointageServiceImplIntegrationTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         service = new PointageServiceImpl(
-                new BankPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
+                bankStore, new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), SettingsReaderTestFactory.of(persistenceManager),
-                new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)), new PointageMapper(),
+                new BankImportCommandService(bankStore, silos -> { }, RecordingTransactionRunner.direct()), new PointageMapper(),
                 new DefaultPointageCalculationService());
     }
 
@@ -56,7 +59,7 @@ class PointageServiceImplIntegrationTest {
         ResponseEntity<Object> afterResp = service.getPointage();
         assertThat(afterResp.getStatusCode().is2xxSuccessful()).isTrue();
 
-        BankImportModel bankImport = persistenceManager.getBankImport();
+        BankImportModel bankImport = bankStore.getBankImport();
         assertThat(bankImport.matchings()).anyMatch(m -> "2026-06".equals(m.month()));
     }
 }

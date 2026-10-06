@@ -11,7 +11,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
@@ -242,13 +241,6 @@ public class PersistenceManager {
     /** Variante de {@link #write} pour les mutations qui renvoient la ligne ecrite. */
     public <R> R writeAndGet(Function<DomainMutations, R> action) {
         return action.apply(domainMutations);
-    }
-
-    /**
-     * Obtient les données d'import bancaire.
-     */
-    public BankImportModel getBankImport() {
-        return mutationService.getBankImport();
     }
 
     /**

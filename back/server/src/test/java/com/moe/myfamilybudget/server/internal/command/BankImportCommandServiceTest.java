@@ -5,26 +5,33 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.math.BigDecimal;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
+import com.moe.myfamilybudget.application.port.MutationSilo;
+import com.moe.myfamilybudget.application.port.SiloMutationLock;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
  * DB-040 -- Le command service Banque valide la commande, delegue au port d'ecriture et laisse l'erreur
  * de persistance remonter telle quelle ; l'adaptateur ecrit bien dans le modele relu par le lecteur Banque.
+ *
+ * <p>SILO-213 (lot B) : l'ecriture s'execute dans la transaction, apres la prise du verrou du silo
+ * Banque/Pointage.
  */
 @DisplayName("DB-040 -- BankImportCommandService")
 class BankImportCommandServiceTest {
@@ -36,12 +43,16 @@ class BankImportCommandServiceTest {
             List.of());
 
     private BankWriter writer;
+    private SiloMutationLock lock;
+    private RecordingTransactionRunner transactions;
     private BankImportCommandService service;
 
     @BeforeEach
     void setUp() {
         writer = mock(BankWriter.class);
-        service = new BankImportCommandService(writer);
+        lock = mock(SiloMutationLock.class);
+        transactions = RecordingTransactionRunner.direct();
+        service = new BankImportCommandService(writer, lock, transactions);
     }
 
     @Test
@@ -53,11 +64,23 @@ class BankImportCommandServiceTest {
     }
 
     @Test
-    @DisplayName("validation : un import null est refuse et rien n'est ecrit")
+    @DisplayName("SILO-213 : l'ecriture s'execute dans la transaction, apres la prise du verrou du silo Banque")
+    void updateRunsInTransactionAfterLockingBankSilo() {
+        service.updateBankImport(BANK_IMPORT);
+
+        assertThat(transactions.calls()).isEqualTo(1);
+        InOrder order = inOrder(lock, writer);
+        order.verify(lock).lockForCurrentTransaction(EnumSet.of(MutationSilo.BANK_POINTAGE));
+        order.verify(writer).updateBankImport(BANK_IMPORT);
+    }
+
+    @Test
+    @DisplayName("validation : un import null est refuse, sans transaction, verrou ni ecriture")
     void nullImportIsRejectedWithoutWriting() {
         assertThatThrownBy(() -> service.updateBankImport(null)).isInstanceOf(IllegalArgumentException.class);
 
-        verifyNoInteractions(writer);
+        assertThat(transactions.calls()).isZero();
+        verifyNoInteractions(writer, lock);
     }
 
     @Test
@@ -72,10 +95,9 @@ class BankImportCommandServiceTest {
     @Test
     @DisplayName("integration adaptateur : l'import ecrit est relu par le lecteur Banque")
     void adapterWriteIsReadBackByReader() {
-        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
-        BankPersistenceAdapter adapter = new BankPersistenceAdapter(persistenceManager);
-        BankImportCommandService realService = new BankImportCommandService(adapter);
+        InMemoryBankStore adapter = new InMemoryBankStore();
+        BankImportCommandService realService = new BankImportCommandService(adapter, silos -> { },
+                RecordingTransactionRunner.direct());
         assertThat(adapter.getBankImport().transactions()).isEmpty();
 
         realService.updateBankImport(BANK_IMPORT);
@@ -84,5 +106,6 @@ class BankImportCommandServiceTest {
                 .containsExactly("tx_1");
         assertThat(adapter.getBankImport().categories()).extracting(BankImportModel.CategoryModel::id)
                 .containsExactly("cat_loyer");
+        assertThat(adapter.events()).hasSize(1);
     }
 }

@@ -20,13 +20,16 @@ import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
-import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 @DisplayName("StatementBankImportServiceImpl OpenAPI Unit Tests")
 class StatementBankImportServiceImplTest {
+
+    private final InMemoryBankStore bankStore = new InMemoryBankStore();
 
     private StatementBankImportServiceImpl service;
     private PendingOperationsServiceImpl pendingService;
@@ -38,11 +41,11 @@ class StatementBankImportServiceImplTest {
         persistenceManager.init();
         StatementBankImportMapper mapper = new StatementBankImportMapper();
         service = new StatementBankImportServiceImpl(
-                new BankPersistenceAdapter(persistenceManager), new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)),
+                bankStore, new BankImportCommandService(bankStore, silos -> { }, RecordingTransactionRunner.direct()),
                 mapper, new ExcelToCsvService(), new DefaultBankImportCalculationService());
         pendingService = new PendingOperationsServiceImpl(
-                new BankPersistenceAdapter(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
-                SettingsReaderTestFactory.of(persistenceManager), new BankImportCommandService(new BankPersistenceAdapter(persistenceManager)),
+                bankStore, new BudgetPersistenceAdapter(persistenceManager),
+                SettingsReaderTestFactory.of(persistenceManager), new BankImportCommandService(bankStore, silos -> { }, RecordingTransactionRunner.direct()),
                 mapper, new DefaultBankImportCalculationService());
     }
 
@@ -73,7 +76,7 @@ class StatementBankImportServiceImplTest {
         ResponseEntity<Void> response = service.updateBankImportMapping(newMapping);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         assertThat(stored.columnMapping().dateFormat()).isEqualTo("YYYY-MM-DD");
         assertThat(stored.columnMapping().dateCol()).isEqualTo(0);
         assertThat(stored.columnMapping().labelCol()).isEqualTo(1);
@@ -100,7 +103,7 @@ class StatementBankImportServiceImplTest {
         ResponseEntity<Void> response = service.importBankCSV(file);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         assertThat(stored.transactions()).hasSize(1);
         assertThat(stored.transactions().get(0).label()).isEqualTo("Achat Carrefour");
     }
@@ -109,15 +112,15 @@ class StatementBankImportServiceImplTest {
     @DisplayName("updateBankTransactionSplits updates splits for existing transaction")
     void testUpdateBankTransactionSplitsSuccess() {
         // Setup initial transaction
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankStore.getBankImport();
         BankImportModel.BankTransactionModel tx = new BankImportModel.BankTransactionModel(
                 "tx_split_1", "2026-01-15", "LECLERC SUPER", "", new java.math.BigDecimal("-100.00"), "cat_default"
         );
         java.util.List<BankImportModel.BankTransactionModel> txs = new java.util.ArrayList<>(current.transactions());
         txs.add(tx);
-        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
+        bankStore.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), current.rules(), txs, current.pendingOperations(), current.matchings()
-        )));
+        ));
         
         BankTransactionSplitDto split1 = new BankTransactionSplitDto();
         split1.setId("s1");
@@ -139,7 +142,7 @@ class StatementBankImportServiceImplTest {
         ResponseEntity<Void> response = service.updateBankTransactionSplits("tx_split_1", splitsBody);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         BankImportModel.BankTransactionModel storedTx = stored.transactions().stream()
                 .filter(t -> t.id().equals("tx_split_1"))
                 .findFirst().orElseThrow();
@@ -154,15 +157,15 @@ class StatementBankImportServiceImplTest {
     @Test
     @DisplayName("updateBankTransactionSplits returns 400 when splits sum does not match transaction amount")
     void testUpdateBankTransactionSplitsInvalidSum() {
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankStore.getBankImport();
         BankImportModel.BankTransactionModel tx = new BankImportModel.BankTransactionModel(
                 "tx_split_2", "2026-01-15", "LECLERC SUPER", "", new java.math.BigDecimal("-100.00"), "cat_default"
         );
         java.util.List<BankImportModel.BankTransactionModel> txs = new java.util.ArrayList<>(current.transactions());
         txs.add(tx);
-        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
+        bankStore.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), current.rules(), txs, current.pendingOperations(), current.matchings()
-        )));
+        ));
 
         BankTransactionSplitDto split1 = new BankTransactionSplitDto();
         split1.setId("s1");
@@ -210,7 +213,7 @@ class StatementBankImportServiceImplTest {
         assertThat(catBody.get("id")).isNotNull();
         assertThat(catBody.get("label")).isEqualTo("Alimentation");
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         assertThat(stored.categories()).anyMatch(c -> c.label().equals("Alimentation"));
 
         // Add Rule
@@ -222,7 +225,7 @@ class StatementBankImportServiceImplTest {
         assertThat(ruleBody.get("id")).isNotNull();
         assertThat(ruleBody.get("matchText")).isEqualTo("AUCHAN");
 
-        stored = persistenceManager.getBankImport();
+        stored = bankStore.getBankImport();
         assertThat(stored.rules()).anyMatch(r -> r.matchText().equals("AUCHAN"));
 
         // Invalid listKey
@@ -244,7 +247,7 @@ class StatementBankImportServiceImplTest {
         ResponseEntity<Void> updateCatResp = service.updateBankImportLigne("categories", catId, updateCatDto);
         assertThat(updateCatResp.getStatusCode().is2xxSuccessful()).isTrue();
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         assertThat(stored.categories()).anyMatch(c -> c.id().equals(catId) && c.label().equals("Restaurants & Sorties"));
 
         // Add rule first
@@ -258,7 +261,7 @@ class StatementBankImportServiceImplTest {
         ResponseEntity<Void> updateRuleResp = service.updateBankImportLigne("rules", ruleId, updateRuleDto);
         assertThat(updateRuleResp.getStatusCode().is2xxSuccessful()).isTrue();
 
-        stored = persistenceManager.getBankImport();
+        stored = bankStore.getBankImport();
         assertThat(stored.rules()).anyMatch(r -> r.id().equals(ruleId) && r.matchText().equals("MCDONALDS"));
 
         // 404 on unknown id
@@ -280,7 +283,7 @@ class StatementBankImportServiceImplTest {
         ResponseEntity<Void> removeCatResp = service.removeBankImportLigne("categories", catId);
         assertThat(removeCatResp.getStatusCode().value()).isEqualTo(204);
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         assertThat(stored.categories()).noneMatch(c -> c.id().equals(catId));
 
         // Add and remove rule
@@ -291,7 +294,7 @@ class StatementBankImportServiceImplTest {
         ResponseEntity<Void> removeRuleResp = service.removeBankImportLigne("rules", ruleId);
         assertThat(removeRuleResp.getStatusCode().value()).isEqualTo(204);
 
-        stored = persistenceManager.getBankImport();
+        stored = bankStore.getBankImport();
         assertThat(stored.rules()).noneMatch(r -> r.id().equals(ruleId));
     }
 
@@ -299,17 +302,17 @@ class StatementBankImportServiceImplTest {
     @DisplayName("setBankImportTransactionCategory updates tx category, creates new rule, and applies rules to other txs")
     void testSetBankImportTransactionCategoryWithNewRule() {
         // Setup initial transactions
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankStore.getBankImport();
         BankImportModel.BankTransactionModel tx1 = new BankImportModel.BankTransactionModel(
                 "tx_cat_1", "2026-01-15", "BOULANGERIE PAUL", "", new java.math.BigDecimal("-12.50"), ""
         );
         BankImportModel.BankTransactionModel tx2 = new BankImportModel.BankTransactionModel(
                 "tx_cat_2", "2026-01-18", "BOULANGERIE PAUL SUD", "", new java.math.BigDecimal("-8.00"), ""
         );
-        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
+        bankStore.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), current.rules(),
                 java.util.List.of(tx1, tx2), current.pendingOperations(), current.matchings()
-        )));
+        ));
 
         SetBankTransactionCategoryRequestDto request = new SetBankTransactionCategoryRequestDto();
         request.setCategoryId("cat_boulangerie");
@@ -318,7 +321,7 @@ class StatementBankImportServiceImplTest {
         ResponseEntity<Void> response = service.setBankImportTransactionCategory("tx_cat_1", request);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         // Check rule created
         assertThat(stored.rules()).anyMatch(r -> r.matchText().equals("BOULANGERIE") && r.categoryId().equals("cat_boulangerie"));
         // Check tx1 categorized
@@ -331,15 +334,15 @@ class StatementBankImportServiceImplTest {
     @DisplayName("setBankImportTransactionCategory updates existing rule if keyword already exists (case-insensitive)")
     void testSetBankImportTransactionCategoryWithExistingRuleUpdate() {
         // Setup initial rule and transaction
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankStore.getBankImport();
         BankImportModel.BankImportRuleModel rule = new BankImportModel.BankImportRuleModel("r_exist", "AUCHAN", "cat_old");
         BankImportModel.BankTransactionModel tx = new BankImportModel.BankTransactionModel(
                 "tx_auchan", "2026-01-15", "AUCHAN DRIVE", "", new java.math.BigDecimal("-50.00"), ""
         );
-        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
+        bankStore.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), java.util.List.of(rule),
                 java.util.List.of(tx), current.pendingOperations(), current.matchings()
-        )));
+        ));
 
         SetBankTransactionCategoryRequestDto request = new SetBankTransactionCategoryRequestDto();
         request.setCategoryId("cat_new");
@@ -348,7 +351,7 @@ class StatementBankImportServiceImplTest {
         ResponseEntity<Void> response = service.setBankImportTransactionCategory("tx_auchan", request);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         // Check rule updated, not duplicated
         assertThat(stored.rules()).hasSize(1);
         assertThat(stored.rules().get(0).categoryId()).isEqualTo("cat_new");
@@ -358,7 +361,7 @@ class StatementBankImportServiceImplTest {
     @Test
     @DisplayName("recalculateBankImportRules applies all existing rules to uncategorized transactions")
     void testRecalculateBankImportRules() {
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankStore.getBankImport();
         BankImportModel.BankImportRuleModel rule = new BankImportModel.BankImportRuleModel("r1", "NETFLIX", "cat_streaming");
         BankImportModel.BankTransactionModel txUncat = new BankImportModel.BankTransactionModel(
                 "tx_net", "2026-01-10", "NETFLIX COM", "", new java.math.BigDecimal("-15.99"), ""
@@ -366,15 +369,15 @@ class StatementBankImportServiceImplTest {
         BankImportModel.BankTransactionModel txAlreadyCat = new BankImportModel.BankTransactionModel(
                 "tx_manual", "2026-01-11", "NETFLIX COM", "", new java.math.BigDecimal("-15.99"), "cat_custom"
         );
-        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
+        bankStore.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), java.util.List.of(rule),
                 java.util.List.of(txUncat, txAlreadyCat), current.pendingOperations(), current.matchings()
-        )));
+        ));
 
         ResponseEntity<Void> response = service.recalculateBankImportRules();
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         // txUncat should now have cat_streaming
         assertThat(stored.transactions().stream().filter(t -> t.id().equals("tx_net")).findFirst().get().categoryId()).isEqualTo("cat_streaming");
         // txAlreadyCat should keep cat_custom
@@ -384,12 +387,12 @@ class StatementBankImportServiceImplTest {
     @Test
     @DisplayName("importBankTransactions imports parsed rows with explicit colRoles, deduplicates and categorizes")
     void testImportBankTransactions() {
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankStore.getBankImport();
         BankImportModel.BankImportRuleModel rule = new BankImportModel.BankImportRuleModel("r_leclerc", "LECLERC", "cat_supermarche");
-        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
+        bankStore.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), java.util.List.of(rule),
                 java.util.List.of(), current.pendingOperations(), current.matchings()
-        )));
+        ));
 
         ImportBankTransactionsRequestDto request = new ImportBankTransactionsRequestDto();
         request.setColRoles(java.util.List.of("date", "ignore", "label", "amount"));
@@ -409,7 +412,7 @@ class StatementBankImportServiceImplTest {
         assertThat(body.get("duplicates")).isEqualTo(0);
         assertThat(body.get("autoCategorized")).isEqualTo(1);
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         assertThat(stored.transactions()).hasSize(2);
         assertThat(stored.transactions().get(0).categoryId()).isEqualTo("cat_supermarche");
         assertThat(stored.transactions().get(1).categoryId()).isEmpty();
@@ -418,12 +421,12 @@ class StatementBankImportServiceImplTest {
     @Test
     @DisplayName("forceImportBankTransaction adds the transaction despite being a duplicate, applying rules")
     void testForceImportBankTransactionAppliesRules() {
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankStore.getBankImport();
         BankImportModel.BankImportRuleModel rule = new BankImportModel.BankImportRuleModel("r_edf", "EDF", "cat_energie");
-        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
+        bankStore.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), java.util.List.of(rule),
                 java.util.List.of(), current.pendingOperations(), current.matchings()
-        )));
+        ));
 
         Map<String, Object> tx = Map.of(
                 "id", "tx_dup_1",
@@ -442,7 +445,7 @@ class StatementBankImportServiceImplTest {
         assertThat(body.get("id")).isEqualTo("tx_dup_1");
         assertThat(body.get("categoryId")).isEqualTo("cat_energie");
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         assertThat(stored.transactions()).hasSize(1);
         assertThat(stored.transactions().get(0).id()).isEqualTo("tx_dup_1");
         assertThat(stored.transactions().get(0).categoryId()).isEqualTo("cat_energie");
@@ -451,14 +454,14 @@ class StatementBankImportServiceImplTest {
     @Test
     @DisplayName("forceImportBankTransaction appends to existing transactions without touching them")
     void testForceImportBankTransactionKeepsExistingTransactions() {
-        BankImportModel current = persistenceManager.getBankImport();
+        BankImportModel current = bankStore.getBankImport();
         BankImportModel.BankTransactionModel existing = new BankImportModel.BankTransactionModel(
                 "tx_existing", "2026-01-10", "LOYER", "", new java.math.BigDecimal("-750.00"), "cat_logement"
         );
-        persistenceManager.write(m -> m.updateBankImport(new BankImportModel(
+        bankStore.updateBankImport(new BankImportModel(
                 current.columnMapping(), current.categories(), current.rules(),
                 java.util.List.of(existing), current.pendingOperations(), current.matchings()
-        )));
+        ));
 
         Map<String, Object> tx = Map.of(
                 "id", "tx_dup_2",
@@ -470,7 +473,7 @@ class StatementBankImportServiceImplTest {
         ResponseEntity<Object> response = service.forceImportBankTransaction(tx);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
 
-        BankImportModel stored = persistenceManager.getBankImport();
+        BankImportModel stored = bankStore.getBankImport();
         assertThat(stored.transactions()).hasSize(2);
         assertThat(stored.transactions()).anyMatch(t -> t.id().equals("tx_existing"));
         assertThat(stored.transactions()).anyMatch(t -> t.id().equals("tx_dup_2"));

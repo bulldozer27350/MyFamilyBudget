@@ -335,7 +335,6 @@ class BudgetPersistenceGateway {
         syncCreditLoans(model.loans());
         syncFiscal(model);
         syncPension(model.retirement());
-        syncBankImport(model.bankImport());
         syncWealth(model);
         syncCashflow(model);
     }
@@ -409,21 +408,6 @@ class BudgetPersistenceGateway {
     }
 
     /**
-     * DB-1031 : remplace le document de la table {@code bank_import_document} par l'import bancaire du modele,
-     * dans la transaction de l'appelant ({@code flush} apres la suppression, comme {@link #syncCreditLoans}). Une erreur
-     * de serialisation ou d'ecriture est propagee a l'appelant (FIX-010) : une ecriture en echec ne doit jamais
-     * devenir une reussite en memoire.
-     */
-    private void syncBankImport(BankImportModel bankImport) {
-        bankImportDocumentRepository.deleteAll();
-        bankImportDocumentRepository.flush();
-        if (bankImport == null) {
-            return;
-        }
-        bankImportDocumentRepository.save(BankImportDocumentMapper.toEntity(bankImport));
-    }
-
-    /**
      * DB-1051 : remplace le contenu des tables {@code wealth_*} (placements avec leur historique, biens
      * immobiliers, categories d'actifs) par le patrimoine du modele, dans la transaction de l'appelant
      * ({@code flush} apres les suppressions, comme {@link #syncCreditLoans}). Les listes sont copiees telles que le
@@ -474,8 +458,9 @@ class BudgetPersistenceGateway {
     /**
      * DB-1130 : l'import bancaire n'est plus porte par le hub, il est relu depuis la table autonome
      * {@code bank_import_document}. Comme le chemin legacy, un document illisible est journalise puis restitue
-     * comme absent (l'appelant fournit alors un import vide) ; la lecture par {@code BankPersistenceAdapter}
-     * propage en revanche l'erreur (DB-1031).
+     * comme absent (l'appelant fournit alors un import vide) ; la lecture par {@code JpaBankStore} propage en
+     * revanche l'erreur (DB-1031). SILO-213 (lot B) : la table n'est plus alimentee ici, le silo l'ecrit
+     * directement ; la copie de l'import portee par le cache n'est plus autoritative ni consommee.
      */
     private BankImportModel loadBankImport() {
         try {

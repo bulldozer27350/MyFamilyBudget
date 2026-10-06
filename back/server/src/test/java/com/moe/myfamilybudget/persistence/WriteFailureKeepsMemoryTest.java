@@ -29,7 +29,6 @@ import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
-import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
@@ -98,7 +97,6 @@ class WriteFailureKeepsMemoryTest {
     private PatrimoinePersistenceAdapter patrimoineAdapter;
     private RetirementPersistenceAdapter retirementAdapter;
     private TaxPersistenceAdapter taxAdapter;
-    private BankPersistenceAdapter bankAdapter;
     private SettingsPersistenceAdapter settingsAdapter;
 
     private BudgetDataModel before;
@@ -148,7 +146,6 @@ class WriteFailureKeepsMemoryTest {
         patrimoineAdapter = new PatrimoinePersistenceAdapter(persistenceManager);
         retirementAdapter = new RetirementPersistenceAdapter(persistenceManager);
         taxAdapter = new TaxPersistenceAdapter(persistenceManager);
-        bankAdapter = new BankPersistenceAdapter(persistenceManager);
         settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
 
         // Etat de reference non trivial, ecrit alors que la base fonctionne.
@@ -254,8 +251,6 @@ class WriteFailureKeepsMemoryTest {
                 RetirementSettingField.RETIRE_AGE, 60)));
         mutations.put("addAssetCategory", () -> persistenceManager.write(m -> m.addAssetCategory(
                 new AssetCategoryModel("cat_new", "icon", "Nouvelle categorie", "bucket", "#ffffff"))));
-        mutations.put("updateBankImport", () -> persistenceManager.write(m -> m.updateBankImport(
-                new BankImportModel(List.of(), List.of(), List.of()))));
         mutations.put("setBudgetData", () -> persistenceManager.setBudgetData(
                 before.withIncomes(List.of(INCOME_REPLACEMENT))));
         return mutations;
@@ -266,7 +261,6 @@ class WriteFailureKeepsMemoryTest {
         var placements = patrimoineAdapter.getPlacements();
         var assetCategories = patrimoineAdapter.getAssetCategories();
         var taxChildren = taxAdapter.getTaxChildren();
-        var bankImport = bankAdapter.getBankImport();
         var settings = settingsAdapter.getSettings();
 
         mutations.forEach((name, mutation) -> {
@@ -278,7 +272,6 @@ class WriteFailureKeepsMemoryTest {
             assertThat(patrimoineAdapter.getAssetCategories()).as(name).isEqualTo(assetCategories);
             assertThat(retirementAdapter.getRetirement()).as(name).isEqualTo(RETIREMENT_BEFORE);
             assertThat(taxAdapter.getTaxChildren()).as(name).isEqualTo(taxChildren);
-            assertThat(bankAdapter.getBankImport()).as(name).isEqualTo(bankImport);
             assertThat(settingsAdapter.getSettings()).as(name).isEqualTo(settings);
         });
 

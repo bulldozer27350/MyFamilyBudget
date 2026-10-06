@@ -26,11 +26,14 @@ import com.moe.myfamilybudget.domain.bankpointage.core.DefaultBankImportCalculat
 import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
-import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 @DisplayName("ExcelToCsvService & convertExcelToCsv Tests")
 class ExcelToCsvServiceTest {
+
+    private final InMemoryBankStore bankStore = new InMemoryBankStore();
 
     private ExcelToCsvService service;
     private StatementBankImportServiceImpl controller;
@@ -42,7 +45,7 @@ class ExcelToCsvServiceTest {
         pm.init();
         StatementBankImportMapper mapper = new StatementBankImportMapper();
         controller = new StatementBankImportServiceImpl(
-                new BankPersistenceAdapter(pm), new BankImportCommandService(new BankPersistenceAdapter(pm)), mapper, service,
+                bankStore, new BankImportCommandService(bankStore, silos -> { }, RecordingTransactionRunner.direct()), mapper, service,
                 new DefaultBankImportCalculationService());
     }
 

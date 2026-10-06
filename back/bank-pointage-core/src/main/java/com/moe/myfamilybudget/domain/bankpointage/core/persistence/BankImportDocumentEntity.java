@@ -13,8 +13,9 @@ import jakarta.persistence.Table;
  *
  * <p>Cette entite n'a <strong>aucune relation vers {@code BudgetDataEntity}</strong> : elle est la racine de
  * son propre agregat (singleton fonctionnel : une seule ligne, lue par {@code findFirstByOrderByIdAsc}). Elle est
- * lue par {@code BankPersistenceAdapter} depuis DB-1031 et, depuis DB-1130, c'est aussi la seule source de
- * chargement du cache : l'ancienne table {@code bank_import} et son entite ont ete supprimees.
+ * lue et ecrite par {@code JpaBankStore} (lecture depuis DB-1031, ecriture directe depuis SILO-213, lot B) et,
+ * depuis DB-1130, c'est aussi la seule source de chargement du cache : l'ancienne table {@code bank_import} et
+ * son entite ont ete supprimees.
  *
  * <p>Le format JSON reste une decision interne a Banque : le contenu n'est volontairement pas eclate en
  * tables relationnelles. Il est stocke en colonne {@code TEXT} explicite (pas {@code @Lob}) pour eviter le

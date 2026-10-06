@@ -32,7 +32,7 @@ import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepo
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
-import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
 
 /**
@@ -91,8 +91,7 @@ class ReadersDoNotUseBudgetCacheTest {
                 context.getBean(FiscalActualOverrideRepository.class));
         RetirementPersistenceAdapter retirement = new RetirementPersistenceAdapter(cache,
                 context.getBean(PensionPlanRepository.class));
-        BankPersistenceAdapter bank = new BankPersistenceAdapter(cache,
-                context.getBean(BankImportDocumentRepository.class));
+        BankReader bank = context.getBean(BankReader.class);
         LoanPersistenceAdapter loans = new LoanPersistenceAdapter(cache, context.getBean(CreditLoanRepository.class));
         GoalReader goals = context.getBean(GoalReader.class);
 

@@ -55,6 +55,7 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepositor
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
+import com.moe.myfamilybudget.domain.bankpointage.core.persistence.JpaBankStore;
 import com.moe.myfamilybudget.domain.goals.core.persistence.JpaGoalStore;
 import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
 import com.moe.myfamilybudget.persistence.repository.LoanRepository;
@@ -108,10 +109,16 @@ class PersistenceAdaptersJpaRoundTripTest {
         writer.resetData();
         // SILO-212 (lot B1) : les objectifs ne sont plus portes par le modele global, resetData() ne les vide plus.
         goalStore().reset();
+        // SILO-213 (lot B) : idem pour l'import bancaire (table autonome, ecrite par JpaBankStore).
+        bankStore().reset();
     }
 
     private JpaGoalStore goalStore() {
         return context.getBean(JpaGoalStore.class);
+    }
+
+    private JpaBankStore bankStore() {
+        return context.getBean(JpaBankStore.class);
     }
 
     // =========================================================================
@@ -205,9 +212,9 @@ class PersistenceAdaptersJpaRoundTripTest {
     @Test
     @DisplayName("updateBankImport -> transactions, categories et pointages relus en base")
     void bankImportIsReadBackFromDatabase() {
-        writer.write(m -> m.updateBankImport(BANK_IMPORT));
+        bankStore().updateBankImport(BANK_IMPORT);
 
-        BankImportModel bank = new BankPersistenceAdapter(freshReader()).getBankImport();
+        BankImportModel bank = bankStore().getBankImport();
 
         assertSameContent(bank.categories(), BANK_IMPORT.categories());
         assertSameContent(bank.transactions(), BANK_IMPORT.transactions());
@@ -240,7 +247,6 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(new TaxPersistenceAdapter(reader).getTaxRateOverrides()).isEmpty();
         assertThat(new TaxPersistenceAdapter(reader).getTaxActualOverrides()).isEmpty();
         assertDefaultBrackets(new TaxPersistenceAdapter(reader).getTaxBrackets());
-        assertThat(new BankPersistenceAdapter(reader).getBankImport().transactions()).isEmpty();
         assertThat(new LoanPersistenceAdapter(reader).getLoans()).isEmpty();
     }
 
@@ -601,17 +607,13 @@ class PersistenceAdaptersJpaRoundTripTest {
     // DB-1031 -- Import bancaire lu depuis la table autonome
     // =========================================================================
 
-    private BankPersistenceAdapter jpaBankAdapter(PersistenceManager manager) {
-        return new BankPersistenceAdapter(manager, context.getBean(BankImportDocumentRepository.class));
-    }
-
     @Test
-    @DisplayName("DB-1031 -- import -> l'import bancaire est recopie dans la table autonome et relu par JPA")
+    @DisplayName("DB-1031 -- import -> l'import bancaire est ecrit dans la table autonome et relu par JPA")
     void importedBankImportIsReadFromDocumentTable() {
-        writer.setBudgetData(referenceData());
+        bankStore().replace(BANK_IMPORT);
 
         assertThat(context.getBean(BankImportDocumentRepository.class).count()).isEqualTo(1);
-        BankImportModel bank = jpaBankAdapter(freshReader()).getBankImport();
+        BankImportModel bank = bankStore().getBankImport();
         assertSameContent(bank.categories(), BANK_IMPORT.categories());
         assertSameContent(bank.transactions(), BANK_IMPORT.transactions());
         assertSameContent(bank.matchings(), BANK_IMPORT.matchings());
@@ -620,8 +622,8 @@ class PersistenceAdaptersJpaRoundTripTest {
     @Test
     @DisplayName("DB-1031 -- updateBankImport remplace le document (une seule ligne) et est visible via la lecture JPA")
     void bankWritesAreVisibleThroughJpaReader() {
-        writer.setBudgetData(referenceData());
-        BankPersistenceAdapter adapter = jpaBankAdapter(writer);
+        bankStore().replace(BANK_IMPORT);
+        JpaBankStore adapter = bankStore();
         BankImportModel updated = new BankImportModel(
                 null,
                 BANK_IMPORT.categories(),
@@ -636,7 +638,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(context.getBean(BankImportDocumentRepository.class).count()).isEqualTo(1);
         assertThat(adapter.getBankImport().transactions()).extracting(BankImportModel.BankTransactionModel::id)
                 .containsExactly("tx_2");
-        BankImportModel reread = jpaBankAdapter(freshReader()).getBankImport();
+        BankImportModel reread = bankStore().getBankImport();
         assertSameContent(reread.transactions(), updated.transactions());
         assertThat(reread.matchings()).isEmpty();
     }
@@ -649,11 +651,10 @@ class PersistenceAdaptersJpaRoundTripTest {
             many.add(new BankImportModel.BankTransactionModel("tx_" + i, "2026-05-05", "Libelle " + i, "CB",
                     bd("-" + (i + 1)), "cat_loyer", List.of()));
         }
-        writer.setBudgetData(referenceData().withBankImport(new BankImportModel(
-                null, BANK_IMPORT.categories(), List.of(), many, List.of(), List.of())));
+        bankStore().replace(new BankImportModel(
+                null, BANK_IMPORT.categories(), List.of(), many, List.of(), List.of()));
 
-        List<BankImportModel.BankTransactionModel> reread =
-                jpaBankAdapter(freshReader()).getBankImport().transactions();
+        List<BankImportModel.BankTransactionModel> reread = bankStore().getBankImport().transactions();
         assertThat(reread).hasSize(3000);
         assertThat(reread.get(2999).id()).isEqualTo("tx_2999");
     }
@@ -661,22 +662,22 @@ class PersistenceAdaptersJpaRoundTripTest {
     @Test
     @DisplayName("DB-1130 -- au demarrage, l'import bancaire du cache est recharge depuis bank_import_document")
     void bankImportIsReloadedFromDocumentTableOnStartup() {
-        writer.setBudgetData(referenceData());
+        bankStore().replace(BANK_IMPORT);
 
         PersistenceManager restarted = freshReader();
 
         assertSameContent(restarted.getBudgetData().bankImport().transactions(), BANK_IMPORT.transactions());
-        assertSameContent(jpaBankAdapter(restarted).getBankImport().transactions(), BANK_IMPORT.transactions());
+        assertSameContent(bankStore().getBankImport().transactions(), BANK_IMPORT.transactions());
     }
 
     @Test
     @DisplayName("DB-1031 -- reinitialisation -> un import vide (jamais null) est relu par JPA")
     void resetRestoresEmptyBankImportThroughJpa() {
-        writer.setBudgetData(referenceData());
+        bankStore().replace(BANK_IMPORT);
 
-        writer.resetData();
+        bankStore().reset();
 
-        BankImportModel bank = jpaBankAdapter(writer).getBankImport();
+        BankImportModel bank = bankStore().getBankImport();
         assertThat(bank).isNotNull();
         assertThat(bank.transactions()).isEmpty();
         assertThat(bank.categories()).isEmpty();
@@ -685,10 +686,10 @@ class PersistenceAdaptersJpaRoundTripTest {
     @Test
     @DisplayName("DB-1031 -- table autonome sans document -> un import vide est restitue")
     void missingDocumentIsReadAsEmptyImport() {
-        writer.setBudgetData(referenceData());
+        bankStore().replace(BANK_IMPORT);
         context.getBean(BankImportDocumentRepository.class).deleteAll();
 
-        BankImportModel bank = jpaBankAdapter(writer).getBankImport();
+        BankImportModel bank = bankStore().getBankImport();
 
         assertThat(bank).isNotNull();
         assertThat(bank.transactions()).isEmpty();
@@ -1007,11 +1008,6 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(tax.getTaxBrackets(), CUSTOM_BRACKETS);
         assertSameContent(tax.getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
         assertSameContent(tax.getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
-
-        BankImportModel bank = new BankPersistenceAdapter(reader).getBankImport();
-        assertSameContent(bank.categories(), BANK_IMPORT.categories());
-        assertSameContent(bank.transactions(), BANK_IMPORT.transactions());
-        assertSameContent(bank.matchings(), BANK_IMPORT.matchings());
 
         assertSameContent(new LoanPersistenceAdapter(reader).getLoans(), List.of(LOAN));
 

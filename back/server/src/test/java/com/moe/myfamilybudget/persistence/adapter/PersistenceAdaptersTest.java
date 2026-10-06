@@ -43,6 +43,9 @@ import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTest
  * <p>Les repositories sont mockes (voir {@link PersistenceManagerTestFactory}) : seule la coherence entre
  * le cache memoire et les ports de lecture est verifiee ici. La persistance reelle (JPA, redemarrage) releve
  * de VT-320.
+ *
+ * <p>SILO-213 (lot B) : le silo Banque/Pointage ne passe plus par le cache ; son adaptateur ({@code JpaBankStore})
+ * est verifie par {@code JpaBankStoreTest} et par les tests de persistance reelle.
  */
 class PersistenceAdaptersTest {
 
@@ -107,17 +110,6 @@ class PersistenceAdaptersTest {
             assertThat(adapter.getTaxRateOverrides()).isEmpty();
             assertThat(adapter.getTaxActualOverrides()).isEmpty();
             assertDefaultBrackets(adapter.getTaxBrackets());
-        }
-
-        @Test
-        @DisplayName("BankPersistenceAdapter : import bancaire vide")
-        void bankIsEmpty() {
-            BankImportModel bank = new BankPersistenceAdapter(persistenceManager).getBankImport();
-
-            assertThat(bank.transactions()).isEmpty();
-            assertThat(bank.categories()).isEmpty();
-            assertThat(bank.matchings()).isEmpty();
-            assertThat(bank.pendingOperations()).isEmpty();
         }
 
         @Test
@@ -201,22 +193,6 @@ class PersistenceAdaptersTest {
             assertThat(adapter.getTaxBrackets()).containsExactlyElementsOf(CUSTOM_BRACKETS);
             assertThat(adapter.getTaxRateOverrides()).containsExactly(TAX_RATE_OVERRIDE);
             assertThat(adapter.getTaxActualOverrides()).containsExactly(TAX_ACTUAL_OVERRIDE);
-        }
-
-        @Test
-        @DisplayName("BankPersistenceAdapter relit categories, transactions et pointages")
-        void bankRoundTrip() {
-            BankImportModel bank = new BankPersistenceAdapter(persistenceManager).getBankImport();
-
-            assertThat(bank).isSameAs(BANK_IMPORT);
-            assertThat(bank.categories()).hasSize(1);
-            assertThat(bank.categories().get(0).label()).isEqualTo("Logement");
-            assertThat(bank.transactions()).hasSize(1);
-            assertThat(bank.transactions().get(0).amount()).isEqualByComparingTo("-800");
-            assertThat(bank.transactions().get(0).categoryId()).isEqualTo("cat_loyer");
-            assertThat(bank.matchings()).hasSize(1);
-            assertThat(bank.matchings().get(0).month()).isEqualTo("2026-05");
-            assertThat(bank.matchings().get(0).links().get(0).txIds()).containsExactly("tx_1");
         }
 
         @Test
@@ -338,29 +314,6 @@ class PersistenceAdaptersTest {
         }
 
         @Test
-        @DisplayName("updateBankImport -> BankPersistenceAdapter relit l'import mis a jour")
-        void updateBankImport() {
-            BankPersistenceAdapter adapter = new BankPersistenceAdapter(persistenceManager);
-            assertThat(adapter.getBankImport().transactions()).isEmpty();
-
-            persistenceManager.write(m -> m.updateBankImport(BANK_IMPORT));
-
-            assertThat(adapter.getBankImport()).isSameAs(BANK_IMPORT);
-            assertThat(adapter.getBankImport().transactions()).hasSize(1);
-            assertThat(persistenceManager.getBankImport()).isSameAs(BANK_IMPORT);
-        }
-
-        @Test
-        @DisplayName("updateBankImport(null) est ignore : l'import existant est conserve")
-        void updateBankImportNullIsIgnored() {
-            persistenceManager.write(m -> m.updateBankImport(BANK_IMPORT));
-
-            persistenceManager.write(m -> m.updateBankImport(null));
-
-            assertThat(new BankPersistenceAdapter(persistenceManager).getBankImport()).isSameAs(BANK_IMPORT);
-        }
-
-        @Test
         @DisplayName("un meme adaptateur voit les ecritures successives (pas de copie figee a la construction)")
         void adapterReadsLiveState() {
             BudgetPersistenceAdapter adapter = new BudgetPersistenceAdapter(persistenceManager);
@@ -404,7 +357,6 @@ class PersistenceAdaptersTest {
             assertThat(new TaxPersistenceAdapter(persistenceManager).getTaxRateOverrides()).isEmpty();
             assertThat(new TaxPersistenceAdapter(persistenceManager).getTaxActualOverrides()).isEmpty();
             assertDefaultBrackets(new TaxPersistenceAdapter(persistenceManager).getTaxBrackets());
-            assertThat(new BankPersistenceAdapter(persistenceManager).getBankImport().transactions()).isEmpty();
             assertThat(new LoanPersistenceAdapter(persistenceManager).getLoans()).isEmpty();
             SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
             assertThat(settings.getEffectiveBirthYear()).isEqualTo(1985);
@@ -443,7 +395,6 @@ class PersistenceAdaptersTest {
             assertThat(new BudgetPersistenceAdapter(persistenceManager).getIncomes()).containsExactly(INCOME);
             assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getPlacements()).containsExactly(PLACEMENT);
             assertThat(new RetirementPersistenceAdapter(persistenceManager).getRetirement()).isEqualTo(RETIREMENT);
-            assertThat(new BankPersistenceAdapter(persistenceManager).getBankImport()).isSameAs(BANK_IMPORT);
         }
     }
 

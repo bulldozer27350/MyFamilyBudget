@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
@@ -896,24 +895,6 @@ class BudgetMutationService {
         );
     }
 
-    /**
-     * Obtient les données d'import bancaire.
-     */
-    public BankImportModel getBankImport() {
-        return cacheStore.getBudgetData().bankImport();
-    }
-
-    /**
-     * Met à jour les données d'import bancaire.
-     */
-    public void updateBankImport(BankImportModel bankImport) {
-        if (bankImport == null) return;
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            return base.withBankImport(bankImport);
-        });
-    }
-
     // --- SILO-119 (lot B1) : remplacement et réinitialisation par silo (import et reset par fragments) ---
     //
     // Chaque méthode ne modifie que les champs du silo concerné ; les autres silos sont recopiés tels quels.
@@ -1027,22 +1008,6 @@ class BudgetMutationService {
     /** Supprime tous les prêts. */
     public void resetLoansSnapshot() {
         replaceLoansSnapshot(null);
-    }
-
-    /** Remplace l'import bancaire ({@code null} accepté : absent, comme à l'import global). */
-    public void replaceBankImportSnapshot(BankImportModel bankImport) {
-        cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            return base.withBankImport(bankImport);
-        });
-    }
-
-    /** Remet l'import bancaire à vide. */
-    public void resetBankImportSnapshot() {
-        cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            return base.withBankImport(cacheStore.createDefaultBudgetData().bankImport());
-        });
     }
 
     /** Remplace le paramètre de simulation ({@code null} : valeur par défaut). */

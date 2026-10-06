@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
@@ -17,6 +18,7 @@ import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
@@ -37,7 +39,7 @@ class SnapshotFragmentWritersTest {
     private PatrimoinePersistenceAdapter patrimoine;
     private LoanPersistenceAdapter loans;
     private InMemoryGoalStore goals;
-    private BankPersistenceAdapter bank;
+    private InMemoryBankStore bank;
     private SimulationSettingsSnapshotAdapter simulation;
     private EconomicAssumptionsSnapshotAdapter economic;
 
@@ -51,7 +53,7 @@ class SnapshotFragmentWritersTest {
         patrimoine = new PatrimoinePersistenceAdapter(persistenceManager);
         loans = new LoanPersistenceAdapter(persistenceManager);
         goals = new InMemoryGoalStore();
-        bank = new BankPersistenceAdapter(persistenceManager);
+        bank = new InMemoryBankStore();
         simulation = new SimulationSettingsSnapshotAdapter(persistenceManager);
         economic = new EconomicAssumptionsSnapshotAdapter(persistenceManager);
     }
@@ -163,6 +165,12 @@ class SnapshotFragmentWritersTest {
     void listBasedSilosResetToEmpty() {
         goals.replace(List.of(new ObjectifModel("goal_1", "Voyage", new BigDecimal("1000"), "2027-01-01", "", "")));
         assertThat(goals.getGoals()).extracting(ObjectifModel::id).containsExactly("goal_1");
+        bank.replace(new BankImportModel(
+                List.of(new BankImportModel.BankTransactionModel("tx_1", "2026-05-05", "Paiement Loyer", "VIR",
+                        new BigDecimal("-800"), "cat_loyer", List.of())),
+                List.of(), List.of()));
+        assertThat(bank.getBankImport().transactions()).extracting(BankImportModel.BankTransactionModel::id)
+                .containsExactly("tx_1");
 
         patrimoine.replace(null, null, null, null);
         loans.replace(null);
@@ -174,7 +182,8 @@ class SnapshotFragmentWritersTest {
         assertThat(persistenceManager.getBudgetData().getEffectiveTransfers()).isEmpty();
         assertThat(persistenceManager.getBudgetData().getEffectiveLoans()).isEmpty();
         assertThat(goals.getGoals()).isEmpty();
-        assertThat(persistenceManager.getBudgetData().bankImport()).isNotNull();
+        assertThat(bank.getBankImport()).isNotNull();
+        assertThat(bank.getBankImport().transactions()).isEmpty();
 
         goals.replace(List.of(new ObjectifModel("goal_2", "Voiture", new BigDecimal("8000"), "2028-01-01", "", "")));
         patrimoine.reset();

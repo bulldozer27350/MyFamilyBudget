@@ -40,7 +40,7 @@ import com.moe.myfamilybudget.domain.wealth.model.PatrimoineYearModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.BankPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.persistence.adapter.LoanPersistenceAdapter;
@@ -50,6 +50,8 @@ import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTest
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 class PatrimoineServiceImplTest {
+
+    private final InMemoryBankStore bankStore = new InMemoryBankStore();
 
     private PatrimoineServiceImpl service;
     private PatrimoineMapper mapper;
@@ -75,7 +77,7 @@ class PatrimoineServiceImplTest {
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
                 new LoanPersistenceAdapter(persistenceManager),
-                new BankPersistenceAdapter(persistenceManager));
+                bankStore);
     }
 
     // -------------------------------------------------------------------------
