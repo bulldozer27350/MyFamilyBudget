@@ -26,6 +26,8 @@ COPY back/credit-api/pom.xml back/credit-api/pom.xml
 COPY back/credit-core/pom.xml back/credit-core/pom.xml
 COPY back/goals-api/pom.xml back/goals-api/pom.xml
 COPY back/goals-core/pom.xml back/goals-core/pom.xml
+COPY back/settings-api/pom.xml back/settings-api/pom.xml
+COPY back/settings-core/pom.xml back/settings-core/pom.xml
 COPY back/notifications-api/pom.xml back/notifications-api/pom.xml
 COPY back/notifications-core/pom.xml back/notifications-core/pom.xml
 COPY back/market-api/pom.xml back/market-api/pom.xml
@@ -62,6 +64,8 @@ COPY back/credit-api back/credit-api
 COPY back/credit-core back/credit-core
 COPY back/goals-api back/goals-api
 COPY back/goals-core back/goals-core
+COPY back/settings-api back/settings-api
+COPY back/settings-core back/settings-core
 COPY back/notifications-api back/notifications-api
 COPY back/notifications-core back/notifications-core
 COPY back/market-api back/market-api

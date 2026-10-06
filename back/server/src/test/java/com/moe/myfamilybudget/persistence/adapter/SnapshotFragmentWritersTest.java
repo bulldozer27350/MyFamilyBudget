@@ -21,9 +21,9 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
-import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 
 /**
  * SILO-119 (lot B1) -- Chaque silo remplace et réinitialise uniquement ses propres données : les ports

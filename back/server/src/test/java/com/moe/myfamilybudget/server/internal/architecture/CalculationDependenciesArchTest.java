@@ -294,6 +294,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.analysis..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.credit..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.goals..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.settings..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.notifications..")
             .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
             .as("les moteurs de calcul et calculateurs purs ne doivent pas dépendre de PersistenceManager "
@@ -318,6 +319,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.domain.analysis..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.credit..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.goals..")
+            .or().resideInAPackage("com.moe.myfamilybudget.domain.settings..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.notifications..")
             .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.api..")
             .as("les couches pures du domaine (calculation, model, domain.notifications) ne doivent pas dépendre "

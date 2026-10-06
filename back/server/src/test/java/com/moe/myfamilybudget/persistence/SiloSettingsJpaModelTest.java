@@ -13,6 +13,10 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsMapper;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsMapper;
+import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
+import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsMapper;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
@@ -21,7 +25,7 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsR
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 
 /**
- * SILO-220 (lot A) : les paramètres persistés chez leurs propriétaires (Retraite, Fiscalité, Trésorerie) sont
+ * SILO-220 (lots A et A2) : les paramètres persistés chez leurs propriétaires (Retraite, Fiscalité, Trésorerie, Paramètres de l'application) sont
  * restitués à l'identique, sans défaut appliqué (une valeur absente reste {@code null}), et sans arrondir
  * l'abattement. Additif : la table historique {@code settings} n'est pas touchée.
  */
@@ -37,6 +41,9 @@ class SiloSettingsJpaModelTest {
 
     @Autowired
     private CashflowSettingsRepository cashflowRepository;
+
+    @Autowired
+    private AppSettingsRepository appRepository;
 
     @Autowired
     private TestEntityManager em;
@@ -138,6 +145,36 @@ class SiloSettingsJpaModelTest {
     }
 
     @Test
+    @DisplayName("Paramètres de l'application : profondeur de simulation et inflation (8 décimales) relues à l'identique")
+    void appSettingsRoundTrip() {
+        appRepository.deleteAll();
+        appRepository.flush();
+        appRepository.save(AppSettingsMapper.toEntity(
+                new SimulationSettingsModel(90), new EconomicAssumptionsModel(bd("0.01750001"))));
+        em.flush();
+        em.clear();
+        var reloaded = appRepository.findFirstByOrderByIdAsc().orElseThrow();
+
+        assertThat(AppSettingsMapper.toSimulation(reloaded)).isEqualTo(new SimulationSettingsModel(90));
+        assertThat(AppSettingsMapper.toEconomicAssumptions(reloaded).inflationRate())
+                .isEqualByComparingTo(bd("0.01750001"));
+    }
+
+    @Test
+    @DisplayName("Paramètres de l'application : valeurs absentes conservées nulles (aucun défaut appliqué)")
+    void appSettingsKeepNulls() {
+        appRepository.deleteAll();
+        appRepository.flush();
+        appRepository.save(AppSettingsMapper.toEntity(null, null));
+        em.flush();
+        em.clear();
+        var reloaded = appRepository.findFirstByOrderByIdAsc().orElseThrow();
+
+        assertThat(AppSettingsMapper.toSimulation(reloaded).simulateUntilAge()).isNull();
+        assertThat(AppSettingsMapper.toEconomicAssumptions(reloaded).inflationRate()).isNull();
+    }
+
+    @Test
     @DisplayName("Un modèle null est converti en null, dans les deux sens")
     void nullModelsAreNull() {
         assertThat(PensionSettingsMapper.toEntity(null)).isNull();
@@ -146,5 +183,7 @@ class SiloSettingsJpaModelTest {
         assertThat(FiscalSettingsMapper.toModel(null)).isNull();
         assertThat(CashflowSettingsMapper.toEntity(null)).isNull();
         assertThat(CashflowSettingsMapper.toModel(null)).isNull();
+        assertThat(AppSettingsMapper.toSimulation(null)).isNull();
+        assertThat(AppSettingsMapper.toEconomicAssumptions(null)).isNull();
     }
 }

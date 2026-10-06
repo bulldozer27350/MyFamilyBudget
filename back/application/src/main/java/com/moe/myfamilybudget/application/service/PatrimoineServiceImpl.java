@@ -32,7 +32,7 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
-import com.moe.myfamilybudget.transition.port.EconomicAssumptionsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 
 /**
  * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à

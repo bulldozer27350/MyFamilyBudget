@@ -100,6 +100,10 @@
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>goals-api</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>settings-api</artifactId>
+        </dependency>
         <!-- SILO-212 : entités, repositories et mapper JPA du silo Objectifs (transitoire : l'adaptateur et la passerelle
              restent ici jusqu'à SILO-220 et SILO-230) -->
         <dependency>

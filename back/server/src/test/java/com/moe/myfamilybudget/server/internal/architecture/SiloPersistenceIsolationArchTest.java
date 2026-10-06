@@ -26,6 +26,7 @@ class SiloPersistenceIsolationArchTest {
             "com.moe.myfamilybudget.domain.retirement.core.persistence",
             "com.moe.myfamilybudget.domain.tax.core.persistence",
             "com.moe.myfamilybudget.domain.goals.core.persistence",
+            "com.moe.myfamilybudget.domain.settings.core.persistence",
             "com.moe.myfamilybudget.domain.bankpointage.core.persistence",
             "com.moe.myfamilybudget.domain.credit.core.persistence",
             "com.moe.myfamilybudget.domain.wealth.core.persistence",
@@ -75,6 +76,17 @@ class SiloPersistenceIsolationArchTest {
                     "com.moe.myfamilybudget.domain.credit..", "com.moe.myfamilybudget.domain.notifications..",
                     "com.moe.myfamilybudget.domain.market..")
             .as("la persistance du silo Objectifs ne dépend d'aucun autre silo (D1, SILO-212)");
+
+    @ArchTest
+    static final ArchRule SETTINGS_PERSISTENCE_DOES_NOT_USE_OTHER_SILOS = noClasses()
+            .that().resideInAPackage("com.moe.myfamilybudget.domain.settings.core.persistence..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "com.moe.myfamilybudget.domain.retirement..", "com.moe.myfamilybudget.domain.tax..",
+                    "com.moe.myfamilybudget.domain.wealth..", "com.moe.myfamilybudget.domain.treasury..",
+                    "com.moe.myfamilybudget.domain.bankpointage..", "com.moe.myfamilybudget.domain.analysis..",
+                    "com.moe.myfamilybudget.domain.credit..", "com.moe.myfamilybudget.domain.goals..",
+                    "com.moe.myfamilybudget.domain.notifications..", "com.moe.myfamilybudget.domain.market..")
+            .as("la persistance du silo Paramètres ne dépend d'aucun autre silo (D1, SILO-220)");
 
     @ArchTest
     static final ArchRule BANK_PERSISTENCE_DOES_NOT_USE_OTHER_SILOS = noClasses()

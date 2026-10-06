@@ -6,6 +6,7 @@ module com.moe.myfamilybudget.transition {
     requires transitive com.moe.myfamilybudget.domain.bankpointage;
     requires transitive com.moe.myfamilybudget.domain.credit;
     requires transitive com.moe.myfamilybudget.domain.goals;
+    requires transitive com.moe.myfamilybudget.domain.settings;
 
     exports com.moe.myfamilybudget.transition.error;
     exports com.moe.myfamilybudget.transition.model;

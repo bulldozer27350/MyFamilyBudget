@@ -13,8 +13,8 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.transition.port.EconomicAssumptionsWriter;
-import com.moe.myfamilybudget.transition.port.SimulationSettingsWriter;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsWriter;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 /** SET-020 : owners minimaux Simulation ({@code simulateUntilAge}) et Hypothèses économiques ({@code inflationRate}). */

@@ -2,7 +2,7 @@ package com.moe.myfamilybudget.application.command;
 
 import org.springframework.stereotype.Service;
 
-import com.moe.myfamilybudget.transition.port.SimulationSettingsWriter;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsWriter;
 
 /**
  * Owner applicatif de la notion Simulation (SET-020, voir doc/architecture/12-settings.md) : profondeur de

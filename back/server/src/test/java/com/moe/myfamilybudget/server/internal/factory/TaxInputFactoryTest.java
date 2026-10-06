@@ -23,7 +23,7 @@ import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;

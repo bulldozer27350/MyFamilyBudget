@@ -1,6 +1,6 @@
-package com.moe.myfamilybudget.transition.port;
+package com.moe.myfamilybudget.domain.settings.port;
 
-import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
 
 /**
  * Port d'import et de réinitialisation des hypothèses économiques (SILO-119, lot B1). Lecture :

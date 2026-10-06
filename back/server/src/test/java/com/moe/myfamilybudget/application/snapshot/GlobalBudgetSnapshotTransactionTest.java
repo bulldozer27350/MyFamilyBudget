@@ -31,9 +31,9 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.transition.port.BudgetReader;
-import com.moe.myfamilybudget.transition.port.EconomicAssumptionsSnapshotWriter;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsSnapshotWriter;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
-import com.moe.myfamilybudget.transition.port.SimulationSettingsSnapshotWriter;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsSnapshotWriter;
 
 /** SILO-205 : import et reset s'exécutent dans la transaction ouverte par le port, verrou compris. */
 @DisplayName("SILO-205 -- GlobalBudgetSnapshotService via TransactionRunner")

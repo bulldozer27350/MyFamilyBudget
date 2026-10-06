@@ -27,8 +27,8 @@ import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 
 /**
  * Mutations de domaine du budget (DB-060), extraites de {@link PersistenceManager}.

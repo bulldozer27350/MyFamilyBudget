@@ -23,8 +23,8 @@ import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 
 /**
  * SILO-119 (lot B2) : décomposition d'un {@code BudgetDataDto} importé en fragments, un par silo. Remplace

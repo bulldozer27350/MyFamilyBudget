@@ -3,8 +3,8 @@ package com.moe.myfamilybudget.persistence.adapter;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
-import com.moe.myfamilybudget.transition.port.EconomicAssumptionsSnapshotWriter;
+import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsSnapshotWriter;
 
 /**
  * Adaptateur de persistance pour {@link EconomicAssumptionsSnapshotWriter} (SILO-119, lot B1). Classe distincte de

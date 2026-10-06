@@ -19,7 +19,7 @@ import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;

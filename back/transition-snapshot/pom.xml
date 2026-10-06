@@ -56,6 +56,10 @@
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>goals-api</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>settings-api</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>

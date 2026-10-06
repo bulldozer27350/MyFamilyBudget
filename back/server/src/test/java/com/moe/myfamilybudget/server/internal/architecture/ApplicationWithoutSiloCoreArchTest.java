@@ -32,6 +32,7 @@ class ApplicationWithoutSiloCoreArchTest {
             "com.moe.myfamilybudget.domain.analysis.core",
             "com.moe.myfamilybudget.domain.credit.core",
             "com.moe.myfamilybudget.domain.goals.core",
+            "com.moe.myfamilybudget.domain.settings.core",
             "com.moe.myfamilybudget.domain.notifications.core",
             "com.moe.myfamilybudget.domain.market.core");
 

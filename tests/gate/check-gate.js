@@ -38,6 +38,8 @@ const POMS = [
   path.join(ROOT, 'back', 'credit-core', 'pom.xml'),
   path.join(ROOT, 'back', 'goals-api', 'pom.xml'),
   path.join(ROOT, 'back', 'goals-core', 'pom.xml'),
+  path.join(ROOT, 'back', 'settings-api', 'pom.xml'),
+  path.join(ROOT, 'back', 'settings-core', 'pom.xml'),
   path.join(ROOT, 'back', 'notifications-api', 'pom.xml'),
   path.join(ROOT, 'back', 'notifications-core', 'pom.xml'),
   path.join(ROOT, 'back', 'market-api', 'pom.xml'),

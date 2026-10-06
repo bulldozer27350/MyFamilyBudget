@@ -17,7 +17,7 @@ import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 
 /**
  * Déduit la période de simulation fiscale à partir de fragments lus chez leurs propriétaires

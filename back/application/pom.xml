@@ -75,6 +75,10 @@
         </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>settings-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>notifications-api</artifactId>
         </dependency>
 

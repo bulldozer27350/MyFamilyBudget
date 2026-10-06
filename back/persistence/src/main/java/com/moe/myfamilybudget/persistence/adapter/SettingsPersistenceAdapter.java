@@ -9,13 +9,13 @@ import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
-import com.moe.myfamilybudget.transition.port.EconomicAssumptionsReader;
-import com.moe.myfamilybudget.transition.port.EconomicAssumptionsWriter;
-import com.moe.myfamilybudget.transition.port.SimulationSettingsReader;
-import com.moe.myfamilybudget.transition.port.SimulationSettingsWriter;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsWriter;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsWriter;
 
 /**
  * Adaptateur de persistance pour {@link SettingsReader} (RF-B00), {@link SimulationSettingsWriter} et

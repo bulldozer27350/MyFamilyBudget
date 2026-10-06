@@ -16,8 +16,8 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
-import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 
 /**
  * SILO-119 (lot B2) : décomposition d'un {@code BudgetDataDto} importé en fragments par silo, sans Spring

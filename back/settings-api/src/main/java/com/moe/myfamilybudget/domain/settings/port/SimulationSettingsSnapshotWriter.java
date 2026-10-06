@@ -1,6 +1,6 @@
-package com.moe.myfamilybudget.transition.port;
+package com.moe.myfamilybudget.domain.settings.port;
 
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 
 /**
  * Port d'import et de réinitialisation des paramètres de simulation (SILO-119, lot B1). Lecture :

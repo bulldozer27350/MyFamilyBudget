@@ -104,6 +104,16 @@
             <artifactId>goals-core</artifactId>
         </dependency>
 
+        <!-- Silo Paramètres (Simulation, Hypothèses économiques) : API (modèles, ports) et cœur (persistance JPA) ; SILO-220 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>settings-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>settings-core</artifactId>
+        </dependency>
+
         <!-- Silo Notifications : API (contrats, paramètres, entrées de règles) et cœur (règles) ; SILO-158 -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>

@@ -3,8 +3,8 @@ package com.moe.myfamilybudget.persistence.adapter;
 import org.springframework.stereotype.Component;
 
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
-import com.moe.myfamilybudget.transition.port.SimulationSettingsSnapshotWriter;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsSnapshotWriter;
 
 /**
  * Adaptateur de persistance pour {@link SimulationSettingsSnapshotWriter} (SILO-119, lot B1). Classe distincte de

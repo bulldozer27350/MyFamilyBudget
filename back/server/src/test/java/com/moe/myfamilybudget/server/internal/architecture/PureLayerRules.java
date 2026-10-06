@@ -66,10 +66,11 @@ final class PureLayerRules {
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.analysis.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.credit.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.goals.."))
+                    .or(resideInAPackage("com.moe.myfamilybudget.domain.settings.."))
                     .or(resideInAPackage("com.moe.myfamilybudget.domain.notifications.."))
                     .and(not(SILO_PERSISTENCE))
                     .as("les couches pures (internal.calculation hors infra de paramétrage, "
-                            + "internal.model, transition.model, application.model, application.overview, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, domain.notifications, hors persistance de silo domain.*.core.persistence)");
+                            + "internal.model, transition.model, application.model, application.overview, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, domain.settings, domain.notifications, hors persistance de silo domain.*.core.persistence)");
 
     static final ArchRule NO_BUDGET_DATA_MODEL = noClasses()
             .that(PURE_LAYER)

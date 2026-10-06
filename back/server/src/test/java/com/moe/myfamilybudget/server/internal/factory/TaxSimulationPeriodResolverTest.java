@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import com.moe.myfamilybudget.domain.tax.calculation.TaxSimulationPeriod;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 
 /**
  * RF-202 : la période de simulation fiscale est déduite en amont, hors du moteur fiscal.

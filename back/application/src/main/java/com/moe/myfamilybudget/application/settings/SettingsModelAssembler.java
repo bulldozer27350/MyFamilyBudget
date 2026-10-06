@@ -8,12 +8,12 @@ import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
-import com.moe.myfamilybudget.transition.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.transition.model.SimulationSettingsModel;
-import com.moe.myfamilybudget.transition.port.EconomicAssumptionsReader;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
-import com.moe.myfamilybudget.transition.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
 
 /**
  * SILO-100 (lot B) : compose le {@link SettingsModel} à partir des paramètres lus chez leurs propriétaires

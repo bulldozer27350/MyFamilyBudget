@@ -53,6 +53,8 @@
         <module>credit-core</module>
         <module>goals-api</module>
         <module>goals-core</module>
+        <module>settings-api</module>
+        <module>settings-core</module>
         <module>notifications-api</module>
         <module>notifications-core</module>
         <module>market-api</module>
@@ -176,6 +178,16 @@
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>goals-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moe.myfamilybudget</groupId>
+                <artifactId>settings-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moe.myfamilybudget</groupId>
+                <artifactId>settings-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

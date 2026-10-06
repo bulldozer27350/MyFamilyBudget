@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.transition.port;
+package com.moe.myfamilybudget.domain.settings.port;
 
 /**
  * Port d'écriture de la notion Hypothèses économiques (SET-020). Seul

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        SILO-220 (doc/architecture/21-plan-silotage.md) : cœur du silo Paramètres. Il ne porte que la persistance
+        JPA autonome (package `domain.settings.core.persistence` : entité `app_settings`, repository Spring Data et
+        mapper), découverte par le scan par défaut de Spring Boot (racine `com.moe.myfamilybudget`).
+
+        Règle : ce module ne dépend que de `settings-api` et de `infra-jpa`. Pas de `module-info` (décision D3).
+        Seul le composition root (server) le référence ; `application` ne dépend que de `settings-api`.
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>settings-core</artifactId>
+    <packaging>jar</packaging>
+    <name>settings-core</name>
+    <description>Cœur du silo Paramètres MyFamilyBudget (persistance JPA de la table app_settings)</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>settings-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
+        </dependency>
+    </dependencies>
+</project>
