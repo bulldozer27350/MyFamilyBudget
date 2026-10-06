@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.OperationsEnCoursApi;
 import com.moe.myfamilybudget.api.model.ReconcilePendingOperations200Response;
+import com.moe.myfamilybudget.application.command.BankImportChange;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.AutoMatchResultModel;
@@ -73,18 +74,19 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
 
     @Override
     public ResponseEntity<ReconcilePendingOperations200Response> reconcilePendingOperations(Object body) {
-        BankImportModel current = bankReader.getBankImport();
-        AutoMatchResultModel matchResult = bankImportCalculationService.autoMatchPendingOperations(
-                current.pendingOperations(), current.transactions()
-        );
-
-        if (matchResult.matchCount() > 0) {
-            BankImportModel updated = new BankImportModel(
-                    current.columnMapping(), current.categories(), current.rules(),
-                    matchResult.updatedTransactions(), matchResult.updatedOperations(), current.matchings()
+        // SILO-213 (lot B, etape b) : lecture, calcul et ecriture sous le verrou du silo Banque.
+        AutoMatchResultModel matchResult = bankImportCommandService.modifyBankImport(current -> {
+            AutoMatchResultModel result = bankImportCalculationService.autoMatchPendingOperations(
+                    current.pendingOperations(), current.transactions()
             );
-            bankImportCommandService.updateBankImport(updated);
-        }
+            if (result.matchCount() <= 0) {
+                return BankImportChange.unchanged(result);
+            }
+            return BankImportChange.write(new BankImportModel(
+                    current.columnMapping(), current.categories(), current.rules(),
+                    result.updatedTransactions(), result.updatedOperations(), current.matchings()
+            ), result);
+        });
 
         ReconcilePendingOperations200Response response = new ReconcilePendingOperations200Response();
         response.setMatchCount(matchResult.matchCount());
@@ -98,21 +100,21 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         String targetId = String.valueOf(map.getOrDefault("id", map.get("operationId")));
 
         if (targetId != null && !targetId.isBlank() && !"null".equalsIgnoreCase(targetId)) {
-            BankImportModel current = bankReader.getBankImport();
-            List<BankImportModel.PendingOperationModel> updatedOps = current.pendingOperations().stream()
-                    .map(op -> op.id().equals(targetId)
-                            ? new BankImportModel.PendingOperationModel(
-                            op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
-                            op.label(), op.amount(), op.categoryId(), "ignored", op.linkedTxId(),
-                            op.clearedDate(), op.notes(), op.splits())
-                            : op)
-                    .collect(Collectors.toList());
+            bankImportCommandService.modifyBankImport(current -> {
+                List<BankImportModel.PendingOperationModel> updatedOps = current.pendingOperations().stream()
+                        .map(op -> op.id().equals(targetId)
+                                ? new BankImportModel.PendingOperationModel(
+                                op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
+                                op.label(), op.amount(), op.categoryId(), "ignored", op.linkedTxId(),
+                                op.clearedDate(), op.notes(), op.splits())
+                                : op)
+                        .collect(Collectors.toList());
 
-            BankImportModel updated = new BankImportModel(
-                    current.columnMapping(), current.categories(), current.rules(),
-                    current.transactions(), updatedOps, current.matchings()
-            );
-            bankImportCommandService.updateBankImport(updated);
+                return BankImportChange.write(new BankImportModel(
+                        current.columnMapping(), current.categories(), current.rules(),
+                        current.transactions(), updatedOps, current.matchings()
+                ), null);
+            });
         }
 
         return ResponseEntity.ok().build();
@@ -142,25 +144,25 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         String dateFormat = String.valueOf(configMap.getOrDefault("dateFormat", map.getOrDefault("dateFormat", "DD-MM-YYYY")));
         boolean usePurchaseDate = Boolean.parseBoolean(String.valueOf(configMap.getOrDefault("usePurchaseDate", map.getOrDefault("usePurchaseDate", false))));
 
-        BankImportModel current = bankReader.getBankImport();
-        com.moe.myfamilybudget.domain.bankpointage.model.PendingImportSummaryModel summary = bankImportCalculationService.importPendingCB(
-                rawRows,
-                colRoles,
-                dateFormat,
-                usePurchaseDate,
-                current.pendingOperations(),
-                current.rules()
-        );
-
-        if (!summary.newOperations().isEmpty()) {
+        com.moe.myfamilybudget.domain.bankpointage.model.PendingImportSummaryModel summary = bankImportCommandService.modifyBankImport(current -> {
+            com.moe.myfamilybudget.domain.bankpointage.model.PendingImportSummaryModel result = bankImportCalculationService.importPendingCB(
+                    rawRows,
+                    colRoles,
+                    dateFormat,
+                    usePurchaseDate,
+                    current.pendingOperations(),
+                    current.rules()
+            );
+            if (result.newOperations().isEmpty()) {
+                return BankImportChange.unchanged(result);
+            }
             List<BankImportModel.PendingOperationModel> allPending = new java.util.ArrayList<>(current.pendingOperations());
-            allPending.addAll(summary.newOperations());
-            BankImportModel updated = new BankImportModel(
+            allPending.addAll(result.newOperations());
+            return BankImportChange.write(new BankImportModel(
                     current.columnMapping(), current.categories(), current.rules(),
                     current.transactions(), allPending, current.matchings()
-            );
-            bankImportCommandService.updateBankImport(updated);
-        }
+            ), result);
+        });
 
         return ResponseEntity.ok(mapper.toPendingImportSummaryMap(summary));
     }
@@ -174,18 +176,18 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         BankImportModel.PendingOperationModel bankOp = mapper.toPendingOperationModel(bankOpMap);
 
         if (manualOpId != null && !manualOpId.isBlank()) {
-            BankImportModel current = bankReader.getBankImport();
-            List<BankImportModel.PendingOperationModel> mergedList = bankImportCalculationService.mergePendingOperation(
-                    manualOpId,
-                    bankOp,
-                    current.pendingOperations()
-            );
+            bankImportCommandService.modifyBankImport(current -> {
+                List<BankImportModel.PendingOperationModel> mergedList = bankImportCalculationService.mergePendingOperation(
+                        manualOpId,
+                        bankOp,
+                        current.pendingOperations()
+                );
 
-            BankImportModel updated = new BankImportModel(
-                    current.columnMapping(), current.categories(), current.rules(),
-                    current.transactions(), mergedList, current.matchings()
-            );
-            bankImportCommandService.updateBankImport(updated);
+                return BankImportChange.write(new BankImportModel(
+                        current.columnMapping(), current.categories(), current.rules(),
+                        current.transactions(), mergedList, current.matchings()
+                ), null);
+            });
         }
 
         return ResponseEntity.ok().build();
@@ -197,28 +199,28 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
         BankImportModel.PendingOperationModel op = mapper.toPendingOperationModel(map);
 
         if (op != null) {
-            BankImportModel current = bankReader.getBankImport();
-            BankImportModel.PendingOperationModel resolvedOp = op;
-            if ((op.categoryId() == null || op.categoryId().isBlank()) && (op.splits() == null || op.splits().isEmpty())) {
-                List<BankImportModel.PendingOperationModel> rulesApplied = bankImportCalculationService.applyRulesToPendingOperations(
-                        List.of(op), current.rules()
-                );
-                if (!rulesApplied.isEmpty()) {
-                    resolvedOp = rulesApplied.get(0);
+            bankImportCommandService.modifyBankImport(current -> {
+                BankImportModel.PendingOperationModel resolvedOp = op;
+                if ((op.categoryId() == null || op.categoryId().isBlank()) && (op.splits() == null || op.splits().isEmpty())) {
+                    List<BankImportModel.PendingOperationModel> rulesApplied = bankImportCalculationService.applyRulesToPendingOperations(
+                            List.of(op), current.rules()
+                    );
+                    if (!rulesApplied.isEmpty()) {
+                        resolvedOp = rulesApplied.get(0);
+                    }
                 }
-            }
-            final BankImportModel.PendingOperationModel opToAdd = resolvedOp;
+                final BankImportModel.PendingOperationModel opToAdd = resolvedOp;
 
-            List<BankImportModel.PendingOperationModel> updatedList = new java.util.ArrayList<>(current.pendingOperations());
-            // Filter out any existing with same ID if any
-            updatedList.removeIf(existing -> existing.id().equals(opToAdd.id()));
-            updatedList.add(opToAdd);
+                List<BankImportModel.PendingOperationModel> updatedList = new java.util.ArrayList<>(current.pendingOperations());
+                // Filter out any existing with same ID if any
+                updatedList.removeIf(existing -> existing.id().equals(opToAdd.id()));
+                updatedList.add(opToAdd);
 
-            BankImportModel updated = new BankImportModel(
-                    current.columnMapping(), current.categories(), current.rules(),
-                    current.transactions(), updatedList, current.matchings()
-            );
-            bankImportCommandService.updateBankImport(updated);
+                return BankImportChange.write(new BankImportModel(
+                        current.columnMapping(), current.categories(), current.rules(),
+                        current.transactions(), updatedList, current.matchings()
+                ), null);
+            });
         }
 
         return ResponseEntity.ok().build();

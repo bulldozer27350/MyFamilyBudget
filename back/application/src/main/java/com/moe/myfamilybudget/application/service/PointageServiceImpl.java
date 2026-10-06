@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.PointageApi;
+import com.moe.myfamilybudget.application.command.BankImportChange;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.application.mapper.PointageMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
@@ -81,10 +82,9 @@ public class PointageServiceImpl implements PointageApi {
         }
 
         List<BankImportModel.MatchingLinkModel> newLinks = mapper.toMatchingLinks(body);
-        BankImportModel currentImport = bankReader.getBankImport();
-
-        BankImportModel updatedImport = pointageCalculationService.updateMatchingForMonth(currentImport, monthISO, newLinks);
-        bankImportCommandService.updateBankImport(updatedImport);
+        // SILO-213 (lot B, etape b) : lecture, modification et ecriture sous le verrou du silo Banque.
+        bankImportCommandService.modifyBankImport(current -> BankImportChange.write(
+                pointageCalculationService.updateMatchingForMonth(current, monthISO, newLinks), null));
 
         return ResponseEntity.ok().build();
     }
