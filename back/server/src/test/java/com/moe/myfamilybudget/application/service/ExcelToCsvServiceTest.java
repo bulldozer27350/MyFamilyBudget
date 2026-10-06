@@ -45,7 +45,7 @@ class ExcelToCsvServiceTest {
         pm.init();
         StatementBankImportMapper mapper = new StatementBankImportMapper();
         controller = new StatementBankImportServiceImpl(
-                bankStore, new BankImportCommandService(bankStore, silos -> { }, RecordingTransactionRunner.direct()), mapper, service,
+                bankStore, new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()), mapper, service,
                 new DefaultBankImportCalculationService());
     }
 

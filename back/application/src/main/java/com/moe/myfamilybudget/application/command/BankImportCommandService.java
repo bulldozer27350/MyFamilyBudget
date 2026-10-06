@@ -1,7 +1,9 @@
 package com.moe.myfamilybudget.application.command;
 
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.springframework.stereotype.Service;
 
@@ -9,6 +11,7 @@ import com.moe.myfamilybudget.application.port.MutationSilo;
 import com.moe.myfamilybudget.application.port.SiloMutationLock;
 import com.moe.myfamilybudget.application.port.TransactionRunner;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
 
 /**
@@ -22,6 +25,12 @@ import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
  * silo Banque/Pointage ({@link SiloMutationLock}). La synchronisation Enable Banking ecrit par ce meme service
  * (cablage du composition root), donc avec les memes garanties.
  *
+ * <p>Lecture-modification-ecriture : {@link #modifyBankImport} lit l'import <em>sous le verrou</em>, dans la
+ * meme transaction que l'ecriture. Lire l'import hors verrou puis le reecrire en entier par
+ * {@link #updateBankImport} perd la modification d'une ecriture concurrente (synchronisation Enable Banking
+ * contre action de l'utilisateur, deux modifications de transactions distinctes) ; {@code updateBankImport}
+ * reste disponible le temps de migrer les appelants.
+ *
  * <p>Un import {@code null} est une erreur de programmation, refuse avant toute ecriture
  * ({@link IllegalArgumentException}, traduite en 400 par le gestionnaire d'erreurs) : aucun appelant
  * actuel n'en transmet.
@@ -32,13 +41,16 @@ public class BankImportCommandService {
     /** Silo ecrit par la mise a jour de l'import bancaire. */
     private static final Set<MutationSilo> UPDATE_SILOS = EnumSet.of(MutationSilo.BANK_POINTAGE);
 
+    private final BankReader bankReader;
     private final BankWriter bankWriter;
     private final SiloMutationLock siloMutationLock;
     private final TransactionRunner transactionRunner;
 
-    public BankImportCommandService(BankWriter bankWriter,
+    public BankImportCommandService(BankReader bankReader,
+                                    BankWriter bankWriter,
                                     SiloMutationLock siloMutationLock,
                                     TransactionRunner transactionRunner) {
+        this.bankReader = bankReader;
         this.bankWriter = bankWriter;
         this.siloMutationLock = siloMutationLock;
         this.transactionRunner = transactionRunner;
@@ -52,6 +64,33 @@ public class BankImportCommandService {
             siloMutationLock.lockForCurrentTransaction(UPDATE_SILOS);
             bankWriter.updateBankImport(bankImport);
             return null;
+        });
+    }
+
+    /**
+     * Modifie l'import bancaire sans perte de modification concurrente : dans une transaction, apres la prise du
+     * verrou du silo Banque/Pointage, l'import courant est lu, {@code modification} calcule le resultat, puis
+     * l'import qu'elle renvoie est ecrit (aucune ecriture si {@link BankImportChange#updatedImport()} est
+     * {@code null}). Une exception de {@code modification} (refus, introuvable) annule la transaction et est
+     * propagee telle quelle ; rien n'est ecrit.
+     *
+     * <p>{@code modification} s'execute sous verrou : elle doit rester un calcul sur l'import recu, sans appel
+     * long ni lecture d'un autre silo.
+     *
+     * @return la valeur {@link BankImportChange#result()} de la modification
+     */
+    public <T> T modifyBankImport(Function<BankImportModel, BankImportChange<T>> modification) {
+        Objects.requireNonNull(modification, "La modification de l'import bancaire est obligatoire");
+        return transactionRunner.inTransaction(() -> {
+            siloMutationLock.lockForCurrentTransaction(UPDATE_SILOS);
+            BankImportChange<T> change = modification.apply(bankReader.getBankImport());
+            if (change == null) {
+                throw new IllegalStateException("La modification de l'import bancaire n'a renvoye aucun resultat");
+            }
+            if (change.updatedImport() != null) {
+                bankWriter.updateBankImport(change.updatedImport());
+            }
+            return change.result();
         });
     }
 }

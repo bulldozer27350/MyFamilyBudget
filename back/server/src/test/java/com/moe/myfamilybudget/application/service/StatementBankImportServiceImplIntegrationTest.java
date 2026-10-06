@@ -40,11 +40,11 @@ class StatementBankImportServiceImplIntegrationTest {
         persistenceManager.init();
         StatementBankImportMapper mapper = new StatementBankImportMapper();
         service = new StatementBankImportServiceImpl(
-                bankStore, new BankImportCommandService(bankStore, silos -> { }, RecordingTransactionRunner.direct()),
+                bankStore, new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()),
                 mapper, new ExcelToCsvService(), new DefaultBankImportCalculationService());
         pendingService = new PendingOperationsServiceImpl(
                 bankStore, new BudgetPersistenceAdapter(persistenceManager),
-                SettingsReaderTestFactory.of(persistenceManager), new BankImportCommandService(bankStore, silos -> { }, RecordingTransactionRunner.direct()),
+                SettingsReaderTestFactory.of(persistenceManager), new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()),
                 mapper, new DefaultBankImportCalculationService());
     }
 

@@ -38,7 +38,7 @@ class PointageServiceImplTest {
         service = new PointageServiceImpl(
                 bankStore, new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager), SettingsReaderTestFactory.of(persistenceManager),
-                new BankImportCommandService(bankStore, silos -> { }, RecordingTransactionRunner.direct()), new PointageMapper(),
+                new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()), new PointageMapper(),
                 new DefaultPointageCalculationService());
     }
 
