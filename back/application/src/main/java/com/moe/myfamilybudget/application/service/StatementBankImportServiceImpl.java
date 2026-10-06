@@ -26,6 +26,7 @@ import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
+import com.moe.myfamilybudget.application.command.BankImportChange;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 
@@ -75,20 +76,18 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
     @Override
     public ResponseEntity<Void> updateBankImportMapping(Object body) {
-        BankImportModel current = bankReader.getBankImport();
         Map<String, Object> mappingMap = toMap(body);
         BankImportModel.BankColumnMappingModel newMapping = mapper.toColumnMappingModel(mappingMap);
 
-        BankImportModel updatedModel = new BankImportModel(
+        // SILO-213 (lot B, etape b2) : lecture, modification et ecriture sous le verrou du silo Banque.
+        bankImportCommandService.modifyBankImport(current -> BankImportChange.write(new BankImportModel(
                 newMapping,
                 current.categories(),
                 current.rules(),
                 current.transactions(),
                 current.pendingOperations(),
                 current.matchings()
-        );
-
-        bankImportCommandService.updateBankImport(updatedModel);
+        ), null));
         return ResponseEntity.ok().build();
     }
 
@@ -110,37 +109,38 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
                         "Impossible de lire le fichier CSV envoyé : " + e.getMessage(), e);
             }
         }
+        final String csv = csvText;
 
-        BankImportModel current = bankReader.getBankImport();
-        BankImportModel.BankColumnMappingModel mappingModel = current.columnMapping();
+        // SILO-213 (lot B, etape b2) : lecture, calcul et ecriture sous le verrou du silo Banque.
+        bankImportCommandService.modifyBankImport(current -> {
+            BankImportModel.BankColumnMappingModel mappingModel = current.columnMapping();
 
-        List<String> colRoles = new ArrayList<>();
-        if (mappingModel.dateCol() != null) colRoles.add("date");
-        if (mappingModel.labelCol() != null) colRoles.add("label");
-        if (mappingModel.amountCol() != null) colRoles.add("amount");
+            List<String> colRoles = new ArrayList<>();
+            if (mappingModel.dateCol() != null) colRoles.add("date");
+            if (mappingModel.labelCol() != null) colRoles.add("label");
+            if (mappingModel.amountCol() != null) colRoles.add("amount");
 
-        List<List<String>> rawRows = bankImportCalculationService.parseCSVText(csvText, mappingModel.delimiter());
-        if (mappingModel.hasHeader() && !rawRows.isEmpty()) {
-            rawRows = rawRows.subList(1, rawRows.size());
-        }
+            List<List<String>> rawRows = bankImportCalculationService.parseCSVText(csv, mappingModel.delimiter());
+            if (mappingModel.hasHeader() && !rawRows.isEmpty()) {
+                rawRows = rawRows.subList(1, rawRows.size());
+            }
 
-        BankImportSummaryModel summary = bankImportCalculationService.importTransactions(
-                rawRows, colRoles, mappingModel, current.transactions(), current.rules()
-        );
+            BankImportSummaryModel summary = bankImportCalculationService.importTransactions(
+                    rawRows, colRoles, mappingModel, current.transactions(), current.rules()
+            );
 
-        List<BankImportModel.BankTransactionModel> allTransactions = new ArrayList<>(current.transactions());
-        allTransactions.addAll(summary.newTransactions());
+            List<BankImportModel.BankTransactionModel> allTransactions = new ArrayList<>(current.transactions());
+            allTransactions.addAll(summary.newTransactions());
 
-        BankImportModel updatedModel = new BankImportModel(
-                summary.updatedMapping(),
-                current.categories(),
-                current.rules(),
-                allTransactions,
-                current.pendingOperations(),
-                current.matchings()
-        );
-
-        bankImportCommandService.updateBankImport(updatedModel);
+            return BankImportChange.write(new BankImportModel(
+                    summary.updatedMapping(),
+                    current.categories(),
+                    current.rules(),
+                    allTransactions,
+                    current.pendingOperations(),
+                    current.matchings()
+            ), null);
+        });
         return ResponseEntity.ok().build();
     }
 
@@ -151,39 +151,40 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
             return ResponseEntity.badRequest().body(Map.of("error", "Données d'import manquantes."));
         }
 
-        BankImportModel current = bankReader.getBankImport();
-        BankImportModel.BankColumnMappingModel mappingModel;
-        if (request.getMapping() != null) {
-            mappingModel = mapper.toColumnMappingModel(toMap(request.getMapping()));
-        } else {
-            mappingModel = current.columnMapping();
-        }
+        // La conversion du mapping demande ne depend pas de l'import courant : elle reste hors verrou et hors
+        // du bloc qui traduit une IllegalArgumentException du calcul en 400.
+        BankImportModel.BankColumnMappingModel requestedMapping = request.getMapping() != null
+                ? mapper.toColumnMappingModel(toMap(request.getMapping()))
+                : null;
 
         try {
-            BankImportSummaryModel summary = bankImportCalculationService.importTransactions(
-                    request.getRawRows(),
-                    request.getColRoles(),
-                    mappingModel,
-                    current.transactions(),
-                    current.rules()
-            );
+            // SILO-213 (lot B, etape b2) : lecture, calcul et ecriture sous le verrou du silo Banque.
+            return bankImportCommandService.<ResponseEntity<Object>>modifyBankImport(current -> {
+                BankImportModel.BankColumnMappingModel mappingModel =
+                        requestedMapping != null ? requestedMapping : current.columnMapping();
 
-            List<BankImportModel.BankTransactionModel> allTransactions = new ArrayList<>(
-                    current.transactions() != null ? current.transactions() : Collections.emptyList()
-            );
-            allTransactions.addAll(summary.newTransactions());
+                BankImportSummaryModel summary = bankImportCalculationService.importTransactions(
+                        request.getRawRows(),
+                        request.getColRoles(),
+                        mappingModel,
+                        current.transactions(),
+                        current.rules()
+                );
 
-            BankImportModel updatedModel = new BankImportModel(
-                    summary.updatedMapping(),
-                    current.categories(),
-                    current.rules(),
-                    allTransactions,
-                    current.pendingOperations(),
-                    current.matchings()
-            );
+                List<BankImportModel.BankTransactionModel> allTransactions = new ArrayList<>(
+                        current.transactions() != null ? current.transactions() : Collections.emptyList()
+                );
+                allTransactions.addAll(summary.newTransactions());
 
-            bankImportCommandService.updateBankImport(updatedModel);
-            return ResponseEntity.ok(mapper.toImportSummaryMap(summary));
+                return BankImportChange.write(new BankImportModel(
+                        summary.updatedMapping(),
+                        current.categories(),
+                        current.rules(),
+                        allTransactions,
+                        current.pendingOperations(),
+                        current.matchings()
+                ), ResponseEntity.ok(mapper.toImportSummaryMap(summary)));
+            });
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -197,79 +198,77 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         Map<String, Object> txMap = toMap(body);
         BankImportModel.BankTransactionModel tx = mapper.toTransactionModel(txMap);
 
-        BankImportModel current = bankReader.getBankImport();
-        List<BankImportModel.BankImportRuleModel> rules = current.rules() != null ? current.rules() : Collections.emptyList();
+        // SILO-213 (lot B, etape b2) : lecture, calcul et ecriture sous le verrou du silo Banque.
+        return bankImportCommandService.<ResponseEntity<Object>>modifyBankImport(current -> {
+            List<BankImportModel.BankImportRuleModel> rules = current.rules() != null ? current.rules() : Collections.emptyList();
 
-        List<BankImportModel.BankTransactionModel> categorized = bankImportCalculationService.applyRulesToTransactions(List.of(tx), rules);
-        BankImportModel.BankTransactionModel finalTx = (!categorized.isEmpty()) ? categorized.get(0) : tx;
+            List<BankImportModel.BankTransactionModel> categorized = bankImportCalculationService.applyRulesToTransactions(List.of(tx), rules);
+            BankImportModel.BankTransactionModel finalTx = (!categorized.isEmpty()) ? categorized.get(0) : tx;
 
-        List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>(
-                current.transactions() != null ? current.transactions() : Collections.emptyList()
-        );
-        updatedTxs.add(finalTx);
+            List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>(
+                    current.transactions() != null ? current.transactions() : Collections.emptyList()
+            );
+            updatedTxs.add(finalTx);
 
-        BankImportModel updatedModel = new BankImportModel(
-                current.columnMapping(),
-                current.categories(),
-                current.rules(),
-                updatedTxs,
-                current.pendingOperations(),
-                current.matchings()
-        );
-
-        bankImportCommandService.updateBankImport(updatedModel);
-        return ResponseEntity.ok(mapper.toTransactionMap(finalTx));
+            return BankImportChange.write(new BankImportModel(
+                    current.columnMapping(),
+                    current.categories(),
+                    current.rules(),
+                    updatedTxs,
+                    current.pendingOperations(),
+                    current.matchings()
+            ), ResponseEntity.ok(mapper.toTransactionMap(finalTx)));
+        });
     }
 
     @Override
     public ResponseEntity<Void> updateBankTransactionSplits(String txId,
             @Valid List<@Valid BankTransactionSplitDto> bankTransactionSplitDto) {
-        BankImportModel current = bankReader.getBankImport();
-        List<BankImportModel.BankTransactionModel> currentTxs = current.transactions();
+        // SILO-213 (lot B, etape b2) : lecture, controle et ecriture sous le verrou du silo Banque.
+        return bankImportCommandService.<ResponseEntity<Void>>modifyBankImport(current -> {
+            List<BankImportModel.BankTransactionModel> currentTxs = current.transactions();
 
-        int txIndex = -1;
-        for (int i = 0; i < currentTxs.size(); i++) {
-            if (currentTxs.get(i).id().equals(txId)) {
-                txIndex = i;
-                break;
+            int txIndex = -1;
+            for (int i = 0; i < currentTxs.size(); i++) {
+                if (currentTxs.get(i).id().equals(txId)) {
+                    txIndex = i;
+                    break;
+                }
             }
-        }
-        if (txIndex == -1) {
-            return ResponseEntity.notFound().build();
-        }
+            if (txIndex == -1) {
+                return BankImportChange.unchanged(ResponseEntity.notFound().build());
+            }
 
-        List<BankImportModel.BankTransactionSplitModel> splits = mapper.toSplitList(bankTransactionSplitDto);
-        BankImportModel.BankTransactionModel existingTx = currentTxs.get(txIndex);
-        BankImportModel.BankTransactionModel updatedTx = new BankImportModel.BankTransactionModel(
-                existingTx.id(),
-                existingTx.date(),
-                existingTx.label(),
-                existingTx.type(),
-                existingTx.amount(),
-                existingTx.categoryId(),
-                splits
-        );
+            List<BankImportModel.BankTransactionSplitModel> splits = mapper.toSplitList(bankTransactionSplitDto);
+            BankImportModel.BankTransactionModel existingTx = currentTxs.get(txIndex);
+            BankImportModel.BankTransactionModel updatedTx = new BankImportModel.BankTransactionModel(
+                    existingTx.id(),
+                    existingTx.date(),
+                    existingTx.label(),
+                    existingTx.type(),
+                    existingTx.amount(),
+                    existingTx.categoryId(),
+                    splits
+            );
 
-        try {
-            updatedTx.validateSplits();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
+            try {
+                updatedTx.validateSplits();
+            } catch (IllegalArgumentException e) {
+                return BankImportChange.unchanged(ResponseEntity.badRequest().build());
+            }
 
-        List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>(currentTxs);
-        updatedTxs.set(txIndex, updatedTx);
+            List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>(currentTxs);
+            updatedTxs.set(txIndex, updatedTx);
 
-        BankImportModel updatedModel = new BankImportModel(
-                current.columnMapping(),
-                current.categories(),
-                current.rules(),
-                updatedTxs,
-                current.pendingOperations(),
-                current.matchings()
-        );
-
-        bankImportCommandService.updateBankImport(updatedModel);
-        return ResponseEntity.ok().build();
+            return BankImportChange.write(new BankImportModel(
+                    current.columnMapping(),
+                    current.categories(),
+                    current.rules(),
+                    updatedTxs,
+                    current.pendingOperations(),
+                    current.matchings()
+            ), ResponseEntity.ok().build());
+        });
     }
 
     // ---------------------------------------------------------------------------
@@ -278,29 +277,31 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
     @Override
     public ResponseEntity<Object> addBankImportLigne(String listKey, Object body) {
-        BankImportModel current = bankReader.getBankImport();
         Map<String, Object> bodyMap = toMap(body);
 
-        if ("categories".equals(listKey)) {
-            BankImportModel.CategoryModel newCat = mapper.toCategoryModel(bodyMap);
-            List<BankImportModel.CategoryModel> cats = new ArrayList<>(current.categories());
-            cats.add(newCat);
-            bankImportCommandService.updateBankImport(new BankImportModel(
-                    current.columnMapping(), cats, current.rules(),
-                    current.transactions(), current.pendingOperations(), current.matchings()));
-            return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
-                    .body(mapper.toCategoryMap(newCat));
-        } else if ("rules".equals(listKey)) {
-            BankImportModel.BankImportRuleModel newRule = mapper.toRuleModel(bodyMap);
-            List<BankImportModel.BankImportRuleModel> rules = new ArrayList<>(current.rules());
-            rules.add(newRule);
-            bankImportCommandService.updateBankImport(new BankImportModel(
-                    current.columnMapping(), current.categories(), rules,
-                    current.transactions(), current.pendingOperations(), current.matchings()));
-            return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
-                    .body(mapper.toRuleMap(newRule));
-        }
-        return ResponseEntity.badRequest().build();
+        // SILO-213 (lot B, etape b2) : lecture, modification et ecriture sous le verrou du silo Banque.
+        return bankImportCommandService.<ResponseEntity<Object>>modifyBankImport(current -> {
+            if ("categories".equals(listKey)) {
+                BankImportModel.CategoryModel newCat = mapper.toCategoryModel(bodyMap);
+                List<BankImportModel.CategoryModel> cats = new ArrayList<>(current.categories());
+                cats.add(newCat);
+                return BankImportChange.write(new BankImportModel(
+                        current.columnMapping(), cats, current.rules(),
+                        current.transactions(), current.pendingOperations(), current.matchings()),
+                        ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                                .body(mapper.toCategoryMap(newCat)));
+            } else if ("rules".equals(listKey)) {
+                BankImportModel.BankImportRuleModel newRule = mapper.toRuleModel(bodyMap);
+                List<BankImportModel.BankImportRuleModel> rules = new ArrayList<>(current.rules());
+                rules.add(newRule);
+                return BankImportChange.write(new BankImportModel(
+                        current.columnMapping(), current.categories(), rules,
+                        current.transactions(), current.pendingOperations(), current.matchings()),
+                        ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                                .body(mapper.toRuleMap(newRule)));
+            }
+            return BankImportChange.unchanged(ResponseEntity.badRequest().build());
+        });
     }
 
     @Override
@@ -310,73 +311,75 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         String field = body.getField();
         Object value = body.getValue();
 
-        BankImportModel current = bankReader.getBankImport();
+        // SILO-213 (lot B, etape b2) : lecture, modification et ecriture sous le verrou du silo Banque.
+        return bankImportCommandService.<ResponseEntity<Void>>modifyBankImport(current -> {
+            if ("categories".equals(listKey)) {
+                List<BankImportModel.CategoryModel> cats = current.categories();
+                int idx = -1;
+                for (int i = 0; i < cats.size(); i++) {
+                    if (cats.get(i).id().equals(id)) { idx = i; break; }
+                }
+                if (idx == -1) return BankImportChange.unchanged(ResponseEntity.notFound().build());
 
-        if ("categories".equals(listKey)) {
-            List<BankImportModel.CategoryModel> cats = current.categories();
-            int idx = -1;
-            for (int i = 0; i < cats.size(); i++) {
-                if (cats.get(i).id().equals(id)) { idx = i; break; }
+                BankImportModel.CategoryModel existing = cats.get(idx);
+                String label = "label".equals(field) ? String.valueOf(value) : existing.label();
+                String kind = "kind".equals(field) ? String.valueOf(value) : existing.kind();
+                String compressible = "compressible".equals(field) ? String.valueOf(value) : existing.compressible();
+
+                List<BankImportModel.CategoryModel> updated = new ArrayList<>(cats);
+                updated.set(idx, new BankImportModel.CategoryModel(existing.id(), label, kind, compressible));
+                return BankImportChange.write(new BankImportModel(
+                        current.columnMapping(), updated, current.rules(),
+                        current.transactions(), current.pendingOperations(), current.matchings()),
+                        ResponseEntity.ok().build());
+
+            } else if ("rules".equals(listKey)) {
+                List<BankImportModel.BankImportRuleModel> rules = current.rules();
+                int idx = -1;
+                for (int i = 0; i < rules.size(); i++) {
+                    if (rules.get(i).id().equals(id)) { idx = i; break; }
+                }
+                if (idx == -1) return BankImportChange.unchanged(ResponseEntity.notFound().build());
+
+                BankImportModel.BankImportRuleModel existing = rules.get(idx);
+                String matchText = "matchText".equals(field) ? String.valueOf(value) : existing.matchText();
+                String categoryId = "categoryId".equals(field) ? String.valueOf(value) : existing.categoryId();
+
+                List<BankImportModel.BankImportRuleModel> updated = new ArrayList<>(rules);
+                updated.set(idx, new BankImportModel.BankImportRuleModel(existing.id(), matchText, categoryId));
+                return BankImportChange.write(new BankImportModel(
+                        current.columnMapping(), current.categories(), updated,
+                        current.transactions(), current.pendingOperations(), current.matchings()),
+                        ResponseEntity.ok().build());
             }
-            if (idx == -1) return ResponseEntity.notFound().build();
-
-            BankImportModel.CategoryModel existing = cats.get(idx);
-            String label = "label".equals(field) ? String.valueOf(value) : existing.label();
-            String kind = "kind".equals(field) ? String.valueOf(value) : existing.kind();
-            String compressible = "compressible".equals(field) ? String.valueOf(value) : existing.compressible();
-
-            List<BankImportModel.CategoryModel> updated = new ArrayList<>(cats);
-            updated.set(idx, new BankImportModel.CategoryModel(existing.id(), label, kind, compressible));
-            bankImportCommandService.updateBankImport(new BankImportModel(
-                    current.columnMapping(), updated, current.rules(),
-                    current.transactions(), current.pendingOperations(), current.matchings()));
-            return ResponseEntity.ok().build();
-
-        } else if ("rules".equals(listKey)) {
-            List<BankImportModel.BankImportRuleModel> rules = current.rules();
-            int idx = -1;
-            for (int i = 0; i < rules.size(); i++) {
-                if (rules.get(i).id().equals(id)) { idx = i; break; }
-            }
-            if (idx == -1) return ResponseEntity.notFound().build();
-
-            BankImportModel.BankImportRuleModel existing = rules.get(idx);
-            String matchText = "matchText".equals(field) ? String.valueOf(value) : existing.matchText();
-            String categoryId = "categoryId".equals(field) ? String.valueOf(value) : existing.categoryId();
-
-            List<BankImportModel.BankImportRuleModel> updated = new ArrayList<>(rules);
-            updated.set(idx, new BankImportModel.BankImportRuleModel(existing.id(), matchText, categoryId));
-            bankImportCommandService.updateBankImport(new BankImportModel(
-                    current.columnMapping(), current.categories(), updated,
-                    current.transactions(), current.pendingOperations(), current.matchings()));
-            return ResponseEntity.ok().build();
-        }
-        return ResponseEntity.badRequest().build();
+            return BankImportChange.unchanged(ResponseEntity.badRequest().build());
+        });
     }
 
     @Override
     public ResponseEntity<Void> removeBankImportLigne(String listKey, String id) {
-        BankImportModel current = bankReader.getBankImport();
+        // SILO-213 (lot B, etape b2) : lecture, modification et ecriture sous le verrou du silo Banque.
+        return bankImportCommandService.<ResponseEntity<Void>>modifyBankImport(current -> {
+            if ("categories".equals(listKey)) {
+                List<BankImportModel.CategoryModel> cats = current.categories().stream()
+                        .filter(c -> !c.id().equals(id))
+                        .collect(Collectors.toList());
+                return BankImportChange.write(new BankImportModel(
+                        current.columnMapping(), cats, current.rules(),
+                        current.transactions(), current.pendingOperations(), current.matchings()),
+                        ResponseEntity.noContent().build());
 
-        if ("categories".equals(listKey)) {
-            List<BankImportModel.CategoryModel> cats = current.categories().stream()
-                    .filter(c -> !c.id().equals(id))
-                    .collect(Collectors.toList());
-            bankImportCommandService.updateBankImport(new BankImportModel(
-                    current.columnMapping(), cats, current.rules(),
-                    current.transactions(), current.pendingOperations(), current.matchings()));
-            return ResponseEntity.noContent().build();
-
-        } else if ("rules".equals(listKey)) {
-            List<BankImportModel.BankImportRuleModel> rules = current.rules().stream()
-                    .filter(r -> !r.id().equals(id))
-                    .collect(Collectors.toList());
-            bankImportCommandService.updateBankImport(new BankImportModel(
-                    current.columnMapping(), current.categories(), rules,
-                    current.transactions(), current.pendingOperations(), current.matchings()));
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.badRequest().build();
+            } else if ("rules".equals(listKey)) {
+                List<BankImportModel.BankImportRuleModel> rules = current.rules().stream()
+                        .filter(r -> !r.id().equals(id))
+                        .collect(Collectors.toList());
+                return BankImportChange.write(new BankImportModel(
+                        current.columnMapping(), current.categories(), rules,
+                        current.transactions(), current.pendingOperations(), current.matchings()),
+                        ResponseEntity.noContent().build());
+            }
+            return BankImportChange.unchanged(ResponseEntity.badRequest().build());
+        });
     }
 
     // ---------------------------------------------------------------------------
@@ -392,71 +395,71 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         String categoryId = body.getCategoryId();
         String ruleKeyword = body.getRuleKeyword();
 
-        BankImportModel current = bankReader.getBankImport();
-        List<BankImportModel.BankImportRuleModel> currentRules = current.rules() != null ? current.rules() : Collections.emptyList();
-        List<BankImportModel.BankImportRuleModel> newRules = new ArrayList<>(currentRules);
+        // SILO-213 (lot B, etape b2) : lecture, calcul et ecriture sous le verrou du silo Banque.
+        bankImportCommandService.modifyBankImport(current -> {
+            List<BankImportModel.BankImportRuleModel> currentRules = current.rules() != null ? current.rules() : Collections.emptyList();
+            List<BankImportModel.BankImportRuleModel> newRules = new ArrayList<>(currentRules);
 
-        if (ruleKeyword != null && !ruleKeyword.trim().isEmpty()) {
-            String key = ruleKeyword.trim().toUpperCase();
-            boolean found = false;
-            for (int i = 0; i < newRules.size(); i++) {
-                BankImportModel.BankImportRuleModel r = newRules.get(i);
-                if (r.matchText() != null && r.matchText().trim().toUpperCase().equals(key)) {
-                    newRules.set(i, new BankImportModel.BankImportRuleModel(r.id(), r.matchText(), categoryId));
-                    found = true;
-                    break;
+            if (ruleKeyword != null && !ruleKeyword.trim().isEmpty()) {
+                String key = ruleKeyword.trim().toUpperCase();
+                boolean found = false;
+                for (int i = 0; i < newRules.size(); i++) {
+                    BankImportModel.BankImportRuleModel r = newRules.get(i);
+                    if (r.matchText() != null && r.matchText().trim().toUpperCase().equals(key)) {
+                        newRules.set(i, new BankImportModel.BankImportRuleModel(r.id(), r.matchText(), categoryId));
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    newRules.add(new BankImportModel.BankImportRuleModel(null, ruleKeyword.trim(), categoryId));
                 }
             }
-            if (!found) {
-                newRules.add(new BankImportModel.BankImportRuleModel(null, ruleKeyword.trim(), categoryId));
+
+            List<BankImportModel.BankTransactionModel> currentTxs = current.transactions() != null ? current.transactions() : Collections.emptyList();
+            List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>();
+            for (BankImportModel.BankTransactionModel t : currentTxs) {
+                if (t.id() != null && t.id().equals(txId)) {
+                    updatedTxs.add(new BankImportModel.BankTransactionModel(
+                            t.id(), t.date(), t.label(), t.type(), t.amount(), categoryId, t.splits()
+                    ));
+                } else {
+                    updatedTxs.add(t);
+                }
             }
-        }
 
-        List<BankImportModel.BankTransactionModel> currentTxs = current.transactions() != null ? current.transactions() : Collections.emptyList();
-        List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>();
-        for (BankImportModel.BankTransactionModel t : currentTxs) {
-            if (t.id() != null && t.id().equals(txId)) {
-                updatedTxs.add(new BankImportModel.BankTransactionModel(
-                        t.id(), t.date(), t.label(), t.type(), t.amount(), categoryId, t.splits()
-                ));
-            } else {
-                updatedTxs.add(t);
-            }
-        }
+            List<BankImportModel.BankTransactionModel> finalTxs = bankImportCalculationService.applyRulesToTransactions(updatedTxs, newRules);
 
-        List<BankImportModel.BankTransactionModel> finalTxs = bankImportCalculationService.applyRulesToTransactions(updatedTxs, newRules);
-
-        BankImportModel updatedModel = new BankImportModel(
-                current.columnMapping(),
-                current.categories(),
-                newRules,
-                finalTxs,
-                current.pendingOperations(),
-                current.matchings()
-        );
-
-        bankImportCommandService.updateBankImport(updatedModel);
+            return BankImportChange.write(new BankImportModel(
+                    current.columnMapping(),
+                    current.categories(),
+                    newRules,
+                    finalTxs,
+                    current.pendingOperations(),
+                    current.matchings()
+            ), null);
+        });
         return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<Void> recalculateBankImportRules() {
-        BankImportModel current = bankReader.getBankImport();
-        List<BankImportModel.BankTransactionModel> currentTxs = current.transactions() != null ? current.transactions() : Collections.emptyList();
-        List<BankImportModel.BankImportRuleModel> currentRules = current.rules() != null ? current.rules() : Collections.emptyList();
+        // SILO-213 (lot B, etape b2) : lecture, calcul et ecriture sous le verrou du silo Banque.
+        bankImportCommandService.modifyBankImport(current -> {
+            List<BankImportModel.BankTransactionModel> currentTxs = current.transactions() != null ? current.transactions() : Collections.emptyList();
+            List<BankImportModel.BankImportRuleModel> currentRules = current.rules() != null ? current.rules() : Collections.emptyList();
 
-        List<BankImportModel.BankTransactionModel> recalculated = bankImportCalculationService.applyRulesToTransactions(currentTxs, currentRules);
+            List<BankImportModel.BankTransactionModel> recalculated = bankImportCalculationService.applyRulesToTransactions(currentTxs, currentRules);
 
-        BankImportModel updatedModel = new BankImportModel(
-                current.columnMapping(),
-                current.categories(),
-                currentRules,
-                recalculated,
-                current.pendingOperations(),
-                current.matchings()
-        );
-
-        bankImportCommandService.updateBankImport(updatedModel);
+            return BankImportChange.write(new BankImportModel(
+                    current.columnMapping(),
+                    current.categories(),
+                    currentRules,
+                    recalculated,
+                    current.pendingOperations(),
+                    current.matchings()
+            ), null);
+        });
         return ResponseEntity.ok().build();
     }
 
