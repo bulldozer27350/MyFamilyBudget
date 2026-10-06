@@ -18,7 +18,6 @@ import com.moe.myfamilybudget.domain.bankpointage.core.DefaultPointageCalculatio
 import com.moe.myfamilybudget.domain.bankpointage.core.enablebanking.DefaultEnableBankingSyncService;
 import com.moe.myfamilybudget.domain.bankpointage.core.enablebanking.EnableBankingClient;
 import com.moe.myfamilybudget.domain.bankpointage.core.enablebanking.EnableBankingConfig;
-import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.bankpointage.port.EnableBankingSyncStateStore;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.credit.core.DefaultLoanAdviceCalculationService;
@@ -178,15 +177,16 @@ public class DomainEngineConfig {
     }
 
     /**
-     * SILO-213 (lot B) : la synchronisation ecrit l'import bancaire par {@link BankImportCommandService}, qui prend
-     * le verrou du silo Banque/Pointage et ouvre la transaction : le {@code BankWriter} du silo ne les porte plus.
+     * SILO-213 (lot B) : la synchronisation lit puis ecrit l'import bancaire par {@link BankImportCommandService}
+     * (port {@code BankImportModifier}), qui prend le verrou du silo Banque/Pointage, ouvre la transaction et lit
+     * l'import sous verrou : le silo ne porte ni lecteur ni ecrivain pour cette synchronisation.
      */
     @Bean
     public EnableBankingSyncService enableBankingSyncService(EnableBankingConfig config, EnableBankingClient client,
-            BankReader bankReader, BankImportCommandService bankImportCommandService,
+            BankImportCommandService bankImportCommandService,
             EnableBankingSyncStateStore stateStore, BankImportCalculationService bankImportCalculationService) {
-        return new DefaultEnableBankingSyncService(config, client, bankReader, stateStore,
-                bankImportCommandService::updateBankImport, bankImportCalculationService);
+        return new DefaultEnableBankingSyncService(config, client, stateStore, bankImportCommandService,
+                bankImportCalculationService);
     }
 
     @Bean

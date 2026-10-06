@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.moe.myfamilybudget.api.controller.OperationsEnCoursApi;
 import com.moe.myfamilybudget.api.model.ReconcilePendingOperations200Response;
-import com.moe.myfamilybudget.application.command.BankImportChange;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankImportChange;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.AutoMatchResultModel;

@@ -26,7 +26,7 @@ import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
-import com.moe.myfamilybudget.application.command.BankImportChange;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankImportChange;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 

@@ -11,6 +11,8 @@ import com.moe.myfamilybudget.application.port.MutationSilo;
 import com.moe.myfamilybudget.application.port.SiloMutationLock;
 import com.moe.myfamilybudget.application.port.TransactionRunner;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankImportChange;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankImportModifier;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
 
@@ -26,17 +28,14 @@ import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
  * (cablage du composition root), donc avec les memes garanties.
  *
  * <p>Lecture-modification-ecriture : {@link #modifyBankImport} lit l'import <em>sous le verrou</em>, dans la
- * meme transaction que l'ecriture. Lire l'import hors verrou puis le reecrire en entier par
- * {@link #updateBankImport} perd la modification d'une ecriture concurrente (synchronisation Enable Banking
- * contre action de l'utilisateur, deux modifications de transactions distinctes) ; {@code updateBankImport}
- * reste disponible le temps de migrer les appelants.
- *
- * <p>Un import {@code null} est une erreur de programmation, refuse avant toute ecriture
- * ({@link IllegalArgumentException}, traduite en 400 par le gestionnaire d'erreurs) : aucun appelant
- * actuel n'en transmet.
+ * meme transaction que l'ecriture. Lire l'import hors verrou puis le reecrire en entier perdait la modification
+ * d'une ecriture concurrente (synchronisation Enable Banking contre action de l'utilisateur, deux modifications
+ * de transactions distinctes) : toute ecriture de l'import passe par cette methode (etape b3 de la decision du
+ * plan 21). Implemente {@link BankImportModifier} pour la synchronisation Enable Banking, qui ne depend pas de
+ * l'application.
  */
 @Service
-public class BankImportCommandService {
+public class BankImportCommandService implements BankImportModifier {
 
     /** Silo ecrit par la mise a jour de l'import bancaire. */
     private static final Set<MutationSilo> UPDATE_SILOS = EnumSet.of(MutationSilo.BANK_POINTAGE);
@@ -56,17 +55,6 @@ public class BankImportCommandService {
         this.transactionRunner = transactionRunner;
     }
 
-    public void updateBankImport(BankImportModel bankImport) {
-        if (bankImport == null) {
-            throw new IllegalArgumentException("L'import bancaire est obligatoire");
-        }
-        transactionRunner.inTransaction(() -> {
-            siloMutationLock.lockForCurrentTransaction(UPDATE_SILOS);
-            bankWriter.updateBankImport(bankImport);
-            return null;
-        });
-    }
-
     /**
      * Modifie l'import bancaire sans perte de modification concurrente : dans une transaction, apres la prise du
      * verrou du silo Banque/Pointage, l'import courant est lu, {@code modification} calcule le resultat, puis
@@ -79,6 +67,7 @@ public class BankImportCommandService {
      *
      * @return la valeur {@link BankImportChange#result()} de la modification
      */
+    @Override
     public <T> T modifyBankImport(Function<BankImportModel, BankImportChange<T>> modification) {
         Objects.requireNonNull(modification, "La modification de l'import bancaire est obligatoire");
         return transactionRunner.inTransaction(() -> {

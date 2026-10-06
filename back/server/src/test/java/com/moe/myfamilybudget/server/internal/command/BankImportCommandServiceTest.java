@@ -1,6 +1,6 @@
 package com.moe.myfamilybudget.server.internal.command;
 
-import com.moe.myfamilybudget.application.command.BankImportChange;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankImportChange;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -9,7 +9,6 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -70,17 +69,17 @@ class BankImportCommandServiceTest {
     }
 
     @Test
-    @DisplayName("succes : l'import est transmis tel quel au port")
-    void updateDelegates() {
-        service.updateBankImport(BANK_IMPORT);
+    @DisplayName("succes : l'import renvoye par la modification est transmis tel quel au port")
+    void writeDelegates() {
+        service.modifyBankImport(current -> BankImportChange.write(BANK_IMPORT, null));
 
         verify(writer).updateBankImport(BANK_IMPORT);
     }
 
     @Test
     @DisplayName("SILO-213 : l'ecriture s'execute dans la transaction, apres la prise du verrou du silo Banque")
-    void updateRunsInTransactionAfterLockingBankSilo() {
-        service.updateBankImport(BANK_IMPORT);
+    void writeRunsInTransactionAfterLockingBankSilo() {
+        service.modifyBankImport(current -> BankImportChange.write(BANK_IMPORT, null));
 
         assertThat(transactions.calls()).isEqualTo(1);
         InOrder order = inOrder(lock, writer);
@@ -89,21 +88,13 @@ class BankImportCommandServiceTest {
     }
 
     @Test
-    @DisplayName("validation : un import null est refuse, sans transaction, verrou ni ecriture")
-    void nullImportIsRejectedWithoutWriting() {
-        assertThatThrownBy(() -> service.updateBankImport(null)).isInstanceOf(IllegalArgumentException.class);
-
-        assertThat(transactions.calls()).isZero();
-        verifyNoInteractions(writer, lock);
-    }
-
-    @Test
     @DisplayName("erreur : l'exception du port est propagee telle quelle")
     void writerFailureIsPropagated() {
         IllegalStateException dbDown = new IllegalStateException("database down");
         doThrow(dbDown).when(writer).updateBankImport(any());
 
-        assertThatThrownBy(() -> service.updateBankImport(BANK_IMPORT)).isSameAs(dbDown);
+        assertThatThrownBy(() -> service.modifyBankImport(current -> BankImportChange.write(BANK_IMPORT, null)))
+                .isSameAs(dbDown);
     }
 
     @Test
@@ -221,7 +212,7 @@ class BankImportCommandServiceTest {
                 RecordingTransactionRunner.direct());
         assertThat(adapter.getBankImport().transactions()).isEmpty();
 
-        realService.updateBankImport(BANK_IMPORT);
+        realService.modifyBankImport(current -> BankImportChange.write(BANK_IMPORT, null));
 
         assertThat(adapter.getBankImport().transactions()).extracting(BankImportModel.BankTransactionModel::id)
                 .containsExactly("tx_1");

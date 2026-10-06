@@ -1,10 +1,10 @@
-package com.moe.myfamilybudget.application.command;
+package com.moe.myfamilybudget.domain.bankpointage.port;
 
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 
 /**
  * Resultat d'une modification de l'import bancaire calculee sous verrou par
- * {@link BankImportCommandService#modifyBankImport} (SILO-213, lot B) : l'import a ecrire, ou {@code null}
+ * {@link BankImportModifier#modifyBankImport} (SILO-213, lot B) : l'import a ecrire, ou {@code null}
  * pour ne rien ecrire (cas refuse, introuvable ou sans effet), et la valeur que l'appelant veut recuperer
  * (reponse, statistiques d'import...).
  *

@@ -17,8 +17,8 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingException;
 import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingSyncResult;
 import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingSyncResult.AccountResult;
-import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
-import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankImportChange;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankImportModifier;
 import com.moe.myfamilybudget.domain.bankpointage.port.EnableBankingSyncStateStore;
 
 /**
@@ -43,23 +43,20 @@ public class DefaultEnableBankingSyncService implements EnableBankingSyncService
 
     private final EnableBankingConfig config;
     private final EnableBankingClient client;
-    private final BankReader bankReader;
     private final EnableBankingSyncStateStore stateStore;
-    private final BankWriter bankWriter;
+    private final BankImportModifier bankImportModifier;
     private final BankImportCalculationService bankImportCalculationService;
 
     public DefaultEnableBankingSyncService(
             EnableBankingConfig config,
             EnableBankingClient client,
-            BankReader bankReader,
             EnableBankingSyncStateStore stateStore,
-            BankWriter bankWriter,
+            BankImportModifier bankImportModifier,
             BankImportCalculationService bankImportCalculationService) {
         this.config = config;
         this.client = client;
-        this.bankReader = bankReader;
         this.stateStore = stateStore;
-        this.bankWriter = bankWriter;
+        this.bankImportModifier = bankImportModifier;
         this.bankImportCalculationService = bankImportCalculationService;
     }
 
@@ -126,27 +123,30 @@ public class DefaultEnableBankingSyncService implements EnableBankingSyncService
             return new AccountResult(account.label(), 0, 0, 0, null);
         }
 
-        BankImportModel current = bankReader.getBankImport();
         BankImportModel.BankColumnMappingModel mapping = new BankImportModel.BankColumnMappingModel(
                 ";", "YYYY-MM-DD", false, null, null, null, null);
 
-        BankImportSummaryModel summary = bankImportCalculationService.importTransactions(
-                rows, COL_ROLES, mapping,
-                current.transactions() != null ? current.transactions() : Collections.emptyList(),
-                current.rules());
+        // SILO-213 (lot B, etape b3) : l'import est lu, complete puis ecrit sous le verrou du silo Banque ; une
+        // action simultanee de l'utilisateur (import CSV, categorie, pointage) ne perd plus les transactions
+        // importees, et inversement. Seul le calcul reste sous verrou : l'appel reseau a eu lieu avant.
+        BankImportSummaryModel summary = bankImportModifier.modifyBankImport(current -> {
+            BankImportSummaryModel computed = bankImportCalculationService.importTransactions(
+                    rows, COL_ROLES, mapping,
+                    current.transactions() != null ? current.transactions() : Collections.emptyList(),
+                    current.rules());
 
-        List<BankImportModel.BankTransactionModel> allTransactions =
-                new ArrayList<>(current.transactions() != null ? current.transactions() : Collections.emptyList());
-        allTransactions.addAll(summary.newTransactions());
+            List<BankImportModel.BankTransactionModel> allTransactions =
+                    new ArrayList<>(current.transactions() != null ? current.transactions() : Collections.emptyList());
+            allTransactions.addAll(computed.newTransactions());
 
-        BankImportModel updatedModel = new BankImportModel(
-                summary.updatedMapping(),
-                current.categories(),
-                current.rules(),
-                allTransactions,
-                current.pendingOperations(),
-                current.matchings());
-        bankWriter.updateBankImport(updatedModel);
+            return BankImportChange.write(new BankImportModel(
+                    computed.updatedMapping(),
+                    current.categories(),
+                    current.rules(),
+                    allTransactions,
+                    current.pendingOperations(),
+                    current.matchings()), computed);
+        });
 
         String latestBookingDate = rows.stream()
                 .map(row -> row.get(0))

@@ -7,11 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.EnableBankingException;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankImportChange;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankImportModifier;
 import com.moe.myfamilybudget.domain.bankpointage.port.EnableBankingSyncStateStore;
 
 /**
@@ -41,12 +45,14 @@ class DefaultEnableBankingSyncServiceTest {
         DefaultEnableBankingSyncService service = new DefaultEnableBankingSyncService(
                 config,
                 new EnableBankingClient(config),
-                () -> {
-                    portCalls.incrementAndGet();
-                    return null;
-                },
                 stateStore,
-                bankImport -> portCalls.incrementAndGet(),
+                new BankImportModifier() {
+                    @Override
+                    public <T> T modifyBankImport(Function<BankImportModel, BankImportChange<T>> modification) {
+                        portCalls.incrementAndGet();
+                        return null;
+                    }
+                },
                 null);
 
         assertFalse(service.isConfigured());
