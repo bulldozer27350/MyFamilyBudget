@@ -44,6 +44,20 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowOneOffRep
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowTransferRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableIncomeRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsMapper;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
+import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsMapper;
+import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsMapper;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
+import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsMapper;
+import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
+import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
+import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.persistence.repository.ChargeRepository;
 import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
@@ -131,6 +145,12 @@ class BudgetPersistenceGateway {
     private final CashflowTransferRepository cashflowTransferRepository;
     private final CashflowVariableIncomeRepository cashflowVariableIncomeRepository;
     private final CashflowVariableOverrideRepository cashflowVariableOverrideRepository;
+    // SILO-220 (lot B) : tables de parametres chez leurs proprietaires (Retraite, Fiscalite, Tresorerie,
+    // Parametres), alimentees en parallele de `settings` (meme principe que goalRepository avant SILO-212).
+    private final PensionSettingsRepository pensionSettingsRepository;
+    private final FiscalSettingsRepository fiscalSettingsRepository;
+    private final CashflowSettingsRepository cashflowSettingsRepository;
+    private final AppSettingsRepository appSettingsRepository;
 
     BudgetPersistenceGateway(BudgetDataRepository budgetDataRepository,
                               IncomeRepository incomeRepository,
@@ -159,7 +179,11 @@ class BudgetPersistenceGateway {
                               CashflowOneOffRepository cashflowOneOffRepository,
                               CashflowTransferRepository cashflowTransferRepository,
                               CashflowVariableIncomeRepository cashflowVariableIncomeRepository,
-                              CashflowVariableOverrideRepository cashflowVariableOverrideRepository) {
+                              CashflowVariableOverrideRepository cashflowVariableOverrideRepository,
+                              PensionSettingsRepository pensionSettingsRepository,
+                              FiscalSettingsRepository fiscalSettingsRepository,
+                              CashflowSettingsRepository cashflowSettingsRepository,
+                              AppSettingsRepository appSettingsRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.incomeRepository = incomeRepository;
         this.chargeRepository = chargeRepository;
@@ -188,6 +212,10 @@ class BudgetPersistenceGateway {
         this.cashflowTransferRepository = cashflowTransferRepository;
         this.cashflowVariableIncomeRepository = cashflowVariableIncomeRepository;
         this.cashflowVariableOverrideRepository = cashflowVariableOverrideRepository;
+        this.pensionSettingsRepository = pensionSettingsRepository;
+        this.fiscalSettingsRepository = fiscalSettingsRepository;
+        this.cashflowSettingsRepository = cashflowSettingsRepository;
+        this.appSettingsRepository = appSettingsRepository;
     }
 
     /**
@@ -254,6 +282,9 @@ class BudgetPersistenceGateway {
             syncWealth(loaded);
             // DB-1061 : idem pour les tables Tresorerie.
             syncCashflow(loaded);
+            // SILO-220 (lot B) : migration des parametres de `settings` vers les tables des proprietaires
+            // (idempotente : les quatre tables sont remplacees par l'etat du hub a chaque demarrage).
+            syncSettings(loaded);
         }
         return loaded;
     }
@@ -337,6 +368,7 @@ class BudgetPersistenceGateway {
         syncPension(model.retirement());
         syncWealth(model);
         syncCashflow(model);
+        syncSettings(model);
     }
 
     private void saveLoans(List<LoanModel> loans, BudgetDataEntity budgetData) {
@@ -424,6 +456,37 @@ class BudgetPersistenceGateway {
         wealthPlacementRepository.saveAll(WealthEntityMapper.toPlacementEntities(model.getEffectivePlacements()));
         wealthRealEstateRepository.saveAll(WealthEntityMapper.toRealEstateEntities(model.getEffectiveRealEstate()));
         wealthCategoryRepository.saveAll(WealthEntityMapper.toCategoryEntities(model.getEffectiveAssetCategories()));
+    }
+
+    /**
+     * SILO-220 (lot B) : remplace le contenu des quatre tables de parametres des proprietaires
+     * ({@code pension_settings}, {@code fiscal_settings}, {@code cashflow_settings}, {@code app_settings}) par les
+     * parametres <em>effectifs</em> du modele, dans la transaction de l'appelant ({@code flush} apres les
+     * suppressions, comme {@link #syncCreditLoans}). Appele au chargement (migration des donnees de la table
+     * {@code settings}, qui reste la source) et a chaque sauvegarde (double ecriture). Les valeurs par defaut de
+     * {@code getEffectiveSettings()} sont ecrites : une lecture future par ces tables restitue donc exactement ce
+     * que le cache expose. Le PASS et son taux restent portes par {@code pension_plan} (SET-040).
+     */
+    private void syncSettings(BudgetDataModel model) {
+        SettingsModel s = model.getEffectiveSettings();
+        pensionSettingsRepository.deleteAll();
+        fiscalSettingsRepository.deleteAll();
+        cashflowSettingsRepository.deleteAll();
+        appSettingsRepository.deleteAll();
+        pensionSettingsRepository.flush();
+        fiscalSettingsRepository.flush();
+        cashflowSettingsRepository.flush();
+        appSettingsRepository.flush();
+        pensionSettingsRepository.save(PensionSettingsMapper.toEntity(
+                new RetirementSettingsModel(s.birthYear(), s.retireAge())));
+        fiscalSettingsRepository.save(FiscalSettingsMapper.toEntity(
+                new TaxSettingsModel(s.childExitAge(), s.taxAbattement())));
+        cashflowSettingsRepository.save(CashflowSettingsMapper.toEntity(
+                new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
+                        s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold())));
+        appSettingsRepository.save(AppSettingsMapper.toEntity(
+                new SimulationSettingsModel(s.simulateUntilAge()),
+                new EconomicAssumptionsModel(s.inflationRate())));
     }
 
     /**

@@ -48,6 +48,14 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowOneOffRep
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowTransferRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableIncomeRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
+import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsEntity;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
+import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsEntity;
+import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsEntity;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsEntity;
+import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
 import com.moe.myfamilybudget.persistence.repository.ChargeRepository;
 import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
@@ -134,6 +142,51 @@ class PersistenceAdaptersJpaRoundTripTest {
 
         assertThat(reader).isNotSameAs(writer);
         assertReferenceState(reader);
+    }
+
+    @Test
+    @DisplayName("SILO-220 -- un import copie les parametres dans les tables de leurs proprietaires")
+    void settingsAreCopiedToOwnerTables() {
+        writer.setBudgetData(referenceData());
+
+        assertOwnerSettingsTables();
+    }
+
+    @Test
+    @DisplayName("SILO-220 -- au demarrage, les tables des proprietaires sont rechargees depuis `settings`")
+    void ownerSettingsTablesAreMigratedAtStartup() {
+        writer.setBudgetData(referenceData());
+        context.getBean(PensionSettingsRepository.class).deleteAll();
+        context.getBean(FiscalSettingsRepository.class).deleteAll();
+        context.getBean(CashflowSettingsRepository.class).deleteAll();
+        context.getBean(AppSettingsRepository.class).deleteAll();
+
+        freshReader();
+
+        assertOwnerSettingsTables();
+    }
+
+    private void assertOwnerSettingsTables() {
+        List<PensionSettingsEntity> pension = context.getBean(PensionSettingsRepository.class).findAll();
+        assertThat(pension).hasSize(1);
+        assertThat(pension.get(0).getBirthYear()).isEqualTo(SETTINGS.birthYear());
+        assertThat(pension.get(0).getRetireAge()).isEqualTo(SETTINGS.retireAge());
+
+        List<FiscalSettingsEntity> fiscal = context.getBean(FiscalSettingsRepository.class).findAll();
+        assertThat(fiscal).hasSize(1);
+        assertThat(fiscal.get(0).getChildExitAge()).isEqualTo(SETTINGS.childExitAge());
+        assertThat(fiscal.get(0).getTaxAbattement()).isEqualByComparingTo(SETTINGS.taxAbattement());
+
+        List<CashflowSettingsEntity> cashflow = context.getBean(CashflowSettingsRepository.class).findAll();
+        assertThat(cashflow).hasSize(1);
+        assertThat(cashflow.get(0).getPivotDate()).isEqualTo(SETTINGS.pivotDate());
+        assertThat(cashflow.get(0).getPivotMode()).isEqualTo(SETTINGS.pivotMode());
+        assertThat(cashflow.get(0).getStartBalance()).isEqualByComparingTo(SETTINGS.startBalance());
+
+        List<AppSettingsEntity> app = context.getBean(AppSettingsRepository.class).findAll();
+        assertThat(app).hasSize(1);
+        assertThat(app.get(0).getSimulateUntilAge()).isEqualTo(SETTINGS.simulateUntilAge());
+        assertThat(app.get(0).getInflationRate()).isEqualByComparingTo(SETTINGS.inflationRate());
     }
 
     @Test
@@ -978,6 +1031,10 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(CashflowTransferRepository.class),
                 context.getBean(CashflowVariableIncomeRepository.class),
                 context.getBean(CashflowVariableOverrideRepository.class),
+                context.getBean(PensionSettingsRepository.class),
+                context.getBean(FiscalSettingsRepository.class),
+                context.getBean(CashflowSettingsRepository.class),
+                context.getBean(AppSettingsRepository.class),
                 transactionManager,
                 eventPublisher);
         reader.init();
