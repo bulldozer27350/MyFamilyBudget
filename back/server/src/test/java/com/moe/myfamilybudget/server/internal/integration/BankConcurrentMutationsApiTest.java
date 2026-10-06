@@ -109,7 +109,7 @@ class BankConcurrentMutationsApiTest {
             String id = "cat_c" + i;
             expected.add(id);
             requests.add(addLine("categories", "{\"id\":\"" + id + "\",\"label\":\"Categorie " + i
-                    + "\",\"kind\":\"Depense\",\"compressible\":\"Non\"}"));
+                    + "\",\"kind\":\"Dépense\",\"compressible\":\"Non\"}"));
         }
 
         callConcurrently(requests).forEach(result -> assertThat(result.getResponse().getStatus()).isEqualTo(201));
@@ -143,7 +143,7 @@ class BankConcurrentMutationsApiTest {
                 setCategory("tx_0", "cat_courses"),
                 addLine("rules", "{\"id\":\"rule_mix\",\"matchText\":\"MIX\",\"categoryId\":\"cat_loyer\"}"),
                 forceTransaction("tx_mix"),
-                addLine("categories", "{\"id\":\"cat_mix\",\"label\":\"Mixte\",\"kind\":\"Depense\","
+                addLine("categories", "{\"id\":\"cat_mix\",\"label\":\"Mixte\",\"kind\":\"Dépense\","
                         + "\"compressible\":\"Oui\"}")));
 
         assertThat(results.get(0).getResponse().getStatus()).isEqualTo(200);
@@ -316,8 +316,8 @@ class BankConcurrentMutationsApiTest {
         }
         budget.set("bankImport", objectMapper.readTree("{"
                 + "\"categories\":["
-                + "{\"id\":\"cat_loyer\",\"label\":\"Logement\",\"kind\":\"Depense\",\"compressible\":\"Non\"},"
-                + "{\"id\":\"cat_courses\",\"label\":\"Alimentation\",\"kind\":\"Depense\",\"compressible\":\"Oui\"}],"
+                + "{\"id\":\"cat_loyer\",\"label\":\"Logement\",\"kind\":\"Dépense\",\"compressible\":\"Non\"},"
+                + "{\"id\":\"cat_courses\",\"label\":\"Alimentation\",\"kind\":\"Dépense\",\"compressible\":\"Oui\"}],"
                 + "\"transactions\":[" + transactions + "],"
                 + "\"matchings\":[]}"));
         return objectMapper.writeValueAsString(budget);
