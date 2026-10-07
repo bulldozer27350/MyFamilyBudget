@@ -1636,6 +1636,33 @@
     return Math.max(0, balance - reserveAilleurs);
   }
 
+  /**
+   * Impact de la suppression d'un placement (DA-10 phase 1 / DT-01) : le serveur reste tolérant
+   * (aucun contrôle ajouté côté back-end), c'est au FRONT de prévenir l'opérateur avant d'envoyer
+   * la suppression, puis de retirer lui-même les références devenues orphelines.
+   *
+   * - `objectifs` : ceux dont une allocation (voir getEffectiveObjectifAllocations, legacy compris)
+   *   référence ce placement ; leur allocation vers ce compte doit être retirée après confirmation.
+   * - `transfers` : virements historiques (data.transfers) qui référencent ce placement par
+   *   LIBELLÉ, pas par id (lien textuel, voir buildPlacementTimeline/computeFinancialProjections).
+   *   Purement informatif : un virement passé reste un fait historique, il n'est jamais modifié ou
+   *   supprimé ici — seulement signalé, car il ne correspondra plus à un compte existant.
+   *
+   * Calcul pur, aucun appel réseau.
+   */
+  function computePlacementRemovalImpact(data, placementId) {
+    const placement = (data?.placements || []).find(p => p.id === placementId);
+    const objectifs = (data?.objectifs || [])
+      .filter(o => getEffectiveObjectifAllocations(o).some(a => a.placementId === placementId))
+      .map(o => ({ id: o.id, label: o.label || '(sans nom)' }));
+    const transfers = placement
+      ? (data?.transfers || [])
+        .filter(t => t.placement === placement.label)
+        .map(t => ({ id: t.id, date: t.date, amount: t.amount }))
+      : [];
+    return { objectifs, transfers };
+  }
+
   /* ============================== Fiscal & prêts (Analyse) ============================== */
   /**
    * Heuristiques de premier niveau, pas un conseil personnalisé :
@@ -1759,6 +1786,8 @@
   exports.computeGoalReallocation = computeGoalReallocation;
   exports.computeTresorerieDisponible = computeTresorerieDisponible;
   exports.computeDisponiblePourAllocation = computeDisponiblePourAllocation;
+  exports.getEffectiveObjectifAllocations = getEffectiveObjectifAllocations;
+  exports.computePlacementRemovalImpact = computePlacementRemovalImpact;
   exports.computeFiscalPatrimonialAdvice = computeFiscalPatrimonialAdvice;
   exports.getEarliestDate = getEarliestDate;
   exports.findEarliestYear = findEarliestYear;

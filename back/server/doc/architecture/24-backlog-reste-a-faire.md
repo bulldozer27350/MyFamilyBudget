@@ -58,7 +58,6 @@ et de redémarrage sur PostgreSQL.
 |---|---|---|---|---|---|---|---|
 | R-70 | Vérifications PostgreSQL, redémarrage, E2E sans repli ; test automatique du préfixe de table par silo et de l'absence de clé étrangère entre silos (DA-02) ; procédure de déploiement répétée | R-61 | R-71 | À faire | | | SILO-250 |
 | R-71 | Porte B : persistance par silo | R-11, R-22, R-31, R-41, R-43, R-70 | R-80 à R-88 (voir § 4) | À faire | | | SILO-290 |
-| R-72 | Front : vérification de l'impact de la suppression d'un placement (objectifs, virements) et retrait des références, avec confirmation de l'opérateur (DA-10 phase 1, dette DT-01) | — | — | À faire | | | SILO-240 B2 |
 
 ### Application et web
 
@@ -93,7 +92,7 @@ et de redémarrage sur PostgreSQL.
 ## 4. Parallélisation et points ouverts
 
 **Lancer en parallèle dès maintenant** : R-01 (hors chemin critique des lots B, mais bloque R-51 et R-61), R-02, R-11, R-20, R-40
-(déjà en cours), R-42, R-50, R-52, R-72, V-01. Les lots B de silos distincts ne partagent pas de table, mais ils modifient tous
+(déjà en cours), R-42, R-50, R-52, V-01. Les lots B de silos distincts ne partagent pas de table, mais ils modifient tous
 `BudgetPersistenceGateway`, `PersistenceManager`, `BudgetMutationService` et `DomainMutations` : prévoir des conflits de fusion et
 fusionner un lot à la fois, CI verte avant le suivant (DA-07).
 

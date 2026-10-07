@@ -28,6 +28,12 @@
     HelpBadge
   } = exports.HelpBadge ? exports : window.BudgetApp || {};
   const BudgetApi = exports.BudgetApi || window.BudgetApp && window.BudgetApp.BudgetApi;
+  const computePlacementRemovalImpact = exports.computePlacementRemovalImpact
+    || (window.BudgetApp && window.BudgetApp.computePlacementRemovalImpact)
+    || (() => ({ objectifs: [], transfers: [] }));
+  const getEffectiveObjectifAllocations = exports.getEffectiveObjectifAllocations
+    || (window.BudgetApp && window.BudgetApp.getEffectiveObjectifAllocations)
+    || (o => Array.isArray(o?.allocations) ? o.allocations : []);
   const DEFAULT_BUCKET_ICONS = {
     cash: "📖",
     fondsEuros: "💶",
@@ -184,6 +190,8 @@
     onCancelNew,
     onCell,
     onRemove,
+    objectifs,
+    transfers,
     isNew
   }) {
     if (!isOpen || !placement) return null;
@@ -193,9 +201,23 @@
         await onCell(placement.id, key, values[key]);
       }
     };
+    // Vérifie l'impact de la suppression avant de la confirmer (DA-10 phase 1 / DT-01) : le
+    // serveur reste tolérant, c'est ici que l'opérateur est prévenu de ce qui sera impacté.
     const handleDelete = () => {
-      if (window.confirm(`Êtes-vous sûr de vouloir supprimer le placement "${placement.label}" ?`)) {
-        onRemove(placement.id);
+      const impact = computePlacementRemovalImpact({
+        placements: [placement],
+        objectifs: objectifs || [],
+        transfers: transfers || []
+      }, placement.id);
+      const messageParts = [`Êtes-vous sûr de vouloir supprimer le placement "${placement.label}" ?`];
+      if (impact.objectifs.length > 0) {
+        messageParts.push(`Il alimente ${impact.objectifs.length} objectif(s) : ${impact.objectifs.map(o => o.label).join(", ")}. Son allocation y sera retirée.`);
+      }
+      if (impact.transfers.length > 0) {
+        messageParts.push(`${impact.transfers.length} virement(s) enregistré(s) le référencent ; ils resteront dans l'historique mais ne correspondront plus à un compte existant.`);
+      }
+      if (window.confirm(messageParts.join("\n\n"))) {
+        onRemove(placement.id, impact.objectifs.map(o => o.id));
         onClose();
       }
     };
@@ -974,6 +996,11 @@
     const [historyPlacementId, setHistoryPlacementId] = useState(null);
     const [model, setModel] = useState(null);
     const [loaded, setLoaded] = useState(false);
+    // Objectifs (domaine Goals) : /patrimoine ne les porte pas, on les récupère via /analyse
+    // (même source que rawData.objectifs dans analyse-view.js) uniquement pour avertir
+    // l'opérateur de l'impact d'une suppression de placement (DA-10 phase 1 / DT-01) — jamais
+    // pour les modifier autrement qu'en retirant une allocation devenue orpheline.
+    const [objectifs, setObjectifs] = useState([]);
     useEffect(() => {
       let cancelled = false;
       const fetchPatrimoine = () => {
@@ -988,11 +1015,22 @@
           if (!cancelled) setLoaded(true);
         });
       };
+      const fetchObjectifs = () => {
+        BudgetApi.getAnalyse().then(result => {
+          if (cancelled) return;
+          setObjectifs(result?.data?.objectifs || []);
+        }).catch(err => {
+          console.error("Erreur de chargement des objectifs (impact suppression placement) :", err);
+        });
+      };
       fetchPatrimoine();
-      const unsubscribe = BudgetApi.onPatrimoineChanged(fetchPatrimoine);
+      fetchObjectifs();
+      const unsubscribePatrimoine = BudgetApi.onPatrimoineChanged(fetchPatrimoine);
+      const unsubscribeAnalyse = BudgetApi.onAnalyseChanged ? BudgetApi.onAnalyseChanged(fetchObjectifs) : () => {};
       return () => {
         cancelled = true;
-        unsubscribe();
+        unsubscribePatrimoine();
+        unsubscribeAnalyse();
       };
     }, [useConstantEuros]);
     const placements = model?.placements || [];
@@ -1055,6 +1093,18 @@
       }
       const currentRow = placements.find(p => p.id === id) || null;
       return BudgetApi.updatePatrimoineLigne("placements", id, field, value, currentRow);
+    };
+    // Supprime le placement puis retire la référence dans chaque objectif impacté (confirmé par
+    // l'opérateur dans PlacementDrawer.handleDelete) — DA-10 phase 1 / DT-01 : deux appels non
+    // atomiques, un échec intermédiaire est un risque connu et accepté à ce stade.
+    const handleRemovePlacement = (id, impactedObjectifIds) => {
+      (impactedObjectifIds || []).forEach(objectifId => {
+        const row = objectifs.find(o => o.id === objectifId);
+        if (!row) return;
+        const nextAllocations = getEffectiveObjectifAllocations(row).filter(a => a.placementId !== id);
+        BudgetApi.updatePatrimoineLigne("objectifs", objectifId, "allocations", nextAllocations, row);
+      });
+      BudgetApi.removePatrimoineLigne("placements", id);
     };
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionCard, {
       title: "Évolution du patrimoine — 3 scénarios",
@@ -1131,7 +1181,9 @@
       onSaveNew: handleSaveNew,
       onCancelNew: handleCancelNew,
       onCell: handleCellChange,
-      onRemove: id => BudgetApi.removePatrimoineLigne("placements", id),
+      onRemove: handleRemovePlacement,
+      objectifs: objectifs,
+      transfers: transfers,
       isNew: isAddingNew
     }), historyPlacementId && /*#__PURE__*/React.createElement(PlacementHistoryModal, {
       placementId: historyPlacementId,
