@@ -1,6 +1,6 @@
 # 22 — État réel de `main` (inventaire)
 
-Statut : 🟢 relevé le 6 octobre 2026 sur `main` @ `d42b2ff`, par lecture du code et des `pom.xml` (aucun build ni test exécuté)
+Statut : 🟢 relevé le 6 octobre 2026 sur `main` @ `d42b2ff`, par lecture du code et des `pom.xml` (aucun build ni test exécuté) ; mis à jour après R-10 (Crédit, lot B)
 
 Ce document **constate** ; il ne planifie rien et ne décide rien. Le récit des patchs reste dans `21-plan-silotage.md` (figé en
 archive), les décisions qui contraignent encore le travail sont dans `23-registre-decisions-actives.md`, le reste à faire sera
@@ -24,8 +24,8 @@ Chaque ligne se vérifie par une commande `grep` ou `find` ; en cas de doute ent
 **Modules cibles absents** : `web`, `bootstrap`, scission `application` / `application-core`. Liquibase (D5) n'est présent ni dans
 un `pom.xml` ni dans un `.yml` ; `ddl-auto: update` reste actif dans `application.yml` et `application-docker.yml`.
 
-Arêtes Maven encore transitoires : `persistence` dépend de sept `*-core` (`retirement`, `tax`, `goals`, `bank-pointage`,
-`credit`, `wealth`, `treasury`) et de `settings-core` ; `server` dépend de onze cœurs (composition root).
+Arêtes Maven encore transitoires : `persistence` dépend de six `*-core` (`retirement`, `tax`, `goals`, `bank-pointage`,
+`wealth`, `treasury`) et de `settings-core` ; `server` dépend de onze cœurs (composition root).
 
 ## 2. Persistance, silo par silo
 
@@ -40,7 +40,7 @@ Légende : « entités dans le cœur » = lot A livré (entités, repositories, 
 | Marché | oui | idem | rien |
 | Retraite | oui | **non** | `RetirementPersistenceAdapter` (lecture par repository, écriture par `PersistenceManager`), `syncPension` |
 | Fiscalité | oui | **non** | `TaxPersistenceAdapter`, `syncFiscal` |
-| Crédit | oui | **non** | `LoanPersistenceAdapter`, `syncCreditLoans`, entité hub `LoanEntity` + `LoanRepository` |
+| Crédit | oui | **fait** (`JpaLoanStore`, R-10) | table legacy `loan` du hub : plus d'entité ni de repository, orpheline en base (suppression par script en R-61) |
 | Patrimoine | oui | **non** | `PatrimoinePersistenceAdapter`, `syncWealth`, entités hub `PlacementEntity`, `PlacementHistoryEntryEntity`, `RealEstateEntity`, `AssetCategoryEntity`, `TransferEntity` |
 | Trésorerie | oui | **non** | `BudgetPersistenceAdapter` (lecture), `TresoreriePersistenceAdapter` (écriture), `syncCashflow`, entités hub `IncomeEntity`, `ChargeEntity`, `OneOffExpenseEntity`, `VariableIncomeEntity`, `VariableOverrideEntity` |
 | Paramètres | tables `pension_settings`, `fiscal_settings`, `cashflow_settings`, `app_settings` créées dans `retirement-core`, `tax-core`, `treasury-core`, `settings-core` | **non** | `SettingsPersistenceAdapter` (lecture du cache), `SettingsEntity`, `syncSettings` |
@@ -55,14 +55,15 @@ repositories).
 que le PASS est porté par `PensionPlanEntity` depuis SET-040 ; **usage des deux colonnes de `SettingsEntity` à vérifier avant
 de les compter dans un lot**).
 
-Hub `BudgetDataEntity` : une relation `@OneToOne` (paramètres) et dix `@OneToMany` (`incomes`, `charges`, `placements`,
-`realEstate`, `oneoff`, `transfers`, `variableIncomes`, `variableOverrides`, `assetCategories`, `loans`).
-`BudgetPersistenceGateway.save` réécrit encore ces dix collections puis appelle six synchronisations : `syncCreditLoans`,
-`syncFiscal`, `syncPension`, `syncWealth`, `syncCashflow`, `syncSettings`. `syncGoals` et `syncBankImport` n'existent plus.
+Hub `BudgetDataEntity` : une relation `@OneToOne` (paramètres) et neuf `@OneToMany` (`incomes`, `charges`, `placements`,
+`realEstate`, `oneoff`, `transfers`, `variableIncomes`, `variableOverrides`, `assetCategories`).
+`BudgetPersistenceGateway.save` réécrit encore ces neuf collections puis appelle cinq synchronisations :
+`syncFiscal`, `syncPension`, `syncWealth`, `syncCashflow`, `syncSettings`. `syncGoals`, `syncBankImport` et `syncCreditLoans`
+n'existent plus. `BudgetDataModel.loans` n'est plus alimenté par le chargement (liste vide).
 
 ### 2.1 Classes globales de `persistence`
 
-Liste fermée de `BudgetDataModelAllowList` : `FROZEN_SIZE = 12`, toutes dans `persistence` (six adaptateurs, puis
+Liste fermée de `BudgetDataModelAllowList` : `FROZEN_SIZE = 11`, toutes dans `persistence` (cinq adaptateurs, puis
 `BudgetCacheStore`, `BudgetMutationService`, `BudgetPersistenceGateway`, `PersistenceManager`, `EntityModelConverter`,
 `TresorerieFieldUpdateDispatcher`).
 
@@ -91,7 +92,8 @@ critère.
   occurrences repérées par `grep` sont des commentaires. `NotificationBudgetMutationListener` porte trois
   `@TransactionalEventListener(AFTER_COMMIT)`.
 - Événements : `BudgetMutatedEvent` (`persistence`), `GoalsMutatedEvent` (publié par `JpaGoalStore`), `BankImportMutatedEvent`
-  (publié par `JpaBankStore`). `NotificationBudgetMutationListener` écoute les trois.
+  (publié par `JpaBankStore`), `LoansMutatedEvent` (publié par `JpaLoanStore`). `NotificationBudgetMutationListener` écoute
+  les quatre.
 
 ## 3. Application et web
 
