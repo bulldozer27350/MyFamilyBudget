@@ -27,7 +27,7 @@ dans `21` (figé). Chaque ligne du tableau est dérivée du code (section 2 de `
 | ID | Patch | Dépend de | Bloque | Statut | Qui | Branche / commit | Réf. 21 |
 |---|---|---|---|---|---|---|---|
 | R-01 | Introduire Liquibase : état de départ du schéma actuel, passage de `ddl-auto: update` à `validate`, reprise de `LegacySchemaCleanup` (suppression de clés étrangères au démarrage) en script (DA-03) | — | R-51, R-61 | À faire | | | SILO-200 (reste), D5 |
-| R-02 | Sortir de `server` et d'`application` les stores de paramètres Crédit et Objectifs : `LoanAdviceSettingsStore`, `LoanAdviceSettingsService`, `LoanAdviceSettingsCodec`, `JpaLoanAdviceSettingsStore` vers `credit-api`/`credit-core` ; `ObjectifsSettingsStore` (port dans `application.settings`) et `JpaObjectifsSettingsStore` vers `goals-api`/`goals-core` | — | R-91 | À faire | | | SILO-214 A, SILO-217 (reste) |
+| R-02 | Sortir de `server` et d'`application` les stores de paramètres Crédit et Objectifs : `LoanAdviceSettingsStore`, `LoanAdviceSettingsService`, `LoanAdviceSettingsCodec`, `JpaLoanAdviceSettingsStore` vers `credit-api`/`credit-core` ; `ObjectifsSettingsStore` (port dans `application.settings`) et `JpaObjectifsSettingsStore` vers `goals-api`/`goals-core` | — | R-91 | À faire | | en cours d'implémentation | SILO-214 A, SILO-217 (reste) |
 
 ### Persistance : lots B (sortie du cache global)
 
@@ -36,7 +36,7 @@ et de redémarrage sur PostgreSQL.
 
 | ID | Patch | Dépend de | Bloque | Statut | Qui | Branche / commit | Réf. 21 |
 |---|---|---|---|---|---|---|---|
-| R-11 | Crédit, lot B2 : tests de concurrence (verrou du silo Crédit) et de redémarrage sur PostgreSQL ; le test du store (`JpaLoanStoreTest`) et le round-trip H2 sont livrés avec R-10 | — | R-71 | À faire | | | SILO-214 B2 |
+| R-11 | Crédit, lot B2 : tests de concurrence (verrou du silo Crédit) et de redémarrage sur PostgreSQL ; le test du store (`JpaLoanStoreTest`) et le round-trip H2 sont livrés avec R-10 | — | R-71 | Fait ! | | 5bb19cc33836dd4974caf9aa3aebd758f5fbdb22 | SILO-214 B2 |
 | R-20 | Trésorerie, lot B1 : store dans `treasury-core` pour revenus, charges, ponctuels, variables **et virements** (DA-14) ; retrait de `BudgetPersistenceAdapter`, `TresoreriePersistenceAdapter`, `syncCashflow`, des sept relations du hub concernées, de `TresorerieFieldUpdateDispatcher` et des `updater/*` ; le port `BudgetReader` quitte `transition-snapshot` ; Patrimoine ne lit plus `cashflow_transfer` (l'application lui fournit les virements) | — | R-21, R-30, R-60 | À faire | | | SILO-216 B, DB-1160 |
 | R-21 | Trésorerie, lot B2 : paramètres (`cashflow_settings` : pivot, solde de départ, sweep, seuils de cash) écrits directement et lus par un reader du silo ; retrait de sa part de `syncSettings` (DA-05) | R-20 | R-51 | À faire | | | SILO-216 B, D9 |
 | R-22 | Trésorerie, lot B3 : tests | R-20, R-21 | R-71 | À faire | | | SILO-216 B2 |
