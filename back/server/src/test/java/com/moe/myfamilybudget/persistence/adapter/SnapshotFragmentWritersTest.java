@@ -20,6 +20,7 @@ import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
@@ -37,7 +38,7 @@ class SnapshotFragmentWritersTest {
     private TaxPersistenceAdapter tax;
     private TresoreriePersistenceAdapter tresorerie;
     private PatrimoinePersistenceAdapter patrimoine;
-    private LoanPersistenceAdapter loans;
+    private InMemoryLoanStore loans;
     private InMemoryGoalStore goals;
     private InMemoryBankStore bank;
     private SimulationSettingsSnapshotAdapter simulation;
@@ -51,7 +52,7 @@ class SnapshotFragmentWritersTest {
         tax = new TaxPersistenceAdapter(persistenceManager);
         tresorerie = new TresoreriePersistenceAdapter(persistenceManager);
         patrimoine = new PatrimoinePersistenceAdapter(persistenceManager);
-        loans = new LoanPersistenceAdapter(persistenceManager);
+        loans = new InMemoryLoanStore();
         goals = new InMemoryGoalStore();
         bank = new InMemoryBankStore();
         simulation = new SimulationSettingsSnapshotAdapter(persistenceManager);
@@ -180,7 +181,7 @@ class SnapshotFragmentWritersTest {
         assertThat(persistenceManager.getBudgetData().getEffectivePlacements()).isEmpty();
         assertThat(persistenceManager.getBudgetData().getEffectiveRealEstate()).isEmpty();
         assertThat(persistenceManager.getBudgetData().getEffectiveTransfers()).isEmpty();
-        assertThat(persistenceManager.getBudgetData().getEffectiveLoans()).isEmpty();
+        assertThat(loans.getLoans()).isEmpty();
         assertThat(goals.getGoals()).isEmpty();
         assertThat(bank.getBankImport()).isNotNull();
         assertThat(bank.getBankImport().transactions()).isEmpty();
@@ -191,7 +192,7 @@ class SnapshotFragmentWritersTest {
         goals.reset();
 
         assertThat(persistenceManager.getBudgetData().getEffectivePlacements()).isEmpty();
-        assertThat(persistenceManager.getBudgetData().getEffectiveLoans()).isEmpty();
+        assertThat(loans.getLoans()).isEmpty();
         assertThat(goals.getGoals()).isEmpty();
         assertThat(settings().birthYear()).isEqualTo(1985);
     }

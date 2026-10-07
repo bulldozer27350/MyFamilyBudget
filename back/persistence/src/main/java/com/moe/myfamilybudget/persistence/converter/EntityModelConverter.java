@@ -6,7 +6,6 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.persistence.entity.*;
 
 import java.util.List;
@@ -211,43 +210,6 @@ public class EntityModelConverter {
         );
     }
 
-    // Loan conversions
-    public static LoanEntity toEntity(LoanModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        LoanEntity entity = new LoanEntity(
-            model.id(),
-            model.label(),
-            model.crd(),
-            model.rate(),
-            model.monthly(),
-            model.insurance(),
-            model.startDate(),
-            model.endDate(),
-            model.initialAmount(),
-            model.totalInstallments(),
-            model.stepDate()
-        );
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static LoanModel toModel(LoanEntity entity) {
-        if (entity == null) return null;
-        return new LoanModel(
-            entity.getUid(),
-            entity.getLabel(),
-            entity.getCrd(),
-            entity.getRate(),
-            entity.getMonthly(),
-            entity.getInsurance(),
-            entity.getStartDate(),
-            entity.getEndDate(),
-            entity.getInitialAmount(),
-            entity.getTotalInstallments(),
-            entity.getStepDate()
-        );
-    }
-
     // RealEstate conversions
     public static RealEstateEntity toEntity(RealEstateModel model, BudgetDataEntity budgetData) {
         if (model == null) return null;
@@ -445,7 +407,7 @@ public class EntityModelConverter {
             entity.getVariableOverrides().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             null, // BankImport - handled separately due to JSON serialization
             entity.getAssetCategories().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            entity.getLoans().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
+            List.of(), // prets - lus depuis la table autonome credit_loan (SILO-214)
             List.of() // objectifs - lus depuis les tables autonomes goal_* (DB-1120)
         );
     }

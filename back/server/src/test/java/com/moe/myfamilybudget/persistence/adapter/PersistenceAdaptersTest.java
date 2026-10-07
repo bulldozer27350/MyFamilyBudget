@@ -113,12 +113,6 @@ class PersistenceAdaptersTest {
         }
 
         @Test
-        @DisplayName("Loan : aucune donnee (les objectifs ne passent plus par le cache, SILO-212)")
-        void loansAreEmpty() {
-            assertThat(new LoanPersistenceAdapter(persistenceManager).getLoans()).isEmpty();
-        }
-
-        @Test
         @DisplayName("SettingsPersistenceAdapter : parametres par defaut")
         void settingsDefaults() {
             SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
@@ -193,12 +187,6 @@ class PersistenceAdaptersTest {
             assertThat(adapter.getTaxBrackets()).containsExactlyElementsOf(CUSTOM_BRACKETS);
             assertThat(adapter.getTaxRateOverrides()).containsExactly(TAX_RATE_OVERRIDE);
             assertThat(adapter.getTaxActualOverrides()).containsExactly(TAX_ACTUAL_OVERRIDE);
-        }
-
-        @Test
-        @DisplayName("LoanPersistenceAdapter relit les prets (les objectifs sont relus par JpaGoalStore, SILO-212)")
-        void loansRoundTrip() {
-            assertThat(new LoanPersistenceAdapter(persistenceManager).getLoans()).containsExactly(LOAN);
         }
 
         @Test
@@ -357,7 +345,6 @@ class PersistenceAdaptersTest {
             assertThat(new TaxPersistenceAdapter(persistenceManager).getTaxRateOverrides()).isEmpty();
             assertThat(new TaxPersistenceAdapter(persistenceManager).getTaxActualOverrides()).isEmpty();
             assertDefaultBrackets(new TaxPersistenceAdapter(persistenceManager).getTaxBrackets());
-            assertThat(new LoanPersistenceAdapter(persistenceManager).getLoans()).isEmpty();
             SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
             assertThat(settings.getEffectiveBirthYear()).isEqualTo(1985);
             assertThat(settings.retireAge()).isEqualTo(64);

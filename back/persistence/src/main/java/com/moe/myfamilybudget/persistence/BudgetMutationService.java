@@ -18,7 +18,6 @@ import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
-import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
@@ -327,7 +326,8 @@ class BudgetMutationService {
     }
 
     /**
-     * Sauvegarde ou crée une ligne de patrimoine (placements, transfers, loans/credits, realEstate).
+     * Sauvegarde ou crée une ligne de patrimoine (placements, transfers, realEstate). Les prêts s'écrivent dans leur
+     * silo (SILO-214, lot B).
      */
     public Map<String, Object> savePatrimoineRow(String listKey, Map<String, Object> body) {
         Map<String, Object> resultRow = new HashMap<>();
@@ -470,52 +470,6 @@ class BudgetMutationService {
                 resultRow.put("notes", notes);
 
                 return base.withRealEstate(list);
-            } else if ("loans".equalsIgnoreCase(listKey) || "credits".equalsIgnoreCase(listKey)) {
-                List<LoanModel> list = new ArrayList<>();
-                boolean found = false;
-
-                String label = getString(body, "label", "Nouveau prêt");
-                BigDecimal crd = getBigDecimal(body, "crd", BigDecimal.ZERO);
-                BigDecimal rate = getBigDecimal(body, "rate", BigDecimal.ZERO);
-                BigDecimal monthly = getBigDecimal(body, "monthly", BigDecimal.ZERO);
-                BigDecimal insurance = getBigDecimal(body, "insurance", BigDecimal.ZERO);
-                String startDate = getString(body, "startDate", "2026-01-01");
-                String endDate = getString(body, "endDate", "2046-01-01");
-                // Informations du contrat bancaire : optionnelles, absentes tant qu'elles ne sont pas saisies.
-                BigDecimal initialAmount = getBigDecimal(body, "initialAmount", null);
-                Integer totalInstallments = getInteger(body, "totalInstallments", null);
-                String stepDate = getString(body, "stepDate", null);
-                if (stepDate != null && stepDate.isBlank()) {
-                    stepDate = null;
-                }
-
-                LoanModel model = new LoanModel(uid, label, crd, rate, monthly, insurance, startDate, endDate,
-                        initialAmount, totalInstallments, stepDate);
-
-                for (LoanModel l : base.getEffectiveLoans()) {
-                    if (Objects.equals(l.id(), uid)) {
-                        list.add(model);
-                        found = true;
-                    } else {
-                        list.add(l);
-                    }
-                }
-                if (!found) {
-                    list.add(model);
-                }
-
-                resultRow.put("label", label);
-                resultRow.put("crd", crd);
-                resultRow.put("rate", rate);
-                resultRow.put("monthly", monthly);
-                resultRow.put("insurance", insurance);
-                resultRow.put("startDate", startDate);
-                resultRow.put("endDate", endDate);
-                resultRow.put("initialAmount", initialAmount);
-                resultRow.put("totalInstallments", totalInstallments);
-                resultRow.put("stepDate", stepDate);
-
-                return base.withLoans(list);
             }
 
             return base;
@@ -730,7 +684,7 @@ class BudgetMutationService {
     }
 
     /**
-     * Supprime une ligne de patrimoine (placements, transfers, loans/credits, realEstate).
+     * Supprime une ligne de patrimoine (placements, transfers, realEstate).
      */
     public void deletePatrimoineRow(String listKey, String id) {
         if (listKey == null || id == null) {
@@ -755,11 +709,6 @@ class BudgetMutationService {
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
                 return base.withRealEstate(list);
-            } else if ("loans".equalsIgnoreCase(listKey) || "credits".equalsIgnoreCase(listKey)) {
-                List<LoanModel> list = base.getEffectiveLoans().stream()
-                        .filter(r -> !Objects.equals(r.id(), id))
-                        .toList();
-                return base.withLoans(list);
             }
 
             return base;
@@ -995,19 +944,6 @@ class BudgetMutationService {
     /** Remet le patrimoine à vide. */
     public void resetPatrimoineSnapshot() {
         replacePatrimoineSnapshot(null, null, null, null);
-    }
-
-    /** Remplace les prêts. */
-    public void replaceLoansSnapshot(List<LoanModel> loans) {
-        cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            return base.withLoans(orEmpty(loans));
-        });
-    }
-
-    /** Supprime tous les prêts. */
-    public void resetLoansSnapshot() {
-        replaceLoansSnapshot(null);
     }
 
     /** Remplace le paramètre de simulation ({@code null} : valeur par défaut). */

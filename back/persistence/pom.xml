@@ -90,12 +90,6 @@
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>credit-api</artifactId>
         </dependency>
-        <!-- SILO-214 : entités, repositories et mapper JPA du silo Crédit (transitoire : l'adaptateur et la passerelle
-             restent ici jusqu'à SILO-220 et SILO-230) -->
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>credit-core</artifactId>
-        </dependency>
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>goals-api</artifactId>

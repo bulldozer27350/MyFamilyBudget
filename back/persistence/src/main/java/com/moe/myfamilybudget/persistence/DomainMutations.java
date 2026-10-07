@@ -21,7 +21,6 @@ import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
-import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
@@ -86,7 +85,7 @@ public final class DomainMutations {
     }
 
     /**
-     * Ajoute ou met à jour une ligne de patrimoine (real estate, placements, loans).
+     * Ajoute ou met à jour une ligne de patrimoine (real estate, placements).
      */
     public Map<String, Object> savePatrimoineRow(String listKey, Map<String, Object> body) {
         Map<String, Object> result = mutationService.savePatrimoineRow(listKey, body);
@@ -174,7 +173,7 @@ public final class DomainMutations {
     }
 
     /**
-     * Supprime une ligne de patrimoine (real estate, placements, loans).
+     * Supprime une ligne de patrimoine (real estate, placements).
      */
     public void deletePatrimoineRow(String listKey, String id) {
         mutationService.deletePatrimoineRow(listKey, id);
@@ -262,18 +261,6 @@ public final class DomainMutations {
     public void resetPatrimoineSnapshot() {
         mutationService.resetPatrimoineSnapshot();
         publishMutated("resetPatrimoineSnapshot");
-    }
-
-    /** Remplace les prets. */
-    public void replaceLoansSnapshot(List<LoanModel> loans) {
-        mutationService.replaceLoansSnapshot(loans);
-        publishMutated("replaceLoansSnapshot");
-    }
-
-    /** Supprime tous les prets. */
-    public void resetLoansSnapshot() {
-        mutationService.resetLoansSnapshot();
-        publishMutated("resetLoansSnapshot");
     }
 
     /** Remplace le parametre de simulation. */

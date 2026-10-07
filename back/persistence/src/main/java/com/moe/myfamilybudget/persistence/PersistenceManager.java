@@ -20,7 +20,6 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepo
 import com.moe.myfamilybudget.persistence.repository.*;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
-import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
@@ -57,9 +56,7 @@ public class PersistenceManager {
     private final VariableIncomeRepository variableIncomeRepository;
     private final VariableOverrideRepository variableOverrideRepository;
     private final AssetCategoryRepository assetCategoryRepository;
-    private final LoanRepository loanRepository;
     private final GoalRepository goalRepository;
-    private final CreditLoanRepository creditLoanRepository;
     private final FiscalChildRepository fiscalChildRepository;
     private final FiscalBracketRepository fiscalBracketRepository;
     private final FiscalRateOverrideRepository fiscalRateOverrideRepository;
@@ -125,9 +122,7 @@ public class PersistenceManager {
                             VariableIncomeRepository variableIncomeRepository,
                             VariableOverrideRepository variableOverrideRepository,
                             AssetCategoryRepository assetCategoryRepository,
-                            LoanRepository loanRepository,
                             GoalRepository goalRepository,
-                            CreditLoanRepository creditLoanRepository,
                             FiscalChildRepository fiscalChildRepository,
                             FiscalBracketRepository fiscalBracketRepository,
                             FiscalRateOverrideRepository fiscalRateOverrideRepository,
@@ -160,9 +155,7 @@ public class PersistenceManager {
         this.variableIncomeRepository = variableIncomeRepository;
         this.variableOverrideRepository = variableOverrideRepository;
         this.assetCategoryRepository = assetCategoryRepository;
-        this.loanRepository = loanRepository;
         this.goalRepository = goalRepository;
-        this.creditLoanRepository = creditLoanRepository;
         this.fiscalChildRepository = fiscalChildRepository;
         this.fiscalBracketRepository = fiscalBracketRepository;
         this.fiscalRateOverrideRepository = fiscalRateOverrideRepository;
@@ -183,8 +176,8 @@ public class PersistenceManager {
                 budgetDataRepository, incomeRepository, chargeRepository, placementRepository,
                 realEstateRepository, oneOffExpenseRepository, transferRepository,
                 variableIncomeRepository, variableOverrideRepository,
-                assetCategoryRepository, loanRepository,
-                goalRepository, creditLoanRepository, fiscalChildRepository, fiscalBracketRepository,
+                assetCategoryRepository,
+                goalRepository, fiscalChildRepository, fiscalBracketRepository,
                 fiscalRateOverrideRepository, fiscalActualOverrideRepository, pensionPlanRepository,
                 bankImportDocumentRepository, wealthPlacementRepository, wealthRealEstateRepository,
                 wealthCategoryRepository, cashflowIncomeRepository, cashflowChargeRepository,

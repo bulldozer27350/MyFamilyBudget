@@ -22,7 +22,7 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowOneOffRep
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowTransferRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableIncomeRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
-import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
+import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
@@ -92,7 +92,7 @@ class ReadersDoNotUseBudgetCacheTest {
         RetirementPersistenceAdapter retirement = new RetirementPersistenceAdapter(cache,
                 context.getBean(PensionPlanRepository.class));
         BankReader bank = context.getBean(BankReader.class);
-        LoanPersistenceAdapter loans = new LoanPersistenceAdapter(cache, context.getBean(CreditLoanRepository.class));
+        LoanReader loans = context.getBean(LoanReader.class);
         GoalReader goals = context.getBean(GoalReader.class);
 
         assertThat(budget.getIncomes()).extracting(IncomeModel::id).containsExactly("inc_1070");

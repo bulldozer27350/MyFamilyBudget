@@ -10,10 +10,10 @@ import jakarta.persistence.Table;
 /**
  * Pret, cible JPA autonome du domaine Credit (DB-1040).
  *
- * <p>Contrairement a {@code LoanEntity}, cette entite n'a <strong>aucune relation vers
- * {@code BudgetDataEntity}</strong> : elle est la racine de son propre agregat. Elle est additive et
- * est lue par {@code LoanPersistenceAdapter} depuis DB-1041. Le chemin legacy (table {@code loan}) reste
- * alimente en parallele pour permettre un retour arriere simple.
+ * <p>Cette entite n'a <strong>aucune relation vers {@code BudgetDataEntity}</strong> : elle est la racine de
+ * son propre agregat. Depuis SILO-214 (lot B), elle est la seule source des prets : lue et ecrite par
+ * {@code JpaLoanStore}. L'ancienne table {@code loan} du hub n'est plus alimentee ; elle reste en base, sans
+ * entite, jusqu'a la suppression des tables legacy (SILO-230).
  *
  * <p>Le taux est stocke en fraction (0,0251 = 2,51 %) avec 8 decimales : une precision par defaut
  * l'arrondirait (voir {@code RatePrecisionPersistenceTest}).

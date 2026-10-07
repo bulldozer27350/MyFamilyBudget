@@ -6,6 +6,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.moe.myfamilybudget.application.notification.NotificationCheckService;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportMutatedEvent;
+import com.moe.myfamilybudget.domain.credit.model.LoansMutatedEvent;
 import com.moe.myfamilybudget.domain.goals.model.GoalsMutatedEvent;
 import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
 
@@ -19,6 +20,7 @@ import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
  * <p>SILO-212 (lot B1) : les objectifs s'écrivent directement dans leur silo, sans {@code PersistenceManager} ;
  * leur adaptateur publie un {@link GoalsMutatedEvent}, traité de la même façon (même contrôle, même phase).
  * SILO-213 (lot B) : même principe pour l'import bancaire ({@link BankImportMutatedEvent}).
+ * SILO-214 (lot B) : même principe pour les prêts ({@link LoansMutatedEvent}).
  */
 @Component
 public class NotificationBudgetMutationListener {
@@ -41,6 +43,11 @@ public class NotificationBudgetMutationListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onBankImportMutated(BankImportMutatedEvent event) {
+        checkService.runAutomaticCheck();
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onLoansMutated(LoansMutatedEvent event) {
         checkService.runAutomaticCheck();
     }
 }

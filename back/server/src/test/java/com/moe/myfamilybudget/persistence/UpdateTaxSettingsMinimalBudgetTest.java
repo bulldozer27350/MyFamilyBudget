@@ -36,14 +36,12 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsReposito
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
 import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
 import com.moe.myfamilybudget.persistence.repository.ChargeRepository;
-import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.LoanRepository;
 import com.moe.myfamilybudget.persistence.repository.OneOffExpenseRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
@@ -86,9 +84,7 @@ class UpdateTaxSettingsMinimalBudgetTest {
                 mock(VariableIncomeRepository.class),
                 mock(VariableOverrideRepository.class),
                 mock(AssetCategoryRepository.class),
-                mock(LoanRepository.class),
                 mock(GoalRepository.class),
-                mock(CreditLoanRepository.class),
                 mock(FiscalChildRepository.class),
                 mock(FiscalBracketRepository.class),
                 mock(FiscalRateOverrideRepository.class),

@@ -21,7 +21,7 @@ final class BudgetDataModelAllowList {
     static final String FROZEN_ON = "2026-10-04";
 
     /** Taille maximale de la liste à la date de gel ; à abaisser à chaque suppression d'entrée. */
-    static final int FROZEN_SIZE = 12;
+    static final int FROZEN_SIZE = 11;
 
     /** Entrée : classe de premier niveau autorisée et patch qui retire son usage. */
     record Entry(String className, String removedBy) {}
@@ -35,7 +35,6 @@ final class BudgetDataModelAllowList {
             // application : factories
             // persistence : adaptateurs de lecture par cache global
             new Entry(PERS + "adapter.BudgetPersistenceAdapter", "SILO-216"),
-            new Entry(PERS + "adapter.LoanPersistenceAdapter", "SILO-214"),
             new Entry(PERS + "adapter.PatrimoinePersistenceAdapter", "SILO-215"),
             new Entry(PERS + "adapter.RetirementPersistenceAdapter", "SILO-210"),
             new Entry(PERS + "adapter.SettingsPersistenceAdapter", "SILO-220"),

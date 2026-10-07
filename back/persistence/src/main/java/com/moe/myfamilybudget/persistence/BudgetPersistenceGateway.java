@@ -13,7 +13,6 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
-import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
@@ -28,7 +27,6 @@ import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentMapper;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowEntityMapper;
-import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanEntityMapper;
 import com.moe.myfamilybudget.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalEntityMapper;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntityMapper;
@@ -59,14 +57,12 @@ import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.persistence.repository.ChargeRepository;
-import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.LoanRepository;
 import com.moe.myfamilybudget.persistence.repository.OneOffExpenseRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
@@ -116,13 +112,10 @@ class BudgetPersistenceGateway {
     private final VariableIncomeRepository variableIncomeRepository;
     private final VariableOverrideRepository variableOverrideRepository;
     private final AssetCategoryRepository assetCategoryRepository;
-    private final LoanRepository loanRepository;
     // DB-1120 : tables autonomes du domaine Objectifs, seule source de chargement du cache (le hub ne porte plus
     // les objectifs). SILO-212 (lot B1) : elles ne sont plus alimentees ici, le silo les ecrit directement
     // (JpaGoalStore) ; la copie des objectifs portee par le cache n'est plus autoritative ni consommee.
     private final GoalRepository goalRepository;
-    // DB-1041 : table autonome du domaine Credit, meme principe que goalRepository.
-    private final CreditLoanRepository creditLoanRepository;
     // DB-1011 : tables autonomes du domaine Fiscalite, meme principe que goalRepository.
     private final FiscalChildRepository fiscalChildRepository;
     private final FiscalBracketRepository fiscalBracketRepository;
@@ -162,9 +155,7 @@ class BudgetPersistenceGateway {
                               VariableIncomeRepository variableIncomeRepository,
                               VariableOverrideRepository variableOverrideRepository,
                               AssetCategoryRepository assetCategoryRepository,
-                              LoanRepository loanRepository,
                               GoalRepository goalRepository,
-                              CreditLoanRepository creditLoanRepository,
                               FiscalChildRepository fiscalChildRepository,
                               FiscalBracketRepository fiscalBracketRepository,
                               FiscalRateOverrideRepository fiscalRateOverrideRepository,
@@ -194,9 +185,7 @@ class BudgetPersistenceGateway {
         this.variableIncomeRepository = variableIncomeRepository;
         this.variableOverrideRepository = variableOverrideRepository;
         this.assetCategoryRepository = assetCategoryRepository;
-        this.loanRepository = loanRepository;
         this.goalRepository = goalRepository;
-        this.creditLoanRepository = creditLoanRepository;
         this.fiscalChildRepository = fiscalChildRepository;
         this.fiscalBracketRepository = fiscalBracketRepository;
         this.fiscalRateOverrideRepository = fiscalRateOverrideRepository;
@@ -251,11 +240,6 @@ class BudgetPersistenceGateway {
             variableOverrideRepository.deleteByBudgetDataId(id);
             assetCategoryRepository.deleteByBudgetDataId(id);
         }
-        // LoanRepository.deleteByBudgetDataId est une suppression JPQL en masse : elle ne retire pas les prets
-        // deja charges (EAGER) dans le contexte de persistance, et le cascade du deleteAll() ci-dessous tenterait
-        // alors de supprimer deux fois la meme ligne (StaleObjectStateException). On passe ici par une
-        // suppression par entites, coherente avec les autres repositories.
-        loanRepository.deleteAll();
         budgetDataRepository.flush();
         budgetDataRepository.deleteAll();
         budgetDataRepository.flush();
@@ -276,8 +260,6 @@ class BudgetPersistenceGateway {
         Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
         BudgetDataModel loaded = existingData.map(this::loadCompleteBudgetData).orElse(null);
         if (loaded != null) {
-            // DB-1041 : idem pour la table Credit.
-            syncCreditLoans(loaded.loans());
             // DB-1051 : idem pour les tables Patrimoine.
             syncWealth(loaded);
             // DB-1061 : idem pour les tables Tresorerie.
@@ -314,7 +296,7 @@ class BudgetPersistenceGateway {
                 loaded.transfers(), loaded.variableIncomes(), loaded.variableOverrides(),
                 bi != null ? bi : new BankImportModel(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
                 loaded.assetCategories(),
-                loaded.loans(),
+                List.of(), // prets : portes par le silo Credit (credit_loan), plus par le cache (SILO-214)
                 objectifs
         );
     }
@@ -362,8 +344,6 @@ class BudgetPersistenceGateway {
         saveVariableIncomes(model.variableIncomes(), entity);
         saveVariableOverrides(model.variableOverrides(), entity);
         saveAssetCategories(model.assetCategories(), entity);
-        saveLoans(model.loans(), entity);
-        syncCreditLoans(model.loans());
         syncFiscal(model);
         syncPension(model.retirement());
         syncWealth(model);
@@ -371,40 +351,9 @@ class BudgetPersistenceGateway {
         syncSettings(model);
     }
 
-    private void saveLoans(List<LoanModel> loans, BudgetDataEntity budgetData) {
-        loanRepository.deleteByBudgetDataId(budgetData.getId());
-        if (loans != null) {
-            for (LoanModel loan : loans) {
-                loanRepository.save(EntityModelConverter.toEntity(loan, budgetData));
-            }
-        }
-    }
-
-    /**
-     * DB-1041 : remplace le contenu de la table {@code credit_loan} par les prets du modele, dans la
-     * transaction de l'appelant. Meme contrainte que les autres synchronisations : {@code flush} apres la suppression
-     * pour eviter la violation de la cle primaire metier. Un pret sans identifiant reste dans le cache et le
-     * hub mais n'est pas copie dans la nouvelle table.
-     */
-    private void syncCreditLoans(List<LoanModel> loans) {
-        creditLoanRepository.deleteAll();
-        creditLoanRepository.flush();
-        if (loans == null || loans.isEmpty()) {
-            return;
-        }
-        List<LoanModel> identified = loans.stream()
-                .filter(l -> l != null && l.id() != null)
-                .toList();
-        if (identified.size() != loans.size()) {
-            LOG.warn("{} pret(s) sans identifiant ignore(s) lors de la synchronisation de la table Credit",
-                    loans.size() - identified.size());
-        }
-        creditLoanRepository.saveAll(CreditLoanEntityMapper.toEntities(identified));
-    }
-
     /**
      * DB-1011 : remplace le contenu des quatre tables {@code fiscal_*} par la fiscalite du modele, dans la
-     * transaction de l'appelant ({@code flush} apres les suppressions, comme {@link #syncCreditLoans}). Le bareme
+     * transaction de l'appelant ({@code flush} apres les suppressions, comme les autres synchronisations). Le bareme
      * copie est le bareme <em>effectif</em> : si la liste du modele est vide, le bareme par defaut est ecrit,
      * de sorte que la lecture JPA restitue exactement ce que le cache expose.
      */
@@ -427,7 +376,7 @@ class BudgetPersistenceGateway {
 
     /**
      * DB-1001 : remplace le contenu des tables {@code pension_*} par la retraite du modele, dans la transaction de
-     * l'appelant ({@code flush} apres la suppression, comme {@link #syncCreditLoans}). Une retraite absente du modele
+     * l'appelant ({@code flush} apres la suppression, comme les autres synchronisations). Une retraite absente du modele
      * laisse les tables vides : la lecture JPA restitue alors {@code null}, comme le cache.
      */
     private void syncPension(RetirementModel retirement) {
@@ -442,7 +391,7 @@ class BudgetPersistenceGateway {
     /**
      * DB-1051 : remplace le contenu des tables {@code wealth_*} (placements avec leur historique, biens
      * immobiliers, categories d'actifs) par le patrimoine du modele, dans la transaction de l'appelant
-     * ({@code flush} apres les suppressions, comme {@link #syncCreditLoans}). Les listes sont copiees telles que le
+     * ({@code flush} apres les suppressions, comme les autres synchronisations). Les listes sont copiees telles que le
      * cache les expose ({@code getEffective*}) : la lecture JPA restitue donc exactement le contenu du cache.
      * Les virements ne sont pas concernes : ils relevent de Tresorerie.
      */
@@ -462,7 +411,7 @@ class BudgetPersistenceGateway {
      * SILO-220 (lot B) : remplace le contenu des quatre tables de parametres des proprietaires
      * ({@code pension_settings}, {@code fiscal_settings}, {@code cashflow_settings}, {@code app_settings}) par les
      * parametres <em>effectifs</em> du modele, dans la transaction de l'appelant ({@code flush} apres les
-     * suppressions, comme {@link #syncCreditLoans}). Appele au chargement (migration des donnees de la table
+     * suppressions, comme les autres synchronisations). Appele au chargement (migration des donnees de la table
      * {@code settings}, qui reste la source) et a chaque sauvegarde (double ecriture). Les valeurs par defaut de
      * {@code getEffectiveSettings()} sont ecrites : une lecture future par ces tables restitue donc exactement ce
      * que le cache expose. Le PASS et son taux restent portes par {@code pension_plan} (SET-040).
@@ -492,7 +441,7 @@ class BudgetPersistenceGateway {
     /**
      * DB-1061 : remplace le contenu des six tables {@code cashflow_*} (revenus, charges, depenses ponctuelles,
      * virements, revenus variables, surcharges annuelles) par les lignes du modele, dans la transaction de
-     * l'appelant ({@code flush} apres les suppressions, comme {@link #syncCreditLoans}). Les listes sont copiees telles
+     * l'appelant ({@code flush} apres les suppressions, comme les autres synchronisations). Les listes sont copiees telles
      * que le cache les expose ({@code getEffective*}) : la lecture JPA restitue donc exactement son contenu.
      */
     private void syncCashflow(BudgetDataModel model) {

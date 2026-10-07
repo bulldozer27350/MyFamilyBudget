@@ -43,7 +43,7 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
-import com.moe.myfamilybudget.persistence.adapter.LoanPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
@@ -57,6 +57,7 @@ class PatrimoineServiceImplTest {
     private PatrimoineMapper mapper;
     private PersistenceManager persistenceManager;
     private InMemoryGoalStore goalStore;
+    private InMemoryLoanStore loanStore;
 
     @BeforeEach
     void setUp() {
@@ -65,10 +66,11 @@ class PatrimoineServiceImplTest {
         persistenceManager.init();
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         goalStore = new InMemoryGoalStore();
+        loanStore = new InMemoryLoanStore();
         service = new PatrimoineServiceImpl(
                 mapper, new DefaultPatrimoineProjectionService(), new DefaultPlacementEvolutionService(),
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
-                new LoanCommandService(new LoanPersistenceAdapter(persistenceManager)),
+                new LoanCommandService(loanStore, silos -> { }, RecordingTransactionRunner.direct()),
                 new GoalCommandService(goalStore, goalStore, new PatrimoinePersistenceAdapter(persistenceManager),
                         silos -> { }, RecordingTransactionRunner.direct()),
                 settingsAdapter,
@@ -76,7 +78,7 @@ class PatrimoineServiceImplTest {
                 settingsAdapter,
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
-                new LoanPersistenceAdapter(persistenceManager),
+                loanStore,
                 bankStore);
     }
 
@@ -92,16 +94,16 @@ class PatrimoineServiceImplTest {
         loan.put("crd", new BigDecimal("1000"));
 
         assertEquals(HttpStatus.OK, service.savePatrimoineLigne("loans", loan).getStatusCode());
-        assertTrue(new LoanPersistenceAdapter(persistenceManager).getLoans().stream()
+        assertTrue(loanStore.getLoans().stream()
                 .anyMatch(l -> "loan_db041".equals(l.id())));
 
         loan.put("label", "Pret renomme");
         assertEquals(HttpStatus.OK, service.savePatrimoineLigne("CREDITS", loan).getStatusCode());
-        assertEquals(1, new LoanPersistenceAdapter(persistenceManager).getLoans().stream()
+        assertEquals(1, loanStore.getLoans().stream()
                 .filter(l -> "loan_db041".equals(l.id()) && "Pret renomme".equals(l.label())).count());
 
         assertEquals(HttpStatus.NO_CONTENT, service.deletePatrimoineLigne("loans", "loan_db041").getStatusCode());
-        assertFalse(new LoanPersistenceAdapter(persistenceManager).getLoans().stream()
+        assertFalse(loanStore.getLoans().stream()
                 .anyMatch(l -> "loan_db041".equals(l.id())));
     }
 

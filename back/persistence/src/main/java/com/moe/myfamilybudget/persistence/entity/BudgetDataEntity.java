@@ -43,8 +43,6 @@ public class BudgetDataEntity {
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<AssetCategoryEntity> assetCategories = new ArrayList<>();
 
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<LoanEntity> loans = new ArrayList<>();
     
     // Constructors
     public BudgetDataEntity() {}
@@ -142,11 +140,4 @@ public class BudgetDataEntity {
         this.assetCategories = assetCategories;
     }
 
-    public List<LoanEntity> getLoans() {
-        return loans;
-    }
-
-    public void setLoans(List<LoanEntity> loans) {
-        this.loans = loans;
-    }
 }

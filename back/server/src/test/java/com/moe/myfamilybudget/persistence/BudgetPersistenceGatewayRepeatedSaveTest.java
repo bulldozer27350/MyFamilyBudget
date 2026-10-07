@@ -18,7 +18,8 @@ import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.LoanRepository;
+import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanEntityMapper;
+import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 
 /**
@@ -45,7 +46,7 @@ class BudgetPersistenceGatewayRepeatedSaveTest {
     private BudgetDataRepository budgetDataRepository;
 
     @Autowired
-    private LoanRepository loanRepository;
+    private CreditLoanRepository creditLoanRepository;
 
     /** Le constructeur du gateway attend une trentaine de repositories : on les resout par type. */
     private BudgetPersistenceGateway gateway() throws Exception {
@@ -100,20 +101,22 @@ class BudgetPersistenceGatewayRepeatedSaveTest {
     }
 
     @Test
-    @DisplayName("Un budget relu depuis la base avec des prets (collection EAGER chargee) peut etre resauvegarde")
-    void saveAfterReloadWithLoans() throws Exception {
+    @DisplayName("SILO-214 : sauvegarder le modele global ne touche plus a la table des prets du silo Credit")
+    void savingTheGlobalModelLeavesTheCreditTableUntouched() throws Exception {
         BudgetPersistenceGateway gateway = gateway();
-
-        gateway.save(modelWithIncomes("inc_1").withLoans(List.of(loan("loan_1"))));
+        creditLoanRepository.save(CreditLoanEntityMapper.toEntity(loan("loan_credit"), 0));
         em.flush();
         em.clear();
 
-        gateway.save(modelWithIncomes("inc_1").withLoans(List.of(loan("loan_1"), loan("loan_2"))));
-        gateway.save(modelWithIncomes("inc_1").withLoans(List.of(loan("loan_2"))));
+        gateway.save(modelWithIncomes("inc_1").withLoans(List.of(loan("loan_cache_1"))));
+        gateway.save(modelWithIncomes("inc_1").withLoans(List.of(loan("loan_cache_1"), loan("loan_cache_2"))));
+        gateway.save(modelWithIncomes("inc_1"));
         em.flush();
         em.clear();
 
         assertThat(budgetDataRepository.count()).isEqualTo(1);
-        assertThat(loanRepository.count()).isEqualTo(1);
+        assertThat(CreditLoanEntityMapper.toModels(creditLoanRepository.findAllByOrderByPositionAsc()))
+                .extracting(LoanModel::id)
+                .containsExactly("loan_credit");
     }
 }

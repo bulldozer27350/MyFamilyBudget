@@ -64,9 +64,9 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.JpaBankStore;
+import com.moe.myfamilybudget.domain.credit.core.persistence.JpaLoanStore;
 import com.moe.myfamilybudget.domain.goals.core.persistence.JpaGoalStore;
 import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.LoanRepository;
 import com.moe.myfamilybudget.persistence.repository.OneOffExpenseRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
@@ -127,6 +127,10 @@ class PersistenceAdaptersJpaRoundTripTest {
 
     private JpaBankStore bankStore() {
         return context.getBean(JpaBankStore.class);
+    }
+
+    private JpaLoanStore loanStore() {
+        return context.getBean(JpaLoanStore.class);
     }
 
     // =========================================================================
@@ -207,7 +211,6 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(jpaPatrimoineAdapter(reader).getPlacements()).isEmpty();
         // Les domaines non touches par le second import restent identiques.
         assertSameContent(new RetirementPersistenceAdapter(reader).getRetirement(), RETIREMENT);
-        assertSameContent(new LoanPersistenceAdapter(reader).getLoans(), List.of(LOAN));
     }
 
     // =========================================================================
@@ -300,7 +303,6 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(new TaxPersistenceAdapter(reader).getTaxRateOverrides()).isEmpty();
         assertThat(new TaxPersistenceAdapter(reader).getTaxActualOverrides()).isEmpty();
         assertDefaultBrackets(new TaxPersistenceAdapter(reader).getTaxBrackets());
-        assertThat(new LoanPersistenceAdapter(reader).getLoans()).isEmpty();
     }
 
     @Test
@@ -443,67 +445,62 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     // =========================================================================
-    // DB-1041 -- Prets lus depuis la table autonome
+    // SILO-214 -- Prets ecrits et lus directement dans leur table (JpaLoanStore)
     // =========================================================================
 
-    private LoanPersistenceAdapter jpaLoanAdapter(PersistenceManager manager) {
-        return new LoanPersistenceAdapter(manager, context.getBean(CreditLoanRepository.class));
-    }
-
     @Test
-    @DisplayName("DB-1041 -- import -> les prets sont recopies dans la table autonome et relus par JPA")
-    void importedLoansAreReadFromCreditTable() {
-        writer.setBudgetData(referenceData());
+    @DisplayName("SILO-214 -- creation, mise a jour et suppression d'un pret sont relues depuis la table autonome")
+    void loanWritesAreReadBackFromCreditTable() {
+        loanStore().replace(List.of(LOAN));
 
-        assertThat(context.getBean(CreditLoanRepository.class).count()).isEqualTo(1);
-        assertSameContent(jpaLoanAdapter(freshReader()).getLoans(), List.of(LOAN));
-    }
-
-    @Test
-    @DisplayName("DB-1041 -- creation, mise a jour et suppression d'un pret sont visibles via la lecture JPA")
-    void loanWritesAreVisibleThroughJpaReader() {
-        writer.setBudgetData(referenceData());
-        LoanPersistenceAdapter adapter = jpaLoanAdapter(writer);
-
-        adapter.saveLoanRow(Map.of("id", "loan_2", "label", "Pret auto", "crd", bd("12000"),
+        loanStore().saveLoanRow(Map.of("id", "loan_2", "label", "Pret auto", "crd", bd("12000"),
                 "rate", bd("0.02512"), "monthly", bd("300")));
-        assertThat(adapter.getLoans()).extracting(LoanModel::id).containsExactlyInAnyOrder("loan_1", "loan_2");
-        assertThat(adapter.getLoans()).filteredOn(l -> "loan_2".equals(l.id()))
+        assertThat(loanStore().getLoans()).extracting(LoanModel::id).containsExactly("loan_1", "loan_2");
+        assertThat(loanStore().getLoans()).filteredOn(l -> "loan_2".equals(l.id()))
                 .singleElement()
                 .satisfies(l -> assertThat(l.rate()).isEqualByComparingTo("0.02512"));
 
-        adapter.saveLoanRow(Map.of("id", "loan_2", "label", "Pret auto solde", "crd", bd("0"),
+        loanStore().saveLoanRow(Map.of("id", "loan_2", "label", "Pret auto solde", "crd", bd("0"),
                 "rate", bd("0.02512"), "monthly", bd("300")));
-        assertThat(adapter.getLoans()).filteredOn(l -> "loan_2".equals(l.id()))
+        assertThat(loanStore().getLoans()).filteredOn(l -> "loan_2".equals(l.id()))
                 .singleElement()
                 .satisfies(l -> assertThat(l.label()).isEqualTo("Pret auto solde"));
 
-        adapter.deleteLoanRow("loan_1");
-        assertThat(jpaLoanAdapter(freshReader()).getLoans()).extracting(LoanModel::id)
-                .containsExactly("loan_2");
+        loanStore().deleteLoanRow("loan_1");
+        assertThat(loanStore().getLoans()).extracting(LoanModel::id).containsExactly("loan_2");
+        assertThat(context.getBean(CreditLoanRepository.class).count()).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("DB-1041 -- table autonome vide au demarrage (donnees pre-existantes) -> reconstruite depuis le hub")
-    void creditTableIsRebuiltFromHubOnStartup() {
-        writer.setBudgetData(referenceData());
-        context.getBean(CreditLoanRepository.class).deleteAll();
-        assertThat(context.getBean(CreditLoanRepository.class).count()).isZero();
+    @DisplayName("SILO-214 -- les prets survivent au redemarrage du cache : ils ne dependent plus du PersistenceManager")
+    void loansSurviveCacheRestart() {
+        loanStore().replace(List.of(LOAN));
 
-        PersistenceManager restarted = freshReader();
+        freshReader();
 
-        assertSameContent(jpaLoanAdapter(restarted).getLoans(), List.of(LOAN));
+        assertSameContent(loanStore().getLoans(), List.of(LOAN));
     }
 
     @Test
-    @DisplayName("DB-1041 -- reinitialisation -> la table autonome est videe")
+    @DisplayName("SILO-214 -- reset -> la table autonome est videe")
     void resetEmptiesCreditTable() {
-        writer.setBudgetData(referenceData());
+        loanStore().replace(List.of(LOAN));
 
+        loanStore().reset();
+
+        assertThat(context.getBean(CreditLoanRepository.class).count()).isZero();
+        assertThat(loanStore().getLoans()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("SILO-214 -- une ecriture du modele global ne touche plus a la table des prets")
+    void globalModelWriteDoesNotTouchCreditTable() {
+        loanStore().replace(List.of(LOAN));
+
+        writer.setBudgetData(writer.getBudgetData().withLoans(List.of()));
         writer.resetData();
 
-        assertThat(context.getBean(CreditLoanRepository.class).count()).isZero();
-        assertThat(jpaLoanAdapter(writer).getLoans()).isEmpty();
+        assertSameContent(loanStore().getLoans(), List.of(LOAN));
     }
 
     // =========================================================================
@@ -1013,9 +1010,7 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(VariableIncomeRepository.class),
                 context.getBean(VariableOverrideRepository.class),
                 context.getBean(AssetCategoryRepository.class),
-                context.getBean(LoanRepository.class),
                 context.getBean(GoalRepository.class),
-                context.getBean(CreditLoanRepository.class),
                 context.getBean(FiscalChildRepository.class),
                 context.getBean(FiscalBracketRepository.class),
                 context.getBean(FiscalRateOverrideRepository.class),
@@ -1065,8 +1060,6 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(tax.getTaxBrackets(), CUSTOM_BRACKETS);
         assertSameContent(tax.getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
         assertSameContent(tax.getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
-
-        assertSameContent(new LoanPersistenceAdapter(reader).getLoans(), List.of(LOAN));
 
         SettingsModel settings = new SettingsPersistenceAdapter(reader).getSettings();
         assertThat(settings.birthYear()).isEqualTo(SETTINGS.birthYear());

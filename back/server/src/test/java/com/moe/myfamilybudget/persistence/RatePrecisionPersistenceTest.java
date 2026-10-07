@@ -10,14 +10,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
-import com.moe.myfamilybudget.persistence.entity.LoanEntity;
 import com.moe.myfamilybudget.persistence.entity.PlacementEntity;
 import com.moe.myfamilybudget.persistence.entity.RealEstateEntity;
 
 /**
  * Les taux sont stockes en fractions (0,0251 = 2,51 %). Sans precision explicite, Hibernate cree
  * des colonnes NUMERIC(38,2) et arrondit 0,0251 a 0,03 : un taux de pret « 2,5 % » revenait « 3 % »
- * apres rechargement. Ces tests relisent la valeur depuis la base (cache de premier niveau vide).
+ * apres rechargement. Ces tests relisent la valeur depuis la base (cache de premier niveau vide). Le taux des prets
+ * est couvert par {@code CreditLoanJpaModelTest} (table {@code credit_loan}, SILO-214).
  */
 @DataJpaTest
 @DisplayName("RatePrecisionPersistenceTest -- les taux ne sont pas arrondis en base")
@@ -25,19 +25,6 @@ class RatePrecisionPersistenceTest {
 
     @Autowired
     private TestEntityManager em;
-
-    @Test
-    @DisplayName("Un taux de pret a decimales est relu a l'identique")
-    void loanRateKeepsDecimals() {
-        LoanEntity loan = new LoanEntity("loan-1", "Pret immo", new BigDecimal("150000"),
-                new BigDecimal("0.02512"), new BigDecimal("900"), new BigDecimal("30"),
-                "2026-01-01", "2040-01-01");
-
-        Long id = em.persistAndFlush(loan).getId();
-        em.clear();
-
-        assertThat(em.find(LoanEntity.class, id).getRate()).isEqualByComparingTo("0.02512");
-    }
 
     @Test
     @DisplayName("Les trois taux d'un placement sont relus a l'identique")
