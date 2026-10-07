@@ -1,10 +1,14 @@
 package com.moe.myfamilybudget.persistence.entity;
 
 import jakarta.persistence.*;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Entite racine de persistance pour les silos non encore autonomises (SILO-216).
+ * Les revenus, charges, depenses ponctuelles, virements, revenus variables et surcharges
+ * ont ete deplaces vers les tables autonomes cashflow_* (silo Tresorerie).
+ */
 @Entity
 @Table(name = "budget_data")
 public class BudgetDataEntity {
@@ -17,33 +21,14 @@ public class BudgetDataEntity {
     private SettingsEntity settings;
     
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<IncomeEntity> incomes = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<ChargeEntity> charges = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<PlacementEntity> placements = new ArrayList<>();
     
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<RealEstateEntity> realEstate = new ArrayList<>();
     
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<OneOffExpenseEntity> oneoff = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<TransferEntity> transfers = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<VariableIncomeEntity> variableIncomes = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<VariableOverrideEntity> variableOverrides = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<AssetCategoryEntity> assetCategories = new ArrayList<>();
 
-    
     // Constructors
     public BudgetDataEntity() {}
     
@@ -68,22 +53,6 @@ public class BudgetDataEntity {
         this.settings = settings;
     }
     
-    public List<IncomeEntity> getIncomes() {
-        return incomes;
-    }
-    
-    public void setIncomes(List<IncomeEntity> incomes) {
-        this.incomes = incomes;
-    }
-    
-    public List<ChargeEntity> getCharges() {
-        return charges;
-    }
-    
-    public void setCharges(List<ChargeEntity> charges) {
-        this.charges = charges;
-    }
-    
     public List<PlacementEntity> getPlacements() {
         return placements;
     }
@@ -100,38 +69,6 @@ public class BudgetDataEntity {
         this.realEstate = realEstate;
     }
     
-    public List<OneOffExpenseEntity> getOneoff() {
-        return oneoff;
-    }
-    
-    public void setOneoff(List<OneOffExpenseEntity> oneoff) {
-        this.oneoff = oneoff;
-    }
-    
-    public List<TransferEntity> getTransfers() {
-        return transfers;
-    }
-    
-    public void setTransfers(List<TransferEntity> transfers) {
-        this.transfers = transfers;
-    }
-    
-    public List<VariableIncomeEntity> getVariableIncomes() {
-        return variableIncomes;
-    }
-    
-    public void setVariableIncomes(List<VariableIncomeEntity> variableIncomes) {
-        this.variableIncomes = variableIncomes;
-    }
-    
-    public List<VariableOverrideEntity> getVariableOverrides() {
-        return variableOverrides;
-    }
-    
-    public void setVariableOverrides(List<VariableOverrideEntity> variableOverrides) {
-        this.variableOverrides = variableOverrides;
-    }
-    
     public List<AssetCategoryEntity> getAssetCategories() {
         return assetCategories;
     }
@@ -139,5 +76,4 @@ public class BudgetDataEntity {
     public void setAssetCategories(List<AssetCategoryEntity> assetCategories) {
         this.assetCategories = assetCategories;
     }
-
 }

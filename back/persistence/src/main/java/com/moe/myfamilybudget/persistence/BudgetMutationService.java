@@ -73,256 +73,21 @@ class BudgetMutationService {
         this.cacheStore = cacheStore;
     }
 
-    public Map<String, Object> addTresorerieRow(String listKey, Map<String, Object> body) {
-        String uid = (body != null && body.containsKey("id") && body.get("id") != null)
-                ? String.valueOf(body.get("id"))
-                : UUID.randomUUID().toString().substring(0, 8);
-
-        Map<String, Object> resultRow = new HashMap<>();
-        resultRow.put("id", uid);
-
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            int birthYear = (base.settings() != null && base.settings().birthYear() != null)
-                    ? base.settings().birthYear() : 1985;
-            int retireAge = (base.settings() != null && base.settings().retireAge() != null)
-                    ? base.settings().retireAge() : 64;
-            int retireYear = birthYear + retireAge;
-
-            if ("incomes".equalsIgnoreCase(listKey)) {
-                List<IncomeModel> list = new ArrayList<>(base.getEffectiveIncomes());
-                String label = getString(body, "label", "Nouveau revenu");
-                BigDecimal monthly = getBigDecimal(body, "monthly", BigDecimal.ZERO);
-                String start = getString(body, "start", "2026-01-01");
-                String end = getString(body, "end", retireYear + "-12-31");
-                BigDecimal growthRate = getBigDecimal(body, "growthRate", BigDecimal.ZERO);
-                String categoryId = getString(body, "categoryId", "");
-                String notes = getString(body, "notes", "");
-
-                IncomeModel created = new IncomeModel(uid, label, monthly, start, end, growthRate, categoryId, notes);
-                list.add(created);
-
-                resultRow.put("label", label);
-                resultRow.put("monthly", monthly);
-                resultRow.put("start", start);
-                resultRow.put("end", end);
-                resultRow.put("growthRate", growthRate);
-                resultRow.put("categoryId", categoryId);
-                resultRow.put("notes", notes);
-
-                return base.withIncomes(list);
-            } else if ("charges".equalsIgnoreCase(listKey)) {
-                List<ChargeModel> list = new ArrayList<>(base.getEffectiveCharges());
-                String label = getString(body, "label", "Nouvelle charge");
-                BigDecimal monthly = getBigDecimal(body, "monthly", BigDecimal.ZERO);
-                String start = getString(body, "start", "2026-01-01");
-                String end = getString(body, "end", retireYear + "-12-31");
-                BigDecimal growthRate = getBigDecimal(body, "growthRate", BigDecimal.ZERO);
-                String categoryId = getString(body, "categoryId", "");
-                String notes = getString(body, "notes", "");
-
-                ChargeModel created = new ChargeModel(uid, label, monthly, start, end, growthRate, categoryId, notes);
-                list.add(created);
-
-                resultRow.put("label", label);
-                resultRow.put("monthly", monthly);
-                resultRow.put("start", start);
-                resultRow.put("end", end);
-                resultRow.put("growthRate", growthRate);
-                resultRow.put("categoryId", categoryId);
-                resultRow.put("notes", notes);
-
-                return base.withCharges(list);
-            } else if ("oneoff".equalsIgnoreCase(listKey)) {
-                List<OneOffExpenseModel> list = new ArrayList<>(base.getEffectiveOneoff());
-                String label = getString(body, "label", "Nouvelle dépense");
-                String date = getString(body, "date", "2026-01-01");
-                BigDecimal amount = getBigDecimal(body, "amount", BigDecimal.ZERO);
-                String notes = getString(body, "notes", "");
-
-                OneOffExpenseModel created = new OneOffExpenseModel(uid, label, date, amount, notes);
-                list.add(created);
-
-                resultRow.put("label", label);
-                resultRow.put("date", date);
-                resultRow.put("amount", amount);
-                resultRow.put("notes", notes);
-
-                return base.withOneoff(list);
-            } else if ("variableIncomes".equalsIgnoreCase(listKey)) {
-                List<VariableIncomeModel> list = new ArrayList<>(base.getEffectiveVariableIncomes());
-                String label = getString(body, "label", "Nouvelle prime");
-                String firstIncomeLabel = !base.getEffectiveIncomes().isEmpty() ? base.getEffectiveIncomes().get(0).label() : "";
-                String refIncomeLabel = getString(body, "refIncomeLabel", firstIncomeLabel);
-                BigDecimal rate = getBigDecimal(body, "rate", new BigDecimal("0.05"));
-                Integer startYear = getInteger(body, "startYear", 2026);
-                Integer endYear = getInteger(body, "endYear", retireYear);
-                String taxable = getString(body, "taxable", "Oui");
-                String type = getString(body, "type", "prime");
-                String notes = getString(body, "notes", "");
-
-                VariableIncomeModel created = new VariableIncomeModel(uid, label, refIncomeLabel, rate, startYear, endYear, taxable, type, notes);
-                list.add(created);
-
-                resultRow.put("label", label);
-                resultRow.put("refIncomeLabel", refIncomeLabel);
-                resultRow.put("rate", rate);
-                resultRow.put("startYear", startYear);
-                resultRow.put("endYear", endYear);
-                resultRow.put("taxable", taxable);
-                resultRow.put("type", type);
-                resultRow.put("notes", notes);
-
-                return base.withVariableIncomes(list);
-            } else if ("variableOverrides".equalsIgnoreCase(listKey)) {
-                List<VariableOverrideModel> list = new ArrayList<>(base.getEffectiveVariableOverrides());
-                String firstVarLabel = !base.getEffectiveVariableIncomes().isEmpty() ? base.getEffectiveVariableIncomes().get(0).label() : "";
-                String label = getString(body, "label", firstVarLabel);
-                Integer year = getInteger(body, "year", LocalDate.now().getYear());
-                BigDecimal amount = getBigDecimal(body, "amount", BigDecimal.ZERO);
-                String taxable = getString(body, "taxable", "");
-                String notes = getString(body, "notes", "");
-
-                VariableOverrideModel created = new VariableOverrideModel(uid, label, year, amount, taxable, notes);
-                list.add(created);
-
-                resultRow.put("label", label);
-                resultRow.put("year", year);
-                resultRow.put("amount", amount);
-                resultRow.put("taxable", taxable);
-                resultRow.put("notes", notes);
-
-                return base.withVariableOverrides(list);
-            } else if ("placements".equalsIgnoreCase(listKey)) {
-                List<PlacementModel> list = new ArrayList<>(base.getEffectivePlacements());
-                String label = getString(body, "label", "Nouveau placement");
-                String category = getString(body, "category", "Epargne");
-                BigDecimal balance = getBigDecimal(body, "balance", BigDecimal.ZERO);
-                String balanceDate = getString(body, "balanceDate", "2026-01-01");
-                BigDecimal monthly = getBigDecimal(body, "monthly", BigDecimal.ZERO);
-                String monthlyFrom = getString(body, "monthlyFrom", "2026-01-01");
-                String monthlyUntil = getString(body, "monthlyUntil", retireYear + "-12-31");
-                BigDecimal ratePess = getBigDecimal(body, "ratePess", BigDecimal.ZERO);
-                BigDecimal rateCorr = getBigDecimal(body, "rateCorr", BigDecimal.ZERO);
-                BigDecimal rateOpti = getBigDecimal(body, "rateOpti", BigDecimal.ZERO);
-                Boolean excludedFromRetirement = body != null && body.containsKey("excludedFromRetirement")
-                        ? Boolean.valueOf(String.valueOf(body.get("excludedFromRetirement"))) : false;
-                String notes = getString(body, "notes", "");
-                Integer sweepPriority = getInteger(body, "sweepPriority", null);
-                BigDecimal sweepCap = getBigDecimal(body, "sweepCap", null);
-                BigDecimal pauseTriggerBalance = getBigDecimal(body, "pauseTriggerBalance", null);
-                Integer pausePriority = getInteger(body, "pausePriority", null);
-                String categoryId = getString(body, "categoryId", "");
-
-                PlacementModel created = new PlacementModel(uid, label, category, balance, balanceDate, monthly,
-                        monthlyFrom, monthlyUntil, ratePess, rateCorr, rateOpti, excludedFromRetirement, notes,
-                        sweepPriority, sweepCap, pauseTriggerBalance, pausePriority, categoryId);
-                list.add(created);
-
-                resultRow.put("label", label);
-                resultRow.put("category", category);
-                resultRow.put("balance", balance);
-                resultRow.put("balanceDate", balanceDate);
-                resultRow.put("monthly", monthly);
-                resultRow.put("monthlyFrom", monthlyFrom);
-                resultRow.put("monthlyUntil", monthlyUntil);
-                resultRow.put("ratePess", ratePess);
-                resultRow.put("rateCorr", rateCorr);
-                resultRow.put("rateOpti", rateOpti);
-                resultRow.put("excludedFromRetirement", excludedFromRetirement);
-                resultRow.put("notes", notes);
-                resultRow.put("sweepPriority", sweepPriority);
-                resultRow.put("sweepCap", sweepCap);
-                resultRow.put("pauseTriggerBalance", pauseTriggerBalance);
-                resultRow.put("pausePriority", pausePriority);
-                resultRow.put("categoryId", categoryId);
-
-                return base.withPlacements(list);
-            }
-            return base;
-        });
-
-        return resultRow;
-    }
-
-    /**
-     * Met à jour une cellule d'une ligne de trésorerie (incomes, charges, oneoff, variableIncomes, variableOverrides, placements).
-     */
-    public void updateTresorerieRow(String listKey, String id, String field, Object value) {
-        if (listKey == null || id == null || field == null) {
+    public void updatePlacementMonthly(String id, BigDecimal newMonthly) {
+        if (id == null || newMonthly == null) {
             return;
         }
-
-        // Le if/else répété par type de ligne (incomes/charges/oneoff/...) et par champ a été
-        // déplacé dans persistence.updater.TresorerieFieldUpdateDispatcher : cf. le point 3
-        // de l'audit. Comportement inchangé pour tout champ/listKey déjà valide ; un listKey ou
-        // un field inconnu lève désormais UnknownTresorerieFieldException au lieu de renvoyer
-        // silencieusement l'état inchangé.
         cacheStore.applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            return com.moe.myfamilybudget.persistence.updater.TresorerieFieldUpdateDispatcher
-                    .update(base, listKey, id, field, value);
+            List<PlacementModel> list = base.getEffectivePlacements().stream()
+                    .map(p -> Objects.equals(p.id(), id) ? new PlacementModel(p.id(), p.label(), p.category(),
+                            p.balance(), p.balanceDate(), newMonthly, p.monthlyFrom(), p.monthlyUntil(),
+                            p.ratePess(), p.rateCorr(), p.rateOpti(), p.excludedFromRetirement(), p.notes(),
+                            p.sweepPriority(), p.sweepCap(), p.pauseTriggerBalance(), p.pausePriority(),
+                            p.categoryId(), p.getEffectiveHistory()) : p)
+                    .toList();
+            return base.withPlacements(list);
         });
-    }
-
-    /**
-     * Supprime une ligne d'une section de trésorerie.
-     */
-    public void removeTresorerieRow(String listKey, String id) {
-        if (listKey == null || id == null) {
-            return;
-        }
-
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-
-            if ("incomes".equalsIgnoreCase(listKey)) {
-                List<IncomeModel> list = base.getEffectiveIncomes().stream()
-                        .filter(r -> !Objects.equals(r.id(), id))
-                        .toList();
-                return base.withIncomes(list);
-            } else if ("charges".equalsIgnoreCase(listKey)) {
-                List<ChargeModel> list = base.getEffectiveCharges().stream()
-                        .filter(r -> !Objects.equals(r.id(), id))
-                        .toList();
-                return base.withCharges(list);
-            } else if ("oneoff".equalsIgnoreCase(listKey)) {
-                List<OneOffExpenseModel> list = base.getEffectiveOneoff().stream()
-                        .filter(r -> !Objects.equals(r.id(), id))
-                        .toList();
-                return base.withOneoff(list);
-            } else if ("variableIncomes".equalsIgnoreCase(listKey)) {
-                List<VariableIncomeModel> list = base.getEffectiveVariableIncomes().stream()
-                        .filter(r -> !Objects.equals(r.id(), id))
-                        .toList();
-                return base.withVariableIncomes(list);
-            } else if ("variableOverrides".equalsIgnoreCase(listKey)) {
-                List<VariableOverrideModel> list = base.getEffectiveVariableOverrides().stream()
-                        .filter(r -> !Objects.equals(r.id(), id))
-                        .toList();
-                return base.withVariableOverrides(list);
-            } else if ("placements".equalsIgnoreCase(listKey)) {
-                List<PlacementModel> list = base.getEffectivePlacements().stream()
-                        .filter(r -> !Objects.equals(r.id(), id))
-                        .toList();
-                return base.withPlacements(list);
-            }
-
-            return base;
-        });
-    }
-
-    /**
-     * Applique un ajustement de montant mensuel sur une ligne de charges, revenus ou placements.
-     */
-    public void applyTresorerieAjustement(String lineId, String kind, BigDecimal newMonthly) {
-        if (lineId == null || kind == null || newMonthly == null) {
-            return;
-        }
-
-        String listKey = "charge".equalsIgnoreCase(kind) ? "charges"
-                : ("revenu".equalsIgnoreCase(kind) || "income".equalsIgnoreCase(kind)) ? "incomes" : "placements";
-        updateTresorerieRow(listKey, lineId, "monthly", newMonthly);
     }
 
     /**
@@ -408,35 +173,6 @@ class BudgetMutationService {
                 resultRow.put("categoryId", categoryId);
 
                 return base.withPlacements(list);
-            } else if ("transfers".equalsIgnoreCase(listKey)) {
-                List<TransferModel> list = new ArrayList<>();
-                boolean found = false;
-
-                String placement = getString(body, "placement", "");
-                String date = getString(body, "date", "2026-01-01");
-                BigDecimal amount = getBigDecimal(body, "amount", BigDecimal.ZERO);
-                String notes = getString(body, "notes", "");
-
-                TransferModel model = new TransferModel(uid, placement, date, amount, notes);
-
-                for (TransferModel t : base.getEffectiveTransfers()) {
-                    if (Objects.equals(t.id(), uid)) {
-                        list.add(model);
-                        found = true;
-                    } else {
-                        list.add(t);
-                    }
-                }
-                if (!found) {
-                    list.add(model);
-                }
-
-                resultRow.put("placement", placement);
-                resultRow.put("date", date);
-                resultRow.put("amount", amount);
-                resultRow.put("notes", notes);
-
-                return base.withTransfers(list);
             } else if ("realEstate".equalsIgnoreCase(listKey)) {
                 List<RealEstateModel> list = new ArrayList<>();
                 boolean found = false;
@@ -699,11 +435,6 @@ class BudgetMutationService {
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
                 return base.withPlacements(list);
-            } else if ("transfers".equalsIgnoreCase(listKey)) {
-                List<TransferModel> list = base.getEffectiveTransfers().stream()
-                        .filter(r -> !Objects.equals(r.id(), id))
-                        .toList();
-                return base.withTransfers(list);
             } else if ("realEstate".equalsIgnoreCase(listKey)) {
                 List<RealEstateModel> list = base.getEffectiveRealEstate().stream()
                         .filter(r -> !Objects.equals(r.id(), id))
@@ -904,46 +635,20 @@ class BudgetMutationService {
         });
     }
 
-    /** Remplace les paramètres et les lignes de trésorerie (revenus, charges, ponctuels, variables). */
-    public void replaceTresorerieSnapshot(TresorerieSettingsModel settings, List<IncomeModel> incomes,
-                                          List<ChargeModel> charges, List<OneOffExpenseModel> oneoffExpenses,
-                                          List<VariableIncomeModel> variableIncomes,
-                                          List<VariableOverrideModel> variableOverrides) {
-        cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            SettingsModel d = cacheStore.createDefaultBudgetData().settings();
-            TresorerieSettingsModel effective = settings != null ? settings
-                    : new TresorerieSettingsModel(d.pivotDate(), d.pivotMode(), d.startBalance(),
-                            d.sweepEnabled(), d.cashCeiling(), d.cashFloor(), d.cashAlertThreshold());
-            return base.withSettings(settingsWithTresorerie(base.getEffectiveSettings(), effective))
-                    .withIncomes(orEmpty(incomes))
-                    .withCharges(orEmpty(charges))
-                    .withOneoff(orEmpty(oneoffExpenses))
-                    .withVariableIncomes(orEmpty(variableIncomes))
-                    .withVariableOverrides(orEmpty(variableOverrides));
-        });
-    }
-
-    /** Remet la trésorerie à ses valeurs par défaut (paramètres par défaut, aucune ligne). */
-    public void resetTresorerieSnapshot() {
-        replaceTresorerieSnapshot(null, null, null, null, null, null);
-    }
-
-    /** Remplace le patrimoine : placements, immobilier, virements et catégories d'actifs. */
+    /** Remplace le patrimoine : placements, immobilier et catégories d'actifs (SILO-216, DA-14 : virements dans Tresorerie). */
     public void replacePatrimoineSnapshot(List<PlacementModel> placements, List<RealEstateModel> realEstate,
-                                          List<TransferModel> transfers, List<AssetCategoryModel> assetCategories) {
+                                          List<AssetCategoryModel> assetCategories) {
         cacheStore.applyAndPersist(current -> {
             BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             return base.withPlacements(orEmpty(placements))
                     .withRealEstate(orEmpty(realEstate))
-                    .withTransfers(orEmpty(transfers))
                     .withAssetCategories(orEmpty(assetCategories));
         });
     }
 
     /** Remet le patrimoine à vide. */
     public void resetPatrimoineSnapshot() {
-        replacePatrimoineSnapshot(null, null, null, null);
+        replacePatrimoineSnapshot(null, null, null);
     }
 
     /** Remplace le paramètre de simulation ({@code null} : valeur par défaut). */

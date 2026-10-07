@@ -35,21 +35,16 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsR
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
 import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
-import com.moe.myfamilybudget.persistence.repository.ChargeRepository;
+import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
-import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.OneOffExpenseRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
-import com.moe.myfamilybudget.persistence.repository.TransferRepository;
-import com.moe.myfamilybudget.persistence.repository.VariableIncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.VariableOverrideRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
@@ -75,14 +70,8 @@ class UpdateTaxSettingsMinimalBudgetTest {
         persistenceManager = new PersistenceManager(
                 budgetDataRepository,
                 mock(SettingsRepository.class),
-                mock(IncomeRepository.class),
-                mock(ChargeRepository.class),
                 mock(PlacementRepository.class),
                 mock(RealEstateRepository.class),
-                mock(OneOffExpenseRepository.class),
-                mock(TransferRepository.class),
-                mock(VariableIncomeRepository.class),
-                mock(VariableOverrideRepository.class),
                 mock(AssetCategoryRepository.class),
                 mock(GoalRepository.class),
                 mock(FiscalChildRepository.class),
@@ -94,12 +83,6 @@ class UpdateTaxSettingsMinimalBudgetTest {
                 mock(WealthPlacementRepository.class),
                 mock(WealthRealEstateRepository.class),
                 mock(WealthCategoryRepository.class),
-                mock(CashflowIncomeRepository.class),
-                mock(CashflowChargeRepository.class),
-                mock(CashflowOneOffRepository.class),
-                mock(CashflowTransferRepository.class),
-                mock(CashflowVariableIncomeRepository.class),
-                mock(CashflowVariableOverrideRepository.class),
                 mock(PensionSettingsRepository.class),
                 mock(FiscalSettingsRepository.class),
                 mock(CashflowSettingsRepository.class),

@@ -31,7 +31,6 @@ import com.moe.myfamilybudget.api.model.VariableOverrideDto;
 import com.moe.myfamilybudget.application.factory.TreasuryInputFactory;
 import com.moe.myfamilybudget.application.mapper.TresorerieMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.treasury.model.CategoryOptionModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
@@ -39,7 +38,6 @@ import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
-import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieResultModel;
@@ -51,11 +49,10 @@ import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
 import com.moe.myfamilybudget.application.command.TresorerieCommandService;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
-import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.TresoreriePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class TresorerieServiceImplTest {
@@ -72,8 +69,9 @@ class TresorerieServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
+        InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         service = new TresorerieServiceImpl(
-                mapper, new TresorerieCommandService(new TresoreriePersistenceAdapter(persistenceManager)),
+                mapper, new TresorerieCommandService(treasuryStore),
                 new DefaultRetirementCalculationService(),
                 new DefaultTaxCalculationService(),
                 new DefaultTresorerieCalculationService(),
@@ -84,7 +82,7 @@ class TresorerieServiceImplTest {
                 settingsAdapter,
                 settingsAdapter,
                 new TaxPersistenceAdapter(persistenceManager),
-                new BudgetPersistenceAdapter(persistenceManager),
+                treasuryStore,
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 bankStore);
     }
@@ -255,30 +253,6 @@ class TresorerieServiceImplTest {
         assertEquals(new BigDecimal("4200"), override.getAmount());
     }
 
-    @Test
-    void addTresorerieLigne_placements_createsAndAppearsInBudget() {
-        Map<String, Object> body = new HashMap<>();
-        body.put("label", "Compte Titres");
-        body.put("balance", new BigDecimal("5000"));
-        body.put("monthly", new BigDecimal("300"));
-
-        ResponseEntity<Object> response = service.addTresorerieLigne("placements", body);
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> created = (Map<String, Object>) response.getBody();
-        String id = (String) created.get("id");
-        assertNotNull(id);
-
-        BudgetDataModel data = persistenceManager.getBudgetData();
-        PlacementModel plc = data.getEffectivePlacements().stream()
-                .filter(p -> id.equals(p.id()))
-                .findFirst()
-                .orElse(null);
-        assertNotNull(plc);
-        assertEquals("Compte Titres", plc.label());
-        assertEquals(new BigDecimal("5000"), plc.balance());
-    }
 
     // -------------------------------------------------------------------------
     // PUT /tresorerie/{listKey}/{id} (UPDATE)
@@ -517,26 +491,6 @@ class TresorerieServiceImplTest {
         assertEquals(new BigDecimal("3200.0"), updated.getMonthly());
     }
 
-    @Test
-    void applyTresorerieAjustement_placements_updatesMonthly() {
-        Map<String, Object> body = new HashMap<>();
-        body.put("label", "Livret A");
-        body.put("monthly", new BigDecimal("200"));
-        ResponseEntity<Object> addResp = service.addTresorerieLigne("placements", body);
-        @SuppressWarnings("unchecked")
-        String plcId = (String) ((Map<String, Object>) addResp.getBody()).get("id");
-
-        TresorerieAjustementRequestDto adjustReq = new TresorerieAjustementRequestDto(plcId, "placement", BigDecimal.valueOf(350));
-        ResponseEntity<Void> resp = service.applyTresorerieAjustement(adjustReq);
-        assertEquals(HttpStatus.OK, resp.getStatusCode());
-
-        PlacementModel updated = persistenceManager.getBudgetData().getEffectivePlacements().stream()
-                .filter(p -> plcId.equals(p.id()))
-                .findFirst()
-                .orElse(null);
-        assertNotNull(updated);
-        assertEquals(new BigDecimal("350.0"), updated.monthly());
-    }
 
     // -------------------------------------------------------------------------
     // CALCULS & PROJECTIONS TRESORERIE

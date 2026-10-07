@@ -51,37 +51,11 @@ public final class DomainMutations {
     }
 
     /**
-     * Ajoute une nouvelle ligne dans une section de trésorerie (incomes, charges, oneoff, variableIncomes, variableOverrides, placements).
+     * Met à jour le montant mensuel d'un placement.
      */
-    public Map<String, Object> addTresorerieRow(String listKey, Map<String, Object> body) {
-        Map<String, Object> result = mutationService.addTresorerieRow(listKey, body);
-        publishMutated("addTresorerieRow");
-        return result;
-    }
-
-    /**
-     * Met à jour une cellule d'une ligne de trésorerie (incomes, charges, oneoff, variableIncomes, variableOverrides, placements).
-     */
-    public void updateTresorerieRow(String listKey, String id, String field, Object value) {
-        mutationService.updateTresorerieRow(listKey, id, field, value);
-        publishMutated("updateTresorerieRow");
-    }
-
-    /**
-     * Supprime une ligne d'une section de trésorerie.
-     */
-    public void removeTresorerieRow(String listKey, String id) {
-        mutationService.removeTresorerieRow(listKey, id);
-        publishMutated("removeTresorerieRow");
-    }
-
-    /**
-     * Applique un ajustement (ex. suite à un virement automatique) sur le montant mensuel
-     * d'une ligne de trésorerie.
-     */
-    public void applyTresorerieAjustement(String lineId, String kind, BigDecimal newMonthly) {
-        mutationService.applyTresorerieAjustement(lineId, kind, newMonthly);
-        publishMutated("applyTresorerieAjustement");
+    public void updatePlacementMonthly(String id, BigDecimal newMonthly) {
+        mutationService.updatePlacementMonthly(id, newMonthly);
+        publishMutated("updatePlacementMonthly");
     }
 
     /**
@@ -234,26 +208,10 @@ public final class DomainMutations {
         publishMutated("resetTaxSnapshot");
     }
 
-    /** Remplace les parametres et les lignes de tresorerie. */
-    public void replaceTresorerieSnapshot(TresorerieSettingsModel settings, List<IncomeModel> incomes,
-                                          List<ChargeModel> charges, List<OneOffExpenseModel> oneoffExpenses,
-                                          List<VariableIncomeModel> variableIncomes,
-                                          List<VariableOverrideModel> variableOverrides) {
-        mutationService.replaceTresorerieSnapshot(settings, incomes, charges, oneoffExpenses, variableIncomes,
-                variableOverrides);
-        publishMutated("replaceTresorerieSnapshot");
-    }
-
-    /** Remet la Tresorerie a ses valeurs par defaut. */
-    public void resetTresorerieSnapshot() {
-        mutationService.resetTresorerieSnapshot();
-        publishMutated("resetTresorerieSnapshot");
-    }
-
-    /** Remplace le patrimoine (placements, immobilier, virements, categories d'actifs). */
+    /** Remplace le patrimoine (placements, immobilier, categories d'actifs). */
     public void replacePatrimoineSnapshot(List<PlacementModel> placements, List<RealEstateModel> realEstate,
-                                          List<TransferModel> transfers, List<AssetCategoryModel> assetCategories) {
-        mutationService.replacePatrimoineSnapshot(placements, realEstate, transfers, assetCategories);
+                                          List<AssetCategoryModel> assetCategories) {
+        mutationService.replacePatrimoineSnapshot(placements, realEstate, assetCategories);
         publishMutated("replacePatrimoineSnapshot");
     }
 

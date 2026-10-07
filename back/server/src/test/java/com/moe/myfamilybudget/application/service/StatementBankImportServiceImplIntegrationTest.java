@@ -20,8 +20,8 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
-import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -43,7 +43,7 @@ class StatementBankImportServiceImplIntegrationTest {
                 bankStore, new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()),
                 mapper, new ExcelToCsvService(), new DefaultBankImportCalculationService());
         pendingService = new PendingOperationsServiceImpl(
-                bankStore, new BudgetPersistenceAdapter(persistenceManager),
+                bankStore, new InMemoryTreasuryStore(),
                 SettingsReaderTestFactory.of(persistenceManager), new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()),
                 mapper, new DefaultBankImportCalculationService());
     }

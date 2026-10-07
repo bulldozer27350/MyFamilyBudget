@@ -23,12 +23,6 @@ import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowChargeRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowIncomeRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowOneOffRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowTransferRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableIncomeRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
@@ -47,14 +41,8 @@ public class PersistenceManager {
 
     private final BudgetDataRepository budgetDataRepository;
     private final SettingsRepository settingsRepository;
-    private final IncomeRepository incomeRepository;
-    private final ChargeRepository chargeRepository;
     private final PlacementRepository placementRepository;
     private final RealEstateRepository realEstateRepository;
-    private final OneOffExpenseRepository oneOffExpenseRepository;
-    private final TransferRepository transferRepository;
-    private final VariableIncomeRepository variableIncomeRepository;
-    private final VariableOverrideRepository variableOverrideRepository;
     private final AssetCategoryRepository assetCategoryRepository;
     private final GoalRepository goalRepository;
     private final FiscalChildRepository fiscalChildRepository;
@@ -66,12 +54,6 @@ public class PersistenceManager {
     private final WealthPlacementRepository wealthPlacementRepository;
     private final WealthRealEstateRepository wealthRealEstateRepository;
     private final WealthCategoryRepository wealthCategoryRepository;
-    private final CashflowIncomeRepository cashflowIncomeRepository;
-    private final CashflowChargeRepository cashflowChargeRepository;
-    private final CashflowOneOffRepository cashflowOneOffRepository;
-    private final CashflowTransferRepository cashflowTransferRepository;
-    private final CashflowVariableIncomeRepository cashflowVariableIncomeRepository;
-    private final CashflowVariableOverrideRepository cashflowVariableOverrideRepository;
 
     // Gestion programmatique de la transaction pour l'initialisation au démarrage.
     // Voir le commentaire dans BudgetPersistenceGateway.save() : le @Transactional de classe ne
@@ -113,14 +95,8 @@ public class PersistenceManager {
     @Autowired
     public PersistenceManager(BudgetDataRepository budgetDataRepository,
                             SettingsRepository settingsRepository,
-                            IncomeRepository incomeRepository,
-                            ChargeRepository chargeRepository,
                             PlacementRepository placementRepository,
                             RealEstateRepository realEstateRepository,
-                            OneOffExpenseRepository oneOffExpenseRepository,
-                            TransferRepository transferRepository,
-                            VariableIncomeRepository variableIncomeRepository,
-                            VariableOverrideRepository variableOverrideRepository,
                             AssetCategoryRepository assetCategoryRepository,
                             GoalRepository goalRepository,
                             FiscalChildRepository fiscalChildRepository,
@@ -132,12 +108,6 @@ public class PersistenceManager {
                             WealthPlacementRepository wealthPlacementRepository,
                             WealthRealEstateRepository wealthRealEstateRepository,
                             WealthCategoryRepository wealthCategoryRepository,
-                            CashflowIncomeRepository cashflowIncomeRepository,
-                            CashflowChargeRepository cashflowChargeRepository,
-                            CashflowOneOffRepository cashflowOneOffRepository,
-                            CashflowTransferRepository cashflowTransferRepository,
-                            CashflowVariableIncomeRepository cashflowVariableIncomeRepository,
-                            CashflowVariableOverrideRepository cashflowVariableOverrideRepository,
                             PensionSettingsRepository pensionSettingsRepository,
                             FiscalSettingsRepository fiscalSettingsRepository,
                             CashflowSettingsRepository cashflowSettingsRepository,
@@ -146,14 +116,8 @@ public class PersistenceManager {
                             ApplicationEventPublisher eventPublisher) {
         this.budgetDataRepository = budgetDataRepository;
         this.settingsRepository = settingsRepository;
-        this.incomeRepository = incomeRepository;
-        this.chargeRepository = chargeRepository;
         this.placementRepository = placementRepository;
         this.realEstateRepository = realEstateRepository;
-        this.oneOffExpenseRepository = oneOffExpenseRepository;
-        this.transferRepository = transferRepository;
-        this.variableIncomeRepository = variableIncomeRepository;
-        this.variableOverrideRepository = variableOverrideRepository;
         this.assetCategoryRepository = assetCategoryRepository;
         this.goalRepository = goalRepository;
         this.fiscalChildRepository = fiscalChildRepository;
@@ -165,24 +129,14 @@ public class PersistenceManager {
         this.wealthPlacementRepository = wealthPlacementRepository;
         this.wealthRealEstateRepository = wealthRealEstateRepository;
         this.wealthCategoryRepository = wealthCategoryRepository;
-        this.cashflowIncomeRepository = cashflowIncomeRepository;
-        this.cashflowChargeRepository = cashflowChargeRepository;
-        this.cashflowOneOffRepository = cashflowOneOffRepository;
-        this.cashflowTransferRepository = cashflowTransferRepository;
-        this.cashflowVariableIncomeRepository = cashflowVariableIncomeRepository;
-        this.cashflowVariableOverrideRepository = cashflowVariableOverrideRepository;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.gateway = new BudgetPersistenceGateway(
-                budgetDataRepository, incomeRepository, chargeRepository, placementRepository,
-                realEstateRepository, oneOffExpenseRepository, transferRepository,
-                variableIncomeRepository, variableOverrideRepository,
-                assetCategoryRepository,
+                budgetDataRepository, placementRepository,
+                realEstateRepository, assetCategoryRepository,
                 goalRepository, fiscalChildRepository, fiscalBracketRepository,
                 fiscalRateOverrideRepository, fiscalActualOverrideRepository, pensionPlanRepository,
                 bankImportDocumentRepository, wealthPlacementRepository, wealthRealEstateRepository,
-                wealthCategoryRepository, cashflowIncomeRepository, cashflowChargeRepository,
-                cashflowOneOffRepository, cashflowTransferRepository, cashflowVariableIncomeRepository,
-                cashflowVariableOverrideRepository,
+                wealthCategoryRepository,
                 pensionSettingsRepository, fiscalSettingsRepository, cashflowSettingsRepository,
                 appSettingsRepository);
         this.cacheStore = new BudgetCacheStore(this.gateway, this.transactionTemplate);

@@ -36,7 +36,7 @@ class SnapshotFragmentWritersTest {
     private PersistenceManager persistenceManager;
     private RetirementPersistenceAdapter retirement;
     private TaxPersistenceAdapter tax;
-    private TresoreriePersistenceAdapter tresorerie;
+    private com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore tresorerie;
     private PatrimoinePersistenceAdapter patrimoine;
     private InMemoryLoanStore loans;
     private InMemoryGoalStore goals;
@@ -50,7 +50,7 @@ class SnapshotFragmentWritersTest {
         persistenceManager.init();
         retirement = new RetirementPersistenceAdapter(persistenceManager);
         tax = new TaxPersistenceAdapter(persistenceManager);
-        tresorerie = new TresoreriePersistenceAdapter(persistenceManager);
+        tresorerie = new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore();
         patrimoine = new PatrimoinePersistenceAdapter(persistenceManager);
         loans = new InMemoryLoanStore();
         goals = new InMemoryGoalStore();
@@ -118,24 +118,24 @@ class SnapshotFragmentWritersTest {
         tresorerie.replace(new TresorerieSettingsModel("2027-01-01", "auto", new BigDecimal("1500"), true,
                 new BigDecimal("9000"), new BigDecimal("500"), new BigDecimal("200")), null, null, null, null, null);
 
-        assertThat(settings().pivotDate()).isEqualTo("2027-01-01");
-        assertThat(settings().pivotMode()).isEqualTo("auto");
-        assertThat(settings().startBalance()).isEqualByComparingTo("1500");
-        assertThat(settings().sweepEnabled()).isTrue();
-        assertThat(settings().cashCeiling()).isEqualByComparingTo("9000");
-        assertThat(settings().cashFloor()).isEqualByComparingTo("500");
-        assertThat(settings().cashAlertThreshold()).isEqualByComparingTo("200");
-        assertThat(persistenceManager.getBudgetData().getEffectiveIncomes()).isEmpty();
+        assertThat(tresorerie.getTresorerieSettings().pivotDate()).isEqualTo("2027-01-01");
+        assertThat(tresorerie.getTresorerieSettings().pivotMode()).isEqualTo("auto");
+        assertThat(tresorerie.getTresorerieSettings().startBalance()).isEqualByComparingTo("1500");
+        assertThat(tresorerie.getTresorerieSettings().sweepEnabled()).isTrue();
+        assertThat(tresorerie.getTresorerieSettings().cashCeiling()).isEqualByComparingTo("9000");
+        assertThat(tresorerie.getTresorerieSettings().cashFloor()).isEqualByComparingTo("500");
+        assertThat(tresorerie.getTresorerieSettings().cashAlertThreshold()).isEqualByComparingTo("200");
+        assertThat(tresorerie.getIncomes()).isEmpty();
         assertThat(settings().birthYear()).isEqualTo(1985);
 
         tresorerie.reset();
 
-        assertThat(settings().pivotMode()).isEqualTo("manual");
-        assertThat(settings().startBalance()).isEqualByComparingTo("0");
-        assertThat(settings().sweepEnabled()).isFalse();
-        assertThat(settings().cashCeiling()).isNull();
-        assertThat(settings().cashFloor()).isNull();
-        assertThat(settings().cashAlertThreshold()).isNull();
+        assertThat(tresorerie.getTresorerieSettings().pivotMode()).isEqualTo("manual");
+        assertThat(tresorerie.getTresorerieSettings().startBalance()).isEqualByComparingTo("0");
+        assertThat(tresorerie.getTresorerieSettings().sweepEnabled()).isFalse();
+        assertThat(tresorerie.getTresorerieSettings().cashCeiling()).isNull();
+        assertThat(tresorerie.getTresorerieSettings().cashFloor()).isNull();
+        assertThat(tresorerie.getTresorerieSettings().cashAlertThreshold()).isNull();
         assertThat(settings().birthYear()).isEqualTo(1985);
     }
 

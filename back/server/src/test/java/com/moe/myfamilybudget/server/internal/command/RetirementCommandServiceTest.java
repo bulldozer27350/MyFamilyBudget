@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementWriter;
@@ -118,7 +118,7 @@ class RetirementCommandServiceTest {
         PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         RetirementPersistenceAdapter adapter = new RetirementPersistenceAdapter(persistenceManager);
-        BudgetPersistenceAdapter budget = new BudgetPersistenceAdapter(persistenceManager);
+        InMemoryTreasuryStore budget = new InMemoryTreasuryStore();
         assertThat(adapter.getRetirement().people()).isEmpty();
 
         new RetirementCommandService(adapter).updateRetirement(RETIREMENT);

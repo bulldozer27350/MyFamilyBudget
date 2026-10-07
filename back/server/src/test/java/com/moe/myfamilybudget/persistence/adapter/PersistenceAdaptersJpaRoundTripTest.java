@@ -56,7 +56,6 @@ import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsEntity
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsEntity;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsEntity;
 import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
-import com.moe.myfamilybudget.persistence.repository.ChargeRepository;
 import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
@@ -66,15 +65,10 @@ import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.JpaBankStore;
 import com.moe.myfamilybudget.domain.credit.core.persistence.JpaLoanStore;
 import com.moe.myfamilybudget.domain.goals.core.persistence.JpaGoalStore;
-import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.OneOffExpenseRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
-import com.moe.myfamilybudget.persistence.repository.TransferRepository;
-import com.moe.myfamilybudget.persistence.repository.VariableIncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.VariableOverrideRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
@@ -119,6 +113,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         goalStore().reset();
         // SILO-213 (lot B) : idem pour l'import bancaire (table autonome, ecrite par JpaBankStore).
         bankStore().reset();
+        treasuryStore().reset();
     }
 
     private JpaGoalStore goalStore() {
@@ -131,6 +126,10 @@ class PersistenceAdaptersJpaRoundTripTest {
 
     private JpaLoanStore loanStore() {
         return context.getBean(JpaLoanStore.class);
+    }
+
+    private com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore treasuryStore() {
+        return context.getBean(com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore.class);
     }
 
     // =========================================================================
@@ -754,7 +753,7 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(WealthPlacementRepository.class),
                 context.getBean(WealthRealEstateRepository.class),
                 context.getBean(WealthCategoryRepository.class),
-                context.getBean(CashflowTransferRepository.class));
+                context.getBean(com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore.class));
     }
 
     @Test
@@ -881,13 +880,8 @@ class PersistenceAdaptersJpaRoundTripTest {
     // DB-1061 -- Tresorerie lue depuis les tables autonomes
     // =========================================================================
 
-    private BudgetPersistenceAdapter jpaBudgetAdapter(PersistenceManager manager) {
-        return new BudgetPersistenceAdapter(manager,
-                context.getBean(CashflowIncomeRepository.class),
-                context.getBean(CashflowChargeRepository.class),
-                context.getBean(CashflowOneOffRepository.class),
-                context.getBean(CashflowVariableIncomeRepository.class),
-                context.getBean(CashflowVariableOverrideRepository.class));
+    private com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore jpaBudgetAdapter(PersistenceManager manager) {
+        return context.getBean(com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore.class);
     }
 
     @Test
@@ -903,79 +897,63 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(context.getBean(CashflowVariableOverrideRepository.class).count()).isEqualTo(1);
 
         PersistenceManager reader = freshReader();
-        BudgetPersistenceAdapter budget = jpaBudgetAdapter(reader);
+        com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore budget = jpaBudgetAdapter(reader);
         assertSameContent(budget.getIncomes(), List.of(INCOME));
         assertSameContent(budget.getCharges(), List.of(CHARGE));
         assertSameContent(budget.getOneoffExpenses(), List.of(ONEOFF));
         assertSameContent(budget.getVariableIncomes(), List.of(VARIABLE_INCOME));
         assertSameContent(budget.getVariableOverrides(), List.of(VARIABLE_OVERRIDE));
-        assertSameContent(jpaPatrimoineAdapter(reader).getTransfers(), List.of(WEALTH_TRANSFER));
+        assertSameContent(budget.getTransfers(), List.of(TRANSFER));
     }
 
     @Test
-    @DisplayName("DB-1061 -- ajout, mise a jour et suppression d'une ligne de tresorerie sont visibles via la lecture JPA")
+    @DisplayName("DB-1061 -- ajout, mise a jour et suppression d'une ligne de tresorerie sont visibles via JpaTreasuryStore")
     void cashflowWritesAreVisibleThroughJpaReader() {
         writer.setBudgetData(referenceData());
+        com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore store =
+                context.getBean(com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore.class);
 
-        writer.write(m -> m.addTresorerieRow("incomes",
-                Map.of("id", "inc_2", "label", "Freelance", "monthly", bd("800"))));
-        assertThat(jpaBudgetAdapter(freshReader()).getIncomes()).extracting(IncomeModel::id)
+        store.addTresorerieRow(com.moe.myfamilybudget.domain.treasury.port.TresorerieList.INCOMES,
+                Map.of("id", "inc_2", "label", "Freelance", "monthly", bd("800")));
+        assertThat(store.getIncomes()).extracting(IncomeModel::id)
                 .containsExactlyInAnyOrder("inc_1", "inc_2");
 
-        writer.write(m -> m.updateTresorerieRow("incomes", "inc_2", "monthly", bd("950")));
-        assertThat(jpaBudgetAdapter(freshReader()).getIncomes()).filteredOn(i -> "inc_2".equals(i.id()))
+        store.updateTresorerieRow(com.moe.myfamilybudget.domain.treasury.port.TresorerieList.INCOMES, "inc_2",
+                com.moe.myfamilybudget.domain.treasury.port.TresorerieLineField.MONTHLY, bd("950"));
+        assertThat(store.getIncomes()).filteredOn(i -> "inc_2".equals(i.id()))
                 .singleElement()
                 .satisfies(i -> assertThat(i.monthly()).isEqualByComparingTo("950"));
 
-        writer.write(m -> m.removeTresorerieRow("incomes", "inc_1"));
-        assertThat(jpaBudgetAdapter(freshReader()).getIncomes()).extracting(IncomeModel::id)
+        store.removeTresorerieRow(com.moe.myfamilybudget.domain.treasury.port.TresorerieList.INCOMES, "inc_1");
+        assertThat(store.getIncomes()).extracting(IncomeModel::id)
                 .containsExactly("inc_2");
     }
 
     @Test
-    @DisplayName("DB-1061 -- virements : ecritures visibles via la lecture JPA du Patrimoine")
+    @DisplayName("DB-1061 / DA-14 -- virements : ecritures de virement via JpaTreasuryStore")
     void transferWritesAreVisibleThroughJpaReader() {
         writer.setBudgetData(referenceData());
+        com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore store =
+                context.getBean(com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore.class);
 
-        writer.write(m -> m.savePatrimoineRow("transfers", Map.of("id", "tr_2", "amount", bd("250"))));
-        assertThat(jpaPatrimoineAdapter(freshReader()).getTransfers()).extracting(PatrimoineTransferModel::id)
+        store.addTresorerieRow(com.moe.myfamilybudget.domain.treasury.port.TresorerieList.TRANSFERS,
+                Map.of("id", "tr_2", "amount", bd("250")));
+        assertThat(store.getTransfers()).extracting(TransferModel::id)
                 .containsExactlyInAnyOrder("tr_1", "tr_2");
 
-        writer.write(m -> m.deletePatrimoineRow("transfers", "tr_1"));
-        assertThat(jpaPatrimoineAdapter(freshReader()).getTransfers()).extracting(PatrimoineTransferModel::id)
+        store.removeTresorerieRow(com.moe.myfamilybudget.domain.treasury.port.TresorerieList.TRANSFERS, "tr_1");
+        assertThat(store.getTransfers()).extracting(TransferModel::id)
                 .containsExactly("tr_2");
     }
 
     @Test
-    @DisplayName("DB-1061 -- tables autonomes vides au demarrage (donnees pre-existantes) -> reconstruites depuis le hub")
-    void cashflowTablesAreRebuiltFromHubOnStartup() {
-        writer.setBudgetData(referenceData());
-        context.getBean(CashflowIncomeRepository.class).deleteAll();
-        context.getBean(CashflowChargeRepository.class).deleteAll();
-        context.getBean(CashflowOneOffRepository.class).deleteAll();
-        context.getBean(CashflowTransferRepository.class).deleteAll();
-        context.getBean(CashflowVariableIncomeRepository.class).deleteAll();
-        context.getBean(CashflowVariableOverrideRepository.class).deleteAll();
-        assertThat(context.getBean(CashflowIncomeRepository.class).count()).isZero();
-        assertThat(context.getBean(CashflowTransferRepository.class).count()).isZero();
-
-        PersistenceManager restarted = freshReader();
-
-        BudgetPersistenceAdapter budget = jpaBudgetAdapter(restarted);
-        assertSameContent(budget.getIncomes(), List.of(INCOME));
-        assertSameContent(budget.getCharges(), List.of(CHARGE));
-        assertSameContent(budget.getOneoffExpenses(), List.of(ONEOFF));
-        assertSameContent(budget.getVariableIncomes(), List.of(VARIABLE_INCOME));
-        assertSameContent(budget.getVariableOverrides(), List.of(VARIABLE_OVERRIDE));
-        assertSameContent(jpaPatrimoineAdapter(restarted).getTransfers(), List.of(WEALTH_TRANSFER));
-    }
-
-    @Test
-    @DisplayName("DB-1061 -- reinitialisation -> les tables autonomes sont videes")
+    @DisplayName("DB-1061 -- reset du silo tresorerie vide les tables de cashflow")
     void resetEmptiesCashflowTables() {
         writer.setBudgetData(referenceData());
+        com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore store =
+                context.getBean(com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore.class);
 
-        writer.resetData();
+        store.reset();
 
         assertThat(context.getBean(CashflowIncomeRepository.class).count()).isZero();
         assertThat(context.getBean(CashflowChargeRepository.class).count()).isZero();
@@ -983,10 +961,9 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(context.getBean(CashflowTransferRepository.class).count()).isZero();
         assertThat(context.getBean(CashflowVariableIncomeRepository.class).count()).isZero();
         assertThat(context.getBean(CashflowVariableOverrideRepository.class).count()).isZero();
-        BudgetPersistenceAdapter budget = jpaBudgetAdapter(writer);
-        assertThat(budget.getIncomes()).isEmpty();
-        assertThat(budget.getCharges()).isEmpty();
-        assertThat(jpaPatrimoineAdapter(writer).getTransfers()).isEmpty();
+        assertThat(store.getIncomes()).isEmpty();
+        assertThat(store.getCharges()).isEmpty();
+        assertThat(store.getTransfers()).isEmpty();
     }
 
     // =========================================================================
@@ -1001,14 +978,8 @@ class PersistenceAdaptersJpaRoundTripTest {
         PersistenceManager reader = new PersistenceManager(
                 context.getBean(BudgetDataRepository.class),
                 context.getBean(SettingsRepository.class),
-                context.getBean(IncomeRepository.class),
-                context.getBean(ChargeRepository.class),
                 context.getBean(PlacementRepository.class),
                 context.getBean(RealEstateRepository.class),
-                context.getBean(OneOffExpenseRepository.class),
-                context.getBean(TransferRepository.class),
-                context.getBean(VariableIncomeRepository.class),
-                context.getBean(VariableOverrideRepository.class),
                 context.getBean(AssetCategoryRepository.class),
                 context.getBean(GoalRepository.class),
                 context.getBean(FiscalChildRepository.class),
@@ -1020,12 +991,6 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(WealthPlacementRepository.class),
                 context.getBean(WealthRealEstateRepository.class),
                 context.getBean(WealthCategoryRepository.class),
-                context.getBean(CashflowIncomeRepository.class),
-                context.getBean(CashflowChargeRepository.class),
-                context.getBean(CashflowOneOffRepository.class),
-                context.getBean(CashflowTransferRepository.class),
-                context.getBean(CashflowVariableIncomeRepository.class),
-                context.getBean(CashflowVariableOverrideRepository.class),
                 context.getBean(PensionSettingsRepository.class),
                 context.getBean(FiscalSettingsRepository.class),
                 context.getBean(CashflowSettingsRepository.class),
@@ -1037,7 +1002,7 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     private void assertReferenceState(PersistenceManager reader) {
-        BudgetPersistenceAdapter budget = jpaBudgetAdapter(reader);
+        com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore budget = jpaBudgetAdapter(reader);
         assertSameContent(budget.getIncomes(), List.of(INCOME));
         assertSameContent(budget.getCharges(), List.of(CHARGE));
         assertSameContent(budget.getOneoffExpenses(), List.of(ONEOFF));

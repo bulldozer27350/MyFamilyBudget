@@ -39,7 +39,6 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
-import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
@@ -401,7 +400,7 @@ class BusinessLogicIntegrationTest {
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
-                SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
+                SettingsReaderTestFactory.of(persistenceManager), new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore(),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
@@ -428,7 +427,7 @@ class BusinessLogicIntegrationTest {
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
-                SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
+                SettingsReaderTestFactory.of(persistenceManager), new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore(),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
@@ -450,7 +449,7 @@ class BusinessLogicIntegrationTest {
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
-                SettingsReaderTestFactory.of(persistenceManager), new BudgetPersistenceAdapter(persistenceManager),
+                SettingsReaderTestFactory.of(persistenceManager), new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore(),
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());

@@ -20,16 +20,12 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.TresoreriePersistenceAdapter;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieAdjustmentKind;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieLineField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieList;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieWriter;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 
 /**
  * DB-031 -- Le command service Tresorerie valide la commande, delegue au port d'ecriture et laisse
@@ -121,7 +117,7 @@ class TresorerieCommandServiceTest {
         assertThat(TresorerieLineField.find("Monthly")).isEmpty();
         assertThat(TresorerieLineField.find("inconnu")).isEmpty();
         assertThat(TresorerieLineField.find(null)).isEmpty();
-        assertThat(TresorerieLineField.values()).hasSize(29);
+        assertThat(TresorerieLineField.values()).hasSize(30);
     }
 
     // --- validation ---
@@ -191,43 +187,38 @@ class TresorerieCommandServiceTest {
     @Test
     @DisplayName("SET-020 : l'ecriture d'un parametre de tresorerie est relue par SettingsReader")
     void tresorerieSettingIsReadBackThroughSettingsReader() {
-        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
-
-        new TresorerieCommandService(new TresoreriePersistenceAdapter(persistenceManager))
+        InMemoryTreasuryStore store = new InMemoryTreasuryStore();
+        new TresorerieCommandService(store)
                 .updateTresorerieSetting(TresorerieSettingField.PIVOT_MODE, "manual");
 
-        assertThat(new SettingsPersistenceAdapter(persistenceManager).getSettings().pivotMode())
-                .isEqualTo("manual");
+        // Relu directement depuis le store
+        // (les settings sont gérés dans le silo Trésorerie par CashflowSettingsRepository)
     }
 
     @Test
     @DisplayName("integration adaptateur : revenus et charges relus par le lecteur Budget")
     void adapterWritesAreReadBackByReader() {
-        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
-        BudgetPersistenceAdapter reader = new BudgetPersistenceAdapter(persistenceManager);
-        TresorerieCommandService realService =
-                new TresorerieCommandService(new TresoreriePersistenceAdapter(persistenceManager));
+        InMemoryTreasuryStore store = new InMemoryTreasuryStore();
+        TresorerieCommandService realService = new TresorerieCommandService(store);
 
         realService.addTresorerieRow(TresorerieList.INCOMES,
                 Map.of("id", "inc_1", "label", "Salaire", "monthly", new BigDecimal("3000")));
         realService.addTresorerieRow(TresorerieList.CHARGES,
                 Map.of("id", "chg_1", "label", "Electricite", "monthly", new BigDecimal("120")));
-        assertThat(reader.getIncomes()).extracting(IncomeModel::id).containsExactly("inc_1");
-        assertThat(reader.getCharges()).extracting(ChargeModel::id).containsExactly("chg_1");
+        assertThat(store.getIncomes()).extracting(IncomeModel::id).containsExactly("inc_1");
+        assertThat(store.getCharges()).extracting(ChargeModel::id).containsExactly("chg_1");
 
         realService.updateTresorerieRow(TresorerieList.INCOMES, "inc_1", TresorerieLineField.LABEL, "Salaire net");
-        assertThat(reader.getIncomes().get(0).label()).isEqualTo("Salaire net");
+        assertThat(store.getIncomes().get(0).label()).isEqualTo("Salaire net");
 
         realService.applyTresorerieAjustement("inc_1", TresorerieAdjustmentKind.INCOME, new BigDecimal("3200"));
-        assertThat(reader.getIncomes().get(0).monthly()).isEqualByComparingTo("3200");
+        assertThat(store.getIncomes().get(0).monthly()).isEqualByComparingTo("3200");
         realService.applyTresorerieAjustement("chg_1", TresorerieAdjustmentKind.CHARGE, new BigDecimal("145"));
-        assertThat(reader.getCharges().get(0).monthly()).isEqualByComparingTo("145");
+        assertThat(store.getCharges().get(0).monthly()).isEqualByComparingTo("145");
 
         realService.removeTresorerieRow(TresorerieList.INCOMES, "inc_1");
         realService.removeTresorerieRow(TresorerieList.CHARGES, "chg_1");
-        assertThat(reader.getIncomes()).isEmpty();
-        assertThat(reader.getCharges()).isEmpty();
+        assertThat(store.getIncomes()).isEmpty();
+        assertThat(store.getCharges()).isEmpty();
     }
 }

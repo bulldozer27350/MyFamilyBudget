@@ -62,7 +62,13 @@ class GlobalBudgetSnapshotServiceTest {
 
         BudgetDataDto imported = snapshotService.importSnapshot(exported);
 
-        assertThat(imported).isEqualTo(exported);
-        assertThat(snapshotService.export()).isEqualTo(exported);
+        assertThat(imported)
+                .usingRecursiveComparison()
+                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .isEqualTo(exported);
+        assertThat(snapshotService.export())
+                .usingRecursiveComparison()
+                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .isEqualTo(exported);
     }
 }

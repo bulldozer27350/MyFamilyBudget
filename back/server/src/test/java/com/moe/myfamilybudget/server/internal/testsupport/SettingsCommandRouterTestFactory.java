@@ -11,7 +11,6 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.TresoreriePersistenceAdapter;
 
 /** SET-020 : assemble un {@link SettingsCommandRouter} adossé aux adapters d'un {@link PersistenceManager} de test. */
 public final class SettingsCommandRouterTestFactory {
@@ -26,7 +25,7 @@ public final class SettingsCommandRouterTestFactory {
                 objectifsSettingsService,
                 new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)),
                 new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager)),
-                new TresorerieCommandService(new TresoreriePersistenceAdapter(persistenceManager)),
+                new TresorerieCommandService(new InMemoryTreasuryStore()),
                 new SimulationSettingsCommandService(settingsAdapter),
                 new EconomicAssumptionsCommandService(settingsAdapter));
     }

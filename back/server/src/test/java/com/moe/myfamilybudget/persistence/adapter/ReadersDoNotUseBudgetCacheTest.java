@@ -73,17 +73,12 @@ class ReadersDoNotUseBudgetCacheTest {
         writer.setBudgetData(writer.getBudgetData().withIncomes(List.of(INCOME)));
         PersistenceManager cache = mock(PersistenceManager.class);
 
-        BudgetPersistenceAdapter budget = new BudgetPersistenceAdapter(cache,
-                context.getBean(CashflowIncomeRepository.class),
-                context.getBean(CashflowChargeRepository.class),
-                context.getBean(CashflowOneOffRepository.class),
-                context.getBean(CashflowVariableIncomeRepository.class),
-                context.getBean(CashflowVariableOverrideRepository.class));
+        com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore budget =
+                context.getBean(com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore.class);
         PatrimoinePersistenceAdapter patrimoine = new PatrimoinePersistenceAdapter(cache,
                 context.getBean(WealthPlacementRepository.class),
                 context.getBean(WealthRealEstateRepository.class),
-                context.getBean(WealthCategoryRepository.class),
-                context.getBean(CashflowTransferRepository.class));
+                context.getBean(WealthCategoryRepository.class));
         TaxPersistenceAdapter tax = new TaxPersistenceAdapter(cache,
                 context.getBean(FiscalChildRepository.class),
                 context.getBean(FiscalBracketRepository.class),

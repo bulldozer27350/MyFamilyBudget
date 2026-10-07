@@ -29,7 +29,6 @@ import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
-import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
@@ -37,31 +36,19 @@ import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowChargeRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowIncomeRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowOneOffRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowTransferRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableIncomeRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
 import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
-import com.moe.myfamilybudget.persistence.repository.ChargeRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
-import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.OneOffExpenseRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
-import com.moe.myfamilybudget.persistence.repository.TransferRepository;
-import com.moe.myfamilybudget.persistence.repository.VariableIncomeRepository;
-import com.moe.myfamilybudget.persistence.repository.VariableOverrideRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
@@ -91,11 +78,10 @@ class WriteFailureKeepsMemoryTest {
             new BigDecimal("999"), "2026-01-01", "2053-12-31", BigDecimal.ZERO, "", "");
 
     private BudgetDataRepository budgetDataRepository;
-    private IncomeRepository incomeRepository;
+    private PlacementRepository placementRepository;
     private ApplicationEventPublisher eventPublisher;
     private PersistenceManager persistenceManager;
 
-    private BudgetPersistenceAdapter budgetAdapter;
     private PatrimoinePersistenceAdapter patrimoineAdapter;
     private RetirementPersistenceAdapter retirementAdapter;
     private TaxPersistenceAdapter taxAdapter;
@@ -106,21 +92,15 @@ class WriteFailureKeepsMemoryTest {
     @BeforeEach
     void setUp() {
         budgetDataRepository = mock(BudgetDataRepository.class);
-        incomeRepository = mock(IncomeRepository.class);
+        placementRepository = mock(PlacementRepository.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         databaseWorks();
 
         persistenceManager = new PersistenceManager(
                 budgetDataRepository,
                 mock(SettingsRepository.class),
-                incomeRepository,
-                mock(ChargeRepository.class),
-                mock(PlacementRepository.class),
+                placementRepository,
                 mock(RealEstateRepository.class),
-                mock(OneOffExpenseRepository.class),
-                mock(TransferRepository.class),
-                mock(VariableIncomeRepository.class),
-                mock(VariableOverrideRepository.class),
                 mock(AssetCategoryRepository.class),
                 mock(GoalRepository.class),
                 mock(FiscalChildRepository.class),
@@ -132,12 +112,6 @@ class WriteFailureKeepsMemoryTest {
                 mock(WealthPlacementRepository.class),
                 mock(WealthRealEstateRepository.class),
                 mock(WealthCategoryRepository.class),
-                mock(CashflowIncomeRepository.class),
-                mock(CashflowChargeRepository.class),
-                mock(CashflowOneOffRepository.class),
-                mock(CashflowTransferRepository.class),
-                mock(CashflowVariableIncomeRepository.class),
-                mock(CashflowVariableOverrideRepository.class),
                 mock(PensionSettingsRepository.class),
                 mock(FiscalSettingsRepository.class),
                 mock(CashflowSettingsRepository.class),
@@ -146,17 +120,12 @@ class WriteFailureKeepsMemoryTest {
                 eventPublisher);
         persistenceManager.init();
 
-        budgetAdapter = new BudgetPersistenceAdapter(persistenceManager);
         patrimoineAdapter = new PatrimoinePersistenceAdapter(persistenceManager);
         retirementAdapter = new RetirementPersistenceAdapter(persistenceManager);
         taxAdapter = new TaxPersistenceAdapter(persistenceManager);
         settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
 
         // Etat de reference non trivial, ecrit alors que la base fonctionne.
-        persistenceManager.write(m -> m.addTresorerieRow("incomes",
-                Map.of("id", "inc_seed", "label", "Salaire", "monthly", new BigDecimal("2500"))));
-        persistenceManager.write(m -> m.addTresorerieRow("incomes",
-                Map.of("id", "inc_other", "label", "Freelance", "monthly", new BigDecimal("400"))));
         persistenceManager.write(m -> m.savePatrimoineRow("placements",
                 Map.of("id", "plc_seed", "label", "Livret", "balance", new BigDecimal("1000"))));
         persistenceManager.write(m -> m.updateRetirement(RETIREMENT_BEFORE));
@@ -203,13 +172,11 @@ class WriteFailureKeepsMemoryTest {
         databaseFailsOnMainEntity();
 
         assertThatThrownBy(() -> persistenceManager.write(m -> m.updateRetirement(RETIREMENT_AFTER))).isSameAs(DB_DOWN);
-        assertThatThrownBy(() -> persistenceManager.write(m -> m.addTresorerieRow("incomes",
-                Map.of("id", "inc_new", "label", "Prime", "monthly", new BigDecimal("999"))))).isSameAs(DB_DOWN);
+        assertThatThrownBy(() -> persistenceManager.write(m -> m.savePatrimoineRow("placements",
+                Map.of("id", "plc_new", "label", "PEA", "balance", new BigDecimal("999"))))).isSameAs(DB_DOWN);
 
         assertThat(retirementAdapter.getRetirement()).isEqualTo(RETIREMENT_BEFORE);
         assertThat(persistenceManager.getBudgetData().retirement()).isEqualTo(RETIREMENT_BEFORE);
-        assertThat(budgetAdapter.getIncomes()).extracting(IncomeModel::id)
-                .containsExactly("inc_seed", "inc_other");
     }
 
     // =========================================================================
@@ -235,15 +202,9 @@ class WriteFailureKeepsMemoryTest {
     // OUTILLAGE
     // =========================================================================
 
-    /** Mutations qui laissent au moins un revenu en base : elles atteignent toutes l'ecriture des lignes enfants. */
+    /** Mutations qui laissent au moins un placement en base : elles atteignent toutes l'ecriture des lignes enfants. */
     private Map<String, Runnable> mutationsKeepingIncomes() {
         Map<String, Runnable> mutations = new LinkedHashMap<>();
-        mutations.put("addTresorerieRow", () -> persistenceManager.write(m -> m.addTresorerieRow("incomes",
-                Map.of("id", "inc_new", "label", "Prime", "monthly", new BigDecimal("999")))));
-        mutations.put("updateTresorerieRow", () -> persistenceManager.write(m -> m.updateTresorerieRow("incomes", "inc_seed",
-                "monthly", new BigDecimal("1"))));
-        mutations.put("removeTresorerieRow",
-                () -> persistenceManager.write(m -> m.removeTresorerieRow("incomes", "inc_seed")));
         mutations.put("savePatrimoineRow", () -> persistenceManager.write(m -> m.savePatrimoineRow("placements",
                 Map.of("id", "plc_seed", "label", "Livret modifie", "balance", new BigDecimal("5")))));
         mutations.put("deletePatrimoineRow",
@@ -256,12 +217,11 @@ class WriteFailureKeepsMemoryTest {
         mutations.put("addAssetCategory", () -> persistenceManager.write(m -> m.addAssetCategory(
                 new AssetCategoryModel("cat_new", "icon", "Nouvelle categorie", "bucket", "#ffffff"))));
         mutations.put("setBudgetData", () -> persistenceManager.setBudgetData(
-                before.withIncomes(List.of(INCOME_REPLACEMENT))));
+                before.withPlacements(List.of())));
         return mutations;
     }
 
     private void assertEveryMutationFailsAndLeavesMemoryUntouched(Map<String, Runnable> mutations) {
-        List<IncomeModel> incomes = budgetAdapter.getIncomes();
         var placements = patrimoineAdapter.getPlacements();
         var assetCategories = patrimoineAdapter.getAssetCategories();
         var taxChildren = taxAdapter.getTaxChildren();
@@ -271,7 +231,6 @@ class WriteFailureKeepsMemoryTest {
             assertThatThrownBy(mutation::run).as(name).isSameAs(DB_DOWN);
 
             assertThat(persistenceManager.getBudgetData()).as(name).isSameAs(before);
-            assertThat(budgetAdapter.getIncomes()).as(name).isEqualTo(incomes);
             assertThat(patrimoineAdapter.getPlacements()).as(name).isEqualTo(placements);
             assertThat(patrimoineAdapter.getAssetCategories()).as(name).isEqualTo(assetCategories);
             assertThat(retirementAdapter.getRetirement()).as(name).isEqualTo(RETIREMENT_BEFORE);
@@ -279,14 +238,13 @@ class WriteFailureKeepsMemoryTest {
             assertThat(settingsAdapter.getSettings()).as(name).isEqualTo(settings);
         });
 
-        assertThat(incomes).extracting(IncomeModel::id).containsExactly("inc_seed", "inc_other");
         assertThat(placements).hasSize(1);
         // Aucune mutation en echec ne doit avoir declenche de controle des notifications.
         verifyNoInteractions(eventPublisher);
     }
 
     private void databaseWorks() {
-        reset(budgetDataRepository, incomeRepository);
+        reset(budgetDataRepository, placementRepository);
         doAnswer(invocation -> invocation.getArgument(0)).when(budgetDataRepository).save(any());
     }
 
@@ -297,6 +255,6 @@ class WriteFailureKeepsMemoryTest {
 
     private void databaseFailsOnChildRows() {
         databaseWorks();
-        doThrow(DB_DOWN).when(incomeRepository).save(any());
+        doThrow(DB_DOWN).when(placementRepository).save(any());
     }
 }

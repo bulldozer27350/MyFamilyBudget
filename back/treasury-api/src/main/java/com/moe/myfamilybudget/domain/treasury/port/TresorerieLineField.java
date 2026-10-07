@@ -42,7 +42,8 @@ public enum TresorerieLineField {
     SWEEP_PRIORITY("sweepPriority"),
     SWEEP_CAP("sweepCap"),
     PAUSE_TRIGGER_BALANCE("pauseTriggerBalance"),
-    PAUSE_PRIORITY("pausePriority");
+    PAUSE_PRIORITY("pausePriority"),
+    PLACEMENT("placement");
 
     private final String key;
 

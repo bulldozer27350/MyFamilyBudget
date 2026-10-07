@@ -21,7 +21,7 @@ import com.moe.myfamilybudget.application.usecase.retirement.RetirementUseCase;
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
@@ -50,7 +50,7 @@ class DefaultRetirementUseCaseTest {
                 new SettingsPersistenceAdapter(persistenceManager),
                 retirementAdapter,
                 new TaxPersistenceAdapter(persistenceManager),
-                new BudgetPersistenceAdapter(persistenceManager),
+                new InMemoryTreasuryStore(),
                 commandService);
     }
 

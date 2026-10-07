@@ -41,7 +41,7 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
-import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
@@ -67,17 +67,20 @@ class PatrimoineServiceImplTest {
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         goalStore = new InMemoryGoalStore();
         loanStore = new InMemoryLoanStore();
+        InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
+        PatrimoinePersistenceAdapter patrimoineAdapter = new PatrimoinePersistenceAdapter(
+                persistenceManager, null, null, null, treasuryStore.getDelegate());
         service = new PatrimoineServiceImpl(
                 mapper, new DefaultPatrimoineProjectionService(), new DefaultPlacementEvolutionService(),
-                new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
+                new PatrimoineCommandService(patrimoineAdapter),
                 new LoanCommandService(loanStore, silos -> { }, RecordingTransactionRunner.direct()),
-                new GoalCommandService(goalStore, goalStore, new PatrimoinePersistenceAdapter(persistenceManager),
+                new GoalCommandService(goalStore, goalStore, patrimoineAdapter,
                         silos -> { }, RecordingTransactionRunner.direct()),
                 settingsAdapter,
                 settingsAdapter,
                 settingsAdapter,
-                new PatrimoinePersistenceAdapter(persistenceManager),
-                new BudgetPersistenceAdapter(persistenceManager),
+                patrimoineAdapter,
+                treasuryStore,
                 loanStore,
                 bankStore);
     }

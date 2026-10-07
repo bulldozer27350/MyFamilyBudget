@@ -6,15 +6,13 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowEntityMapper;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthEntityMapper;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowTransferRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
@@ -30,11 +28,10 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
  * <p>DB-1051 : en production, la lecture des placements, des biens immobiliers et des categories d'actifs
  * passe par les repositories autonomes {@code wealth_*} (DB-1050). Les ecritures passent toujours par le
  * {@code PersistenceManager} : la passerelle de persistance recopie le patrimoine dans les tables autonomes
- * dans la meme transaction. Les virements ({@link #getTransfers()}) relevent de Tresorerie : depuis DB-1061 ils
- * sont lus depuis la table autonome {@code cashflow_transfer} (DB-1060).
+ * dans la meme transaction.
  *
- * <p>Le constructeur sans repository conserve l'ancienne lecture depuis le cache memoire ; il sert aux tests
- * unitaires adosses a des repositories mockes et constitue le chemin de retour arriere.
+ * <p>SILO-216, DA-14 : les virements appartiennent au silo Tresorerie ; Patrimoine delegue leur lecture et
+ * ecriture au {@link JpaTreasuryStore}.
  */
 @Component
 public class PatrimoinePersistenceAdapter implements PatrimoineReader, PatrimoineWriter, PatrimoineSnapshotWriter {
@@ -43,10 +40,17 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
     private final WealthPlacementRepository wealthPlacementRepository;
     private final WealthRealEstateRepository wealthRealEstateRepository;
     private final WealthCategoryRepository wealthCategoryRepository;
-    private final CashflowTransferRepository cashflowTransferRepository;
+    private final JpaTreasuryStore jpaTreasuryStore;
 
     public PatrimoinePersistenceAdapter(PersistenceManager persistenceManager) {
         this(persistenceManager, null, null, null, null);
+    }
+
+    public PatrimoinePersistenceAdapter(PersistenceManager persistenceManager,
+                                        WealthPlacementRepository wealthPlacementRepository,
+                                        WealthRealEstateRepository wealthRealEstateRepository,
+                                        WealthCategoryRepository wealthCategoryRepository) {
+        this(persistenceManager, wealthPlacementRepository, wealthRealEstateRepository, wealthCategoryRepository, null);
     }
 
     @Autowired
@@ -54,12 +58,12 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
                                         WealthPlacementRepository wealthPlacementRepository,
                                         WealthRealEstateRepository wealthRealEstateRepository,
                                         WealthCategoryRepository wealthCategoryRepository,
-                                        CashflowTransferRepository cashflowTransferRepository) {
+                                        @Autowired(required = false) JpaTreasuryStore jpaTreasuryStore) {
         this.persistenceManager = persistenceManager;
         this.wealthPlacementRepository = wealthPlacementRepository;
         this.wealthRealEstateRepository = wealthRealEstateRepository;
         this.wealthCategoryRepository = wealthCategoryRepository;
-        this.cashflowTransferRepository = cashflowTransferRepository;
+        this.jpaTreasuryStore = jpaTreasuryStore;
     }
 
     @Override
@@ -88,19 +92,38 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
 
     @Override
     public List<PatrimoineTransferModel> getTransfers() {
-        if (cashflowTransferRepository == null) {
-            return toWealth(persistenceManager.getBudgetData().getEffectiveTransfers());
+        // DA-14 : Patrimoine delegue la lecture des virements au silo Tresorerie
+        if (jpaTreasuryStore == null) {
+            return persistenceManager.getBudgetData().getEffectiveTransfers().stream()
+                    .map(t -> new PatrimoineTransferModel(t.id(), t.placement(), t.date(), t.amount(), t.notes()))
+                    .toList();
         }
-        return toWealth(CashflowEntityMapper.toTransferModels(cashflowTransferRepository.findAllByOrderByPositionAsc()));
+        return jpaTreasuryStore.getTransfers().stream()
+                .map(t -> new PatrimoineTransferModel(t.id(), t.placement(), t.date(), t.amount(), t.notes()))
+                .toList();
     }
 
     @Override
     public Map<String, Object> savePatrimoineRow(PatrimoineList list, Map<String, Object> body) {
+        if (list == PatrimoineList.TRANSFERS) {
+            if (jpaTreasuryStore != null) {
+                return jpaTreasuryStore.addTresorerieRow(com.moe.myfamilybudget.domain.treasury.port.TresorerieList.TRANSFERS, body);
+            }
+            return persistenceManager.writeAndGet(m -> m.savePatrimoineRow(list.key(), body));
+        }
         return persistenceManager.writeAndGet(m -> m.savePatrimoineRow(list.key(), body));
     }
 
     @Override
     public void deletePatrimoineRow(PatrimoineList list, String id) {
+        if (list == PatrimoineList.TRANSFERS) {
+            if (jpaTreasuryStore != null) {
+                jpaTreasuryStore.removeTresorerieRow(com.moe.myfamilybudget.domain.treasury.port.TresorerieList.TRANSFERS, id);
+                return;
+            }
+            persistenceManager.write(m -> m.deletePatrimoineRow(list.key(), id));
+            return;
+        }
         persistenceManager.write(m -> m.deletePatrimoineRow(list.key(), id));
     }
 
@@ -135,29 +158,11 @@ public class PatrimoinePersistenceAdapter implements PatrimoineReader, Patrimoin
         persistenceManager.write(m -> m.removeAssetCategory(id));
     }
 
-    /** SILO-119 (lot B1) : import du silo Patrimoine. */
+    /** SILO-119 (lot B1) : import du silo Patrimoine (sans virements, DA-14). */
     @Override
     public void replace(List<PlacementModel> placements, List<RealEstateModel> realEstate,
                         List<PatrimoineTransferModel> transfers, List<AssetCategoryModel> assetCategories) {
-        List<TransferModel> budgetTransfers = toBudget(transfers);
-        persistenceManager.write(m -> m.replacePatrimoineSnapshot(placements, realEstate, budgetTransfers,
-                assetCategories));
-    }
-
-    /** SILO-131 : les virements restent stockés avec le type de Trésorerie ({@code TransferModel}, SILO-140). */
-    private static List<PatrimoineTransferModel> toWealth(List<TransferModel> transfers) {
-        return transfers.stream()
-                .map(t -> new PatrimoineTransferModel(t.id(), t.placement(), t.date(), t.amount(), t.notes()))
-                .toList();
-    }
-
-    private static List<TransferModel> toBudget(List<PatrimoineTransferModel> transfers) {
-        if (transfers == null) {
-            return null;
-        }
-        return transfers.stream()
-                .map(t -> new TransferModel(t.id(), t.placement(), t.date(), t.amount(), t.notes()))
-                .toList();
+        persistenceManager.write(m -> m.replacePatrimoineSnapshot(placements, realEstate, assetCategories));
     }
 
     /** SILO-119 (lot B1) : remise à zéro du silo Patrimoine. */

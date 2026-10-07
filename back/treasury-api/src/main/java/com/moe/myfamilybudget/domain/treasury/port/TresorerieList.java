@@ -12,6 +12,9 @@ public enum TresorerieList {
     ONEOFF("oneoff"),
     VARIABLE_INCOMES("variableIncomes"),
     VARIABLE_OVERRIDES("variableOverrides"),
+    TRANSFERS("transfers"),
+    /** @deprecated Les placements relevent du domaine Patrimoine (SILO-216, R-30). */
+    @Deprecated
     PLACEMENTS("placements");
 
     private final String key;

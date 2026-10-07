@@ -29,7 +29,7 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.SalaryHist
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
-import com.moe.myfamilybudget.persistence.adapter.BudgetPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
@@ -45,12 +45,14 @@ class OverviewServiceImplTest {
     private OverviewServiceImpl overviewService;
     private OverviewMapper mapper;
     private PersistenceManager persistenceManager;
+    private InMemoryTreasuryStore treasuryStore;
     private final InMemoryLoanStore loanStore = new InMemoryLoanStore();
 
     @BeforeEach
     void setUp() {
         mapper = new OverviewMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
+        treasuryStore = new InMemoryTreasuryStore();
         overviewService = new OverviewServiceImpl(
                 mapper,
                 new DefaultRetirementCalculationService(),
@@ -58,13 +60,25 @@ class OverviewServiceImplTest {
                 new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
                 SettingsReaderTestFactory.of(persistenceManager),
-                new BudgetPersistenceAdapter(persistenceManager),
+                treasuryStore,
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager),
                 bankStore,
                 loanStore,
                 new InMemoryGoalStore());
+    }
+
+    private void setBudgetData(BudgetDataModel budgetData) {
+        this.persistenceManager.setBudgetData(budgetData);
+        if (budgetData != null) {
+            this.treasuryStore.replace(null,
+                    budgetData.incomes(),
+                    budgetData.charges(),
+                    budgetData.oneoff(),
+                    budgetData.variableIncomes(),
+                    budgetData.variableOverrides());
+        }
     }
 
 
@@ -102,7 +116,7 @@ class OverviewServiceImplTest {
                 List.of(placement1), List.of(realEstate1), retirement, List.of(), List.of(), List.of(), List.of(),
                 List.of(), List.of(), List.of(), List.of(), null);
 
-        this.persistenceManager.setBudgetData(budgetData); // Save to persistence for retrieval in service
+        this.setBudgetData(budgetData); // Save to persistence for retrieval in service
 
         // When
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
@@ -141,7 +155,7 @@ class OverviewServiceImplTest {
                 List.of(realEstate1), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), null);
 
-        this.persistenceManager.setBudgetData(budgetData); // Save to persistence for retrieval in service
+        this.setBudgetData(budgetData); // Save to persistence for retrieval in service
         // When
         OverviewResponseDto currentEurosResponse = this.overviewService.getOverview(false).getBody();
         OverviewResponseDto constantEurosResponse = this.overviewService.getOverview(true).getBody();
@@ -201,7 +215,7 @@ class OverviewServiceImplTest {
                 List.of(), List.of());
 
         this.loanStore.replace(List.of(loan1));
-        this.persistenceManager.setBudgetData(budgetData); // Save to persistence for retrieval in service
+        this.setBudgetData(budgetData); // Save to persistence for retrieval in service
 
         // When
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
@@ -242,7 +256,7 @@ class OverviewServiceImplTest {
                 List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), null);
 
-        this.persistenceManager.setBudgetData(budgetData);
+        this.setBudgetData(budgetData);
 
         // When
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
@@ -304,7 +318,7 @@ class OverviewServiceImplTest {
                 List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), null);
 
-        this.persistenceManager.setBudgetData(budgetData);
+        this.setBudgetData(budgetData);
 
         // When
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
@@ -351,7 +365,7 @@ class OverviewServiceImplTest {
                 List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), null);
 
-        this.persistenceManager.setBudgetData(budgetData);
+        this.setBudgetData(budgetData);
 
         // When
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
@@ -389,7 +403,7 @@ class OverviewServiceImplTest {
                 List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), null);
 
-        this.persistenceManager.setBudgetData(budgetData);
+        this.setBudgetData(budgetData);
 
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
 

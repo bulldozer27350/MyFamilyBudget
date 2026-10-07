@@ -66,18 +66,6 @@ class PersistenceAdaptersTest {
     class DefaultState {
 
         @Test
-        @DisplayName("BudgetPersistenceAdapter : aucune ligne budgetaire")
-        void budgetIsEmpty() {
-            BudgetPersistenceAdapter adapter = new BudgetPersistenceAdapter(persistenceManager);
-
-            assertThat(adapter.getIncomes()).isEmpty();
-            assertThat(adapter.getCharges()).isEmpty();
-            assertThat(adapter.getOneoffExpenses()).isEmpty();
-            assertThat(adapter.getVariableIncomes()).isEmpty();
-            assertThat(adapter.getVariableOverrides()).isEmpty();
-        }
-
-        @Test
         @DisplayName("PatrimoinePersistenceAdapter : aucun placement, bien, categorie ni virement")
         void patrimoineIsEmpty() {
             PatrimoinePersistenceAdapter adapter = new PatrimoinePersistenceAdapter(persistenceManager);
@@ -142,18 +130,6 @@ class PersistenceAdaptersTest {
         }
 
         @Test
-        @DisplayName("BudgetPersistenceAdapter relit revenus, charges, depenses ponctuelles et variables")
-        void budgetRoundTrip() {
-            BudgetPersistenceAdapter adapter = new BudgetPersistenceAdapter(persistenceManager);
-
-            assertThat(adapter.getIncomes()).containsExactly(INCOME);
-            assertThat(adapter.getCharges()).containsExactly(CHARGE);
-            assertThat(adapter.getOneoffExpenses()).containsExactly(ONEOFF);
-            assertThat(adapter.getVariableIncomes()).containsExactly(VARIABLE_INCOME);
-            assertThat(adapter.getVariableOverrides()).containsExactly(VARIABLE_OVERRIDE);
-        }
-
-        @Test
         @DisplayName("PatrimoinePersistenceAdapter relit placements (avec historique), immobilier, categories, virements")
         void patrimoineRoundTrip() {
             PatrimoinePersistenceAdapter adapter = new PatrimoinePersistenceAdapter(persistenceManager);
@@ -210,8 +186,6 @@ class PersistenceAdaptersTest {
                     .withCharges(List.of())
                     .withPlacements(List.of()));
 
-            assertThat(new BudgetPersistenceAdapter(persistenceManager).getIncomes()).containsExactly(other);
-            assertThat(new BudgetPersistenceAdapter(persistenceManager).getCharges()).isEmpty();
             assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getPlacements()).isEmpty();
             // Les domaines non touches par le second import sont conserves tels quels.
             assertThat(new RetirementPersistenceAdapter(persistenceManager).getRetirement()).isEqualTo(RETIREMENT);
@@ -237,7 +211,6 @@ class PersistenceAdaptersTest {
             persistenceManager.write(m -> m.updateRetirement(RETIREMENT));
 
             assertThat(adapter.getRetirement()).isEqualTo(RETIREMENT);
-            assertThat(new BudgetPersistenceAdapter(persistenceManager).getIncomes()).containsExactly(INCOME);
             assertThat(new TaxPersistenceAdapter(persistenceManager).getTaxChildren()).containsExactly(TAX_CHILD);
         }
 
@@ -300,19 +273,6 @@ class PersistenceAdaptersTest {
             persistenceManager.write(m -> m.removeAssetCategory(ASSET_CATEGORY.id()));
             assertThat(adapter.getAssetCategories()).containsExactly(second);
         }
-
-        @Test
-        @DisplayName("un meme adaptateur voit les ecritures successives (pas de copie figee a la construction)")
-        void adapterReadsLiveState() {
-            BudgetPersistenceAdapter adapter = new BudgetPersistenceAdapter(persistenceManager);
-            assertThat(adapter.getIncomes()).isEmpty();
-
-            persistenceManager.setBudgetData(persistenceManager.getBudgetData().withIncomes(List.of(INCOME)));
-            assertThat(adapter.getIncomes()).containsExactly(INCOME);
-
-            persistenceManager.setBudgetData(persistenceManager.getBudgetData().withIncomes(List.of()));
-            assertThat(adapter.getIncomes()).isEmpty();
-        }
     }
 
     // =========================================================================
@@ -327,15 +287,9 @@ class PersistenceAdaptersTest {
         @DisplayName("resetData ramene tous les adaptateurs a l'etat par defaut")
         void resetDataRestoresDefaults() {
             persistenceManager.setBudgetData(referenceData());
-            assertThat(new BudgetPersistenceAdapter(persistenceManager).getIncomes()).isNotEmpty();
 
             persistenceManager.resetData();
 
-            assertThat(new BudgetPersistenceAdapter(persistenceManager).getIncomes()).isEmpty();
-            assertThat(new BudgetPersistenceAdapter(persistenceManager).getCharges()).isEmpty();
-            assertThat(new BudgetPersistenceAdapter(persistenceManager).getOneoffExpenses()).isEmpty();
-            assertThat(new BudgetPersistenceAdapter(persistenceManager).getVariableIncomes()).isEmpty();
-            assertThat(new BudgetPersistenceAdapter(persistenceManager).getVariableOverrides()).isEmpty();
             assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getPlacements()).isEmpty();
             assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getRealEstate()).isEmpty();
             assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getAssetCategories()).isEmpty();
@@ -357,7 +311,6 @@ class PersistenceAdaptersTest {
 
             persistenceManager.setBudgetData(null);
 
-            assertThat(new BudgetPersistenceAdapter(persistenceManager).getIncomes()).isEmpty();
             assertThat(new SettingsPersistenceAdapter(persistenceManager).getSettings().getEffectiveBirthYear())
                     .isEqualTo(1985);
             assertDefaultBrackets(new TaxPersistenceAdapter(persistenceManager).getTaxBrackets());
@@ -379,7 +332,6 @@ class PersistenceAdaptersTest {
 
             persistenceManager.setBudgetData(referenceData());
 
-            assertThat(new BudgetPersistenceAdapter(persistenceManager).getIncomes()).containsExactly(INCOME);
             assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getPlacements()).containsExactly(PLACEMENT);
             assertThat(new RetirementPersistenceAdapter(persistenceManager).getRetirement()).isEqualTo(RETIREMENT);
         }

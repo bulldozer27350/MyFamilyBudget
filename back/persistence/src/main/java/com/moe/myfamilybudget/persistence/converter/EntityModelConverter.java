@@ -1,21 +1,20 @@
 package com.moe.myfamilybudget.persistence.converter;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
+import com.moe.myfamilybudget.persistence.entity.AssetCategoryEntity;
+import com.moe.myfamilybudget.persistence.entity.BudgetDataEntity;
+import com.moe.myfamilybudget.persistence.entity.PlacementEntity;
+import com.moe.myfamilybudget.persistence.entity.PlacementHistoryEntryEntity;
+import com.moe.myfamilybudget.persistence.entity.RealEstateEntity;
+import com.moe.myfamilybudget.persistence.entity.SettingsEntity;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.persistence.entity.*;
-
-import java.util.List;
-import java.util.stream.Collectors;
-import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
-import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
-import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
-import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
-import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 
 public class EntityModelConverter {
 
@@ -60,68 +59,6 @@ public class EntityModelConverter {
             entity.getCashCeiling(),
             entity.getCashFloor(),
             entity.getCashAlertThreshold()
-        );
-    }
-
-    // Income conversions
-    public static IncomeEntity toEntity(IncomeModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        IncomeEntity entity = new IncomeEntity(
-            model.id(),
-            model.label(),
-            model.monthly(),
-            model.start(),
-            model.end(),
-            model.growthRate(),
-            model.categoryId(),
-            model.notes()
-        );
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static IncomeModel toModel(IncomeEntity entity) {
-        if (entity == null) return null;
-        return new IncomeModel(
-            entity.getUid(),
-            entity.getLabel(),
-            entity.getMonthly(),
-            entity.getStart(),
-            entity.getEnd(),
-            entity.getGrowthRate(),
-            entity.getCategoryId(),
-            entity.getNotes()
-        );
-    }
-
-    // Charge conversions
-    public static ChargeEntity toEntity(ChargeModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        ChargeEntity entity = new ChargeEntity(
-            model.id(),
-            model.label(),
-            model.monthly(),
-            model.start(),
-            model.end(),
-            model.growthRate(),
-            model.categoryId(),
-            model.notes()
-        );
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static ChargeModel toModel(ChargeEntity entity) {
-        if (entity == null) return null;
-        return new ChargeModel(
-            entity.getUid(),
-            entity.getLabel(),
-            entity.getMonthly(),
-            entity.getStart(),
-            entity.getEnd(),
-            entity.getGrowthRate(),
-            entity.getCategoryId(),
-            entity.getNotes()
         );
     }
 
@@ -239,116 +176,6 @@ public class EntityModelConverter {
         );
     }
 
-    // OneOffExpense conversions
-    public static OneOffExpenseEntity toEntity(OneOffExpenseModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        OneOffExpenseEntity entity = new OneOffExpenseEntity(
-            model.id(),
-            model.label(),
-            model.date(),
-            model.amount(),
-            model.notes()
-        );
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static OneOffExpenseModel toModel(OneOffExpenseEntity entity) {
-        if (entity == null) return null;
-        return new OneOffExpenseModel(
-            entity.getUid(),
-            entity.getLabel(),
-            entity.getDate(),
-            entity.getAmount(),
-            entity.getNotes()
-        );
-    }
-
-    // Transfer conversions
-    public static TransferEntity toEntity(TransferModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        TransferEntity entity = new TransferEntity(
-            model.id(),
-            model.placement(),
-            model.date(),
-            model.amount(),
-            model.notes()
-        );
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static TransferModel toModel(TransferEntity entity) {
-        if (entity == null) return null;
-        return new TransferModel(
-            entity.getUid(),
-            entity.getPlacement(),
-            entity.getDate(),
-            entity.getAmount(),
-            entity.getNotes()
-        );
-    }
-
-    // VariableIncome conversions
-    public static VariableIncomeEntity toEntity(VariableIncomeModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        VariableIncomeEntity entity = new VariableIncomeEntity(
-            model.id(),
-            model.label(),
-            model.refIncomeLabel(),
-            model.rate(),
-            model.startYear(),
-            model.endYear(),
-            model.taxable()
-        );
-        entity.setType(model.type());
-        entity.setNotes(model.notes());
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static VariableIncomeModel toModel(VariableIncomeEntity entity) {
-        if (entity == null) return null;
-        return new VariableIncomeModel(
-            entity.getUid(),
-            entity.getLabel(),
-            entity.getRefIncomeLabel(),
-            entity.getRate(),
-            entity.getStartYear(),
-            entity.getEndYear(),
-            entity.getTaxable(),
-            entity.getType(),
-            entity.getNotes()
-        );
-    }
-
-    // VariableOverride conversions
-    public static VariableOverrideEntity toEntity(VariableOverrideModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        VariableOverrideEntity entity = new VariableOverrideEntity(
-            model.id(),
-            model.label(),
-            model.year(),
-            model.amount(),
-            model.taxable()
-        );
-        entity.setNotes(model.notes());
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static VariableOverrideModel toModel(VariableOverrideEntity entity) {
-        if (entity == null) return null;
-        return new VariableOverrideModel(
-            entity.getUid(),
-            entity.getLabel(),
-            entity.getYear(),
-            entity.getAmount(),
-            entity.getTaxable(),
-            entity.getNotes()
-        );
-    }
-
     // AssetCategory conversions
     public static AssetCategoryEntity toEntity(AssetCategoryModel model, BudgetDataEntity budgetData) {
         if (model == null) return null;
@@ -392,8 +219,8 @@ public class EntityModelConverter {
         
         return new BudgetDataModel(
             toModel(entity.getSettings()),
-            entity.getIncomes().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            entity.getCharges().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
+            List.of(), // revenus - lus depuis cashflow_income (SILO-216)
+            List.of(), // charges - lues depuis cashflow_charge (SILO-216)
             entity.getPlacements().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             entity.getRealEstate().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             null, // Retirement - lue depuis les tables autonomes pension_* (DB-1100)
@@ -401,10 +228,10 @@ public class EntityModelConverter {
             List.of(),
             List.of(),
             List.of(),
-            entity.getOneoff().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            entity.getTransfers().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            entity.getVariableIncomes().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            entity.getVariableOverrides().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
+            List.of(), // oneoff - lus depuis cashflow_oneoff (SILO-216)
+            List.of(), // transfers - lus depuis cashflow_transfer (SILO-216, DA-14)
+            List.of(), // variableIncomes - lus depuis cashflow_variable_income (SILO-216)
+            List.of(), // variableOverrides - lus depuis cashflow_variable_override (SILO-216)
             null, // BankImport - handled separately due to JSON serialization
             entity.getAssetCategories().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
             List.of(), // prets - lus depuis la table autonome credit_loan (SILO-214)

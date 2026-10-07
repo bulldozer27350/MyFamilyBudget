@@ -44,4 +44,15 @@ class NotificationBudgetMutationListenerTest {
 
         verify(checkService).runAutomaticCheck();
     }
+
+    @Test
+    @DisplayName("Mutation de la trésorerie : le contrôle automatique est lancé")
+    void treasuryMutationTriggersAutomaticCheck() {
+        NotificationCheckService checkService = mock(NotificationCheckService.class);
+
+        new NotificationBudgetMutationListener(checkService)
+                .onTreasuryMutated(new com.moe.myfamilybudget.domain.treasury.model.TreasuryMutatedEvent("addTresorerieRow"));
+
+        verify(checkService).runAutomaticCheck();
+    }
 }

@@ -15,9 +15,9 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.ApplicationContext;
 
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
-import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
-import com.moe.myfamilybudget.persistence.repository.IncomeRepository;
+import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanEntityMapper;
 import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
@@ -40,7 +40,7 @@ class BudgetPersistenceGatewayRepeatedSaveTest {
     private TestEntityManager em;
 
     @Autowired
-    private IncomeRepository incomeRepository;
+    private PlacementRepository placementRepository;
 
     @Autowired
     private BudgetDataRepository budgetDataRepository;
@@ -56,28 +56,28 @@ class BudgetPersistenceGatewayRepeatedSaveTest {
         return (BudgetPersistenceGateway) constructor.newInstance(args);
     }
 
-    private static BudgetDataModel modelWithIncomes(String... ids) {
+    private static BudgetDataModel modelWithPlacements(String... ids) {
         BudgetDataModel base = new BudgetCacheStore(null, null).createDefaultBudgetData();
-        List<IncomeModel> incomes = Arrays.stream(ids)
-                .map(id -> new IncomeModel(id, "Salaire", new BigDecimal("3000"), "2026-01-01", "2053-12-31",
-                        new BigDecimal("0.01"), "", ""))
+        List<PlacementModel> placements = Arrays.stream(ids)
+                .map(id -> new PlacementModel(id, "Livret A", "Épargne", new BigDecimal("1000"), "2026-01-01",
+                        BigDecimal.ZERO, "2026-01-01", "2053-12-31", BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, false, ""))
                 .toList();
-        return base.withIncomes(incomes);
+        return base.withPlacements(placements);
     }
 
     @Test
-    @DisplayName("Deux save successifs avec des revenus dans la meme transaction : pas d'exception, une seule ligne")
+    @DisplayName("Deux save successifs avec des placements dans la meme transaction : pas d'exception, une seule ligne")
     void successiveSavesInOneTransaction() throws Exception {
         BudgetPersistenceGateway gateway = gateway();
 
-        gateway.save(modelWithIncomes("inc_1"));
-        gateway.save(modelWithIncomes("inc_1"));
-        gateway.save(modelWithIncomes("inc_1", "inc_2"));
+        gateway.save(modelWithPlacements("plc_1"));
+        gateway.save(modelWithPlacements("plc_1"));
+        gateway.save(modelWithPlacements("plc_1", "plc_2"));
         em.flush();
         em.clear();
 
         assertThat(budgetDataRepository.count()).isEqualTo(1);
-        assertThat(incomeRepository.count()).isEqualTo(2);
+        assertThat(placementRepository.count()).isEqualTo(2);
     }
 
     @Test
@@ -85,14 +85,14 @@ class BudgetPersistenceGatewayRepeatedSaveTest {
     void saveDeleteAllSaveInOneTransaction() throws Exception {
         BudgetPersistenceGateway gateway = gateway();
 
-        gateway.save(modelWithIncomes("inc_1"));
+        gateway.save(modelWithPlacements("plc_1"));
         gateway.deleteAll();
-        gateway.save(modelWithIncomes("inc_1"));
+        gateway.save(modelWithPlacements("plc_1"));
         em.flush();
         em.clear();
 
         assertThat(budgetDataRepository.count()).isEqualTo(1);
-        assertThat(incomeRepository.count()).isEqualTo(1);
+        assertThat(placementRepository.count()).isEqualTo(1);
     }
 
     private static LoanModel loan(String id) {
@@ -108,9 +108,9 @@ class BudgetPersistenceGatewayRepeatedSaveTest {
         em.flush();
         em.clear();
 
-        gateway.save(modelWithIncomes("inc_1").withLoans(List.of(loan("loan_cache_1"))));
-        gateway.save(modelWithIncomes("inc_1").withLoans(List.of(loan("loan_cache_1"), loan("loan_cache_2"))));
-        gateway.save(modelWithIncomes("inc_1"));
+        gateway.save(modelWithPlacements("plc_1").withLoans(List.of(loan("loan_cache_1"))));
+        gateway.save(modelWithPlacements("plc_1").withLoans(List.of(loan("loan_cache_1"), loan("loan_cache_2"))));
+        gateway.save(modelWithPlacements("plc_1"));
         em.flush();
         em.clear();
 
