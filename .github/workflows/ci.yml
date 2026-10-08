@@ -1,0 +1,85 @@
+name: CI
+
+# Integration continue des branches de travail : compile et lance tous les tests
+# (backend Java, smoke test JS, e2e Playwright) a chaque push sur une branche
+# AUTRE que main. Aucune publication d'image Docker ici : le deploiement reste
+# dans ci-cd.yml, qui ne se declenche que sur main.
+
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & tests (backend + JS + e2e)
+    runs-on: ubuntu-latest
+    # PostgreSQL pour la variante PostgreSQL de RestartPersistenceTest (VT-320).
+    # Les autres tests backend restent sur H2.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: myfamilybudget
+          POSTGRES_USER: myfamilybudget
+          POSTGRES_PASSWORD: myfamilybudget
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U myfamilybudget -d myfamilybudget"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          # Glob : plus besoin de lister chaque module Maven a la main.
+          cache-dependency-path: back/**/pom.xml
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install JS dependencies
+        run: bun install
+
+      - name: Backend unit tests (mvn test)
+        env:
+          MFB_TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/myfamilybudget
+          MFB_TEST_POSTGRES_USER: myfamilybudget
+          MFB_TEST_POSTGRES_PASSWORD: myfamilybudget
+        run: mvn -f back/pom.xml -B -pl server -am test
+
+      - name: Gate VT-600 (aucun test ignore ou desactive)
+        run: node tests/gate/check-gate.js all
+
+      - name: JS smoke test (test-all-apis.js)
+        run: bun run test
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+
+      - name: End-to-end tests (Playwright)
+        run: bun run test:e2e
+
+      - name: Upload Playwright report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/e2e/report
+          retention-days: 7
