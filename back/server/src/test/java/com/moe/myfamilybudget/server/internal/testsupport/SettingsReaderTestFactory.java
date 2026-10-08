@@ -6,7 +6,8 @@ import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 
 /**
  * SILO-100 (lot B) : {@code SettingsReader} de test, composé comme en production par
- * {@link SettingsModelAssembler} à partir des lectures par propriétaire de {@link SettingsPersistenceAdapter}.
+ * {@link SettingsModelAssembler} à partir des lectures par propriétaire de {@link SettingsPersistenceAdapter} (R-50 :
+ * simulation et hypothèses économiques viennent de {@link CacheBackedAppSettings}).
  */
 public final class SettingsReaderTestFactory {
 
@@ -15,6 +16,7 @@ public final class SettingsReaderTestFactory {
 
     public static SettingsModelAssembler of(PersistenceManager persistenceManager) {
         SettingsPersistenceAdapter adapter = new SettingsPersistenceAdapter(persistenceManager);
-        return new SettingsModelAssembler(adapter, adapter, adapter, adapter, adapter);
+        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        return new SettingsModelAssembler(adapter, adapter, adapter, appSettings, appSettings);
     }
 }

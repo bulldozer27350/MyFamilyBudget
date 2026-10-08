@@ -22,9 +22,7 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
-import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 
 /**
  * SILO-119 (lot B1) -- Chaque silo remplace et réinitialise uniquement ses propres données : les ports
@@ -41,8 +39,6 @@ class SnapshotFragmentWritersTest {
     private InMemoryLoanStore loans;
     private InMemoryGoalStore goals;
     private InMemoryBankStore bank;
-    private SimulationSettingsSnapshotAdapter simulation;
-    private EconomicAssumptionsSnapshotAdapter economic;
 
     @BeforeEach
     void setUp() {
@@ -55,8 +51,6 @@ class SnapshotFragmentWritersTest {
         loans = new InMemoryLoanStore();
         goals = new InMemoryGoalStore();
         bank = new InMemoryBankStore();
-        simulation = new SimulationSettingsSnapshotAdapter(persistenceManager);
-        economic = new EconomicAssumptionsSnapshotAdapter(persistenceManager);
     }
 
     private SettingsModel settings() {
@@ -137,28 +131,6 @@ class SnapshotFragmentWritersTest {
         assertThat(settings().cashFloor()).isNull();
         assertThat(settings().cashAlertThreshold()).isNull();
         assertThat(settings().birthYear()).isEqualTo(1985);
-    }
-
-    @Test
-    @DisplayName("Simulation et hypothèses économiques : replace, replace(null) = défaut, reset")
-    void simulationAndEconomicAssumptionsAreIsolated() {
-        simulation.replace(new SimulationSettingsModel(90));
-        economic.replace(new EconomicAssumptionsModel(new BigDecimal("0.03")));
-
-        assertThat(settings().simulateUntilAge()).isEqualTo(90);
-        assertThat(settings().inflationRate()).isEqualByComparingTo("0.03");
-
-        simulation.replace(null);
-        assertThat(settings().simulateUntilAge()).isEqualTo(85);
-        assertThat(settings().inflationRate()).isEqualByComparingTo("0.03");
-
-        economic.reset();
-        assertThat(settings().inflationRate()).isEqualByComparingTo("0.02");
-        assertThat(settings().simulateUntilAge()).isEqualTo(85);
-
-        simulation.replace(new SimulationSettingsModel(95));
-        simulation.reset();
-        assertThat(settings().simulateUntilAge()).isEqualTo(85);
     }
 
     @Test

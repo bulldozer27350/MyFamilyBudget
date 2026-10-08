@@ -32,7 +32,6 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableO
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
-import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
 
 import jakarta.annotation.PostConstruct;
 
@@ -141,7 +140,6 @@ public class PersistenceManager {
                             PensionSettingsRepository pensionSettingsRepository,
                             FiscalSettingsRepository fiscalSettingsRepository,
                             CashflowSettingsRepository cashflowSettingsRepository,
-                            AppSettingsRepository appSettingsRepository,
                             PlatformTransactionManager transactionManager,
                             ApplicationEventPublisher eventPublisher) {
         this.budgetDataRepository = budgetDataRepository;
@@ -183,8 +181,7 @@ public class PersistenceManager {
                 wealthCategoryRepository, cashflowIncomeRepository, cashflowChargeRepository,
                 cashflowOneOffRepository, cashflowTransferRepository, cashflowVariableIncomeRepository,
                 cashflowVariableOverrideRepository,
-                pensionSettingsRepository, fiscalSettingsRepository, cashflowSettingsRepository,
-                appSettingsRepository);
+                pensionSettingsRepository, fiscalSettingsRepository, cashflowSettingsRepository);
         this.cacheStore = new BudgetCacheStore(this.gateway, this.transactionTemplate);
         this.mutationService = new BudgetMutationService(this.cacheStore);
         this.eventPublisher = eventPublisher;

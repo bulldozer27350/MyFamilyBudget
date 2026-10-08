@@ -70,8 +70,7 @@ class ParametersServiceImplLockTest {
 
         service.saveSettings(Map.of("settings", settings));
 
-        verify(lock).lockForCurrentTransaction(EnumSet.of(MutationSilo.RETIREMENT, MutationSilo.SIMULATION,
-                MutationSilo.ECONOMIC_ASSUMPTIONS));
+        verify(lock).lockForCurrentTransaction(EnumSet.of(MutationSilo.RETIREMENT, MutationSilo.SETTINGS));
     }
 
     @Test

@@ -48,10 +48,6 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsMapper;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsMapper;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
-import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsMapper;
-import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
-import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
-import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
@@ -138,12 +134,12 @@ class BudgetPersistenceGateway {
     private final CashflowTransferRepository cashflowTransferRepository;
     private final CashflowVariableIncomeRepository cashflowVariableIncomeRepository;
     private final CashflowVariableOverrideRepository cashflowVariableOverrideRepository;
-    // SILO-220 (lot B) : tables de parametres chez leurs proprietaires (Retraite, Fiscalite, Tresorerie,
-    // Parametres), alimentees en parallele de `settings` (meme principe que goalRepository avant SILO-212).
+    // SILO-220 (lot B) : tables de parametres chez leurs proprietaires (Retraite, Fiscalite, Tresorerie),
+    // alimentees en parallele de `settings` (meme principe que goalRepository avant SILO-212). R-50 : la table du
+    // silo Parametres (`app_settings`) n'est plus alimentee ici, elle est ecrite directement par son silo.
     private final PensionSettingsRepository pensionSettingsRepository;
     private final FiscalSettingsRepository fiscalSettingsRepository;
     private final CashflowSettingsRepository cashflowSettingsRepository;
-    private final AppSettingsRepository appSettingsRepository;
 
     BudgetPersistenceGateway(BudgetDataRepository budgetDataRepository,
                               IncomeRepository incomeRepository,
@@ -173,8 +169,7 @@ class BudgetPersistenceGateway {
                               CashflowVariableOverrideRepository cashflowVariableOverrideRepository,
                               PensionSettingsRepository pensionSettingsRepository,
                               FiscalSettingsRepository fiscalSettingsRepository,
-                              CashflowSettingsRepository cashflowSettingsRepository,
-                              AppSettingsRepository appSettingsRepository) {
+                              CashflowSettingsRepository cashflowSettingsRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.incomeRepository = incomeRepository;
         this.chargeRepository = chargeRepository;
@@ -204,7 +199,6 @@ class BudgetPersistenceGateway {
         this.pensionSettingsRepository = pensionSettingsRepository;
         this.fiscalSettingsRepository = fiscalSettingsRepository;
         this.cashflowSettingsRepository = cashflowSettingsRepository;
-        this.appSettingsRepository = appSettingsRepository;
     }
 
     /**
@@ -265,7 +259,7 @@ class BudgetPersistenceGateway {
             // DB-1061 : idem pour les tables Tresorerie.
             syncCashflow(loaded);
             // SILO-220 (lot B) : migration des parametres de `settings` vers les tables des proprietaires
-            // (idempotente : les quatre tables sont remplacees par l'etat du hub a chaque demarrage).
+            // (idempotente : les trois tables sont remplacees par l'etat du hub a chaque demarrage).
             syncSettings(loaded);
         }
         return loaded;
@@ -408,8 +402,8 @@ class BudgetPersistenceGateway {
     }
 
     /**
-     * SILO-220 (lot B) : remplace le contenu des quatre tables de parametres des proprietaires
-     * ({@code pension_settings}, {@code fiscal_settings}, {@code cashflow_settings}, {@code app_settings}) par les
+     * SILO-220 (lot B) : remplace le contenu des trois tables de parametres des proprietaires
+     * ({@code pension_settings}, {@code fiscal_settings}, {@code cashflow_settings}) par les
      * parametres <em>effectifs</em> du modele, dans la transaction de l'appelant ({@code flush} apres les
      * suppressions, comme les autres synchronisations). Appele au chargement (migration des donnees de la table
      * {@code settings}, qui reste la source) et a chaque sauvegarde (double ecriture). Les valeurs par defaut de
@@ -421,11 +415,9 @@ class BudgetPersistenceGateway {
         pensionSettingsRepository.deleteAll();
         fiscalSettingsRepository.deleteAll();
         cashflowSettingsRepository.deleteAll();
-        appSettingsRepository.deleteAll();
         pensionSettingsRepository.flush();
         fiscalSettingsRepository.flush();
         cashflowSettingsRepository.flush();
-        appSettingsRepository.flush();
         pensionSettingsRepository.save(PensionSettingsMapper.toEntity(
                 new RetirementSettingsModel(s.birthYear(), s.retireAge())));
         fiscalSettingsRepository.save(FiscalSettingsMapper.toEntity(
@@ -433,9 +425,6 @@ class BudgetPersistenceGateway {
         cashflowSettingsRepository.save(CashflowSettingsMapper.toEntity(
                 new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
                         s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold())));
-        appSettingsRepository.save(AppSettingsMapper.toEntity(
-                new SimulationSettingsModel(s.simulateUntilAge()),
-                new EconomicAssumptionsModel(s.inflationRate())));
     }
 
     /**

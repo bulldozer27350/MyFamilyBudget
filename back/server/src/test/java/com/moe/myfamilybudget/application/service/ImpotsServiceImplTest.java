@@ -31,6 +31,7 @@ import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
 import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
+import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsCommandRouterTestFactory;
 
@@ -48,6 +49,7 @@ class ImpotsServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
+        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         service = new ImpotsServiceImpl(
                 mapper,
                 new RetirementInputFactory(),
@@ -60,8 +62,8 @@ class ImpotsServiceImplTest {
                 settingsAdapter,
                 settingsAdapter,
                 settingsAdapter,
-                settingsAdapter,
-                settingsAdapter,
+                appSettings,
+                appSettings,
                 new TaxPersistenceAdapter(persistenceManager),
                 new BudgetPersistenceAdapter(persistenceManager),
                 new PatrimoinePersistenceAdapter(persistenceManager),

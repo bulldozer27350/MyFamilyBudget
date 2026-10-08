@@ -46,8 +46,7 @@ et de redémarrage sur PostgreSQL.
 | R-41 | Retraite, lot B2 : tests | R-40 | R-71 | À faire | | | SILO-210 B2 |
 | R-42 | Fiscalité, lot B : écriture directe des enfants, barème, surcharges et de `fiscal_settings` (âge de sortie des enfants, abattement), retrait de `TaxPersistenceAdapter`, de `syncFiscal` et de sa part de `syncSettings` (DA-05) | — | R-43, R-51, R-60 | À faire | | | SILO-211 B |
 | R-43 | Fiscalité, lot B2 : tests | R-42 | R-71 | À faire | | | SILO-211 B2 |
-| R-50 | Paramètres, lot B : `simulateUntilAge` et `inflationRate` lus et écrits directement dans `app_settings` par `settings-core` (DA-06) ; les adaptateurs `SimulationSettingsSnapshotAdapter` et `EconomicAssumptionsSnapshotAdapter` quittent `persistence` | — | R-51 | À faire | | | SILO-220 B |
-| R-51 | Retirer `SettingsEntity`, `SettingsPersistenceAdapter`, `SettingsRepository` et `syncSettings` ; script Liquibase : copie du PASS vers `pension_plan` là où il est vide, puis suppression des 15 colonnes (DA-15) | R-01, R-21, R-40, R-42, R-50 | R-61 | À faire | | | SILO-220 B2 |
+| R-51 | Retirer `SettingsEntity`, `SettingsPersistenceAdapter`, `SettingsRepository` et `syncSettings` ; script Liquibase : copie du PASS vers `pension_plan` là où il est vide, puis suppression des 15 colonnes (DA-15) | R-01, R-21, R-40, R-42 | R-61 | À faire | | | SILO-220 B2 |
 | R-52 | Retirer `SettingsReader`, `SettingsModelAssembler` et `SettingsModel` des 12 fichiers d'`application` : le bloc `settings` des réponses REST est composé à partir des ports des propriétaires (DA-12) | — | R-61 | À faire | | | SILO-100 (solde), SILO-120 (reste) |
 | R-60 | Retirer `GlobalCacheLockRelay` et `BudgetCacheStore.mutationLock` : plus aucune écriture ne passe par le modèle complet | R-20, R-30, R-40, R-42 | R-61 | À faire | | | SILO-206 B |
 | R-61 | Supprimer le hub et le modèle global : `BudgetDataEntity`, entités legacy, `BudgetCacheStore`, `PersistenceManager`, `BudgetMutationService`, `BudgetPersistenceGateway`, `EntityModelConverter`, `DomainMutations`, `LegacyObjectifAllocationMigrator` (DA-04), `BudgetDataModel` et le module `transition-snapshot`, fixtures de tests comprises ; script Liquibase de suppression des tables legacy | R-01, R-51, R-52, R-60 | R-70 | À faire | | | SILO-230, DB-1170 à DB-1190 |
@@ -92,7 +91,7 @@ et de redémarrage sur PostgreSQL.
 ## 4. Parallélisation et points ouverts
 
 **Lancer en parallèle dès maintenant** : R-01 (hors chemin critique des lots B, mais bloque R-51 et R-61), R-02, R-11, R-20, R-40
-(déjà en cours), R-42, R-50, R-52, V-01. Les lots B de silos distincts ne partagent pas de table, mais ils modifient tous
+(déjà en cours), R-52, R-72, V-01. Les lots B de silos distincts ne partagent pas de table, mais ils modifient tous
 `BudgetPersistenceGateway`, `PersistenceManager`, `BudgetMutationService` et `DomainMutations` : prévoir des conflits de fusion et
 fusionner un lot à la fois, CI verte avant le suivant (DA-07).
 

@@ -9,30 +9,23 @@ import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
-import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
-import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsWriter;
-import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
-import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsWriter;
 
 /**
- * Adaptateur de persistance pour {@link SettingsReader} (RF-B00), {@link SimulationSettingsWriter} et
- * {@link EconomicAssumptionsWriter} (SET-020). Le stockage physique reste {@code SettingsEntity} pour tout
- * sauf les paramètres Objectifs ; sa séparation relève des patchs DB-xxx.
+ * Adaptateur de persistance pour les lectures de paramètres par propriétaire (RF-B00) : {@link RetirementSettingsReader},
+ * {@link TaxSettingsReader} et {@link TresorerieSettingsReader}. Le stockage physique reste {@code SettingsEntity}
+ * pour ces trois propriétaires ; leur séparation relève des lots B de Retraite, Fiscalité et Trésorerie (R-40,
+ * R-42, R-21).
  *
- * <p>SILO-100 : l'adaptateur n'implémente plus {@code SettingsReader} ; il expose les paramètres par
- * propriétaire ({@link RetirementSettingsReader}, {@link TaxSettingsReader}, {@link TresorerieSettingsReader},
- * {@link SimulationSettingsReader}, {@link EconomicAssumptionsReader}). Le {@code SettingsModel} global est
- * recomposé côté application ({@code SettingsModelAssembler}). L'adaptateur reste le seul lecteur du cache
- * jusqu'à SILO-220 (stockage chez les propriétaires) ; {@link #getSettings()} ne sert plus qu'à ces
- * projections et aux tests.
+ * <p>R-50 : la simulation ({@code simulateUntilAge}) et les hypothèses économiques ({@code inflationRate}) ne passent
+ * plus par cet adaptateur ; le silo Paramètres les lit et les écrit directement dans {@code app_settings}
+ * ({@code JpaAppSettingsStore}). Le {@code SettingsModel} global est recomposé côté application
+ * ({@code SettingsModelAssembler}). L'adaptateur reste un lecteur du cache pour les trois propriétaires restants ;
+ * {@link #getSettings()} ne sert plus qu'à ces projections et aux tests.
  */
 @Component
 public class SettingsPersistenceAdapter
-        implements RetirementSettingsReader, TaxSettingsReader, TresorerieSettingsReader,
-        SimulationSettingsReader, EconomicAssumptionsReader, SimulationSettingsWriter, EconomicAssumptionsWriter {
+        implements RetirementSettingsReader, TaxSettingsReader, TresorerieSettingsReader {
 
     private final PersistenceManager persistenceManager;
 
@@ -61,25 +54,5 @@ public class SettingsPersistenceAdapter
         SettingsModel s = getSettings();
         return new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
                 s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
-    }
-
-    @Override
-    public SimulationSettingsModel getSimulationSettings() {
-        return new SimulationSettingsModel(getSettings().simulateUntilAge());
-    }
-
-    @Override
-    public EconomicAssumptionsModel getEconomicAssumptions() {
-        return new EconomicAssumptionsModel(getSettings().inflationRate());
-    }
-
-    @Override
-    public void updateSimulateUntilAge(Object value) {
-        persistenceManager.write(m -> m.updateSimulateUntilAge(value));
-    }
-
-    @Override
-    public void updateInflationRate(Object value) {
-        persistenceManager.write(m -> m.updateInflationRate(value));
     }
 }

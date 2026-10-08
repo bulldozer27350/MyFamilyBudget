@@ -34,7 +34,6 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableO
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
-import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
 import com.moe.myfamilybudget.persistence.repository.ChargeRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
@@ -103,7 +102,6 @@ class UpdateTaxSettingsMinimalBudgetTest {
                 mock(PensionSettingsRepository.class),
                 mock(FiscalSettingsRepository.class),
                 mock(CashflowSettingsRepository.class),
-                mock(AppSettingsRepository.class),
                 mock(PlatformTransactionManager.class),
                 mock(ApplicationEventPublisher.class));
         persistenceManager.init();
@@ -200,10 +198,6 @@ class UpdateTaxSettingsMinimalBudgetTest {
         update("pivotMode", "manual");
         assertThat(settings().pivotMode()).isEqualTo("manual");
         assertThat(settings().childExitAge()).isEqualTo(25);
-
-        update("simulateUntilAge", 90);
-        assertThat(settings().simulateUntilAge()).isEqualTo(90);
-        assertThat(settings().pivotMode()).isEqualTo("manual");
     }
 
     @Test
@@ -260,12 +254,6 @@ class UpdateTaxSettingsMinimalBudgetTest {
                 f -> persistenceManager.write(m -> m.updateTresorerieSetting(f, value)));
         TaxSettingField.find(field).ifPresent(
                 f -> persistenceManager.write(m -> m.updateFiscalSetting(f, value)));
-        if ("simulateUntilAge".equals(field)) {
-            persistenceManager.write(m -> m.updateSimulateUntilAge(value));
-        }
-        if ("inflationRate".equals(field)) {
-            persistenceManager.write(m -> m.updateInflationRate(value));
-        }
     }
 
     private SettingsModel settings() {

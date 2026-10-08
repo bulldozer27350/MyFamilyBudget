@@ -41,8 +41,9 @@ import com.moe.myfamilybudget.transition.port.BudgetReader;
  * {@link PersistenceManager}. Complete {@code ReaderPersistenceBoundaryArchTest}, qui garde la frontiere
  * statiquement.
  *
- * <p>Seul {@code SettingsPersistenceAdapter} lit encore le cache : les parametres restent stockes dans le hub
- * jusqu'a la separation de leur stockage.
+ * <p>Seul {@code SettingsPersistenceAdapter} lit encore le cache : les parametres Retraite, Fiscalite et Tresorerie
+ * restent stockes dans le hub jusqu'a leurs lots B (R-40, R-42, R-21). La simulation et les hypotheses economiques
+ * sont lues dans leur table autonome (R-50).
  *
  * <p>Base H2 dediee, pour ne pas partager d'etat avec les autres contextes de test.
  */
