@@ -126,6 +126,10 @@ class WriteFailureKeepsMemoryTest {
         // Etat de reference non trivial, ecrit alors que la base fonctionne.
         persistenceManager.write(m -> m.savePatrimoineRow("placements",
                 Map.of("id", "plc_seed", "label", "Livret", "balance", new BigDecimal("1000"))));
+        // Deux placements : les mutations qui en suppriment un doivent encore en ecrire un autre, sinon elles
+        // n'atteignent jamais l'ecriture des lignes enfants (placementRepository.save).
+        persistenceManager.write(m -> m.savePatrimoineRow("placements",
+                Map.of("id", "plc_other", "label", "PEA", "balance", new BigDecimal("400"))));
         persistenceManager.write(m -> m.updateRetirement(RETIREMENT_BEFORE));
 
         before = persistenceManager.getBudgetData();
@@ -200,7 +204,7 @@ class WriteFailureKeepsMemoryTest {
     // OUTILLAGE
     // =========================================================================
 
-    /** Mutations qui laissent au moins un placement en base : elles atteignent toutes l'ecriture des lignes enfants. */
+    /** Mutations qui laissent au moins un placement en base (plc_other) : elles atteignent toutes l'ecriture des lignes enfants. */
     private Map<String, Runnable> mutationsKeepingIncomes() {
         Map<String, Runnable> mutations = new LinkedHashMap<>();
         mutations.put("savePatrimoineRow", () -> persistenceManager.write(m -> m.savePatrimoineRow("placements",
@@ -215,7 +219,7 @@ class WriteFailureKeepsMemoryTest {
         mutations.put("addAssetCategory", () -> persistenceManager.write(m -> m.addAssetCategory(
                 new AssetCategoryModel("cat_new", "icon", "Nouvelle categorie", "bucket", "#ffffff"))));
         mutations.put("setBudgetData", () -> persistenceManager.setBudgetData(
-                before.withPlacements(List.of())));
+                before.withPlacements(before.getEffectivePlacements().subList(1, 2))));
         return mutations;
     }
 
@@ -236,7 +240,7 @@ class WriteFailureKeepsMemoryTest {
             assertThat(settingsAdapter.getSettings()).as(name).isEqualTo(settings);
         });
 
-        assertThat(placements).hasSize(1);
+        assertThat(placements).hasSize(2);
         // Aucune mutation en echec ne doit avoir declenche de controle des notifications.
         verifyNoInteractions(eventPublisher);
     }

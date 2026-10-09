@@ -61,6 +61,10 @@ class BusinessLogicIntegrationTest {
     @Autowired
     private PersistenceManager persistenceManager;
 
+    // R-20 : les lignes de tresorerie importees vivent dans le silo Tresorerie (store Spring), pas dans le cache.
+    @Autowired
+    private com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore treasuryStore;
+
     private static String mockBudgetJson;
 
     @BeforeEach
@@ -400,7 +404,7 @@ class BusinessLogicIntegrationTest {
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
-                SettingsReaderTestFactory.of(persistenceManager), new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore(),
+                SettingsReaderTestFactory.of(persistenceManager), treasuryStore,
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
@@ -427,7 +431,7 @@ class BusinessLogicIntegrationTest {
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
-                SettingsReaderTestFactory.of(persistenceManager), new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore(),
+                SettingsReaderTestFactory.of(persistenceManager), treasuryStore,
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
@@ -449,7 +453,7 @@ class BusinessLogicIntegrationTest {
         RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
-                SettingsReaderTestFactory.of(persistenceManager), new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore(),
+                SettingsReaderTestFactory.of(persistenceManager), treasuryStore,
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
                 new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());

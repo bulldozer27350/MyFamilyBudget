@@ -29,7 +29,6 @@ import com.moe.myfamilybudget.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsMapper;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsMapper;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
@@ -37,7 +36,6 @@ import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettings
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
-import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
@@ -221,19 +219,16 @@ class BudgetPersistenceGateway {
 
     private void syncSettings(BudgetDataModel model) {
         SettingsModel s = model.getEffectiveSettings();
+        // R-20 : cashflow_settings appartient au silo Tresorerie (JpaTreasuryStore) ; le cache, perime pour
+        // ces champs, ne doit plus l'ecraser a chaque mutation d'un autre domaine.
         pensionSettingsRepository.deleteAll();
         fiscalSettingsRepository.deleteAll();
-        cashflowSettingsRepository.deleteAll();
         pensionSettingsRepository.flush();
         fiscalSettingsRepository.flush();
-        cashflowSettingsRepository.flush();
         pensionSettingsRepository.save(PensionSettingsMapper.toEntity(
                 new RetirementSettingsModel(s.birthYear(), s.retireAge())));
         fiscalSettingsRepository.save(FiscalSettingsMapper.toEntity(
                 new TaxSettingsModel(s.childExitAge(), s.taxAbattement())));
-        cashflowSettingsRepository.save(CashflowSettingsMapper.toEntity(
-                new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
-                        s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold())));
     }
 
     private BankImportModel loadBankImport() {

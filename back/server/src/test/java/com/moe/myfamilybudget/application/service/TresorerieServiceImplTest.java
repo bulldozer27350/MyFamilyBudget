@@ -389,14 +389,14 @@ class TresorerieServiceImplTest {
         UpdateTresorerieLigneRequestDto unknownField = new UpdateTresorerieLigneRequestDto();
         unknownField.setField("inconnu");
         unknownField.setValue("x");
-        assertThrows(com.moe.myfamilybudget.transition.error.UnknownTresorerieFieldException.class,
+        assertThrows(com.moe.myfamilybudget.domain.treasury.port.UnknownTresorerieFieldException.class,
                 () -> service.updateTresorerieLigne("charges", id, unknownField));
 
         // champ connu mais sans objet pour la liste visee : toujours refuse par les updaters
         UpdateTresorerieLigneRequestDto wrongList = new UpdateTresorerieLigneRequestDto();
         wrongList.setField("ratePess");
         wrongList.setValue(new BigDecimal("0.03"));
-        assertThrows(com.moe.myfamilybudget.transition.error.UnknownTresorerieFieldException.class,
+        assertThrows(com.moe.myfamilybudget.domain.treasury.port.UnknownTresorerieFieldException.class,
                 () -> service.updateTresorerieLigne("charges", id, wrongList));
 
         UpdateTresorerieLigneRequestDto ok = new UpdateTresorerieLigneRequestDto();

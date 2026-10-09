@@ -45,7 +45,9 @@ class InterSiloIntegrityCharacterizationTest {
     void setUp() {
         PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        patrimoine = new PatrimoinePersistenceAdapter(persistenceManager);
+        // R-20 / DA-14 : les virements vivent dans le silo Tresorerie ; Patrimoine ne les lit ni ne les ecrit sans lui.
+        patrimoine = new PatrimoinePersistenceAdapter(persistenceManager, null, null, null,
+                new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore().getDelegate());
         goals = new InMemoryGoalStore();
         goalCommands = new GoalCommandService(goals, goals, patrimoine, silos -> { },
                 RecordingTransactionRunner.direct());

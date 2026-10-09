@@ -106,6 +106,11 @@ class ConcurrentMutationsApiTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    // R-20 : les lignes de tresorerie ne vivent plus que dans les tables cashflow_* (silo Tresorerie), le cache
+    // du PersistenceManager ne les porte plus. Elles sont relues via le store du silo.
+    @Autowired
+    private com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore treasuryStore;
+
     private String datasetJson;
 
     @BeforeEach
@@ -114,7 +119,7 @@ class ConcurrentMutationsApiTest {
         mockMvc.perform(post("/api/v1/budget/import").contextPath("/api/v1")
                 .contentType(MediaType.APPLICATION_JSON).content(datasetJson))
                 .andExpect(status().isOk());
-        assertThat(chargeIds(persistenceManager.getBudgetData())).containsExactly("chg_1");
+        assertThat(chargeIds(memory())).containsExactly("chg_1");
     }
 
     @Test
@@ -137,7 +142,7 @@ class ConcurrentMutationsApiTest {
 
         List<String> expected = new ArrayList<>(createdIds);
         expected.add("chg_1");
-        assertThat(chargeIds(persistenceManager.getBudgetData())).containsExactlyInAnyOrderElementsOf(expected);
+        assertThat(chargeIds(memory())).containsExactlyInAnyOrderElementsOf(expected);
         assertThat(chargeIds(readDatabase())).containsExactlyInAnyOrderElementsOf(expected);
 
         MvcResult api = mockMvc.perform(get("/api/v1/tresorerie").contextPath("/api/v1"))
@@ -158,7 +163,7 @@ class ConcurrentMutationsApiTest {
 
         results.forEach(result -> assertThat(result.getResponse().getStatus()).isEqualTo(200));
 
-        for (BudgetDataModel state : List.of(persistenceManager.getBudgetData(), readDatabase())) {
+        for (BudgetDataModel state : List.of(memory(), readDatabase())) {
             ChargeModel charge = charge(state, "chg_1");
             assertThat(charge.label()).isEqualTo("Loyer revise");
             assertThat(charge.monthly()).isEqualByComparingTo("950");
@@ -174,7 +179,7 @@ class ConcurrentMutationsApiTest {
 
         results.forEach(result -> assertThat(result.getResponse().getStatus()).isEqualTo(200));
 
-        ChargeModel inMemory = charge(persistenceManager.getBudgetData(), "chg_1");
+        ChargeModel inMemory = charge(memory(), "chg_1");
         ChargeModel inDatabase = charge(readDatabase(), "chg_1");
         assertThat(inMemory.monthly().intValue()).isIn(950, 1000);
         assertThat(inDatabase.monthly()).isEqualByComparingTo(inMemory.monthly());
@@ -190,7 +195,7 @@ class ConcurrentMutationsApiTest {
 
         assertThat(results.get(0).getResponse().getStatus()).isEqualTo(200);
         assertThat(results.get(1).getResponse().getStatus()).isEqualTo(204);
-        assertThat(chargeIds(persistenceManager.getBudgetData())).isEmpty();
+        assertThat(chargeIds(memory())).isEmpty();
         assertThat(chargeIds(readDatabase())).isEmpty();
     }
 
@@ -206,7 +211,7 @@ class ConcurrentMutationsApiTest {
         String createdId = objectMapper.readTree(results.get(1).getResponse().getContentAsString()).path("id").asText();
 
         // creation puis import : l'import ecrase la creation ; import puis creation : les deux sont presentes.
-        List<String> memory = chargeIds(persistenceManager.getBudgetData());
+        List<String> memory = chargeIds(memory());
         assertThat(memory).isIn(List.of("chg_1"), List.of("chg_1", createdId));
         assertThat(chargeIds(readDatabase())).isEqualTo(memory);
     }
@@ -275,7 +280,27 @@ class ConcurrentMutationsApiTest {
                         .withObjectifs(GoalEntityMapper.toModels(
                                 goalRepository.findAllByOrderByPositionAsc()))
                         .withBankImport(BankImportDocumentMapper.toModel(
-                                bankImportDocumentRepository.findFirstByOrderByIdAsc().orElse(null))));
+                                bankImportDocumentRepository.findFirstByOrderByIdAsc().orElse(null)))
+                        .withIncomes(treasuryStore.getIncomes())
+                        .withCharges(treasuryStore.getCharges())
+                        .withOneoff(treasuryStore.getOneoffExpenses())
+                        .withVariableIncomes(treasuryStore.getVariableIncomes())
+                        .withVariableOverrides(treasuryStore.getVariableOverrides())
+                        .withTransfers(treasuryStore.getTransfers()));
+    }
+
+    /** Etat du cache (hors Tresorerie) complete par les lignes de tresorerie telles que le silo les stocke. */
+    private BudgetDataModel memory() {
+        return withTreasury(persistenceManager.getBudgetData());
+    }
+
+    private BudgetDataModel withTreasury(BudgetDataModel model) {
+        return model.withIncomes(treasuryStore.getIncomes())
+                .withCharges(treasuryStore.getCharges())
+                .withOneoff(treasuryStore.getOneoffExpenses())
+                .withVariableIncomes(treasuryStore.getVariableIncomes())
+                .withVariableOverrides(treasuryStore.getVariableOverrides())
+                .withTransfers(treasuryStore.getTransfers());
     }
 
     private static List<String> chargeIds(BudgetDataModel model) {

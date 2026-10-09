@@ -95,6 +95,11 @@ class MultiDomainAtomicityTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    // R-20 : les lignes de tresorerie ne vivent plus que dans les tables cashflow_* (silo Tresorerie), le cache
+    // du PersistenceManager ne les porte plus. Elles sont relues via le store du silo.
+    @Autowired
+    private com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore treasuryStore;
+
     @MockitoSpyBean
     private ObjectifsSettingsStore objectifsStore;
 
@@ -108,7 +113,7 @@ class MultiDomainAtomicityTest {
                 .andExpect(status().isOk());
         objectifsSettingsService.save(new ObjectifsParameters(12, 3));
 
-        memoryBefore = persistenceManager.getBudgetData();
+        memoryBefore = memory();
         databaseBefore = readDatabase();
         assertThat(memoryBefore.settings().retireAge()).isEqualTo(64);
         assertThat(ids(databaseBefore)).containsExactly("inc_1");
@@ -158,13 +163,13 @@ class MultiDomainAtomicityTest {
                 .content("{\"settings\": {\"retireAge\": 60, \"goalSecureHorizonMonths\": 24}}"))
                 .andExpect(status().isOk());
 
-        assertThat(persistenceManager.getBudgetData().settings().retireAge()).isEqualTo(60);
+        assertThat(memory().settings().retireAge()).isEqualTo(60);
         assertThat(readDatabase().settings().retireAge()).isEqualTo(60);
         assertThat(objectifsSettingsService.current().secureHorizonMonths()).isEqualTo(24);
     }
 
     private void assertStateUnchanged() {
-        assertThat(persistenceManager.getBudgetData()).isEqualTo(memoryBefore);
+        assertThat(memory()).isEqualTo(memoryBefore);
         assertThat(readDatabase()).isEqualTo(databaseBefore);
         assertThat(objectifsSettingsService.current()).isEqualTo(new ObjectifsParameters(12, 3));
     }
@@ -186,7 +191,27 @@ class MultiDomainAtomicityTest {
                         .withObjectifs(GoalEntityMapper.toModels(
                                 goalRepository.findAllByOrderByPositionAsc()))
                         .withBankImport(BankImportDocumentMapper.toModel(
-                                bankImportDocumentRepository.findFirstByOrderByIdAsc().orElse(null))));
+                                bankImportDocumentRepository.findFirstByOrderByIdAsc().orElse(null)))
+                        .withIncomes(treasuryStore.getIncomes())
+                        .withCharges(treasuryStore.getCharges())
+                        .withOneoff(treasuryStore.getOneoffExpenses())
+                        .withVariableIncomes(treasuryStore.getVariableIncomes())
+                        .withVariableOverrides(treasuryStore.getVariableOverrides())
+                        .withTransfers(treasuryStore.getTransfers()));
+    }
+
+    /** Etat du cache (hors Tresorerie) complete par les lignes de tresorerie telles que le silo les stocke. */
+    private BudgetDataModel memory() {
+        return withTreasury(persistenceManager.getBudgetData());
+    }
+
+    private BudgetDataModel withTreasury(BudgetDataModel model) {
+        return model.withIncomes(treasuryStore.getIncomes())
+                .withCharges(treasuryStore.getCharges())
+                .withOneoff(treasuryStore.getOneoffExpenses())
+                .withVariableIncomes(treasuryStore.getVariableIncomes())
+                .withVariableOverrides(treasuryStore.getVariableOverrides())
+                .withTransfers(treasuryStore.getTransfers());
     }
 
     private static List<String> ids(BudgetDataModel model) {

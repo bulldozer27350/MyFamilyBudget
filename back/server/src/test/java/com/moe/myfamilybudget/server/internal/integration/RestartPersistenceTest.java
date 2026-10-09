@@ -113,7 +113,13 @@ class RestartPersistenceTest {
             assertThat(incomeId).isNotBlank();
             api.put("/tresorerie/incomes/" + incomeId,
                     "{\"field\":\"label\",\"value\":\"" + NEW_INCOME_LABEL + "\"}", 200);
-            api.put("/tresorerie/placements/plc_1", "{\"field\":\"balance\",\"value\":12345}", 200);
+            // R-20 : les placements ne relevent plus du silo Tresorerie ; la ligne complete passe par Patrimoine.
+            api.post("/patrimoine/placements", """
+                    { "id": "plc_1", "label": "PEA", "category": "Actions", "balance": 12345,
+                      "balanceDate": "2026-01-01", "monthly": 200, "monthlyFrom": "2026-01-01",
+                      "monthlyUntil": "2053-12-31", "ratePess": 0.02, "rateCorr": 0.04, "rateOpti": 0.07,
+                      "excludedFromRetirement": false, "notes": "" }
+                    """, 200);
             api.put("/settings", "{\"settings\":{\"retireAge\":58,\"goalSecureHorizonMonths\":24}}", 200);
             applyDb011Mutations(api);
 

@@ -138,8 +138,10 @@ public class GlobalBudgetSnapshotService {
                 retirementWriter.replace(f.retirementSettings(), f.retirement());
                 taxWriter.replace(f.taxSettings(), f.taxChildren(), f.taxBrackets(), f.taxRateOverrides(),
                         f.taxActualOverrides());
+                // DA-14 : les virements appartiennent au silo Tresorerie, ils sont donc ecrits avec lui.
                 tresorerieWriter.replace(f.tresorerieSettings(), f.incomes(), f.charges(), f.oneoff(),
-                        f.variableIncomes(), f.variableOverrides());
+                        f.variableIncomes(), f.variableOverrides(),
+                        PatrimoineTransferConverter.toBudget(f.transfers()));
                 simulationWriter.replace(f.simulationSettings());
                 economicAssumptionsWriter.replace(f.economicAssumptions());
                 patrimoineWriter.replace(f.placements(), f.realEstate(), f.transfers(), f.assetCategories());

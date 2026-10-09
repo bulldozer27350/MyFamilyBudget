@@ -24,6 +24,8 @@ import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepos
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSnapshotWriter;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
 
@@ -91,6 +93,12 @@ public class PersistenceManager {
     // notification depuis PersistenceManager.
     private final ApplicationEventPublisher eventPublisher;
 
+    // R-20 : les lignes de tresorerie (revenus, charges, ponctuels, variables, virements) et leurs parametres
+    // vivent uniquement dans les tables cashflow_*, ecrites par le silo Tresorerie. Le cache ne les alimente
+    // plus : setBudgetData/resetData doivent donc les confier explicitement au silo. Injection par setter pour
+    // ne pas changer le constructeur ; reste null quand le gestionnaire est construit a la main (tests unitaires).
+    private TresorerieSnapshotWriter treasurySnapshotWriter;
+
     @Autowired
     public PersistenceManager(BudgetDataRepository budgetDataRepository,
                             SettingsRepository settingsRepository,
@@ -142,6 +150,12 @@ public class PersistenceManager {
         this.domainMutations = new DomainMutations(this.mutationService, eventPublisher);
     }
 
+    /** R-20 : silo Tresorerie auquel setBudgetData/resetData delegent les lignes de tresorerie. */
+    @Autowired(required = false)
+    public void setTreasurySnapshotWriter(TresorerieSnapshotWriter treasurySnapshotWriter) {
+        this.treasurySnapshotWriter = treasurySnapshotWriter;
+    }
+
     @PostConstruct
     public void init() {
         cacheStore.init();
@@ -169,6 +183,16 @@ public class PersistenceManager {
      * {@link BudgetCacheStore#setBudgetData}.
      */
     public void setBudgetData(BudgetDataModel data) {
+        // Le silo d'abord : en cas d'echec, la transaction est annulee et le cache n'est pas touche.
+        if (treasurySnapshotWriter != null && data != null) {
+            var s = data.getEffectiveSettings();
+            treasurySnapshotWriter.replace(
+                    new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
+                            s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()),
+                    data.getEffectiveIncomes(), data.getEffectiveCharges(), data.getEffectiveOneoff(),
+                    data.getEffectiveVariableIncomes(), data.getEffectiveVariableOverrides(),
+                    data.getEffectiveTransfers());
+        }
         cacheStore.setBudgetData(data);
         publishMutated("setBudgetData");
     }
@@ -178,6 +202,9 @@ public class PersistenceManager {
      * {@link BudgetCacheStore#resetData}.
      */
     public BudgetDataModel resetData() {
+        if (treasurySnapshotWriter != null) {
+            treasurySnapshotWriter.reset();
+        }
         BudgetDataModel result = cacheStore.resetData();
         publishMutated("resetData");
         return result;
