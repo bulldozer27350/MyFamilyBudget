@@ -9,6 +9,7 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankImportMutatedEvent;
 import com.moe.myfamilybudget.domain.credit.model.LoansMutatedEvent;
 import com.moe.myfamilybudget.domain.goals.model.GoalsMutatedEvent;
 import com.moe.myfamilybudget.domain.treasury.model.TreasuryMutatedEvent;
+import com.moe.myfamilybudget.domain.settings.model.AppSettingsMutatedEvent;
 import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
 
 /**
@@ -55,6 +56,11 @@ public class NotificationBudgetMutationListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onTreasuryMutated(TreasuryMutatedEvent event) {
+        checkService.runAutomaticCheck();
+    }
+    
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAppSettingsMutated(AppSettingsMutatedEvent event) {
         checkService.runAutomaticCheck();
     }
 }

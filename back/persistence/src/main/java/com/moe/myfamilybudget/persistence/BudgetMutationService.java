@@ -37,8 +37,6 @@ import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
-import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
-import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 
 /**
  * Logique métier de toutes les mutations du budget : sections trésorerie (revenus, charges,
@@ -332,20 +330,6 @@ class BudgetMutationService {
             return new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(), s.inflationRate(),
                     s.pivotDate(), s.pivotMode(), s.startBalance(), childExitAge, taxAbattement, s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
         });
-    }
-
-    /** Paramètre Simulation de {@code /settings}. */
-    public void updateSimulateUntilAge(Object value) {
-        updateSettings(s -> new SettingsModel(s.birthYear(), s.retireAge(), toInteger(value, 85), s.inflationRate(),
-                s.pivotDate(), s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()));
-    }
-
-    /** Hypothèse économique de {@code /settings}. */
-    public void updateInflationRate(Object value) {
-        updateSettings(s -> new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(),
-                toBigDecimal(value, new BigDecimal("0.02")), s.pivotDate(), s.pivotMode(), s.startBalance(),
-                s.childExitAge(), s.taxAbattement(), s.sweepEnabled(),
-                s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()));
     }
 
     /**
@@ -651,36 +635,6 @@ class BudgetMutationService {
         replacePatrimoineSnapshot(null, null, null);
     }
 
-    /** Remplace le paramètre de simulation ({@code null} : valeur par défaut). */
-    public void replaceSimulationSettingsSnapshot(SimulationSettingsModel settings) {
-        cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            Integer simulateUntilAge = settings != null ? settings.simulateUntilAge()
-                    : cacheStore.createDefaultBudgetData().settings().simulateUntilAge();
-            return base.withSettings(settingsWithSimulation(base.getEffectiveSettings(), simulateUntilAge));
-        });
-    }
-
-    /** Remet le paramètre de simulation à sa valeur par défaut. */
-    public void resetSimulationSettingsSnapshot() {
-        replaceSimulationSettingsSnapshot(null);
-    }
-
-    /** Remplace les hypothèses économiques ({@code null} : valeur par défaut). */
-    public void replaceEconomicAssumptionsSnapshot(EconomicAssumptionsModel assumptions) {
-        cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            BigDecimal inflationRate = assumptions != null ? assumptions.inflationRate()
-                    : cacheStore.createDefaultBudgetData().settings().inflationRate();
-            return base.withSettings(settingsWithInflation(base.getEffectiveSettings(), inflationRate));
-        });
-    }
-
-    /** Remet les hypothèses économiques à leurs valeurs par défaut. */
-    public void resetEconomicAssumptionsSnapshot() {
-        replaceEconomicAssumptionsSnapshot(null);
-    }
-
     private static <T> List<T> orEmpty(List<T> list) {
         return list != null ? list : new ArrayList<>();
     }
@@ -701,18 +655,6 @@ class BudgetMutationService {
         return new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(), s.inflationRate(),
                 t.pivotDate(), t.pivotMode(), t.startBalance(), s.childExitAge(), s.taxAbattement(),
                 t.sweepEnabled(), t.cashCeiling(), t.cashFloor(), t.cashAlertThreshold());
-    }
-
-    private static SettingsModel settingsWithSimulation(SettingsModel s, Integer simulateUntilAge) {
-        return new SettingsModel(s.birthYear(), s.retireAge(), simulateUntilAge, s.inflationRate(), s.pivotDate(),
-                s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), s.sweepEnabled(),
-                s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
-    }
-
-    private static SettingsModel settingsWithInflation(SettingsModel s, BigDecimal inflationRate) {
-        return new SettingsModel(s.birthYear(), s.retireAge(), s.simulateUntilAge(), inflationRate, s.pivotDate(),
-                s.pivotMode(), s.startBalance(), s.childExitAge(), s.taxAbattement(), s.sweepEnabled(),
-                s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
     }
 
     // --- Utilitaires de conversion ---

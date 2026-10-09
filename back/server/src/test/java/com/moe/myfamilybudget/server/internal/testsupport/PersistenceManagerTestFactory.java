@@ -14,7 +14,6 @@ import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
-import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
@@ -83,7 +82,6 @@ public final class PersistenceManagerTestFactory {
                 mock(PensionSettingsRepository.class),
                 mock(FiscalSettingsRepository.class),
                 mock(CashflowSettingsRepository.class),
-                mock(AppSettingsRepository.class),
                 mock(PlatformTransactionManager.class),
                 mock(ApplicationEventPublisher.class));
     }

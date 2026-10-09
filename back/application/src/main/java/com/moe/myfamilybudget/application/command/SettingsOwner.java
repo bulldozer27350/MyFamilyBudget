@@ -12,8 +12,8 @@ public enum SettingsOwner {
     FISCALITE(MutationSilo.TAX),
     TRESORERIE(MutationSilo.TREASURY),
     OBJECTIFS(MutationSilo.GOALS),
-    SIMULATION(MutationSilo.SIMULATION),
-    HYPOTHESES_ECONOMIQUES(MutationSilo.ECONOMIC_ASSUMPTIONS);
+    SIMULATION(MutationSilo.SETTINGS),
+    HYPOTHESES_ECONOMIQUES(MutationSilo.SETTINGS);
 
     private final MutationSilo silo;
 

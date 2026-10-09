@@ -52,7 +52,6 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsR
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsEntity;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
-import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsEntity;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsEntity;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsEntity;
 import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
@@ -64,6 +63,11 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepo
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.JpaBankStore;
 import com.moe.myfamilybudget.domain.credit.core.persistence.JpaLoanStore;
+import com.moe.myfamilybudget.domain.settings.core.persistence.JpaAppSettingsStore;
+import com.moe.myfamilybudget.domain.settings.core.persistence.JpaEconomicAssumptionsSnapshotWriter;
+import com.moe.myfamilybudget.domain.settings.core.persistence.JpaSimulationSettingsSnapshotWriter;
+import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
+import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.goals.core.persistence.JpaGoalStore;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
@@ -114,6 +118,8 @@ class PersistenceAdaptersJpaRoundTripTest {
         // SILO-213 (lot B) : idem pour l'import bancaire (table autonome, ecrite par JpaBankStore).
         bankStore().reset();
         treasuryStore().reset();
+        // R-50 : idem pour la simulation et les hypotheses economiques (table app_settings, silo Parametres).
+        context.getBean(AppSettingsRepository.class).deleteAll();
     }
 
     private JpaGoalStore goalStore() {
@@ -130,6 +136,10 @@ class PersistenceAdaptersJpaRoundTripTest {
 
     private com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore treasuryStore() {
         return context.getBean(com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore.class);
+    }
+    
+    private JpaAppSettingsStore appSettingsStore() {
+        return context.getBean(JpaAppSettingsStore.class);
     }
 
     // =========================================================================
@@ -162,7 +172,6 @@ class PersistenceAdaptersJpaRoundTripTest {
         context.getBean(PensionSettingsRepository.class).deleteAll();
         context.getBean(FiscalSettingsRepository.class).deleteAll();
         context.getBean(CashflowSettingsRepository.class).deleteAll();
-        context.getBean(AppSettingsRepository.class).deleteAll();
 
         freshReader();
 
@@ -185,11 +194,6 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(cashflow.get(0).getPivotDate()).isEqualTo(SETTINGS.pivotDate());
         assertThat(cashflow.get(0).getPivotMode()).isEqualTo(SETTINGS.pivotMode());
         assertThat(cashflow.get(0).getStartBalance()).isEqualByComparingTo(SETTINGS.startBalance());
-
-        List<AppSettingsEntity> app = context.getBean(AppSettingsRepository.class).findAll();
-        assertThat(app).hasSize(1);
-        assertThat(app.get(0).getSimulateUntilAge()).isEqualTo(SETTINGS.simulateUntilAge());
-        assertThat(app.get(0).getInflationRate()).isEqualByComparingTo(SETTINGS.inflationRate());
     }
 
     @Test
@@ -500,6 +504,68 @@ class PersistenceAdaptersJpaRoundTripTest {
         writer.resetData();
 
         assertSameContent(loanStore().getLoans(), List.of(LOAN));
+    }
+
+    // =========================================================================
+    // R-50 -- Simulation et hypotheses economiques ecrites et lues directement dans app_settings
+    // =========================================================================
+
+    @Test
+    @DisplayName("R-50 -- sans ligne : valeurs par defaut ; ecritures relues depuis la table autonome")
+    void appSettingsAreWrittenAndReadFromTheirOwnTable() {
+        assertThat(appSettingsStore().getSimulationSettings().simulateUntilAge()).isEqualTo(85);
+        assertThat(appSettingsStore().getEconomicAssumptions().inflationRate()).isEqualByComparingTo("0.02");
+        assertThat(context.getBean(AppSettingsRepository.class).count()).isZero();
+
+        appSettingsStore().updateSimulateUntilAge(92);
+        appSettingsStore().updateInflationRate(bd("0.01750001"));
+
+        assertThat(context.getBean(AppSettingsRepository.class).count()).isEqualTo(1);
+        assertThat(appSettingsStore().getSimulationSettings().simulateUntilAge()).isEqualTo(92);
+        assertThat(appSettingsStore().getEconomicAssumptions().inflationRate()).isEqualByComparingTo("0.01750001");
+    }
+
+    @Test
+    @DisplayName("R-50 -- les parametres survivent au redemarrage du cache : ils ne dependent plus du PersistenceManager")
+    void appSettingsSurviveCacheRestart() {
+        appSettingsStore().updateSimulateUntilAge(90);
+        appSettingsStore().updateInflationRate(bd("0.03"));
+
+        freshReader();
+
+        assertThat(appSettingsStore().getSimulationSettings().simulateUntilAge()).isEqualTo(90);
+        assertThat(appSettingsStore().getEconomicAssumptions().inflationRate()).isEqualByComparingTo("0.03");
+    }
+
+    @Test
+    @DisplayName("R-50 -- une ecriture du modele global ou resetData() ne touche plus a app_settings")
+    void globalModelWriteDoesNotTouchAppSettings() {
+        appSettingsStore().updateSimulateUntilAge(90);
+        appSettingsStore().updateInflationRate(bd("0.03"));
+
+        writer.setBudgetData(referenceData());
+        writer.resetData();
+
+        assertThat(appSettingsStore().getSimulationSettings().simulateUntilAge()).isEqualTo(90);
+        assertThat(appSettingsStore().getEconomicAssumptions().inflationRate()).isEqualByComparingTo("0.03");
+    }
+
+    @Test
+    @DisplayName("R-50 -- import et reinitialisation par les ports de transition")
+    void snapshotWritersReplaceAndReset() {
+        JpaSimulationSettingsSnapshotWriter simulation = context.getBean(JpaSimulationSettingsSnapshotWriter.class);
+        JpaEconomicAssumptionsSnapshotWriter economic = context.getBean(JpaEconomicAssumptionsSnapshotWriter.class);
+
+        simulation.replace(new SimulationSettingsModel(95));
+        economic.replace(new EconomicAssumptionsModel(bd("0.04")));
+        assertThat(appSettingsStore().getSimulationSettings().simulateUntilAge()).isEqualTo(95);
+        assertThat(appSettingsStore().getEconomicAssumptions().inflationRate()).isEqualByComparingTo("0.04");
+
+        simulation.reset();
+        economic.reset();
+        assertThat(appSettingsStore().getSimulationSettings().simulateUntilAge()).isEqualTo(85);
+        assertThat(appSettingsStore().getEconomicAssumptions().inflationRate()).isEqualByComparingTo("0.02");
+        assertThat(context.getBean(AppSettingsRepository.class).count()).isEqualTo(1);
     }
 
     // =========================================================================
@@ -994,7 +1060,6 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(PensionSettingsRepository.class),
                 context.getBean(FiscalSettingsRepository.class),
                 context.getBean(CashflowSettingsRepository.class),
-                context.getBean(AppSettingsRepository.class),
                 transactionManager,
                 eventPublisher);
         reader.init();

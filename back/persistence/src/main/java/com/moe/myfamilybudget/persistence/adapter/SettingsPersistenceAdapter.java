@@ -15,22 +15,16 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsR
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
-import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
-import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsWriter;
-import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
-import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsWriter;
 
 /**
- * Adaptateur de persistance pour {@link SettingsReader} (RF-B00), {@link SimulationSettingsWriter} et
+ * Adaptateur de persistance pour les lectures de paramètres par propriétaire (RF-B00) : {@link RetirementSettingsReader},
  * {@link EconomicAssumptionsWriter} (SET-020).
+ * R-42, R-21).
  */
 @Component
 public class SettingsPersistenceAdapter
-        implements RetirementSettingsReader, TaxSettingsReader, TresorerieSettingsReader,
-        SimulationSettingsReader, EconomicAssumptionsReader, SimulationSettingsWriter, EconomicAssumptionsWriter {
+        implements RetirementSettingsReader, TaxSettingsReader, TresorerieSettingsReader {
 
     private final PersistenceManager persistenceManager;
     private final CashflowSettingsRepository cashflowSettingsRepository;
@@ -95,25 +89,5 @@ public class SettingsPersistenceAdapter
         SettingsModel s = getSettings();
         return new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
                 s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold());
-    }
-
-    @Override
-    public SimulationSettingsModel getSimulationSettings() {
-        return new SimulationSettingsModel(getSettings().simulateUntilAge());
-    }
-
-    @Override
-    public EconomicAssumptionsModel getEconomicAssumptions() {
-        return new EconomicAssumptionsModel(getSettings().inflationRate());
-    }
-
-    @Override
-    public void updateSimulateUntilAge(Object value) {
-        persistenceManager.write(m -> m.updateSimulateUntilAge(value));
-    }
-
-    @Override
-    public void updateInflationRate(Object value) {
-        persistenceManager.write(m -> m.updateInflationRate(value));
     }
 }

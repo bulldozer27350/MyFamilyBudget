@@ -42,6 +42,7 @@ import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
+import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
@@ -65,6 +66,7 @@ class PatrimoineServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
+        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         goalStore = new InMemoryGoalStore();
         loanStore = new InMemoryLoanStore();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
@@ -78,7 +80,7 @@ class PatrimoineServiceImplTest {
                         silos -> { }, RecordingTransactionRunner.direct()),
                 settingsAdapter,
                 settingsAdapter,
-                settingsAdapter,
+                appSettings,
                 patrimoineAdapter,
                 treasuryStore,
                 loanStore,

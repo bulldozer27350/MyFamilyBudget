@@ -26,8 +26,6 @@ import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
-import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 
 /**
  * Mutations de domaine du budget (DB-060), extraites de {@link PersistenceManager}.
@@ -100,18 +98,6 @@ public final class DomainMutations {
     public void updateFiscalSetting(TaxSettingField field, Object value) {
         mutationService.updateFiscalSetting(field, value);
         publishMutated("updateFiscalSetting");
-    }
-
-    /** SET-030 : paramètre Simulation de {@code /settings}. */
-    public void updateSimulateUntilAge(Object value) {
-        mutationService.updateSimulateUntilAge(value);
-        publishMutated("updateSimulateUntilAge");
-    }
-
-    /** SET-030 : hypothèse économique de {@code /settings}. */
-    public void updateInflationRate(Object value) {
-        mutationService.updateInflationRate(value);
-        publishMutated("updateInflationRate");
     }
 
     /**
@@ -219,30 +205,6 @@ public final class DomainMutations {
     public void resetPatrimoineSnapshot() {
         mutationService.resetPatrimoineSnapshot();
         publishMutated("resetPatrimoineSnapshot");
-    }
-
-    /** Remplace le parametre de simulation. */
-    public void replaceSimulationSettingsSnapshot(SimulationSettingsModel settings) {
-        mutationService.replaceSimulationSettingsSnapshot(settings);
-        publishMutated("replaceSimulationSettingsSnapshot");
-    }
-
-    /** Remet le parametre de simulation a sa valeur par defaut. */
-    public void resetSimulationSettingsSnapshot() {
-        mutationService.resetSimulationSettingsSnapshot();
-        publishMutated("resetSimulationSettingsSnapshot");
-    }
-
-    /** Remplace les hypotheses economiques. */
-    public void replaceEconomicAssumptionsSnapshot(EconomicAssumptionsModel assumptions) {
-        mutationService.replaceEconomicAssumptionsSnapshot(assumptions);
-        publishMutated("replaceEconomicAssumptionsSnapshot");
-    }
-
-    /** Remet les hypotheses economiques a leurs valeurs par defaut. */
-    public void resetEconomicAssumptionsSnapshot() {
-        mutationService.resetEconomicAssumptionsSnapshot();
-        publishMutated("resetEconomicAssumptionsSnapshot");
     }
 
     /**

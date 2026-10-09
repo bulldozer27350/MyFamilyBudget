@@ -15,9 +15,9 @@ import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFact
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 
 /**
- * SILO-100 -- Les paramètres lus par propriétaire (Retraite, Fiscalité, Trésorerie, Simulation, Hypothèses
- * économiques) sont la projection exacte de l'état des paramètres, y compris après une mutation par les ports
- * d'écriture existants, et {@link SettingsModelAssembler} recompose à l'identique le {@code SettingsModel}.
+ * SILO-100 -- Les paramètres lus par propriétaire (Retraite, Fiscalité, Trésorerie) sont la projection exacte de
+ * l'état des paramètres, et {@link SettingsModelAssembler} recompose à l'identique le {@code SettingsModel} (R-50 :
+ * la simulation et les hypothèses économiques sont lues chez le silo Paramètres, voir {@code JpaAppSettingsStoreTest}).
  */
 @DisplayName("SILO-100 -- SettingsPersistenceAdapter : lectures par propriétaire")
 class SettingsPersistenceAdapterOwnerReadersTest {
@@ -42,8 +42,6 @@ class SettingsPersistenceAdapterOwnerReadersTest {
         assertThat(adapter.getTresorerieSettings().pivotMode()).isEqualTo("manual");
         assertThat(adapter.getTresorerieSettings().getEffectiveStartBalance()).isEqualByComparingTo("0");
         assertThat(adapter.getTresorerieSettings().getEffectiveSweepEnabled()).isFalse();
-        assertThat(adapter.getSimulationSettings().getEffectiveSimulateUntilAge()).isEqualTo(85);
-        assertThat(adapter.getEconomicAssumptions().getEffectiveInflationRate()).isEqualByComparingTo("0.02");
     }
 
     @Test
@@ -65,19 +63,6 @@ class SettingsPersistenceAdapterOwnerReadersTest {
         assertThat(adapter.getTresorerieSettings().cashCeiling()).isEqualByComparingTo("20000");
         assertThat(adapter.getTresorerieSettings().cashFloor()).isEqualByComparingTo("1000");
         assertThat(adapter.getTresorerieSettings().cashAlertThreshold()).isEqualByComparingTo("500");
-        assertThat(adapter.getSimulationSettings().simulateUntilAge()).isEqualTo(90);
-        assertThat(adapter.getEconomicAssumptions().inflationRate()).isEqualByComparingTo("0.025");
-    }
-
-    @Test
-    @DisplayName("les écritures Simulation et Hypothèses économiques sont relues par leur propre reader")
-    void writesAreReadBackByOwnReaders() {
-        adapter.updateSimulateUntilAge(95);
-        adapter.updateInflationRate(new BigDecimal("0.03"));
-
-        assertThat(adapter.getSimulationSettings().simulateUntilAge()).isEqualTo(95);
-        assertThat(adapter.getEconomicAssumptions().inflationRate()).isEqualByComparingTo("0.03");
-        assertThat(adapter.getSettings().simulateUntilAge()).isEqualTo(95);
     }
 
     @Test

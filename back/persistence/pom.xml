@@ -104,12 +104,6 @@
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>goals-core</artifactId>
         </dependency>
-        <!-- SILO-220 (lot B) : tables de paramètres du silo Paramètres, alimentées par la passerelle (transitoire :
-             la passerelle quitte ce module avec SILO-230) -->
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>settings-core</artifactId>
-        </dependency>
 
         <!-- JPA/Hibernate, Spring Data JPA, transactions, stéréotypes, jakarta.annotation, slf4j -->
         <dependency>

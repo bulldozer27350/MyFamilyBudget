@@ -35,10 +35,6 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsMapper;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsMapper;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
-import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsMapper;
-import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
-import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
-import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
@@ -76,10 +72,12 @@ class BudgetPersistenceGateway {
     private final WealthPlacementRepository wealthPlacementRepository;
     private final WealthRealEstateRepository wealthRealEstateRepository;
     private final WealthCategoryRepository wealthCategoryRepository;
+    // SILO-220 (lot B) : tables de parametres chez leurs proprietaires (Retraite, Fiscalite, Tresorerie),
+    // alimentees en parallele de `settings` (meme principe que goalRepository avant SILO-212). R-50 : la table du
+    // silo Parametres (`app_settings`) n'est plus alimentee ici, elle est ecrite directement par son silo.
     private final PensionSettingsRepository pensionSettingsRepository;
     private final FiscalSettingsRepository fiscalSettingsRepository;
     private final CashflowSettingsRepository cashflowSettingsRepository;
-    private final AppSettingsRepository appSettingsRepository;
 
     BudgetPersistenceGateway(BudgetDataRepository budgetDataRepository,
                               PlacementRepository placementRepository,
@@ -97,8 +95,7 @@ class BudgetPersistenceGateway {
                               WealthCategoryRepository wealthCategoryRepository,
                               PensionSettingsRepository pensionSettingsRepository,
                               FiscalSettingsRepository fiscalSettingsRepository,
-                              CashflowSettingsRepository cashflowSettingsRepository,
-                              AppSettingsRepository appSettingsRepository) {
+                              CashflowSettingsRepository cashflowSettingsRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.placementRepository = placementRepository;
         this.realEstateRepository = realEstateRepository;
@@ -116,7 +113,6 @@ class BudgetPersistenceGateway {
         this.pensionSettingsRepository = pensionSettingsRepository;
         this.fiscalSettingsRepository = fiscalSettingsRepository;
         this.cashflowSettingsRepository = cashflowSettingsRepository;
-        this.appSettingsRepository = appSettingsRepository;
     }
 
     void deleteAll() {
@@ -228,11 +224,9 @@ class BudgetPersistenceGateway {
         pensionSettingsRepository.deleteAll();
         fiscalSettingsRepository.deleteAll();
         cashflowSettingsRepository.deleteAll();
-        appSettingsRepository.deleteAll();
         pensionSettingsRepository.flush();
         fiscalSettingsRepository.flush();
         cashflowSettingsRepository.flush();
-        appSettingsRepository.flush();
         pensionSettingsRepository.save(PensionSettingsMapper.toEntity(
                 new RetirementSettingsModel(s.birthYear(), s.retireAge())));
         fiscalSettingsRepository.save(FiscalSettingsMapper.toEntity(
@@ -240,9 +234,6 @@ class BudgetPersistenceGateway {
         cashflowSettingsRepository.save(CashflowSettingsMapper.toEntity(
                 new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
                         s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold())));
-        appSettingsRepository.save(AppSettingsMapper.toEntity(
-                new SimulationSettingsModel(s.simulateUntilAge()),
-                new EconomicAssumptionsModel(s.inflationRate())));
     }
 
     private BankImportModel loadBankImport() {

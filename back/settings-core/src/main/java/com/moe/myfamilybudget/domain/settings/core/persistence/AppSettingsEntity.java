@@ -13,10 +13,10 @@ import jakarta.persistence.Table;
  * Paramètres propres à l'application, sans propriétaire métier (SILO-220, lot A2) : profondeur de simulation
  * et taux d'inflation. Singleton fonctionnel : une seule ligne, lue par {@code findFirstByOrderByIdAsc}.
  *
- * <p>Additif : aucune relation vers {@code BudgetDataEntity}, pas encore utilisée par
- * {@code SettingsPersistenceAdapter} (bascule au lot B). Les colonnes équivalentes de la table historique
- * {@code settings} restent la source de vérité jusque-là. Le taux d'inflation est stocké avec 8 décimales,
- * comme dans la table historique.
+ * <p>Aucune relation vers {@code BudgetDataEntity}. Depuis R-50, cette table est la seule source de ces deux
+ * valeurs, lue et écrite par {@link JpaAppSettingsStore} ; les colonnes homonymes de la table historique
+ * {@code settings} ne sont plus ni lues ni écrites (elles disparaissent avec {@code SettingsEntity}, R-51). Le
+ * taux d'inflation est stocké avec 8 décimales, comme dans la table historique.
  */
 @Entity
 @Table(name = "app_settings")

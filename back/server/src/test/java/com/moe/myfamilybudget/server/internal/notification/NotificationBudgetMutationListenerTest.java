@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import com.moe.myfamilybudget.application.notification.NotificationCheckService;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportMutatedEvent;
 import com.moe.myfamilybudget.domain.goals.model.GoalsMutatedEvent;
+import com.moe.myfamilybudget.domain.settings.model.AppSettingsMutatedEvent;
 import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
 
 /** SILO-180 : une mutation du budget déclenche le contrôle automatique des notifications (SILO-212 : objectifs inclus). */
@@ -41,6 +42,17 @@ class NotificationBudgetMutationListenerTest {
 
         new NotificationBudgetMutationListener(checkService)
                 .onBankImportMutated(new BankImportMutatedEvent("updateBankImport"));
+
+        verify(checkService).runAutomaticCheck();
+    }
+
+    @Test
+    @DisplayName("Mutation de la simulation ou des hypothèses économiques : le contrôle automatique est lancé")
+    void appSettingsMutationTriggersAutomaticCheck() {
+        NotificationCheckService checkService = mock(NotificationCheckService.class);
+
+        new NotificationBudgetMutationListener(checkService)
+                .onAppSettingsMutated(new AppSettingsMutatedEvent("updateSimulateUntilAge"));
 
         verify(checkService).runAutomaticCheck();
     }
