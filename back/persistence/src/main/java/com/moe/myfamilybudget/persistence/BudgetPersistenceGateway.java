@@ -29,6 +29,7 @@ import com.moe.myfamilybudget.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsMapper;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsMapper;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
@@ -36,6 +37,7 @@ import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettings
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
@@ -135,6 +137,7 @@ class BudgetPersistenceGateway {
         if (loaded != null) {
             syncWealth(loaded);
             syncSettings(loaded);
+            migrateCashflowSettingsIfMissing(loaded.getEffectiveSettings());
         }
         return loaded;
     }
@@ -229,6 +232,20 @@ class BudgetPersistenceGateway {
                 new RetirementSettingsModel(s.birthYear(), s.retireAge())));
         fiscalSettingsRepository.save(FiscalSettingsMapper.toEntity(
                 new TaxSettingsModel(s.childExitAge(), s.taxAbattement())));
+    }
+
+    // SILO-220 / R-20 : cashflow_settings appartient desormais au silo Tresorerie (JpaTreasuryStore), qui
+    // l'ecrit directement a chaque mutation. syncSettings() ne doit donc plus l'ecraser inconditionnellement
+    // a chaque sauvegarde d'un autre domaine (ce serait rejouer un etat perime). Au demarrage en revanche,
+    // si la table est vide (schema neuf, ou ligne supprimee), elle doit etre migree une fois depuis le blob
+    // `settings` historique, comme pension_settings et fiscal_settings : sinon plus rien ne la repeuple.
+    private void migrateCashflowSettingsIfMissing(SettingsModel s) {
+        if (cashflowSettingsRepository.count() > 0) {
+            return;
+        }
+        cashflowSettingsRepository.save(CashflowSettingsMapper.toEntity(
+                new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
+                        s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold())));
     }
 
     private BankImportModel loadBankImport() {

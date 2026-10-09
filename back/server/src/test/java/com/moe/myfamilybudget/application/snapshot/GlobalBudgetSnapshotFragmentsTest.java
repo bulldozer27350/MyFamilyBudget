@@ -92,7 +92,7 @@ class GlobalBudgetSnapshotFragmentsTest {
         order.verify(lock).lockForCurrentTransaction(ALL_SILOS);
         order.verify(retirement).replace(any(), any());
         order.verify(tax).replace(any(), anyList(), anyList(), anyList(), anyList());
-        order.verify(tresorerie).replace(any(), anyList(), anyList(), anyList(), anyList(), anyList());
+        order.verify(tresorerie).replace(any(), anyList(), anyList(), anyList(), anyList(), anyList(), anyList());
         order.verify(simulation).replace(any());
         order.verify(economic).replace(any());
         order.verify(patrimoine).replace(anyList(), anyList(), anyList(), anyList());

@@ -876,11 +876,17 @@ class BusinessLogicIntegrationTest {
         return null;
     }
 
-    /** SILO-117 : le service prend des fragments Retraite, plus le snapshot global. */
-    private static RetirementProjectionModel retirementProjection(
+    /**
+     * SILO-117 : le service prend des fragments Retraite, plus le snapshot global.
+     *
+     * <p>R-20 : les revenus importes vivent dans le silo Tresorerie (tables {@code cashflow_*}), plus dans
+     * le cache du {@code PersistenceManager} ({@code data.getEffectiveIncomes()} y est donc perime depuis
+     * l'import via {@code GlobalBudgetSnapshotService}) ; on les relit depuis le {@code treasuryStore}.
+     */
+    private RetirementProjectionModel retirementProjection(
             OverviewServiceImpl svc, BudgetDataModel data, RetirementModel.RetirementPersonModel person) {
         return svc.computeRetirementProjection(
                 new RetirementSettingsModel(data.getEffectiveSettings().birthYear(), data.getEffectiveSettings().retireAge()),
-                data.retirement(), data.getEffectiveIncomes(), data.getEffectiveTaxChildren().size(), person);
+                data.retirement(), treasuryStore.getIncomes(), data.getEffectiveTaxChildren().size(), person);
     }
 }

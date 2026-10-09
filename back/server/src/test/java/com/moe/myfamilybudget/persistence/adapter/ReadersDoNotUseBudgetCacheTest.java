@@ -79,7 +79,8 @@ class ReadersDoNotUseBudgetCacheTest {
         PatrimoinePersistenceAdapter patrimoine = new PatrimoinePersistenceAdapter(cache,
                 context.getBean(WealthPlacementRepository.class),
                 context.getBean(WealthRealEstateRepository.class),
-                context.getBean(WealthCategoryRepository.class));
+                context.getBean(WealthCategoryRepository.class),
+                budget);
         TaxPersistenceAdapter tax = new TaxPersistenceAdapter(cache,
                 context.getBean(FiscalChildRepository.class),
                 context.getBean(FiscalBracketRepository.class),
