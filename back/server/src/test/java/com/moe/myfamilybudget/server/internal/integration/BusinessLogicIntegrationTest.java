@@ -62,9 +62,9 @@ class BusinessLogicIntegrationTest {
     private PersistenceManager persistenceManager;
 
     // R-20 : les lignes de tresorerie importees vivent dans le silo Tresorerie, pas dans le cache. Le bean
-    // legacyBudgetReader (DomainEngineConfig) les relit depuis JpaTreasuryStore sous le type attendu par les services.
+    // JpaTreasuryStore (@Primary) implémente directement BudgetReader (R-20).
     @Autowired
-    private com.moe.myfamilybudget.transition.port.BudgetReader treasuryStore;
+    private com.moe.myfamilybudget.domain.treasury.port.BudgetReader treasuryStore;
 
     private static String mockBudgetJson;
 

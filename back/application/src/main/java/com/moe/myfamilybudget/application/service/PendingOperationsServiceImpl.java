@@ -18,7 +18,7 @@ import com.moe.myfamilybudget.domain.bankpointage.model.AutoMatchResultModel;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
-import com.moe.myfamilybudget.transition.port.BudgetReader;
+import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
 import com.moe.myfamilybudget.transition.port.SettingsReader;
 
 /**

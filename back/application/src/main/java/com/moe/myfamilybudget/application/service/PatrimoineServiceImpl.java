@@ -26,7 +26,7 @@ import com.moe.myfamilybudget.application.command.GoalCommandService;
 import com.moe.myfamilybudget.application.command.LoanCommandService;
 import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
-import com.moe.myfamilybudget.transition.port.BudgetReader;
+import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;

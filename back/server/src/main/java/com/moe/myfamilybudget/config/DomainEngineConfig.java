@@ -219,17 +219,4 @@ public class DomainEngineConfig {
             MarketSnapshotStore store) {
         return new DefaultMarketDataService(regulatedRatesProvider, mortgageRateProvider, yieldCurveProvider, store);
     }
-
-    @Bean
-    public com.moe.myfamilybudget.transition.port.BudgetReader legacyBudgetReader(
-            com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore treasuryStore) {
-        return new com.moe.myfamilybudget.transition.port.BudgetReader() {
-            @Override public List<com.moe.myfamilybudget.domain.treasury.model.IncomeModel> getIncomes() { return treasuryStore.getIncomes(); }
-            @Override public List<com.moe.myfamilybudget.domain.treasury.model.ChargeModel> getCharges() { return treasuryStore.getCharges(); }
-            @Override public List<com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel> getOneoffExpenses() { return treasuryStore.getOneoffExpenses(); }
-            @Override public List<com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel> getVariableIncomes() { return treasuryStore.getVariableIncomes(); }
-            @Override public List<com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel> getVariableOverrides() { return treasuryStore.getVariableOverrides(); }
-            @Override public List<com.moe.myfamilybudget.domain.treasury.model.TransferModel> getTransfers() { return treasuryStore.getTransfers(); }
-        };
-    }
 }

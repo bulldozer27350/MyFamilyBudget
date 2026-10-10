@@ -53,7 +53,7 @@ import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
  * incrément).
  *
  * Contient également le dispatcher par nom de champ pour les lignes de trésorerie (point 3 de
- * l'audit, {@link com.moe.myfamilybudget.persistence.updater.TresorerieFieldUpdateDispatcher}),
+ * l'audit, TresorerieFieldUpdateDispatcher, retire avec R-20),
  * invoqué directement depuis {@link #updateTresorerieRow}.
  *
  * Volontairement une classe simple (pas un bean Spring), instanciée directement par
