@@ -185,8 +185,8 @@
     async updateTresorerieLigne(listKey, id, field, value) {
       const p = Promise.resolve(app().TresorerieService.updateTresorerieLigne(listKey, id, field, value));
       if (typeof fetch !== 'undefined') {
-        const url = API_BASE_URL + '/tresorerie/' + encodeURIComponent(listKey);
-        const body = { id, field, value };
+        const url = API_BASE_URL + '/tresorerie/' + encodeURIComponent(listKey) + '/' + encodeURIComponent(id);
+        const body = { field, value };
         try {
           const res = await fetch(url, {
             method: 'PUT',
