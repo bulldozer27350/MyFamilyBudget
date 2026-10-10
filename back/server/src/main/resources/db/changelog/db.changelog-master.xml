@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <!--
+        R-01 (back/server/doc/architecture/24-backlog-reste-a-faire.md), lot A : mise en place de
+        Liquibase, encore desactivee (spring.liquibase.enabled=false dans les trois profils) tant que
+        le lot B n'a pas fourni le changelog de baseline (etat actuel du schema, a generer localement
+        sur H2 et sur PostgreSQL, voir README.md dans ce dossier) et bascule ddl-auto en validate.
+
+        Un fichier d'inclusion par silo, dans les ressources du module *-core proprietaire des tables
+        (decision prise dans ce patch, point ouvert 1 de 24-backlog-reste-a-faire.md : fichier maitre
+        dans le composition root (`server`, futur `server-app` a MAVEN-130), scripts par silo dans
+        chaque *-core). Chaque fichier inclus est pour l'instant un changelog vide ; son premier
+        changeSet reel (baseline ou creation) sera ajoute au lot B.
+    -->
+
+    <include file="db/changelog/retirement-core/retirement-core.changelog.xml" relativeToChangelogFile="false"/>
+    <include file="db/changelog/tax-core/tax-core.changelog.xml" relativeToChangelogFile="false"/>
+    <include file="db/changelog/wealth-core/wealth-core.changelog.xml" relativeToChangelogFile="false"/>
+    <include file="db/changelog/bank-pointage-core/bank-pointage-core.changelog.xml" relativeToChangelogFile="false"/>
+    <include file="db/changelog/treasury-core/treasury-core.changelog.xml" relativeToChangelogFile="false"/>
+    <include file="db/changelog/credit-core/credit-core.changelog.xml" relativeToChangelogFile="false"/>
+    <include file="db/changelog/goals-core/goals-core.changelog.xml" relativeToChangelogFile="false"/>
+    <include file="db/changelog/settings-core/settings-core.changelog.xml" relativeToChangelogFile="false"/>
+    <include file="db/changelog/notifications-core/notifications-core.changelog.xml" relativeToChangelogFile="false"/>
+    <include file="db/changelog/market-core/market-core.changelog.xml" relativeToChangelogFile="false"/>
+    <include file="db/changelog/persistence/persistence-legacy.changelog.xml" relativeToChangelogFile="false"/>
+
+</databaseChangeLog>

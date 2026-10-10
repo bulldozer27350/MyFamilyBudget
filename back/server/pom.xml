@@ -185,6 +185,16 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+        <!--
+            Liquibase (R-01, 24-backlog-reste-a-faire.md), lot A : mise en place du cablage, encore
+            desactive (spring.liquibase.enabled=false dans les trois profils) tant que le lot B n'a pas
+            fourni le changelog de baseline et bascule spring.jpa.hibernate.ddl-auto en validate.
+        -->
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
+        </dependency>
+
         <!-- H2 Database (profil par défaut : distribution portable/standalone) -->
         <dependency>
             <groupId>com.h2database</groupId>
@@ -375,4 +385,35 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            Profil desactive par defaut (jamais touche par `mvn clean test` ni par le build normal) :
+            outillage du lot B de R-01 pour generer localement, sur une base existante (H2 dev ou
+            PostgreSQL prod), le changelog Liquibase de baseline du schema actuel. Voir le mode d'emploi
+            dans back/server/src/main/resources/db/changelog/README.md.
+
+            Exemple d'invocation (H2 dev, app arretee) :
+              mvn -f back/server/pom.xml liquibase:generateChangeLog -Pliquibase-baseline ^
+                -Dliquibase.url=jdbc:h2:file:./data/myfamilybudget ^
+                -Dliquibase.username=sa -Dliquibase.password= ^
+                -Dliquibase.outputChangeLogFile=target/baseline-h2.xml
+        -->
+        <profile>
+            <id>liquibase-baseline</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.liquibase</groupId>
+                        <artifactId>liquibase-maven-plugin</artifactId>
+                        <version>${liquibase.version}</version>
+                        <configuration>
+                            <propertyFileWillOverride>true</propertyFileWillOverride>
+                            <outputChangeLogFile>${project.build.directory}/baseline.xml</outputChangeLogFile>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

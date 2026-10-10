@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <!--
+        Tables encore legacy (R-01, 24-backlog-reste-a-faire.md) : hub budget_data (R-61), settings
+        (R-51/R-52), placement/real_estate/asset_category/placement_history_entry (R-30, pas encore
+        bascules vers wealth-core). Changelog du module persistence : tables actuelles : budget_data,
+        settings, placement, placement_history_entry, real_estate, asset_category.
+
+        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline ; les tables qui
+        migrent vers un silo (ex. R-30 vers wealth-core) quittent ce fichier pour celui du silo au
+        patch qui les bascule, par un changeSet de renommage/deplacement, pas par copier-coller.
+    -->
+
+</databaseChangeLog>

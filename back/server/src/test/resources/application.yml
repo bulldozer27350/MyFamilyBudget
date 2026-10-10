@@ -24,6 +24,10 @@ spring:
     properties:
       hibernate:
         format_sql: false
+  # R-01 (24-backlog-reste-a-faire.md) : les tests continuent d'utiliser ddl-auto (H2 en memoire,
+  # recree a chaque run) ; Liquibase reste desactive ici, y compris apres le lot B.
+  liquibase:
+    enabled: false
 
 myfamilybudget:
   browser:

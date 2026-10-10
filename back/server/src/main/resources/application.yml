@@ -27,6 +27,11 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  # R-01 (24-backlog-reste-a-faire.md), lot A : cablage inactif. Le lot B generera le changelog de
+  # baseline puis basculera enabled: true et ddl-auto: validate.
+  liquibase:
+    enabled: false
+    change-log: classpath:db/changelog/db.changelog-master.xml
   h2:
     console:
       enabled: true

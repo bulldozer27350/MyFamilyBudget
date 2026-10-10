@@ -26,7 +26,7 @@ dans `21` (figé). Chaque ligne du tableau est dérivée du code (section 2 de `
 
 | ID | Patch | Dépend de | Bloque | Statut | Qui | Branche / commit | Réf. 21 |
 |---|---|---|---|---|---|---|---|
-| R-01 | Introduire Liquibase : état de départ du schéma actuel, passage de `ddl-auto: update` à `validate`, reprise de `LegacySchemaCleanup` (suppression de clés étrangères au démarrage) en script (DA-03) | — | R-51, R-61 | À faire | | | SILO-200 (reste), D5 |
+| R-01 | Introduire Liquibase : état de départ du schéma actuel, passage de `ddl-auto: update` à `validate`, reprise de `LegacySchemaCleanup` (suppression de clés étrangères au démarrage) en script (DA-03). Lot A livré (câblage inactif : dépendance, changelog maître + un changelog vide par silo, profil Maven de génération, runbook) ; lot B restant (baseline générée localement sur H2 et PostgreSQL, bascule `enabled`/`ddl-auto`, reprise de `LegacySchemaCleanup`) | — | R-51, R-61 | En cours | Agent | refactor/r-01-liquibase-lot-a | SILO-200 (reste), D5 |
 | R-02 | Sortir de `server` et d'`application` les stores de paramètres Crédit et Objectifs : `LoanAdviceSettingsStore`, `LoanAdviceSettingsService`, `LoanAdviceSettingsCodec`, `JpaLoanAdviceSettingsStore` vers `credit-api`/`credit-core` ; `ObjectifsSettingsStore` (port dans `application.settings`) et `JpaObjectifsSettingsStore` vers `goals-api`/`goals-core` | — | R-91 | À faire | | en cours d'implémentation | SILO-214 A, SILO-217 (reste) |
 
 ### Persistance : lots B (sortie du cache global)

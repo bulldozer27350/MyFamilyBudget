@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <!--
+        Silo Notifications (notifications-core) : changelog Liquibase du silo (R-01, 24-backlog-reste-a-faire.md).
+        Tables actuelles : notification_settings, notification_sent_log, push_subscription.
+
+        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline (etat actuel du schema,
+        genere via `mvn liquibase:generateChangeLog`, cf. db/changelog/README.md dans le module
+        server). Les changesets suivants (lots B de persistance par silo) s'ajoutent ensuite ici.
+    -->
+
+</databaseChangeLog>
