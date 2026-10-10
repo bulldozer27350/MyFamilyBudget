@@ -1,10 +1,15 @@
 package com.moe.myfamilybudget.application.command;
 
 import java.math.BigDecimal;
+import java.util.EnumSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
+import com.moe.myfamilybudget.application.port.MutationSilo;
+import com.moe.myfamilybudget.application.port.SiloMutationLock;
+import com.moe.myfamilybudget.application.port.TransactionRunner;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieAdjustmentKind;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieLineField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieList;
@@ -26,39 +31,71 @@ import com.moe.myfamilybudget.domain.treasury.port.TresorerieWriter;
  * 400 par le gestionnaire d'erreurs). Un corps {@code null} reste accepte pour
  * {@link #addTresorerieRow} (creation d'une ligne par defaut) et une valeur {@code null} pour
  * {@link #updateTresorerieRow} (effacement du champ), conformement au contrat historique de l'API.
+ *
+ * <p>R-20 (lot B1, stabilisation CI) : {@link TresorerieWriter} (en pratique {@code JpaTreasuryStore})
+ * reecrit la liste entiere de chaque mutation (lecture, puis {@code deleteAll}/{@code saveAll}) sans
+ * transaction englobante ni verrou propre. Deux mutations simultanees sur le meme silo peuvent donc se
+ * marcher dessus (ecriture perdue, ou {@code ObjectOptimisticLockingFailureException} -> 500). Comme
+ * {@link SimulationSettingsCommandService} pour le silo Parametres, chaque ecriture s'execute donc desormais
+ * dans une transaction du {@link TransactionRunner}, apres prise du verrou du silo Tresorerie
+ * ({@link SiloMutationLock}), meme pattern que {@code GlobalBudgetSnapshotService} pour l'import/reset
+ * global (SILO-206).
  */
 @Service
 public class TresorerieCommandService {
 
-    private final TresorerieWriter tresorerieWriter;
+    private static final Set<MutationSilo> TREASURY_SILOS = EnumSet.of(MutationSilo.TREASURY);
 
-    public TresorerieCommandService(TresorerieWriter tresorerieWriter) {
+    private final TresorerieWriter tresorerieWriter;
+    private final SiloMutationLock siloMutationLock;
+    private final TransactionRunner transactionRunner;
+
+    public TresorerieCommandService(TresorerieWriter tresorerieWriter,
+                                    SiloMutationLock siloMutationLock,
+                                    TransactionRunner transactionRunner) {
         this.tresorerieWriter = tresorerieWriter;
+        this.siloMutationLock = siloMutationLock;
+        this.transactionRunner = transactionRunner;
     }
 
     public Map<String, Object> addTresorerieRow(TresorerieList list, Map<String, Object> body) {
         require(list, "La liste de tresorerie");
-        return tresorerieWriter.addTresorerieRow(list, body);
+        return transactionRunner.inTransaction(() -> {
+            siloMutationLock.lockForCurrentTransaction(TREASURY_SILOS);
+            return tresorerieWriter.addTresorerieRow(list, body);
+        });
     }
 
     public void updateTresorerieRow(TresorerieList list, String id, TresorerieLineField field, Object value) {
         require(list, "La liste de tresorerie");
         require(id, "L'identifiant de la ligne");
         require(field, "Le champ de la ligne");
-        tresorerieWriter.updateTresorerieRow(list, id, field, value);
+        transactionRunner.inTransaction(() -> {
+            siloMutationLock.lockForCurrentTransaction(TREASURY_SILOS);
+            tresorerieWriter.updateTresorerieRow(list, id, field, value);
+            return null;
+        });
     }
 
     public void removeTresorerieRow(TresorerieList list, String id) {
         require(list, "La liste de tresorerie");
         require(id, "L'identifiant de la ligne");
-        tresorerieWriter.removeTresorerieRow(list, id);
+        transactionRunner.inTransaction(() -> {
+            siloMutationLock.lockForCurrentTransaction(TREASURY_SILOS);
+            tresorerieWriter.removeTresorerieRow(list, id);
+            return null;
+        });
     }
 
     public void applyTresorerieAjustement(String lineId, TresorerieAdjustmentKind kind, BigDecimal newMonthly) {
         require(lineId, "L'identifiant de la ligne a ajuster");
         require(kind, "Le type de ligne a ajuster");
         require(newMonthly, "Le nouveau montant mensuel");
-        tresorerieWriter.applyTresorerieAjustement(lineId, kind, newMonthly);
+        transactionRunner.inTransaction(() -> {
+            siloMutationLock.lockForCurrentTransaction(TREASURY_SILOS);
+            tresorerieWriter.applyTresorerieAjustement(lineId, kind, newMonthly);
+            return null;
+        });
     }
 
     /**
@@ -67,7 +104,11 @@ public class TresorerieCommandService {
      */
     public void updateTresorerieSetting(TresorerieSettingField field, Object value) {
         require(field, "Le parametre de tresorerie");
-        tresorerieWriter.updateTresorerieSetting(field, value);
+        transactionRunner.inTransaction(() -> {
+            siloMutationLock.lockForCurrentTransaction(TREASURY_SILOS);
+            tresorerieWriter.updateTresorerieSetting(field, value);
+            return null;
+        });
     }
 
     private static void require(Object value, String label) {

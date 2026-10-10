@@ -26,6 +26,7 @@ import com.moe.myfamilybudget.domain.treasury.port.TresorerieList;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
  * DB-031 -- Le command service Tresorerie valide la commande, delegue au port d'ecriture et laisse
@@ -41,7 +42,7 @@ class TresorerieCommandServiceTest {
     @BeforeEach
     void setUp() {
         writer = mock(TresorerieWriter.class);
-        service = new TresorerieCommandService(writer);
+        service = new TresorerieCommandService(writer, silos -> { }, RecordingTransactionRunner.direct());
     }
 
     // --- succes : delegation au port ---
@@ -188,7 +189,7 @@ class TresorerieCommandServiceTest {
     @DisplayName("SET-020 : l'ecriture d'un parametre de tresorerie est relue par SettingsReader")
     void tresorerieSettingIsReadBackThroughSettingsReader() {
         InMemoryTreasuryStore store = new InMemoryTreasuryStore();
-        new TresorerieCommandService(store)
+        new TresorerieCommandService(store, silos -> { }, RecordingTransactionRunner.direct())
                 .updateTresorerieSetting(TresorerieSettingField.PIVOT_MODE, "manual");
 
         // Relu directement depuis le store
@@ -199,7 +200,8 @@ class TresorerieCommandServiceTest {
     @DisplayName("integration adaptateur : revenus et charges relus par le lecteur Budget")
     void adapterWritesAreReadBackByReader() {
         InMemoryTreasuryStore store = new InMemoryTreasuryStore();
-        TresorerieCommandService realService = new TresorerieCommandService(store);
+        TresorerieCommandService realService =
+                new TresorerieCommandService(store, silos -> { }, RecordingTransactionRunner.direct());
 
         realService.addTresorerieRow(TresorerieList.INCOMES,
                 Map.of("id", "inc_1", "label", "Salaire", "monthly", new BigDecimal("3000")));

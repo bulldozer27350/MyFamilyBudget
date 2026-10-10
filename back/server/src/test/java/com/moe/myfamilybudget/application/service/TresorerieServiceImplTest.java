@@ -55,6 +55,7 @@ import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 class TresorerieServiceImplTest {
 
@@ -73,7 +74,7 @@ class TresorerieServiceImplTest {
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         service = new TresorerieServiceImpl(
-                mapper, new TresorerieCommandService(treasuryStore),
+                mapper, new TresorerieCommandService(treasuryStore, silos -> { }, RecordingTransactionRunner.direct()),
                 new DefaultRetirementCalculationService(),
                 new DefaultTaxCalculationService(),
                 new DefaultTresorerieCalculationService(),

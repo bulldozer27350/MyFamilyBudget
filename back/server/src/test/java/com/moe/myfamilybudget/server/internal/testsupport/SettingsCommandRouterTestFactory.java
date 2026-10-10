@@ -24,7 +24,7 @@ public final class SettingsCommandRouterTestFactory {
                 objectifsSettingsService,
                 new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)),
                 new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager)),
-                new TresorerieCommandService(new InMemoryTreasuryStore()),
+                new TresorerieCommandService(new InMemoryTreasuryStore(), silos -> { }, RecordingTransactionRunner.direct()),
                 new SimulationSettingsCommandService(appSettings, silos -> { }, RecordingTransactionRunner.direct()),
                 new EconomicAssumptionsCommandService(appSettings, silos -> { }, RecordingTransactionRunner.direct()));
     }
