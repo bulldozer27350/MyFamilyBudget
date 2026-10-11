@@ -28,6 +28,8 @@ import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSnapshotWriter;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
+import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
+import com.moe.myfamilybudget.domain.tax.port.TaxSnapshotWriter;
 
 import jakarta.annotation.PostConstruct;
 
@@ -99,6 +101,13 @@ public class PersistenceManager {
     // ne pas changer le constructeur ; reste null quand le gestionnaire est construit a la main (tests unitaires).
     private TresorerieSnapshotWriter treasurySnapshotWriter;
 
+    // R-42 : la configuration fiscale (enfants, bareme, surcharges) et ses parametres (childExitAge,
+    // taxAbattement) vivent uniquement dans les tables fiscal_*, ecrites par le silo Fiscalite. Le cache ne
+    // les alimente plus : setBudgetData/resetData doivent donc les confier explicitement au silo. Injection
+    // par setter pour ne pas changer le constructeur ; reste null quand le gestionnaire est construit a la
+    // main (tests unitaires).
+    private TaxSnapshotWriter taxSnapshotWriter;
+
     @Autowired
     public PersistenceManager(BudgetDataRepository budgetDataRepository,
                             SettingsRepository settingsRepository,
@@ -156,6 +165,12 @@ public class PersistenceManager {
         this.treasurySnapshotWriter = treasurySnapshotWriter;
     }
 
+    /** R-42 : silo Fiscalite auquel setBudgetData/resetData delegent la configuration fiscale. */
+    @Autowired(required = false)
+    public void setTaxSnapshotWriter(TaxSnapshotWriter taxSnapshotWriter) {
+        this.taxSnapshotWriter = taxSnapshotWriter;
+    }
+
     @PostConstruct
     public void init() {
         cacheStore.init();
@@ -193,6 +208,13 @@ public class PersistenceManager {
                     data.getEffectiveVariableIncomes(), data.getEffectiveVariableOverrides(),
                     data.getEffectiveTransfers());
         }
+        if (taxSnapshotWriter != null && data != null) {
+            var s = data.getEffectiveSettings();
+            taxSnapshotWriter.replace(
+                    new TaxSettingsModel(s.childExitAge(), s.taxAbattement()),
+                    data.getEffectiveTaxChildren(), data.getEffectiveTaxBrackets(),
+                    data.getEffectiveTaxRateOverrides(), data.getEffectiveTaxActualOverrides());
+        }
         cacheStore.setBudgetData(data);
         publishMutated("setBudgetData");
     }
@@ -204,6 +226,9 @@ public class PersistenceManager {
     public BudgetDataModel resetData() {
         if (treasurySnapshotWriter != null) {
             treasurySnapshotWriter.reset();
+        }
+        if (taxSnapshotWriter != null) {
+            taxSnapshotWriter.reset();
         }
         BudgetDataModel result = cacheStore.resetData();
         publishMutated("resetData");

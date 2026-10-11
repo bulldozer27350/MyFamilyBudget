@@ -32,7 +32,6 @@ import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
@@ -83,7 +82,6 @@ class WriteFailureKeepsMemoryTest {
 
     private PatrimoinePersistenceAdapter patrimoineAdapter;
     private RetirementPersistenceAdapter retirementAdapter;
-    private TaxPersistenceAdapter taxAdapter;
     private SettingsPersistenceAdapter settingsAdapter;
 
     private BudgetDataModel before;
@@ -120,7 +118,6 @@ class WriteFailureKeepsMemoryTest {
 
         patrimoineAdapter = new PatrimoinePersistenceAdapter(persistenceManager);
         retirementAdapter = new RetirementPersistenceAdapter(persistenceManager);
-        taxAdapter = new TaxPersistenceAdapter(persistenceManager);
         settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
 
         // Etat de reference non trivial, ecrit alors que la base fonctionne.
@@ -226,7 +223,7 @@ class WriteFailureKeepsMemoryTest {
     private void assertEveryMutationFailsAndLeavesMemoryUntouched(Map<String, Runnable> mutations) {
         var placements = patrimoineAdapter.getPlacements();
         var assetCategories = patrimoineAdapter.getAssetCategories();
-        var taxChildren = taxAdapter.getTaxChildren();
+        var taxChildren = persistenceManager.getBudgetData().getEffectiveTaxChildren();
         var settings = settingsAdapter.getSettings();
 
         mutations.forEach((name, mutation) -> {
@@ -236,7 +233,7 @@ class WriteFailureKeepsMemoryTest {
             assertThat(patrimoineAdapter.getPlacements()).as(name).isEqualTo(placements);
             assertThat(patrimoineAdapter.getAssetCategories()).as(name).isEqualTo(assetCategories);
             assertThat(retirementAdapter.getRetirement()).as(name).isEqualTo(RETIREMENT_BEFORE);
-            assertThat(taxAdapter.getTaxChildren()).as(name).isEqualTo(taxChildren);
+            assertThat(persistenceManager.getBudgetData().getEffectiveTaxChildren()).as(name).isEqualTo(taxChildren);
             assertThat(settingsAdapter.getSettings()).as(name).isEqualTo(settings);
         });
 

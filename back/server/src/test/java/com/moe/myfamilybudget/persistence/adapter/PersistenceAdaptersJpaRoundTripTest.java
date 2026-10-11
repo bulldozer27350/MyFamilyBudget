@@ -56,10 +56,11 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsEntity;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsEntity;
 import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
 import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
+import com.moe.myfamilybudget.domain.tax.core.persistence.JpaTaxStore;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
+import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
+import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.JpaBankStore;
 import com.moe.myfamilybudget.domain.credit.core.persistence.JpaLoanStore;
@@ -118,6 +119,8 @@ class PersistenceAdaptersJpaRoundTripTest {
         // SILO-213 (lot B) : idem pour l'import bancaire (table autonome, ecrite par JpaBankStore).
         bankStore().reset();
         treasuryStore().reset();
+        // R-42 : idem pour la configuration fiscale (table fiscal_*, ecrite par JpaTaxStore).
+        taxStore().reset();
         // R-50 : idem pour la simulation et les hypotheses economiques (table app_settings, silo Parametres).
         context.getBean(AppSettingsRepository.class).deleteAll();
     }
@@ -136,6 +139,10 @@ class PersistenceAdaptersJpaRoundTripTest {
 
     private com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore treasuryStore() {
         return context.getBean(com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore.class);
+    }
+
+    private JpaTaxStore taxStore() {
+        return context.getBean(JpaTaxStore.class);
     }
     
     private JpaAppSettingsStore appSettingsStore() {
@@ -231,27 +238,25 @@ class PersistenceAdaptersJpaRoundTripTest {
         PersistenceManager reader = freshReader();
         assertSameContent(new RetirementPersistenceAdapter(reader).getRetirement(), RETIREMENT);
         assertSameContent(jpaBudgetAdapter(reader).getIncomes(), List.of(INCOME));
-        assertSameContent(new TaxPersistenceAdapter(reader).getTaxChildren(), List.of(TAX_CHILD));
+        assertSameContent(taxStore().getTaxChildren(), List.of(TAX_CHILD));
     }
 
     @Test
-    @DisplayName("updateTaxConfig puis resetDefaultTaxBrackets -> relus en base")
+    @DisplayName("R-42 -- updateTaxConfig puis resetDefaultTaxBrackets -> relus en base")
     void taxConfigAndBracketResetAreReadBackFromDatabase() {
-        writer.write(m -> m.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS, List.of(TAX_RATE_OVERRIDE),
-                List.of(TAX_ACTUAL_OVERRIDE)));
+        taxStore().updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS, List.of(TAX_RATE_OVERRIDE),
+                List.of(TAX_ACTUAL_OVERRIDE));
 
-        TaxPersistenceAdapter afterConfig = new TaxPersistenceAdapter(freshReader());
-        assertSameContent(afterConfig.getTaxChildren(), List.of(TAX_CHILD));
-        assertSameContent(afterConfig.getTaxBrackets(), CUSTOM_BRACKETS);
-        assertSameContent(afterConfig.getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
-        assertSameContent(afterConfig.getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
+        assertSameContent(taxStore().getTaxChildren(), List.of(TAX_CHILD));
+        assertSameContent(taxStore().getTaxBrackets(), CUSTOM_BRACKETS);
+        assertSameContent(taxStore().getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
+        assertSameContent(taxStore().getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
 
-        writer.write(m -> m.resetDefaultTaxBrackets());
+        taxStore().resetDefaultTaxBrackets();
 
-        TaxPersistenceAdapter afterReset = new TaxPersistenceAdapter(freshReader());
-        assertDefaultBrackets(afterReset.getTaxBrackets());
-        assertSameContent(afterReset.getTaxChildren(), List.of(TAX_CHILD));
-        assertSameContent(afterReset.getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
+        assertDefaultBrackets(taxStore().getTaxBrackets());
+        assertSameContent(taxStore().getTaxChildren(), List.of(TAX_CHILD));
+        assertSameContent(taxStore().getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
     }
 
     @Test
@@ -302,10 +307,10 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(jpaPatrimoineAdapter(reader).getAssetCategories()).isEmpty();
         assertThat(jpaPatrimoineAdapter(reader).getTransfers()).isEmpty();
         assertThat(new RetirementPersistenceAdapter(reader).getRetirement().people()).isEmpty();
-        assertThat(new TaxPersistenceAdapter(reader).getTaxChildren()).isEmpty();
-        assertThat(new TaxPersistenceAdapter(reader).getTaxRateOverrides()).isEmpty();
-        assertThat(new TaxPersistenceAdapter(reader).getTaxActualOverrides()).isEmpty();
-        assertDefaultBrackets(new TaxPersistenceAdapter(reader).getTaxBrackets());
+        assertThat(taxStore().getTaxChildren()).isEmpty();
+        assertThat(taxStore().getTaxRateOverrides()).isEmpty();
+        assertThat(taxStore().getTaxActualOverrides()).isEmpty();
+        assertDefaultBrackets(taxStore().getTaxBrackets());
     }
 
     @Test
@@ -356,7 +361,7 @@ class PersistenceAdaptersJpaRoundTripTest {
     void emptyBracketsAreReadBackAsDefaultSchedule() {
         writer.setBudgetData(referenceData().withTaxBrackets(List.of()));
 
-        assertDefaultBrackets(new TaxPersistenceAdapter(freshReader()).getTaxBrackets());
+        assertDefaultBrackets(taxStore().getTaxBrackets());
     }
 
     // =========================================================================
@@ -572,55 +577,44 @@ class PersistenceAdaptersJpaRoundTripTest {
     // DB-1011 -- Fiscalite lue depuis les tables autonomes
     // =========================================================================
 
-    private TaxPersistenceAdapter jpaTaxAdapter(PersistenceManager manager) {
-        return new TaxPersistenceAdapter(manager,
-                context.getBean(FiscalChildRepository.class),
-                context.getBean(FiscalBracketRepository.class),
-                context.getBean(FiscalRateOverrideRepository.class),
-                context.getBean(FiscalActualOverrideRepository.class));
-    }
-
     @Test
-    @DisplayName("DB-1011 -- import -> la fiscalite est recopiee dans les tables autonomes et relue par JPA")
+    @DisplayName("R-42 -- import -> la fiscalite est recopiee dans les tables autonomes et relue par JpaTaxStore")
     void importedTaxConfigIsReadFromFiscalTables() {
         writer.setBudgetData(referenceData());
 
         assertThat(context.getBean(FiscalChildRepository.class).count()).isEqualTo(1);
         assertThat(context.getBean(FiscalBracketRepository.class).count()).isEqualTo(CUSTOM_BRACKETS.size());
-        TaxPersistenceAdapter adapter = jpaTaxAdapter(freshReader());
-        assertSameContent(adapter.getTaxChildren(), List.of(TAX_CHILD));
-        assertSameContent(adapter.getTaxBrackets(), CUSTOM_BRACKETS);
-        assertSameContent(adapter.getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
-        assertSameContent(adapter.getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
+        assertSameContent(taxStore().getTaxChildren(), List.of(TAX_CHILD));
+        assertSameContent(taxStore().getTaxBrackets(), CUSTOM_BRACKETS);
+        assertSameContent(taxStore().getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
+        assertSameContent(taxStore().getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
     }
 
     @Test
-    @DisplayName("DB-1011 -- updateTaxConfig et resetDefaultTaxBrackets sont visibles via la lecture JPA")
+    @DisplayName("R-42 -- updateTaxConfig et resetDefaultTaxBrackets sont visibles via JpaTaxStore")
     void taxWritesAreVisibleThroughJpaReader() {
         writer.setBudgetData(referenceData());
-        TaxPersistenceAdapter adapter = jpaTaxAdapter(writer);
         TaxChildModel secondChild = new TaxChildModel("tc_2", "Lucas", 2018);
 
-        adapter.updateTaxConfig(List.of(TAX_CHILD, secondChild), CUSTOM_BRACKETS, List.of(), List.of());
+        taxStore().updateTaxConfig(List.of(TAX_CHILD, secondChild), CUSTOM_BRACKETS, List.of(), List.of());
 
-        assertThat(adapter.getTaxChildren()).extracting(TaxChildModel::id).containsExactly("tc_1", "tc_2");
-        assertThat(adapter.getTaxRateOverrides()).isEmpty();
-        assertThat(adapter.getTaxActualOverrides()).isEmpty();
-        assertSameContent(adapter.getTaxBrackets(), CUSTOM_BRACKETS);
+        assertThat(taxStore().getTaxChildren()).extracting(TaxChildModel::id).containsExactly("tc_1", "tc_2");
+        assertThat(taxStore().getTaxRateOverrides()).isEmpty();
+        assertThat(taxStore().getTaxActualOverrides()).isEmpty();
+        assertSameContent(taxStore().getTaxBrackets(), CUSTOM_BRACKETS);
 
-        adapter.resetDefaultTaxBrackets();
+        taxStore().resetDefaultTaxBrackets();
 
-        TaxPersistenceAdapter reread = jpaTaxAdapter(freshReader());
-        assertDefaultBrackets(reread.getTaxBrackets());
-        assertThat(reread.getTaxChildren()).extracting(TaxChildModel::id).containsExactly("tc_1", "tc_2");
+        assertDefaultBrackets(taxStore().getTaxBrackets());
+        assertThat(taxStore().getTaxChildren()).extracting(TaxChildModel::id).containsExactly("tc_1", "tc_2");
     }
 
     @Test
-    @DisplayName("DB-1011 -- import sans bareme -> le bareme par defaut est ecrit puis relu par JPA")
+    @DisplayName("R-42 -- import sans bareme -> le bareme par defaut est ecrit puis relu par JpaTaxStore")
     void emptyBracketsAreReadAsDefaultScheduleThroughJpa() {
         writer.setBudgetData(referenceData().withTaxBrackets(List.of()));
 
-        assertDefaultBrackets(jpaTaxAdapter(freshReader()).getTaxBrackets());
+        assertDefaultBrackets(taxStore().getTaxBrackets());
     }
 
     @Test
@@ -634,26 +628,23 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(reloaded.getBudgetData().taxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
         assertSameContent(reloaded.getBudgetData().taxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
 
-        TaxPersistenceAdapter restarted = jpaTaxAdapter(reloaded);
-
-        assertSameContent(restarted.getTaxChildren(), List.of(TAX_CHILD));
-        assertSameContent(restarted.getTaxBrackets(), CUSTOM_BRACKETS);
-        assertSameContent(restarted.getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
-        assertSameContent(restarted.getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
+        assertSameContent(taxStore().getTaxChildren(), List.of(TAX_CHILD));
+        assertSameContent(taxStore().getTaxBrackets(), CUSTOM_BRACKETS);
+        assertSameContent(taxStore().getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
+        assertSameContent(taxStore().getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
     }
 
     @Test
-    @DisplayName("DB-1011 -- reinitialisation -> listes videes et bareme par defaut relu par JPA")
+    @DisplayName("R-42 -- reinitialisation -> listes videes et bareme par defaut relu par JpaTaxStore")
     void resetClearsFiscalTablesAndRestoresDefaultBrackets() {
         writer.setBudgetData(referenceData());
 
         writer.resetData();
 
-        TaxPersistenceAdapter adapter = jpaTaxAdapter(writer);
-        assertThat(adapter.getTaxChildren()).isEmpty();
-        assertThat(adapter.getTaxRateOverrides()).isEmpty();
-        assertThat(adapter.getTaxActualOverrides()).isEmpty();
-        assertDefaultBrackets(adapter.getTaxBrackets());
+        assertThat(taxStore().getTaxChildren()).isEmpty();
+        assertThat(taxStore().getTaxRateOverrides()).isEmpty();
+        assertThat(taxStore().getTaxActualOverrides()).isEmpty();
+        assertDefaultBrackets(taxStore().getTaxBrackets());
     }
 
     // =========================================================================
@@ -1085,11 +1076,10 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(retirement, RETIREMENT);
         assertThat(retirement.people().get(0).salaryHistory()).hasSize(3);
 
-        TaxPersistenceAdapter tax = new TaxPersistenceAdapter(reader);
-        assertSameContent(tax.getTaxChildren(), List.of(TAX_CHILD));
-        assertSameContent(tax.getTaxBrackets(), CUSTOM_BRACKETS);
-        assertSameContent(tax.getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
-        assertSameContent(tax.getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
+        assertSameContent(taxStore().getTaxChildren(), List.of(TAX_CHILD));
+        assertSameContent(taxStore().getTaxBrackets(), CUSTOM_BRACKETS);
+        assertSameContent(taxStore().getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
+        assertSameContent(taxStore().getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
 
         SettingsModel settings = new SettingsPersistenceAdapter(reader).getSettings();
         assertThat(settings.birthYear()).isEqualTo(SETTINGS.birthYear());

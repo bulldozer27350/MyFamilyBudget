@@ -23,10 +23,7 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowTransferR
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableIncomeRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
+import com.moe.myfamilybudget.domain.tax.core.persistence.JpaTaxStore;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
@@ -41,9 +38,9 @@ import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
  * {@link PersistenceManager}. Complete {@code ReaderPersistenceBoundaryArchTest}, qui garde la frontiere
  * statiquement.
  *
- * <p>Seul {@code SettingsPersistenceAdapter} lit encore le cache : les parametres Retraite, Fiscalite et Tresorerie
- * restent stockes dans le hub jusqu'a leurs lots B (R-40, R-42, R-21). La simulation et les hypotheses economiques
- * sont lues dans leur table autonome (R-50).
+ * <p>Seul {@code SettingsPersistenceAdapter} lit encore le cache : les parametres Retraite restent stockes dans
+ * le hub jusqu'a son lot B (R-40). La simulation et les hypotheses economiques sont lues dans leur table
+ * autonome (R-50).
  *
  * <p>Base H2 dediee, pour ne pas partager d'etat avec les autres contextes de test.
  */
@@ -81,11 +78,7 @@ class ReadersDoNotUseBudgetCacheTest {
                 context.getBean(WealthRealEstateRepository.class),
                 context.getBean(WealthCategoryRepository.class),
                 budget);
-        TaxPersistenceAdapter tax = new TaxPersistenceAdapter(cache,
-                context.getBean(FiscalChildRepository.class),
-                context.getBean(FiscalBracketRepository.class),
-                context.getBean(FiscalRateOverrideRepository.class),
-                context.getBean(FiscalActualOverrideRepository.class));
+        JpaTaxStore tax = context.getBean(JpaTaxStore.class);
         RetirementPersistenceAdapter retirement = new RetirementPersistenceAdapter(cache,
                 context.getBean(PensionPlanRepository.class));
         BankReader bank = context.getBean(BankReader.class);

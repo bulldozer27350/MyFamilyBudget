@@ -29,7 +29,8 @@ import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
-import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
@@ -50,12 +51,13 @@ class ImpotsServiceImplTest {
         persistenceManager.init();
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        InMemoryTaxStore taxStore = new InMemoryTaxStore();
         service = new ImpotsServiceImpl(
                 mapper,
                 new RetirementInputFactory(),
                 new DefaultRetirementCalculationService(),
                 new DefaultTaxCalculationService(),
-                new TaxCommandService(new TaxPersistenceAdapter(persistenceManager)),
+                new TaxCommandService(taxStore, silos -> { }, RecordingTransactionRunner.direct()),
                 SettingsCommandRouterTestFactory.of(persistenceManager,
                         new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore())),
                 SettingsReaderTestFactory.of(persistenceManager),
@@ -64,7 +66,7 @@ class ImpotsServiceImplTest {
                 settingsAdapter,
                 appSettings,
                 appSettings,
-                new TaxPersistenceAdapter(persistenceManager),
+                taxStore,
                 new InMemoryTreasuryStore(),
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 new RetirementPersistenceAdapter(persistenceManager),

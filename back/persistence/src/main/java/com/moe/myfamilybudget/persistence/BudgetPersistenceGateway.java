@@ -138,6 +138,7 @@ class BudgetPersistenceGateway {
             syncWealth(loaded);
             syncSettings(loaded);
             migrateCashflowSettingsIfMissing(loaded.getEffectiveSettings());
+            migrateFiscalSettingsIfMissing(loaded.getEffectiveSettings());
         }
         return loaded;
     }
@@ -176,27 +177,9 @@ class BudgetPersistenceGateway {
         savePlacements(model.placements(), entity);
         saveRealEstate(model.realEstate(), entity);
         saveAssetCategories(model.assetCategories(), entity);
-        syncFiscal(model);
         syncPension(model.retirement());
         syncWealth(model);
         syncSettings(model);
-    }
-
-    private void syncFiscal(BudgetDataModel model) {
-        fiscalChildRepository.deleteAll();
-        fiscalBracketRepository.deleteAll();
-        fiscalRateOverrideRepository.deleteAll();
-        fiscalActualOverrideRepository.deleteAll();
-        fiscalChildRepository.flush();
-        fiscalBracketRepository.flush();
-        fiscalRateOverrideRepository.flush();
-        fiscalActualOverrideRepository.flush();
-        fiscalChildRepository.saveAll(FiscalEntityMapper.toChildEntities(model.getEffectiveTaxChildren()));
-        fiscalBracketRepository.saveAll(FiscalEntityMapper.toBracketEntities(model.getEffectiveTaxBrackets()));
-        fiscalRateOverrideRepository.saveAll(
-                FiscalEntityMapper.toRateOverrideEntities(model.getEffectiveTaxRateOverrides()));
-        fiscalActualOverrideRepository.saveAll(
-                FiscalEntityMapper.toActualOverrideEntities(model.getEffectiveTaxActualOverrides()));
     }
 
     private void syncPension(RetirementModel retirement) {
@@ -222,16 +205,13 @@ class BudgetPersistenceGateway {
 
     private void syncSettings(BudgetDataModel model) {
         SettingsModel s = model.getEffectiveSettings();
-        // R-20 : cashflow_settings appartient au silo Tresorerie (JpaTreasuryStore) ; le cache, perime pour
-        // ces champs, ne doit plus l'ecraser a chaque mutation d'un autre domaine.
+        // R-20 : cashflow_settings appartient au silo Tresorerie (JpaTreasuryStore) ; R-42 : fiscal_settings
+        // appartient au silo Fiscalite (JpaTaxStore). Le cache, perime pour ces champs, ne doit plus les
+        // ecraser a chaque mutation d'un autre domaine.
         pensionSettingsRepository.deleteAll();
-        fiscalSettingsRepository.deleteAll();
         pensionSettingsRepository.flush();
-        fiscalSettingsRepository.flush();
         pensionSettingsRepository.save(PensionSettingsMapper.toEntity(
                 new RetirementSettingsModel(s.birthYear(), s.retireAge())));
-        fiscalSettingsRepository.save(FiscalSettingsMapper.toEntity(
-                new TaxSettingsModel(s.childExitAge(), s.taxAbattement())));
     }
 
     // SILO-220 / R-20 : cashflow_settings appartient desormais au silo Tresorerie (JpaTreasuryStore), qui
@@ -246,6 +226,18 @@ class BudgetPersistenceGateway {
         cashflowSettingsRepository.save(CashflowSettingsMapper.toEntity(
                 new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
                         s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold())));
+    }
+
+    // R-42 : fiscal_settings appartient desormais au silo Fiscalite (JpaTaxStore), qui l'ecrit directement a
+    // chaque mutation. syncSettings() ne doit donc plus l'ecraser inconditionnellement a chaque sauvegarde
+    // d'un autre domaine. Au demarrage, si la table est vide (schema neuf, ou ligne supprimee), elle doit
+    // etre migree une fois depuis le blob `settings` historique, comme cashflow_settings.
+    private void migrateFiscalSettingsIfMissing(SettingsModel s) {
+        if (fiscalSettingsRepository.count() > 0) {
+            return;
+        }
+        fiscalSettingsRepository.save(FiscalSettingsMapper.toEntity(
+                new TaxSettingsModel(s.childExitAge(), s.taxAbattement())));
     }
 
     private BankImportModel loadBankImport() {

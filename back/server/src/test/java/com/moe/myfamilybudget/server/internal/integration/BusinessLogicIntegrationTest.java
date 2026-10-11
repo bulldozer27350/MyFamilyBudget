@@ -44,7 +44,7 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
-import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -407,7 +407,7 @@ class BusinessLogicIntegrationTest {
                 new DefaultTresorerieCalculationService(),
                 SettingsReaderTestFactory.of(persistenceManager), treasuryStore,
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
-                new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
+                new InMemoryTaxStore(), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 
@@ -434,7 +434,7 @@ class BusinessLogicIntegrationTest {
                 new DefaultTresorerieCalculationService(),
                 SettingsReaderTestFactory.of(persistenceManager), treasuryStore,
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
-                new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
+                new InMemoryTaxStore(), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 
@@ -456,7 +456,7 @@ class BusinessLogicIntegrationTest {
                 new DefaultTresorerieCalculationService(),
                 SettingsReaderTestFactory.of(persistenceManager), treasuryStore,
                 new PatrimoinePersistenceAdapter(persistenceManager), new RetirementPersistenceAdapter(persistenceManager),
-                new TaxPersistenceAdapter(persistenceManager), new InMemoryBankStore(),
+                new InMemoryTaxStore(), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);
 

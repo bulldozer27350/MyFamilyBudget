@@ -21,6 +21,7 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 
@@ -33,7 +34,7 @@ class SnapshotFragmentWritersTest {
 
     private PersistenceManager persistenceManager;
     private RetirementPersistenceAdapter retirement;
-    private TaxPersistenceAdapter tax;
+    private InMemoryTaxStore tax;
     private com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore tresorerie;
     private PatrimoinePersistenceAdapter patrimoine;
     private InMemoryLoanStore loans;
@@ -45,7 +46,7 @@ class SnapshotFragmentWritersTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         retirement = new RetirementPersistenceAdapter(persistenceManager);
-        tax = new TaxPersistenceAdapter(persistenceManager);
+        tax = new InMemoryTaxStore();
         tresorerie = new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore();
         patrimoine = new PatrimoinePersistenceAdapter(persistenceManager);
         loans = new InMemoryLoanStore();
@@ -70,8 +71,8 @@ class SnapshotFragmentWritersTest {
         assertThat(settings().birthYear()).isEqualTo(1990);
         assertThat(settings().retireAge()).isEqualTo(60);
         assertThat(persistenceManager.getBudgetData().retirement().pass2026()).isEqualByComparingTo("48000");
-        assertThat(settings().childExitAge()).isEqualTo(before.childExitAge());
-        assertThat(settings().taxAbattement()).isEqualByComparingTo(before.taxAbattement());
+        assertThat(tax.getTaxSettings().childExitAge()).isEqualTo(25);
+        assertThat(tax.getTaxSettings().taxAbattement()).isEqualByComparingTo("0.12");
         assertThat(settings().pivotMode()).isEqualTo(before.pivotMode());
 
         retirement.reset();
@@ -79,7 +80,7 @@ class SnapshotFragmentWritersTest {
         assertThat(settings().birthYear()).isEqualTo(1985);
         assertThat(settings().retireAge()).isEqualTo(64);
         assertThat(persistenceManager.getBudgetData().retirement().pass2026()).isEqualByComparingTo("47100");
-        assertThat(settings().childExitAge()).isEqualTo(25);
+        assertThat(tax.getTaxSettings().childExitAge()).isEqualTo(25);
     }
 
     @Test
@@ -90,18 +91,18 @@ class SnapshotFragmentWritersTest {
         tax.replace(new TaxSettingsModel(25, new BigDecimal("0.12")), null,
                 List.of(new TaxBracketModel("tb_x", new BigDecimal("1000"), new BigDecimal("0.05"))), null, null);
 
-        assertThat(settings().childExitAge()).isEqualTo(25);
-        assertThat(settings().taxAbattement()).isEqualByComparingTo("0.12");
-        assertThat(persistenceManager.getBudgetData().taxBrackets()).hasSize(1);
-        assertThat(persistenceManager.getBudgetData().taxChildren()).isEmpty();
+        assertThat(tax.getTaxSettings().childExitAge()).isEqualTo(25);
+        assertThat(tax.getTaxSettings().taxAbattement()).isEqualByComparingTo("0.12");
+        assertThat(tax.getTaxBrackets()).hasSize(1);
+        assertThat(tax.getTaxChildren()).isEmpty();
         assertThat(settings().birthYear()).isEqualTo(1975);
 
         tax.reset();
 
-        assertThat(settings().childExitAge()).isEqualTo(21);
-        assertThat(settings().taxAbattement()).isEqualByComparingTo("0.10");
-        assertThat(persistenceManager.getBudgetData().taxBrackets()).hasSize(5);
-        assertThat(persistenceManager.getBudgetData().taxBrackets().get(0).id()).isEqualTo("tb_1");
+        assertThat(tax.getTaxSettings().childExitAge()).isEqualTo(21);
+        assertThat(tax.getTaxSettings().taxAbattement()).isEqualByComparingTo("0.10");
+        assertThat(tax.getTaxBrackets()).hasSize(5);
+        assertThat(tax.getTaxBrackets().get(0).id()).isEqualTo("tb_1");
         assertThat(settings().birthYear()).isEqualTo(1975);
         assertThat(settings().retireAge()).isEqualTo(66);
     }

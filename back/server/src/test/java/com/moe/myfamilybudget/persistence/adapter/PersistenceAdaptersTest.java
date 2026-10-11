@@ -90,17 +90,6 @@ class PersistenceAdaptersTest {
         }
 
         @Test
-        @DisplayName("TaxPersistenceAdapter : bareme par defaut en 5 tranches, sans enfant ni surcharge")
-        void taxDefaults() {
-            TaxPersistenceAdapter adapter = new TaxPersistenceAdapter(persistenceManager);
-
-            assertThat(adapter.getTaxChildren()).isEmpty();
-            assertThat(adapter.getTaxRateOverrides()).isEmpty();
-            assertThat(adapter.getTaxActualOverrides()).isEmpty();
-            assertDefaultBrackets(adapter.getTaxBrackets());
-        }
-
-        @Test
         @DisplayName("SettingsPersistenceAdapter : parametres par defaut")
         void settingsDefaults() {
             SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
@@ -155,17 +144,6 @@ class PersistenceAdaptersTest {
         }
 
         @Test
-        @DisplayName("TaxPersistenceAdapter relit enfants, bareme personnalise et surcharges")
-        void taxRoundTrip() {
-            TaxPersistenceAdapter adapter = new TaxPersistenceAdapter(persistenceManager);
-
-            assertThat(adapter.getTaxChildren()).containsExactly(TAX_CHILD);
-            assertThat(adapter.getTaxBrackets()).containsExactlyElementsOf(CUSTOM_BRACKETS);
-            assertThat(adapter.getTaxRateOverrides()).containsExactly(TAX_RATE_OVERRIDE);
-            assertThat(adapter.getTaxActualOverrides()).containsExactly(TAX_ACTUAL_OVERRIDE);
-        }
-
-        @Test
         @DisplayName("SettingsPersistenceAdapter relit les parametres importes")
         void settingsRoundTrip() {
             SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
@@ -211,51 +189,6 @@ class PersistenceAdaptersTest {
             persistenceManager.write(m -> m.updateRetirement(RETIREMENT));
 
             assertThat(adapter.getRetirement()).isEqualTo(RETIREMENT);
-            assertThat(new TaxPersistenceAdapter(persistenceManager).getTaxChildren()).containsExactly(TAX_CHILD);
-        }
-
-        @Test
-        @DisplayName("updateTaxConfig -> TaxPersistenceAdapter relit les quatre listes")
-        void updateTaxConfig() {
-            TaxPersistenceAdapter adapter = new TaxPersistenceAdapter(persistenceManager);
-
-            persistenceManager.write(m -> m.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS,
-                    List.of(TAX_RATE_OVERRIDE), List.of(TAX_ACTUAL_OVERRIDE)));
-
-            assertThat(adapter.getTaxChildren()).containsExactly(TAX_CHILD);
-            assertThat(adapter.getTaxBrackets()).containsExactlyElementsOf(CUSTOM_BRACKETS);
-            assertThat(adapter.getTaxRateOverrides()).containsExactly(TAX_RATE_OVERRIDE);
-            assertThat(adapter.getTaxActualOverrides()).containsExactly(TAX_ACTUAL_OVERRIDE);
-        }
-
-        @Test
-        @DisplayName("updateTaxConfig avec des listes nulles conserve l'existant")
-        void updateTaxConfigWithNullsKeepsExistingValues() {
-            persistenceManager.write(m -> m.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS,
-                    List.of(TAX_RATE_OVERRIDE), List.of(TAX_ACTUAL_OVERRIDE)));
-
-            persistenceManager.write(m -> m.updateTaxConfig(null, null, null, null));
-
-            TaxPersistenceAdapter adapter = new TaxPersistenceAdapter(persistenceManager);
-            assertThat(adapter.getTaxChildren()).containsExactly(TAX_CHILD);
-            assertThat(adapter.getTaxBrackets()).containsExactlyElementsOf(CUSTOM_BRACKETS);
-            assertThat(adapter.getTaxRateOverrides()).containsExactly(TAX_RATE_OVERRIDE);
-            assertThat(adapter.getTaxActualOverrides()).containsExactly(TAX_ACTUAL_OVERRIDE);
-        }
-
-        @Test
-        @DisplayName("resetDefaultTaxBrackets -> bareme par defaut, enfants et surcharges conserves")
-        void resetDefaultTaxBrackets() {
-            persistenceManager.write(m -> m.updateTaxConfig(List.of(TAX_CHILD), CUSTOM_BRACKETS,
-                    List.of(TAX_RATE_OVERRIDE), List.of(TAX_ACTUAL_OVERRIDE)));
-            TaxPersistenceAdapter adapter = new TaxPersistenceAdapter(persistenceManager);
-            assertThat(adapter.getTaxBrackets()).containsExactlyElementsOf(CUSTOM_BRACKETS);
-
-            persistenceManager.write(m -> m.resetDefaultTaxBrackets());
-
-            assertDefaultBrackets(adapter.getTaxBrackets());
-            assertThat(adapter.getTaxChildren()).containsExactly(TAX_CHILD);
-            assertThat(adapter.getTaxRateOverrides()).containsExactly(TAX_RATE_OVERRIDE);
         }
 
         @Test
@@ -295,10 +228,6 @@ class PersistenceAdaptersTest {
             assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getAssetCategories()).isEmpty();
             assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getTransfers()).isEmpty();
             assertThat(new RetirementPersistenceAdapter(persistenceManager).getRetirement().people()).isEmpty();
-            assertThat(new TaxPersistenceAdapter(persistenceManager).getTaxChildren()).isEmpty();
-            assertThat(new TaxPersistenceAdapter(persistenceManager).getTaxRateOverrides()).isEmpty();
-            assertThat(new TaxPersistenceAdapter(persistenceManager).getTaxActualOverrides()).isEmpty();
-            assertDefaultBrackets(new TaxPersistenceAdapter(persistenceManager).getTaxBrackets());
             SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
             assertThat(settings.getEffectiveBirthYear()).isEqualTo(1985);
             assertThat(settings.retireAge()).isEqualTo(64);
@@ -313,15 +242,6 @@ class PersistenceAdaptersTest {
 
             assertThat(new SettingsPersistenceAdapter(persistenceManager).getSettings().getEffectiveBirthYear())
                     .isEqualTo(1985);
-            assertDefaultBrackets(new TaxPersistenceAdapter(persistenceManager).getTaxBrackets());
-        }
-
-        @Test
-        @DisplayName("un import avec un bareme vide restitue le bareme par defaut a la lecture")
-        void emptyBracketsImportReadsDefaultSchedule() {
-            persistenceManager.setBudgetData(referenceData().withTaxBrackets(List.of()));
-
-            assertDefaultBrackets(new TaxPersistenceAdapter(persistenceManager).getTaxBrackets());
         }
 
         @Test
@@ -439,21 +359,5 @@ class PersistenceAdaptersTest {
                 .withAssetCategories(List.of(ASSET_CATEGORY))
                 .withLoans(List.of(LOAN))
                 .withObjectifs(List.of(GOAL));
-    }
-
-    private static void assertDefaultBrackets(List<TaxBracketModel> brackets) {
-        assertThat(brackets).hasSize(5);
-        String[] ids = {"tb_1", "tb_2", "tb_3", "tb_4", "tb_5"};
-        String[] upTo = {"11294", "28797", "82341", "177106", null};
-        String[] rates = {"0", "0.11", "0.30", "0.41", "0.45"};
-        for (int i = 0; i < ids.length; i++) {
-            assertThat(brackets.get(i).id()).isEqualTo(ids[i]);
-            if (upTo[i] == null) {
-                assertThat(brackets.get(i).upTo()).isNull();
-            } else {
-                assertThat(brackets.get(i).upTo()).isEqualByComparingTo(upTo[i]);
-            }
-            assertThat(brackets.get(i).rate()).isEqualByComparingTo(rates[i]);
-        }
     }
 }

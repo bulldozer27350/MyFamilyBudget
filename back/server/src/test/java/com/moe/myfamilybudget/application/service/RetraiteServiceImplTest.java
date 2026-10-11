@@ -33,7 +33,7 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
-import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class RetraiteServiceImplTest {
@@ -57,7 +57,7 @@ class RetraiteServiceImplTest {
                         SettingsReaderTestFactory.of(persistenceManager),
                         new SettingsPersistenceAdapter(persistenceManager),
                         new RetirementPersistenceAdapter(persistenceManager),
-                        new TaxPersistenceAdapter(persistenceManager),
+                        new InMemoryTaxStore(),
                         new InMemoryTreasuryStore(),
                         new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager))));
     }

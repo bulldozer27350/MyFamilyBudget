@@ -20,18 +20,19 @@ import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.TaxPersistenceAdapter;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
 import com.moe.myfamilybudget.domain.tax.port.TaxWriter;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
  * DB-021 -- Le command service Fiscalite valide la commande, delegue au port d'ecriture et laisse l'erreur
  * de persistance remonter telle quelle ; l'adaptateur ecrit bien dans le modele relu par les lecteurs.
+ *
+ * <p>R-42 (lot B, meme gabarit que {@code TresorerieCommandServiceTest}) : chaque commande s'execute desormais
+ * dans une transaction, apres prise du verrou du silo Fiscalite.
  */
-@DisplayName("DB-021 -- TaxCommandService")
+@DisplayName("DB-021 / R-42 -- TaxCommandService")
 class TaxCommandServiceTest {
 
     private static final TaxChildModel CHILD = new TaxChildModel("tc_1", "Emma", 2015);
@@ -48,7 +49,7 @@ class TaxCommandServiceTest {
     @BeforeEach
     void setUp() {
         writer = mock(TaxWriter.class);
-        service = new TaxCommandService(writer);
+        service = new TaxCommandService(writer, silos -> { }, RecordingTransactionRunner.direct());
     }
 
     // --- succes : delegation au port ---
@@ -124,24 +125,21 @@ class TaxCommandServiceTest {
     @Test
     @DisplayName("integration adaptateur : configuration, bareme et parametre relus par les lecteurs")
     void adapterWritesAreReadBackByReaders() {
-        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
-        TaxPersistenceAdapter adapter = new TaxPersistenceAdapter(persistenceManager);
-        SettingsPersistenceAdapter settings = new SettingsPersistenceAdapter(persistenceManager);
-        TaxCommandService realService = new TaxCommandService(adapter);
+        InMemoryTaxStore store = new InMemoryTaxStore();
+        TaxCommandService realService = new TaxCommandService(store, silos -> { }, RecordingTransactionRunner.direct());
 
         realService.updateTaxConfig(List.of(CHILD), BRACKETS, List.of(RATE_OVERRIDE), List.of(ACTUAL_OVERRIDE));
         realService.updateTaxSettings(TaxSettingField.CHILD_EXIT_AGE, 18);
 
-        assertThat(adapter.getTaxChildren()).containsExactly(CHILD);
-        assertThat(adapter.getTaxBrackets()).containsExactlyElementsOf(BRACKETS);
-        assertThat(adapter.getTaxRateOverrides()).containsExactly(RATE_OVERRIDE);
-        assertThat(adapter.getTaxActualOverrides()).containsExactly(ACTUAL_OVERRIDE);
-        assertThat(settings.getSettings().childExitAge()).isEqualTo(18);
+        assertThat(store.getTaxChildren()).containsExactly(CHILD);
+        assertThat(store.getTaxBrackets()).containsExactlyElementsOf(BRACKETS);
+        assertThat(store.getTaxRateOverrides()).containsExactly(RATE_OVERRIDE);
+        assertThat(store.getTaxActualOverrides()).containsExactly(ACTUAL_OVERRIDE);
+        assertThat(store.getTaxSettings().childExitAge()).isEqualTo(18);
 
         realService.resetDefaultTaxBrackets();
 
-        assertThat(adapter.getTaxBrackets()).hasSize(5);
-        assertThat(adapter.getTaxChildren()).containsExactly(CHILD);
+        assertThat(store.getTaxBrackets()).hasSize(5);
+        assertThat(store.getTaxChildren()).containsExactly(CHILD);
     }
 }
