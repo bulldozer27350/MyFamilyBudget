@@ -8,16 +8,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.application.settings.SettingsModelAssembler;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
-import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 
 /**
  * SILO-100 -- Les paramètres lus par propriétaire (Retraite, Fiscalité, Trésorerie) sont la projection exacte de
- * l'état des paramètres, et {@link SettingsModelAssembler} recompose à l'identique le {@code SettingsModel} (R-50 :
- * la simulation et les hypothèses économiques sont lues chez le silo Paramètres, voir {@code JpaAppSettingsStoreTest}).
+ * l'état des paramètres (R-50 : la simulation et les hypothèses économiques sont lues chez le silo Paramètres,
+ * voir {@code JpaAppSettingsStoreTest}). R-52 : la recomposition applicative (ex-{@code SettingsModelAssembler})
+ * est couverte par {@code SettingsComposer} au niveau application, hors persistance.
  */
 @DisplayName("SILO-100 -- SettingsPersistenceAdapter : lectures par propriétaire")
 class SettingsPersistenceAdapterOwnerReadersTest {
@@ -63,19 +62,5 @@ class SettingsPersistenceAdapterOwnerReadersTest {
         assertThat(adapter.getTresorerieSettings().cashCeiling()).isEqualByComparingTo("20000");
         assertThat(adapter.getTresorerieSettings().cashFloor()).isEqualByComparingTo("1000");
         assertThat(adapter.getTresorerieSettings().cashAlertThreshold()).isEqualByComparingTo("500");
-    }
-
-    @Test
-    @DisplayName("l'assembleur applicatif recompose exactement le SettingsModel (défauts et import)")
-    void assemblerRebuildsTheGlobalSettingsModel() {
-        SettingsModelAssembler assembler = SettingsReaderTestFactory.of(persistenceManager);
-        assertThat(assembler.getSettings()).isEqualTo(adapter.getSettings());
-
-        SettingsModel settings = new SettingsModel(1990, 62, 90, new BigDecimal("0.025"), "2026-01-01", "auto",
-                new BigDecimal("5000"), 23, new BigDecimal("0.05"), true, new BigDecimal("20000"),
-                new BigDecimal("1000"), new BigDecimal("500"));
-        persistenceManager.setBudgetData(persistenceManager.getBudgetData().withSettings(settings));
-
-        assertThat(assembler.getSettings()).isEqualTo(settings);
     }
 }

@@ -20,13 +20,13 @@ import com.moe.myfamilybudget.application.factory.OverviewInputFactory;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsComposer;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.application.factory.TreasuryInputFactory;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
-import java.math.BigDecimal;
 import com.moe.myfamilybudget.application.model.OverviewResultModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjection;
@@ -37,7 +37,11 @@ import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxReader;
 
 /**
@@ -53,8 +57,10 @@ import com.moe.myfamilybudget.domain.tax.port.TaxReader;
  *
  * <p>SILO-117 : plus de {@code BudgetDataModel} ; les fragments lus par les ports sont transmis à
  * {@link OverviewInputFactory} sous forme de {@link OverviewInputFactory.Sources} et la vue de façade est
- * assemblée directement. {@link SettingsReader} reste lu pour le bloc {@code settings} de la réponse REST
- * (contrat inchangé) et pour en dériver les paramètres des silos, jusqu'à SILO-118/SILO-120.
+ * assemblée directement. R-52 : les paramètres des silos (Retraite, Fiscalité, Trésorerie, Simulation,
+ * Hypothèses économiques) sont lus directement chez leurs propriétaires ; le bloc {@code settings} de la
+ * réponse REST (contrat inchangé) est composé depuis ces mêmes lectures ({@link SettingsComposer}), sans
+ * passer par {@code transition.port.SettingsReader}.
  */
 @RestController
 public class OverviewServiceImpl implements OverviewApi {
@@ -64,7 +70,11 @@ public class OverviewServiceImpl implements OverviewApi {
     private final OverviewCalculationService calculationService;
     private final RetirementInputFactory retirementInputFactory;
     private final RetirementCalculationService retirementCalculationService;
-    private final SettingsReader settingsReader;
+    private final RetirementSettingsReader retirementSettingsReader;
+    private final TaxSettingsReader taxSettingsReader;
+    private final TresorerieSettingsReader tresorerieSettingsReader;
+    private final SimulationSettingsReader simulationSettingsReader;
+    private final EconomicAssumptionsReader economicAssumptionsReader;
     private final BudgetReader budgetReader;
     private final PatrimoineReader patrimoineReader;
     private final RetirementReader retirementReader;
@@ -79,7 +89,11 @@ public class OverviewServiceImpl implements OverviewApi {
             TaxCalculationService taxCalculationService,
             PatrimoineProjectionService patrimoineProjectionService,
             TresorerieCalculationService tresorerieCalculationService,
-            SettingsReader settingsReader,
+            RetirementSettingsReader retirementSettingsReader,
+            TaxSettingsReader taxSettingsReader,
+            TresorerieSettingsReader tresorerieSettingsReader,
+            SimulationSettingsReader simulationSettingsReader,
+            EconomicAssumptionsReader economicAssumptionsReader,
             BudgetReader budgetReader,
             PatrimoineReader patrimoineReader,
             RetirementReader retirementReader,
@@ -93,7 +107,11 @@ public class OverviewServiceImpl implements OverviewApi {
         this.calculationService = new OverviewCalculationService();
         this.retirementInputFactory = new RetirementInputFactory();
         this.retirementCalculationService = retirementCalculationService;
-        this.settingsReader = settingsReader;
+        this.retirementSettingsReader = retirementSettingsReader;
+        this.taxSettingsReader = taxSettingsReader;
+        this.tresorerieSettingsReader = tresorerieSettingsReader;
+        this.simulationSettingsReader = simulationSettingsReader;
+        this.economicAssumptionsReader = economicAssumptionsReader;
         this.budgetReader = budgetReader;
         this.patrimoineReader = patrimoineReader;
         this.retirementReader = retirementReader;
@@ -103,19 +121,15 @@ public class OverviewServiceImpl implements OverviewApi {
         this.goalReader = goalReader;
     }
 
-    /** Paramètres par défaut historiques, appliqués quand aucun paramètre n'est persisté. */
-    private static SettingsModel orDefault(SettingsModel settings) {
-        if (settings != null) {
-            return settings;
-        }
-        return new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "", "manual",
-                BigDecimal.ZERO, 21, new BigDecimal("0.10"), null, null, null);
-    }
-
     @Override
     public ResponseEntity<OverviewResponseDto> getOverview(Boolean useConstantEuros) {
-        SettingsModel settings = settingsReader.getSettings();
-        SettingsModel s = orDefault(settings);
+        RetirementSettingsModel retirementSettings = retirementSettingsReader.getRetirementSettings();
+        TaxSettingsModel taxSettings = taxSettingsReader.getTaxSettings();
+        TresorerieSettingsModel tresorerieSettings = tresorerieSettingsReader.getTresorerieSettings();
+        SimulationSettingsModel simulationSettings = simulationSettingsReader.getSimulationSettings();
+        var economicAssumptions = economicAssumptionsReader.getEconomicAssumptions();
+        SettingsView settings = SettingsComposer.compose(
+                retirementSettings, taxSettings, tresorerieSettings, simulationSettings, economicAssumptions);
         var incomes = budgetReader.getIncomes();
         var charges = budgetReader.getCharges();
         var placements = patrimoineReader.getPlacements();
@@ -136,12 +150,11 @@ public class OverviewServiceImpl implements OverviewApi {
 
         OverviewInputFactory.Sources sources = new OverviewInputFactory.Sources(
                 new TreasuryInputFactory.Sources(
-                        new RetirementSettingsModel(s.birthYear(), s.retireAge()),
-                        new TaxSettingsModel(s.childExitAge(), s.taxAbattement()),
-                        new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(),
-                                s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()),
-                        new SimulationSettingsModel(s.simulateUntilAge()),
-                        s.inflationRate(),
+                        retirementSettings,
+                        taxSettings,
+                        tresorerieSettings,
+                        simulationSettings,
+                        economicAssumptions.inflationRate(),
                         retirement, incomes, charges, placements, oneoff, transfers,
                         variableIncomes, variableOverrides, taxChildren, taxBrackets,
                         taxRateOverrides, taxActualOverrides, bankImport),

@@ -29,8 +29,13 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
 import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
 import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsSnapshotWriter;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
 import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsSnapshotWriter;
+import com.moe.myfamilybudget.application.settings.SettingsComposer;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 
 /**
  * Opérations transverses sur le budget complet : export ({@code GET /budget}), import
@@ -48,6 +53,9 @@ import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsSnapshotWri
  *
  * <p>SILO-205 : la transaction est ouverte via le port {@link TransactionRunner} (plus d'{@code @Transactional}) ;
  * le verrou reste la première instruction exécutée dans la transaction.
+ *
+ * <p>R-52 : le bloc {@code settings} de l'export (contrat inchangé) est composé directement depuis les cinq
+ * ports propriétaires ({@link SettingsComposer}), sans passer par {@code transition.port.SettingsReader}.
  */
 @Service
 public class GlobalBudgetSnapshotService {
@@ -58,7 +66,11 @@ public class GlobalBudgetSnapshotService {
     private final TransactionRunner transactionRunner;
     private final OverviewMapper overviewMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
-    private final SettingsReader settingsReader;
+    private final RetirementSettingsReader retirementSettingsReader;
+    private final TaxSettingsReader taxSettingsReader;
+    private final TresorerieSettingsReader tresorerieSettingsReader;
+    private final SimulationSettingsReader simulationSettingsReader;
+    private final EconomicAssumptionsReader economicAssumptionsReader;
     private final BudgetReader budgetReader;
     private final PatrimoineReader patrimoineReader;
     private final RetirementReader retirementReader;
@@ -80,7 +92,11 @@ public class GlobalBudgetSnapshotService {
             SiloMutationLock siloMutationLock,
             OverviewMapper overviewMapper,
             ObjectifsSettingsService objectifsSettingsService,
-            SettingsReader settingsReader,
+            RetirementSettingsReader retirementSettingsReader,
+            TaxSettingsReader taxSettingsReader,
+            TresorerieSettingsReader tresorerieSettingsReader,
+            SimulationSettingsReader simulationSettingsReader,
+            EconomicAssumptionsReader economicAssumptionsReader,
             BudgetReader budgetReader,
             PatrimoineReader patrimoineReader,
             RetirementReader retirementReader,
@@ -102,7 +118,11 @@ public class GlobalBudgetSnapshotService {
         this.transactionRunner = transactionRunner;
         this.overviewMapper = overviewMapper;
         this.objectifsSettingsService = objectifsSettingsService;
-        this.settingsReader = settingsReader;
+        this.retirementSettingsReader = retirementSettingsReader;
+        this.taxSettingsReader = taxSettingsReader;
+        this.tresorerieSettingsReader = tresorerieSettingsReader;
+        this.simulationSettingsReader = simulationSettingsReader;
+        this.economicAssumptionsReader = economicAssumptionsReader;
         this.budgetReader = budgetReader;
         this.patrimoineReader = patrimoineReader;
         this.retirementReader = retirementReader;
@@ -175,7 +195,11 @@ public class GlobalBudgetSnapshotService {
     /** Vue de façade assemblée fragment par fragment depuis les ports de lecture (SILO-119, lot A). */
     private BudgetFacadeView composeFacadeView() {
         return new BudgetFacadeView(
-                settingsReader.getSettings(), budgetReader.getIncomes(), budgetReader.getCharges(),
+                SettingsComposer.compose(
+                        retirementSettingsReader.getRetirementSettings(), taxSettingsReader.getTaxSettings(),
+                        tresorerieSettingsReader.getTresorerieSettings(), simulationSettingsReader.getSimulationSettings(),
+                        economicAssumptionsReader.getEconomicAssumptions()),
+                budgetReader.getIncomes(), budgetReader.getCharges(),
                 patrimoineReader.getPlacements(), patrimoineReader.getRealEstate(), retirementReader.getRetirement(),
                 taxReader.getTaxChildren(), taxReader.getTaxBrackets(), taxReader.getTaxRateOverrides(),
                 taxReader.getTaxActualOverrides(), budgetReader.getOneoffExpenses(),

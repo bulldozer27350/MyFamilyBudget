@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
@@ -100,7 +100,7 @@ public class TaxMapper {
         // 5. Settings
         Map<String, Object> settingsMap = new HashMap<>();
         if (model.settings() != null) {
-            SettingsModel s = model.settings();
+            SettingsView s = model.settings();
             settingsMap.put("birthYear", s.birthYear());
             settingsMap.put("retireAge", s.retireAge());
             settingsMap.put("simulateUntilAge", s.simulateUntilAge());

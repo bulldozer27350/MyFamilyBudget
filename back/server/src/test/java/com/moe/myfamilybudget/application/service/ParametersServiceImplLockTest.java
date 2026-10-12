@@ -24,7 +24,11 @@ import com.moe.myfamilybudget.application.port.SiloMutationLock;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
@@ -45,7 +49,9 @@ class ParametersServiceImplLockTest {
         router = mock(SettingsCommandRouter.class);
         patrimoine = mock(PatrimoineCommandService.class);
         service = new ParametersServiceImpl(
-                mock(SettingsReader.class), mock(PatrimoineReader.class), mock(BankReader.class),
+                mock(RetirementSettingsReader.class), mock(TaxSettingsReader.class), mock(TresorerieSettingsReader.class),
+                mock(SimulationSettingsReader.class), mock(EconomicAssumptionsReader.class),
+                mock(PatrimoineReader.class), mock(BankReader.class),
                 mock(RetirementReader.class), new SettingsMapper(), mock(ObjectifsSettingsService.class), patrimoine,
                 lock, router, RecordingTransactionRunner.direct());
     }

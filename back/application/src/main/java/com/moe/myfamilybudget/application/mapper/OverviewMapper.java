@@ -67,6 +67,7 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
@@ -318,7 +319,7 @@ public class OverviewMapper {
                 dto.getSettings().getGoalLiquidHorizonMonths());
     }
 
-    private SettingsDto toSettingsDto(SettingsModel model, ObjectifsParameters objectifs, RetirementModel retirement) {
+    private SettingsDto toSettingsDto(SettingsView model, ObjectifsParameters objectifs, RetirementModel retirement) {
         if (model == null)
             return null;
         SettingsDto dto = new SettingsDto();

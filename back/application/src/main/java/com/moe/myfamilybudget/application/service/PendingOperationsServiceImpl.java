@@ -19,16 +19,22 @@ import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculat
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
+import com.moe.myfamilybudget.application.settings.SettingsComposer;
 
 /**
  * Service et Contrôleur REST implémentant le contrat OpenAPI OperationsEnCoursApi (Tag: Operations en cours).
  *
  * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
  * {@code PersistenceManager}. SILO-114 : plus de {@code BudgetDataModel} ; lecture via {@link BankReader}
- * et {@link BudgetReader} (charges, revenus, ponctuels) ; {@link SettingsReader} n'est conservé que pour le
- * bloc {@code settings} de la réponse REST (contrat inchangé), retiré avec la composition applicative de ce
- * bloc. Écriture via {@link BankImportCommandService} (déjà en place depuis RF-A00).
+ * et {@link BudgetReader} (charges, revenus, ponctuels). R-52 : le bloc {@code settings} de la réponse REST
+ * (contrat inchangé) est composé directement depuis les cinq ports propriétaires
+ * ({@link SettingsComposer}), sans passer par {@code transition.port.SettingsReader}. Écriture via
+ * {@link BankImportCommandService} (déjà en place depuis RF-A00).
  */
 @Service
 @RestController
@@ -36,7 +42,11 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
 
     private final BankReader bankReader;
     private final BudgetReader budgetReader;
-    private final SettingsReader settingsReader;
+    private final RetirementSettingsReader retirementSettingsReader;
+    private final TaxSettingsReader taxSettingsReader;
+    private final TresorerieSettingsReader tresorerieSettingsReader;
+    private final SimulationSettingsReader simulationSettingsReader;
+    private final EconomicAssumptionsReader economicAssumptionsReader;
     private final BankImportCommandService bankImportCommandService;
     private final StatementBankImportMapper mapper;
     private final BankImportCalculationService bankImportCalculationService;
@@ -44,13 +54,21 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
     public PendingOperationsServiceImpl(
             BankReader bankReader,
             BudgetReader budgetReader,
-            SettingsReader settingsReader,
+            RetirementSettingsReader retirementSettingsReader,
+            TaxSettingsReader taxSettingsReader,
+            TresorerieSettingsReader tresorerieSettingsReader,
+            SimulationSettingsReader simulationSettingsReader,
+            EconomicAssumptionsReader economicAssumptionsReader,
             BankImportCommandService bankImportCommandService,
             StatementBankImportMapper mapper,
             BankImportCalculationService bankImportCalculationService) {
         this.bankReader = bankReader;
         this.budgetReader = budgetReader;
-        this.settingsReader = settingsReader;
+        this.retirementSettingsReader = retirementSettingsReader;
+        this.taxSettingsReader = taxSettingsReader;
+        this.tresorerieSettingsReader = tresorerieSettingsReader;
+        this.simulationSettingsReader = simulationSettingsReader;
+        this.economicAssumptionsReader = economicAssumptionsReader;
         this.bankImportCommandService = bankImportCommandService;
         this.mapper = mapper;
         this.bankImportCalculationService = bankImportCalculationService;
@@ -68,7 +86,10 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
                 budgetReader.getCharges(),
                 budgetReader.getIncomes(),
                 budgetReader.getOneoffExpenses(),
-                settingsReader.getSettings());
+                SettingsComposer.compose(
+                        retirementSettingsReader.getRetirementSettings(), taxSettingsReader.getTaxSettings(),
+                        tresorerieSettingsReader.getTresorerieSettings(), simulationSettingsReader.getSimulationSettings(),
+                        economicAssumptionsReader.getEconomicAssumptions()));
         return ResponseEntity.ok(responseMap);
     }
 

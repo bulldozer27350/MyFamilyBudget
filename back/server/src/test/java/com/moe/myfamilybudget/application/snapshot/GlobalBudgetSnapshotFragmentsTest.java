@@ -36,8 +36,12 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
 import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
 import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsSnapshotWriter;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
 import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsSnapshotWriter;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
@@ -76,7 +80,9 @@ class GlobalBudgetSnapshotFragmentsTest {
         goals = mock(GoalSnapshotWriter.class);
         bank = mock(BankSnapshotWriter.class);
         service = new GlobalBudgetSnapshotService(lock, new OverviewMapper(), objectifs,
-                mock(SettingsReader.class), mock(BudgetReader.class), mock(PatrimoineReader.class),
+                mock(RetirementSettingsReader.class), mock(TaxSettingsReader.class), mock(TresorerieSettingsReader.class),
+                mock(SimulationSettingsReader.class), mock(EconomicAssumptionsReader.class),
+                mock(BudgetReader.class), mock(PatrimoineReader.class),
                 mock(RetirementReader.class), mock(TaxReader.class), mock(BankReader.class),
                 mock(LoanReader.class), mock(GoalReader.class), retirement, tax, tresorerie, simulation,
                 economic, patrimoine, loans, goals, bank, RecordingTransactionRunner.direct());

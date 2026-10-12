@@ -12,7 +12,8 @@ import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsComposer;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
@@ -22,8 +23,12 @@ import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -38,8 +43,9 @@ import org.springframework.web.bind.annotation.RestController;
  * (voir {@code OverviewMapper.toBudgetDataDto(BudgetFacadeView)}), donc tous les ports de lecture sont
  * composés ici. RES-010 : le mapper ne reçoit plus {@code BudgetDataModel}, mais une
  * {@code BudgetFacadeView} assemblée ici. SILO-115 : plus aucun {@code BudgetDataModel} ; la vue de façade
- * est assemblée directement depuis les ports et {@link SettingsReader} n'est conservé que pour le bloc
- * {@code settings} de la réponse REST (contrat inchangé) et le taux d'inflation des lignes budgétaires.
+ * est assemblée directement depuis les ports. R-52 : le bloc {@code settings} de la réponse REST (contrat
+ * inchangé) et le taux d'inflation des lignes budgétaires sont composés directement depuis les cinq ports
+ * propriétaires ({@link SettingsComposer}), sans passer par {@code transition.port.SettingsReader}.
  * SILO-155 : le moteur est reçu sous son interface ({@link AnalyseCalculationService}, {@code analysis-api}) ;
  * son implémentation vit dans {@code analysis-core} et est câblée par le composition root.
  */
@@ -49,7 +55,11 @@ public class AnalyseServiceImpl implements AnalyseApi {
     private final AnalyseMapper analyseMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
     private final AnalyseInputFactory analyseInputFactory;
-    private final SettingsReader settingsReader;
+    private final RetirementSettingsReader retirementSettingsReader;
+    private final TaxSettingsReader taxSettingsReader;
+    private final TresorerieSettingsReader tresorerieSettingsReader;
+    private final SimulationSettingsReader simulationSettingsReader;
+    private final EconomicAssumptionsReader economicAssumptionsReader;
     private final BudgetReader budgetReader;
     private final PatrimoineReader patrimoineReader;
     private final RetirementReader retirementReader;
@@ -62,7 +72,11 @@ public class AnalyseServiceImpl implements AnalyseApi {
     public AnalyseServiceImpl(
             AnalyseMapper analyseMapper,
             ObjectifsSettingsService objectifsSettingsService,
-            SettingsReader settingsReader,
+            RetirementSettingsReader retirementSettingsReader,
+            TaxSettingsReader taxSettingsReader,
+            TresorerieSettingsReader tresorerieSettingsReader,
+            SimulationSettingsReader simulationSettingsReader,
+            EconomicAssumptionsReader economicAssumptionsReader,
             BudgetReader budgetReader,
             PatrimoineReader patrimoineReader,
             RetirementReader retirementReader,
@@ -74,7 +88,11 @@ public class AnalyseServiceImpl implements AnalyseApi {
         this.analyseMapper = analyseMapper;
         this.objectifsSettingsService = objectifsSettingsService;
         this.analyseInputFactory = new AnalyseInputFactory();
-        this.settingsReader = settingsReader;
+        this.retirementSettingsReader = retirementSettingsReader;
+        this.taxSettingsReader = taxSettingsReader;
+        this.tresorerieSettingsReader = tresorerieSettingsReader;
+        this.simulationSettingsReader = simulationSettingsReader;
+        this.economicAssumptionsReader = economicAssumptionsReader;
         this.budgetReader = budgetReader;
         this.patrimoineReader = patrimoineReader;
         this.retirementReader = retirementReader;
@@ -87,14 +105,17 @@ public class AnalyseServiceImpl implements AnalyseApi {
 
     @Override
     public ResponseEntity<AnalyseResponseDto> getAnalyse(Integer monthsBack) {
-        SettingsModel settings = settingsReader.getSettings();
+        SettingsView settings = SettingsComposer.compose(
+                retirementSettingsReader.getRetirementSettings(), taxSettingsReader.getTaxSettings(),
+                tresorerieSettingsReader.getTresorerieSettings(), simulationSettingsReader.getSimulationSettings(),
+                economicAssumptionsReader.getEconomicAssumptions());
         List<IncomeModel> incomes = budgetReader.getIncomes();
         List<ChargeModel> charges = budgetReader.getCharges();
         List<PlacementModel> placements = patrimoineReader.getPlacements();
         BankImportModel bankImport = bankReader.getBankImport();
 
         PointageInputFactory.Sources sources = new PointageInputFactory.Sources(
-                charges, incomes, placements, settings != null ? settings.inflationRate() : null);
+                charges, incomes, placements, settings.inflationRate());
         AnalyseInput input = analyseInputFactory.from(bankImport, sources, monthsBack);
         AnalyseResultModel resultModel = analyseCalculationService.computeAnalyse(input);
 

@@ -26,7 +26,7 @@ import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
-import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 
 /**
  * SILO-300 (lot B, pilote Retraite) : le cas d'usage compose la réponse Retraite sans {@code ResponseEntity} ni
@@ -42,12 +42,17 @@ class DefaultRetirementUseCaseTest {
         PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         RetirementPersistenceAdapter retirementAdapter = new RetirementPersistenceAdapter(persistenceManager);
+        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
+        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         commandService = new RetirementCommandService(retirementAdapter);
         useCase = new DefaultRetirementUseCase(
                 new RetirementInputFactory(),
                 new DefaultRetirementCalculationService(),
-                SettingsReaderTestFactory.of(persistenceManager),
-                new SettingsPersistenceAdapter(persistenceManager),
+                settingsAdapter,
+                settingsAdapter,
+                settingsAdapter,
+                appSettings,
+                appSettings,
                 retirementAdapter,
                 new InMemoryTaxStore(),
                 new InMemoryTreasuryStore(),

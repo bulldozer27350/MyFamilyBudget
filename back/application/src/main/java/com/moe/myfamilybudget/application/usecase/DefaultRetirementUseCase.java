@@ -26,10 +26,14 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsComposer;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
 
 /**
  * Implémentation du cas d'usage Retraite (SILO-300, lot B, pilote).
@@ -41,16 +45,20 @@ import com.moe.myfamilybudget.transition.port.SettingsReader;
  * {@link RetirementCalculationService} puis traduit les types des silos vers les modèles de
  * {@code application-api}.
  *
- * <p>{@link SettingsReader} ne sert qu'au bloc {@code settings} de la réponse (contrat des façades
- * composites, voir 12-settings.md) ; il disparaît avec la composition applicative de ce bloc.
+ * <p>R-52 : le bloc {@code settings} de la réponse (contrat des façades composites, voir 12-settings.md)
+ * est composé directement depuis les cinq ports propriétaires ({@link SettingsComposer}), sans passer par
+ * {@code transition.port.SettingsReader}.
  */
 @Service
 public class DefaultRetirementUseCase implements RetirementUseCase {
 
     private final RetirementInputFactory retirementInputFactory;
     private final RetirementCalculationService retirementCalculationService;
-    private final SettingsReader settingsReader;
     private final RetirementSettingsReader retirementSettingsReader;
+    private final TaxSettingsReader taxSettingsReader;
+    private final TresorerieSettingsReader tresorerieSettingsReader;
+    private final SimulationSettingsReader simulationSettingsReader;
+    private final EconomicAssumptionsReader economicAssumptionsReader;
     private final RetirementReader retirementReader;
     private final TaxReader taxReader;
     private final BudgetReader budgetReader;
@@ -59,8 +67,11 @@ public class DefaultRetirementUseCase implements RetirementUseCase {
     public DefaultRetirementUseCase(
         RetirementInputFactory retirementInputFactory,
         RetirementCalculationService retirementCalculationService,
-        SettingsReader settingsReader,
         RetirementSettingsReader retirementSettingsReader,
+        TaxSettingsReader taxSettingsReader,
+        TresorerieSettingsReader tresorerieSettingsReader,
+        SimulationSettingsReader simulationSettingsReader,
+        EconomicAssumptionsReader economicAssumptionsReader,
         RetirementReader retirementReader,
         TaxReader taxReader,
         BudgetReader budgetReader,
@@ -68,8 +79,11 @@ public class DefaultRetirementUseCase implements RetirementUseCase {
     ) {
         this.retirementInputFactory = retirementInputFactory;
         this.retirementCalculationService = retirementCalculationService;
-        this.settingsReader = settingsReader;
         this.retirementSettingsReader = retirementSettingsReader;
+        this.taxSettingsReader = taxSettingsReader;
+        this.tresorerieSettingsReader = tresorerieSettingsReader;
+        this.simulationSettingsReader = simulationSettingsReader;
+        this.economicAssumptionsReader = economicAssumptionsReader;
         this.retirementReader = retirementReader;
         this.taxReader = taxReader;
         this.budgetReader = budgetReader;
@@ -78,7 +92,6 @@ public class DefaultRetirementUseCase implements RetirementUseCase {
 
     @Override
     public RetraiteResultModel getRetraite() {
-        SettingsModel settings = settingsReader.getSettings();
         RetirementSettingsModel retirementSettings = retirementSettingsReader.getRetirementSettings();
         RetirementModel retirement = retirementReader.getRetirement();
         List<IncomeModel> incomes = budgetReader.getIncomes();
@@ -121,6 +134,10 @@ public class DefaultRetirementUseCase implements RetirementUseCase {
             retirement != null ? retirement.agircPointDateGlobal() : "2025-11-01",
             retirement != null ? retirement.getEffectiveAgircPointGrowthRate() : new BigDecimal("0.01")
         );
+
+        SettingsView settings = SettingsComposer.compose(
+            retirementSettings, taxSettingsReader.getTaxSettings(), tresorerieSettingsReader.getTresorerieSettings(),
+            simulationSettingsReader.getSimulationSettings(), economicAssumptionsReader.getEconomicAssumptions());
 
         return new RetraiteResultModel(
             retWithProj,
@@ -223,7 +240,7 @@ public class DefaultRetirementUseCase implements RetirementUseCase {
         return result;
     }
 
-    private static RetraiteSettingsModel toSettings(SettingsModel settings) {
+    private static RetraiteSettingsModel toSettings(SettingsView settings) {
         if (settings == null) {
             return null;
         }

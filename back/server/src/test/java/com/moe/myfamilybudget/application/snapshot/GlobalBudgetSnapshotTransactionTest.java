@@ -32,8 +32,12 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
 import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsSnapshotWriter;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
 import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsSnapshotWriter;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 
 /** SILO-205 : import et reset s'exécutent dans la transaction ouverte par le port, verrou compris. */
 @DisplayName("SILO-205 -- GlobalBudgetSnapshotService via TransactionRunner")
@@ -66,7 +70,9 @@ class GlobalBudgetSnapshotTransactionTest {
         }).when(bank).replace(any());
 
         service = new GlobalBudgetSnapshotService(lock, new OverviewMapper(), mock(ObjectifsSettingsService.class),
-                mock(SettingsReader.class), mock(BudgetReader.class), mock(PatrimoineReader.class),
+                mock(RetirementSettingsReader.class), mock(TaxSettingsReader.class), mock(TresorerieSettingsReader.class),
+                mock(SimulationSettingsReader.class), mock(EconomicAssumptionsReader.class),
+                mock(BudgetReader.class), mock(PatrimoineReader.class),
                 mock(RetirementReader.class), mock(TaxReader.class), mock(BankReader.class),
                 mock(LoanReader.class), mock(GoalReader.class), mock(RetirementSnapshotWriter.class),
                 mock(TaxSnapshotWriter.class), mock(TresorerieSnapshotWriter.class),

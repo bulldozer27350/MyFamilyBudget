@@ -28,7 +28,6 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
@@ -60,7 +59,6 @@ class ImpotsServiceImplTest {
                 new TaxCommandService(taxStore, silos -> { }, RecordingTransactionRunner.direct()),
                 SettingsCommandRouterTestFactory.of(persistenceManager,
                         new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore())),
-                SettingsReaderTestFactory.of(persistenceManager),
                 settingsAdapter,
                 settingsAdapter,
                 settingsAdapter,

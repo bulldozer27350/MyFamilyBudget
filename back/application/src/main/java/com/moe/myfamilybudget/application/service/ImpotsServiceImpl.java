@@ -26,7 +26,7 @@ import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
 import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.application.settings.SettingsComposer;
 import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxReader;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
@@ -52,8 +52,8 @@ import java.util.Map;
  * propriétaire ({@link RetirementSettingsReader}, {@link TaxSettingsReader}, {@link TaxReader},
  * {@link BudgetReader}, {@link PatrimoineReader}, {@link RetirementReader}, {@link BankReader},
  * {@link TresorerieSettingsReader}, {@link SimulationSettingsReader}, {@link EconomicAssumptionsReader}).
- * {@link SettingsReader} n'est conservé que pour le bloc {@code settings} de la réponse REST (contrat
- * inchangé), retiré avec la composition applicative de ce bloc.
+ * R-52 : le bloc {@code settings} de la réponse REST (contrat inchangé) est composé directement depuis ces
+ * cinq ports ({@link SettingsComposer}), sans passer par {@code transition.port.SettingsReader}.
  */
 @RestController
 public class ImpotsServiceImpl implements ImpotsApi {
@@ -64,7 +64,6 @@ public class ImpotsServiceImpl implements ImpotsApi {
     private final TaxCalculationService taxCalculationService;
     private final TaxCommandService taxCommandService;
     private final SettingsCommandRouter settingsCommandRouter;
-    private final SettingsReader settingsReader;
     private final RetirementSettingsReader retirementSettingsReader;
     private final TaxSettingsReader taxSettingsReader;
     private final TresorerieSettingsReader tresorerieSettingsReader;
@@ -83,7 +82,6 @@ public class ImpotsServiceImpl implements ImpotsApi {
             TaxCalculationService taxCalculationService,
             TaxCommandService taxCommandService,
             SettingsCommandRouter settingsCommandRouter,
-            SettingsReader settingsReader,
             RetirementSettingsReader retirementSettingsReader,
             TaxSettingsReader taxSettingsReader,
             TresorerieSettingsReader tresorerieSettingsReader,
@@ -100,7 +98,6 @@ public class ImpotsServiceImpl implements ImpotsApi {
         this.taxCalculationService = taxCalculationService;
         this.taxCommandService = taxCommandService;
         this.settingsCommandRouter = settingsCommandRouter;
-        this.settingsReader = settingsReader;
         this.retirementSettingsReader = retirementSettingsReader;
         this.taxSettingsReader = taxSettingsReader;
         this.tresorerieSettingsReader = tresorerieSettingsReader;
@@ -117,6 +114,9 @@ public class ImpotsServiceImpl implements ImpotsApi {
     public ResponseEntity<Object> getImpots() {
         RetirementSettingsModel retirementSettings = retirementSettingsReader.getRetirementSettings();
         TaxSettingsModel taxSettings = taxSettingsReader.getTaxSettings();
+        var tresorerieSettings = tresorerieSettingsReader.getTresorerieSettings();
+        var simulationSettings = simulationSettingsReader.getSimulationSettings();
+        var economicAssumptions = economicAssumptionsReader.getEconomicAssumptions();
         RetirementModel retirementModel = retirementReader.getRetirement();
         List<IncomeModel> incomes = budgetReader.getIncomes();
         List<TaxChildModel> children = taxReader.getTaxChildren();
@@ -127,8 +127,8 @@ public class ImpotsServiceImpl implements ImpotsApi {
 
         TaxSimulationPeriod period = TaxSimulationPeriodResolver.resolve(new TaxSimulationPeriodResolver.Sources(
                 retirementSettings,
-                simulationSettingsReader.getSimulationSettings(),
-                tresorerieSettingsReader.getTresorerieSettings().pivotDate(),
+                simulationSettings,
+                tresorerieSettings.pivotDate(),
                 incomes,
                 budgetReader.getCharges(),
                 patrimoineReader.getPlacements(),
@@ -140,7 +140,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
         TaxCalculationInput input = TaxInputFactory.from(new TaxInputFactory.Sources(
                 retirementSettings,
                 taxSettings,
-                economicAssumptionsReader.getEconomicAssumptions().inflationRate(),
+                economicAssumptions.inflationRate(),
                 incomes,
                 budgetReader.getVariableIncomes(),
                 budgetReader.getVariableOverrides(),
@@ -156,7 +156,7 @@ public class ImpotsServiceImpl implements ImpotsApi {
                 brackets,
                 rateOverrides,
                 actualOverrides,
-                settingsReader.getSettings(),
+                SettingsComposer.compose(retirementSettings, taxSettings, tresorerieSettings, simulationSettings, economicAssumptions),
                 taxPreview);
         Map<String, Object> response = taxMapper.toResponseMap(resultModel, retirementModel);
         return ResponseEntity.ok(response);

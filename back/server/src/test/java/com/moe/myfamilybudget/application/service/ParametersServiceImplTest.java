@@ -23,7 +23,8 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
+import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.SettingsCommandRouterTestFactory;
@@ -44,8 +45,14 @@ class ParametersServiceImplTest {
         persistenceManager.init();
         ObjectifsSettingsService objectifsSettingsService =
                 new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore());
+        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
+        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         service = new ParametersServiceImpl(
-                SettingsReaderTestFactory.of(persistenceManager),
+                settingsAdapter,
+                settingsAdapter,
+                settingsAdapter,
+                appSettings,
+                appSettings,
                 new PatrimoinePersistenceAdapter(persistenceManager),
                 bankStore,
                 new RetirementPersistenceAdapter(persistenceManager),

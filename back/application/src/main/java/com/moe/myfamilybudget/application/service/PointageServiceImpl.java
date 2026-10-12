@@ -17,16 +17,23 @@ import com.moe.myfamilybudget.application.model.PointageModel;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
+import com.moe.myfamilybudget.application.settings.SettingsComposer;
 
 /**
  * Service et Contrôleur REST implémentant le contrat OpenAPI PointageApi (Tag: Pointage).
  * Les traitements et calculs sont exécutés exclusivement sur le Modèle Interne du domaine.
  *
  * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
- * {@code PersistenceManager}. Lecture via {@link BankReader}, {@link BudgetReader},
- * {@link PatrimoineReader} et {@link SettingsReader} ; écriture via
- * {@link BankImportCommandService} (déjà en place depuis RF-A00).
+ * {@code PersistenceManager}. Lecture via {@link BankReader}, {@link BudgetReader} et
+ * {@link PatrimoineReader} ; écriture via {@link BankImportCommandService} (déjà en place depuis
+ * RF-A00). R-52 : le bloc {@code settings} de la réponse REST (contrat inchangé) est composé
+ * directement depuis les cinq ports propriétaires ({@link SettingsComposer}), sans passer par
+ * {@code transition.port.SettingsReader}.
  */
 @Service
 @RestController
@@ -35,7 +42,11 @@ public class PointageServiceImpl implements PointageApi {
     private final BankReader bankReader;
     private final BudgetReader budgetReader;
     private final PatrimoineReader patrimoineReader;
-    private final SettingsReader settingsReader;
+    private final RetirementSettingsReader retirementSettingsReader;
+    private final TaxSettingsReader taxSettingsReader;
+    private final TresorerieSettingsReader tresorerieSettingsReader;
+    private final SimulationSettingsReader simulationSettingsReader;
+    private final EconomicAssumptionsReader economicAssumptionsReader;
     private final BankImportCommandService bankImportCommandService;
     private final PointageMapper mapper;
     private final PointageCalculationService pointageCalculationService;
@@ -44,14 +55,22 @@ public class PointageServiceImpl implements PointageApi {
             BankReader bankReader,
             BudgetReader budgetReader,
             PatrimoineReader patrimoineReader,
-            SettingsReader settingsReader,
+            RetirementSettingsReader retirementSettingsReader,
+            TaxSettingsReader taxSettingsReader,
+            TresorerieSettingsReader tresorerieSettingsReader,
+            SimulationSettingsReader simulationSettingsReader,
+            EconomicAssumptionsReader economicAssumptionsReader,
             BankImportCommandService bankImportCommandService,
             PointageMapper mapper,
             PointageCalculationService pointageCalculationService) {
         this.bankReader = bankReader;
         this.budgetReader = budgetReader;
         this.patrimoineReader = patrimoineReader;
-        this.settingsReader = settingsReader;
+        this.retirementSettingsReader = retirementSettingsReader;
+        this.taxSettingsReader = taxSettingsReader;
+        this.tresorerieSettingsReader = tresorerieSettingsReader;
+        this.simulationSettingsReader = simulationSettingsReader;
+        this.economicAssumptionsReader = economicAssumptionsReader;
         this.bankImportCommandService = bankImportCommandService;
         this.mapper = mapper;
         this.pointageCalculationService = pointageCalculationService;
@@ -68,7 +87,10 @@ public class PointageServiceImpl implements PointageApi {
                 budgetReader.getCharges(),
                 budgetReader.getIncomes(),
                 patrimoineReader.getPlacements(),
-                settingsReader.getSettings()
+                SettingsComposer.compose(
+                        retirementSettingsReader.getRetirementSettings(), taxSettingsReader.getTaxSettings(),
+                        tresorerieSettingsReader.getTresorerieSettings(), simulationSettingsReader.getSimulationSettings(),
+                        economicAssumptionsReader.getEconomicAssumptions())
         );
 
         Map<String, Object> responseMap = mapper.toPointageResponseMap(internalModel);

@@ -20,7 +20,8 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.testsupport.SettingsReaderTestFactory;
+import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 @DisplayName("PointageServiceImpl OpenAPI Controller Unit Tests")
@@ -35,9 +36,12 @@ class PointageServiceImplTest {
     void setUp() {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
+        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
+        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         service = new PointageServiceImpl(
                 bankStore, new InMemoryTreasuryStore(),
-                new PatrimoinePersistenceAdapter(persistenceManager), SettingsReaderTestFactory.of(persistenceManager),
+                new PatrimoinePersistenceAdapter(persistenceManager),
+                settingsAdapter, settingsAdapter, settingsAdapter, appSettings, appSettings,
                 new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()), new PointageMapper(),
                 new DefaultPointageCalculationService());
     }

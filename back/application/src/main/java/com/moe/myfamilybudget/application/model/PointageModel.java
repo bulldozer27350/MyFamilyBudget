@@ -1,6 +1,6 @@
 package com.moe.myfamilybudget.application.model;
 
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import java.util.Collections;
@@ -25,7 +25,7 @@ public record PointageModel(
         List<ChargeModel> charges,
         List<IncomeModel> incomes,
         List<PlacementModel> placements,
-        SettingsModel settings
+        SettingsView settings
 ) {
     public PointageModel {
         if (transactions == null) transactions = Collections.emptyList();
@@ -34,6 +34,6 @@ public record PointageModel(
         if (charges == null) charges = Collections.emptyList();
         if (incomes == null) incomes = Collections.emptyList();
         if (placements == null) placements = Collections.emptyList();
-        if (settings == null) settings = new SettingsModel(null, null, null, null, null, null, null, null, null, null, null, null);
+        if (settings == null) settings = new SettingsView(null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 }

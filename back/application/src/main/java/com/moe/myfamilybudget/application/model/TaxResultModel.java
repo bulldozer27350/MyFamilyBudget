@@ -1,6 +1,6 @@
 package com.moe.myfamilybudget.application.model;
 
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 import java.util.List;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
@@ -16,6 +16,6 @@ public record TaxResultModel(
     List<TaxBracketModel> taxBrackets,
     List<TaxRateOverrideModel> taxRateOverrides,
     List<TaxActualOverrideModel> taxActualOverrides,
-    SettingsModel settings,
+    SettingsView settings,
     List<TaxYearlyModel> taxPreview
 ) {}

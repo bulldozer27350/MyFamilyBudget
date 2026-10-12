@@ -14,7 +14,7 @@ import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.application.model.PointageModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 
 /**
  * Mapper assurant la conversion entre les structures de transfert (Maps / DTOs)
@@ -196,7 +196,7 @@ public class PointageMapper {
         return map;
     }
 
-    private Map<String, Object> toSettingsMap(SettingsModel s) {
+    private Map<String, Object> toSettingsMap(SettingsView s) {
         if (s == null) return Collections.emptyMap();
         Map<String, Object> map = new HashMap<>();
         map.put("inflationRate", s.inflationRate());

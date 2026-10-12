@@ -13,7 +13,7 @@ import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
@@ -37,7 +37,7 @@ import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
  * supprimé, plus aucune conversion depuis le snapshot global.
  */
 public record BudgetFacadeView(
-        SettingsModel settings,
+        SettingsView settings,
         List<IncomeModel> incomes,
         List<ChargeModel> charges,
         List<PlacementModel> placements,

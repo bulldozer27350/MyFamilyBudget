@@ -21,7 +21,7 @@ import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.PendingImportSummaryModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 
 /**
  * Mapper responsible for converting between OpenAPI DTOs / Request Maps
@@ -277,7 +277,7 @@ public class StatementBankImportMapper {
             List<ChargeModel> charges,
             List<IncomeModel> incomes,
             List<OneOffExpenseModel> oneoff,
-            SettingsModel settings) {
+            SettingsView settings) {
         if (bankImport == null) return Collections.emptyMap();
         Map<String, Object> map = new HashMap<>();
 
@@ -353,7 +353,7 @@ public class StatementBankImportMapper {
         return map;
     }
 
-    public Map<String, Object> toSettingsMap(SettingsModel s, RetirementModel retirement) {
+    public Map<String, Object> toSettingsMap(SettingsView s, RetirementModel retirement) {
         if (s == null) return Collections.emptyMap();
         Map<String, Object> map = new HashMap<>();
         map.put("birthYear", s.birthYear());

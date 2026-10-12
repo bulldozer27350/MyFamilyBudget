@@ -3,7 +3,7 @@ package com.moe.myfamilybudget.application.mapper;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 import com.moe.myfamilybudget.application.model.SettingsResultModel;
 import org.springframework.stereotype.Component;
 
@@ -44,7 +44,7 @@ public class SettingsMapper {
 
         if (model.settings() != null) {
             Map<String, Object> sMap = new HashMap<>();
-            SettingsModel s = model.settings();
+            SettingsView s = model.settings();
             sMap.put("birthYear", s.birthYear());
             sMap.put("retireAge", s.retireAge());
             sMap.put("simulateUntilAge", s.simulateUntilAge());

@@ -19,19 +19,25 @@ import com.moe.myfamilybudget.application.port.SiloMutationLock;
 import com.moe.myfamilybudget.application.port.TransactionRunner;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.application.model.SettingsCalculator;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsComposer;
 import com.moe.myfamilybudget.application.model.SettingsResultModel;
 import com.moe.myfamilybudget.domain.wealth.port.AssetCategoryField;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementReader;
-import com.moe.myfamilybudget.transition.port.SettingsReader;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
+import com.moe.myfamilybudget.domain.tax.port.TaxSettingsReader;
+import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
+import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 
 /**
  * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
- * {@code PersistenceManager}. {@code getSettings()} lit via {@link SettingsReader},
- * {@link PatrimoineReader} (catégories d'actifs) et {@link BankReader} ; {@code saveSettings()}
- * ne lit rien et délègue déjà entièrement aux services de commande par domaine.
+ * {@code PersistenceManager}. R-52 : {@code getSettings()} compose le bloc {@code settings} (contrat
+ * inchangé) directement depuis les cinq ports propriétaires ({@link SettingsComposer}), sans passer par
+ * {@code transition.port.SettingsReader}, ainsi que {@link PatrimoineReader} (catégories d'actifs) et
+ * {@link BankReader} ; {@code saveSettings()} ne lit rien et délègue déjà entièrement aux services de
+ * commande par domaine.
  *
  * <p>SET-020 : le routage des champs vers leur owner (Retraite, Fiscalité, Trésorerie, Objectifs, Simulation,
  * Hypothèses économiques) est délégué à {@link SettingsCommandRouter} ; l'atomicité reste portée ici.
@@ -48,7 +54,11 @@ import com.moe.myfamilybudget.transition.port.SettingsReader;
 @RestController
 public class ParametersServiceImpl implements ParametresApi {
 
-    private final SettingsReader settingsReader;
+    private final RetirementSettingsReader retirementSettingsReader;
+    private final TaxSettingsReader taxSettingsReader;
+    private final TresorerieSettingsReader tresorerieSettingsReader;
+    private final SimulationSettingsReader simulationSettingsReader;
+    private final EconomicAssumptionsReader economicAssumptionsReader;
     private final PatrimoineReader patrimoineReader;
     private final BankReader bankReader;
     private final RetirementReader retirementReader;
@@ -60,7 +70,11 @@ public class ParametersServiceImpl implements ParametresApi {
     private final TransactionRunner transactionRunner;
 
     public ParametersServiceImpl(
-            SettingsReader settingsReader,
+            RetirementSettingsReader retirementSettingsReader,
+            TaxSettingsReader taxSettingsReader,
+            TresorerieSettingsReader tresorerieSettingsReader,
+            SimulationSettingsReader simulationSettingsReader,
+            EconomicAssumptionsReader economicAssumptionsReader,
             PatrimoineReader patrimoineReader,
             BankReader bankReader,
             RetirementReader retirementReader,
@@ -70,7 +84,11 @@ public class ParametersServiceImpl implements ParametresApi {
             SiloMutationLock siloMutationLock,
             SettingsCommandRouter settingsCommandRouter,
             TransactionRunner transactionRunner) {
-        this.settingsReader = settingsReader;
+        this.retirementSettingsReader = retirementSettingsReader;
+        this.taxSettingsReader = taxSettingsReader;
+        this.tresorerieSettingsReader = tresorerieSettingsReader;
+        this.simulationSettingsReader = simulationSettingsReader;
+        this.economicAssumptionsReader = economicAssumptionsReader;
         this.patrimoineReader = patrimoineReader;
         this.bankReader = bankReader;
         this.retirementReader = retirementReader;
@@ -84,7 +102,10 @@ public class ParametersServiceImpl implements ParametresApi {
 
     @Override
     public ResponseEntity<Object> getSettings() {
-        SettingsModel settings = settingsReader.getSettings();
+        var settings = SettingsComposer.compose(
+                retirementSettingsReader.getRetirementSettings(), taxSettingsReader.getTaxSettings(),
+                tresorerieSettingsReader.getTresorerieSettings(), simulationSettingsReader.getSimulationSettings(),
+                economicAssumptionsReader.getEconomicAssumptions());
         List<AssetCategoryModel> categories = patrimoineReader.getAssetCategories();
 
         SettingsResultModel result = SettingsCalculator.computeSettingsResult(
