@@ -18,10 +18,21 @@ public final class SettingsCommandRouterTestFactory {
 
     public static SettingsCommandRouter of(PersistenceManager persistenceManager,
                                            ObjectifsSettingsService objectifsSettingsService) {
+        return of(persistenceManager, objectifsSettingsService, new InMemoryTaxStore());
+    }
+
+    /**
+     * SET-020 : variante acceptant le {@link InMemoryTaxStore} du silo Fiscalite en paramètre, pour que
+     * l'appelant puisse relire les écritures routées vers ce silo (ex. {@code childExitAge}) depuis la même
+     * instance que celle utilisée en écriture, au lieu d'un silo déconnecté créé en interne.
+     */
+    public static SettingsCommandRouter of(PersistenceManager persistenceManager,
+                                           ObjectifsSettingsService objectifsSettingsService,
+                                           InMemoryTaxStore taxStore) {
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         return new SettingsCommandRouter(
                 objectifsSettingsService,
-                new TaxCommandService(new InMemoryTaxStore(), silos -> { }, RecordingTransactionRunner.direct()),
+                new TaxCommandService(taxStore, silos -> { }, RecordingTransactionRunner.direct()),
                 new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager)),
                 new TresorerieCommandService(new InMemoryTreasuryStore(), silos -> { }, RecordingTransactionRunner.direct()),
                 new SimulationSettingsCommandService(appSettings, silos -> { }, RecordingTransactionRunner.direct()),

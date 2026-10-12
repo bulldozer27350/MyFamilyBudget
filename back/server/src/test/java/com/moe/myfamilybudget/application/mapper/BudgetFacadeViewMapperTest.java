@@ -17,7 +17,7 @@ import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.application.model.OverviewResultModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 
 /**
  * RES-010 : les mappers Overview/Analyse consomment la vue de façade {@link BudgetFacadeView}
@@ -29,8 +29,8 @@ class BudgetFacadeViewMapperTest {
     private final OverviewMapper overviewMapper = new OverviewMapper();
     private final AnalyseMapper analyseMapper = new AnalyseMapper(overviewMapper);
 
-    private static SettingsModel settings() {
-        return new SettingsModel(1990, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
+    private static SettingsView settings() {
+        return new SettingsView(1990, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
                 new BigDecimal("5000"), 21, new BigDecimal("0.10"), true, new BigDecimal("20000"), new BigDecimal("1000"),
                 new BigDecimal("300"));
     }

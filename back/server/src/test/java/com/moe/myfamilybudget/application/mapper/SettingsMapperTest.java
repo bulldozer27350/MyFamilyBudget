@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 import com.moe.myfamilybudget.application.model.SettingsResultModel;
 
 /**
@@ -28,8 +28,8 @@ class SettingsMapperTest {
 
     private final SettingsMapper mapper = new SettingsMapper();
 
-    private static SettingsModel settings() {
-        return new SettingsModel(1990, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
+    private static SettingsView settings() {
+        return new SettingsView(1990, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
                 new BigDecimal("5000"), 21, new BigDecimal("0.10"), true, new BigDecimal("20000"), new BigDecimal("1000"),
                 new BigDecimal("300"));
     }

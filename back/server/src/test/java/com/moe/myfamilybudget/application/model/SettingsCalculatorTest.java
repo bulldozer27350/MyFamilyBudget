@@ -1,6 +1,6 @@
 package com.moe.myfamilybudget.application.model;
 
-import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.application.settings.SettingsView;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,9 +18,9 @@ class SettingsCalculatorTest {
     @Test
     @DisplayName("computeSettingsResult() doit calculer correctement retireYear et la liste des années de simulation")
     void testComputeSettingsResultSuccess() {
-        SettingsModel settings = new SettingsModel(
+        SettingsView settings = new SettingsView(
                 1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                new BigDecimal("10000.00"), 21, new BigDecimal("0.10"));
+                new BigDecimal("10000.00"), 21, new BigDecimal("0.10"), false, null, null, null);
 
         AssetCategoryModel cat1 = new AssetCategoryModel("ac1", "📁", "Cash", "cash");
         List<AssetCategoryModel> categories = List.of(cat1);
@@ -44,15 +44,15 @@ class SettingsCalculatorTest {
                 IllegalArgumentException.class,
                 () -> SettingsCalculator.computeSettingsResult(null, List.of(), null)
         );
-        assertThat(exception.getMessage()).contains("SettingsModel ne peut pas être null");
+        assertThat(exception.getMessage()).contains("SettingsView ne peut pas être null");
     }
 
     @Test
     @DisplayName("computeSettingsResult() avec une année de naissance invalide doit lever une IllegalArgumentException")
     void testComputeSettingsResultInvalidBirthYear() {
-        SettingsModel invalidSettings = new SettingsModel(
+        SettingsView invalidSettings = new SettingsView(
                 1800, 64, 85, new BigDecimal("0.02"), "", "manual",
-                BigDecimal.ZERO, 21, new BigDecimal("0.10"));
+                BigDecimal.ZERO, 21, new BigDecimal("0.10"), false, null, null, null);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -64,9 +64,9 @@ class SettingsCalculatorTest {
     @Test
     @DisplayName("computeSettingsResult() avec un âge de fin de simulation inférieur à l'âge de retraite doit lever une IllegalArgumentException")
     void testComputeSettingsResultSimulateAgeLowerThanRetireAge() {
-        SettingsModel invalidSettings = new SettingsModel(
+        SettingsView invalidSettings = new SettingsView(
                 1985, 64, 60, new BigDecimal("0.02"), "", "manual",
-                BigDecimal.ZERO, 21, new BigDecimal("0.10"));
+                BigDecimal.ZERO, 21, new BigDecimal("0.10"), false, null, null, null);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,

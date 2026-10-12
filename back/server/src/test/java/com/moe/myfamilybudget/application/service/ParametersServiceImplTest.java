@@ -21,6 +21,7 @@ import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.config.SiloMutationLockRegistry;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
@@ -47,9 +48,13 @@ class ParametersServiceImplTest {
                 new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore());
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        // SET-020 : taxStore est partagé entre la lecture (taxSettingsReader) et le routeur d'écriture
+        // ci-dessous, pour que childExitAge (silo Fiscalite) soit relu depuis la même instance que celle
+        // où il a été écrit, au lieu du silo déconnecté créé par défaut dans SettingsCommandRouterTestFactory.
+        InMemoryTaxStore taxStore = new InMemoryTaxStore();
         service = new ParametersServiceImpl(
                 settingsAdapter,
-                settingsAdapter,
+                taxStore,
                 settingsAdapter,
                 appSettings,
                 appSettings,
@@ -60,7 +65,7 @@ class ParametersServiceImplTest {
                 objectifsSettingsService,
                 new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
                 new SiloMutationLockRegistry(persistenceManager::lockForCurrentTransaction),
-                SettingsCommandRouterTestFactory.of(persistenceManager, objectifsSettingsService),
+                SettingsCommandRouterTestFactory.of(persistenceManager, objectifsSettingsService, taxStore),
                 RecordingTransactionRunner.direct());
     }
 
