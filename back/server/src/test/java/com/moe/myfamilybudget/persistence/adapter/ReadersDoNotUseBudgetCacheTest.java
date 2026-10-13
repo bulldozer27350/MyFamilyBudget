@@ -26,9 +26,6 @@ import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.tax.core.persistence.JpaTaxStore;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
 
@@ -73,11 +70,11 @@ class ReadersDoNotUseBudgetCacheTest {
 
         com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore budget =
                 context.getBean(com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore.class);
-        PatrimoinePersistenceAdapter patrimoine = new PatrimoinePersistenceAdapter(cache,
-                context.getBean(WealthPlacementRepository.class),
-                context.getBean(WealthRealEstateRepository.class),
-                context.getBean(WealthCategoryRepository.class),
-                budget);
+        // R-30 : PatrimoinePersistenceAdapter ne depend plus du tout du cache (plus besoin de le lui passer,
+        // meme en mock) ; il route vers le silo Patrimoine (JpaWealthStore) et le silo Tresorerie (budget).
+        com.moe.myfamilybudget.domain.wealth.core.persistence.JpaWealthStore wealth =
+                context.getBean(com.moe.myfamilybudget.domain.wealth.core.persistence.JpaWealthStore.class);
+        PatrimoinePersistenceAdapter patrimoine = new PatrimoinePersistenceAdapter(wealth, budget);
         JpaTaxStore tax = context.getBean(JpaTaxStore.class);
         RetirementPersistenceAdapter retirement = new RetirementPersistenceAdapter(cache,
                 context.getBean(PensionPlanRepository.class));

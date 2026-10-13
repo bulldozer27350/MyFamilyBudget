@@ -67,4 +67,15 @@ class NotificationBudgetMutationListenerTest {
 
         verify(checkService).runAutomaticCheck();
     }
+
+    @Test
+    @DisplayName("Mutation du patrimoine : le contrôle automatique est lancé")
+    void wealthMutationTriggersAutomaticCheck() {
+        NotificationCheckService checkService = mock(NotificationCheckService.class);
+
+        new NotificationBudgetMutationListener(checkService)
+                .onWealthMutated(new com.moe.myfamilybudget.domain.wealth.model.WealthMutatedEvent("savePatrimoineRow:placements"));
+
+        verify(checkService).runAutomaticCheck();
+    }
 }

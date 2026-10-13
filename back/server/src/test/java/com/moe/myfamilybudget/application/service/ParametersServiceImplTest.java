@@ -3,8 +3,11 @@ package com.moe.myfamilybudget.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +15,7 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -19,6 +23,12 @@ import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.application.mapper.SettingsMapper;
 import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.config.SiloMutationLockRegistry;
+import com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.JpaWealthStore;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryEntity;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
+import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
@@ -52,18 +62,48 @@ class ParametersServiceImplTest {
         // ci-dessous, pour que childExitAge (silo Fiscalite) soit relu depuis la même instance que celle
         // où il a été écrit, au lieu du silo déconnecté créé par défaut dans SettingsCommandRouterTestFactory.
         InMemoryTaxStore taxStore = new InMemoryTaxStore();
+        // R-30 : Patrimoine ne passe plus par PersistenceManager/PatrimoinePersistenceAdapter(manager) mais
+        // par le silo (JpaWealthStore), route par PatrimoinePersistenceAdapter(JpaWealthStore, JpaTreasuryStore).
+        // Categories d'actifs reellement tenues en memoire (le test exerce un cycle add/update/remove/lecture) ;
+        // placements/immobilier/virements ne sont pas exerces ici, de simples mocks suffisent.
+        List<WealthCategoryEntity> categoryStore = new ArrayList<>();
+        WealthCategoryRepository categoryRepository = mock(WealthCategoryRepository.class);
+        when(categoryRepository.findAllByOrderByPositionAsc()).thenAnswer(inv -> new ArrayList<>(categoryStore));
+        when(categoryRepository.saveAll(org.mockito.ArgumentMatchers.<Iterable<WealthCategoryEntity>>any()))
+                .thenAnswer(inv -> {
+                    Iterable<WealthCategoryEntity> toSave = inv.getArgument(0);
+                    List<WealthCategoryEntity> saved = new ArrayList<>();
+                    toSave.forEach(e -> {
+                        categoryStore.add(e);
+                        saved.add(e);
+                    });
+                    return saved;
+                });
+        org.mockito.Mockito.doAnswer(inv -> {
+            categoryStore.clear();
+            return null;
+        }).when(categoryRepository).deleteAll();
+        JpaWealthStore wealthStore = new JpaWealthStore(
+                mock(WealthPlacementRepository.class),
+                mock(WealthRealEstateRepository.class),
+                categoryRepository,
+                mock(ApplicationEventPublisher.class));
+        PatrimoinePersistenceAdapter patrimoine =
+                new PatrimoinePersistenceAdapter(wealthStore, mock(JpaTreasuryStore.class));
         service = new ParametersServiceImpl(
                 settingsAdapter,
                 taxStore,
                 settingsAdapter,
                 appSettings,
                 appSettings,
-                new PatrimoinePersistenceAdapter(persistenceManager),
+                patrimoine,
                 bankStore,
                 new RetirementPersistenceAdapter(persistenceManager),
                 mapper,
                 objectifsSettingsService,
-                new PatrimoineCommandService(new PatrimoinePersistenceAdapter(persistenceManager)),
+                new PatrimoineCommandService(patrimoine,
+                        new SiloMutationLockRegistry(persistenceManager::lockForCurrentTransaction),
+                        RecordingTransactionRunner.direct()),
                 new SiloMutationLockRegistry(persistenceManager::lockForCurrentTransaction),
                 SettingsCommandRouterTestFactory.of(persistenceManager, objectifsSettingsService, taxStore),
                 RecordingTransactionRunner.direct());

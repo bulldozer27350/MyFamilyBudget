@@ -29,7 +29,6 @@ import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
-import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
@@ -47,9 +46,6 @@ import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepo
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 
 /**
  * VT-330 -- Protege l'ordre voulu {@code DB -> memoire} de {@code BudgetCacheStore.applyAndPersist} :
@@ -80,7 +76,6 @@ class WriteFailureKeepsMemoryTest {
     private ApplicationEventPublisher eventPublisher;
     private PersistenceManager persistenceManager;
 
-    private PatrimoinePersistenceAdapter patrimoineAdapter;
     private RetirementPersistenceAdapter retirementAdapter;
     private SettingsPersistenceAdapter settingsAdapter;
 
@@ -106,9 +101,6 @@ class WriteFailureKeepsMemoryTest {
                 mock(FiscalActualOverrideRepository.class),
                 mock(PensionPlanRepository.class),
                 mock(BankImportDocumentRepository.class),
-                mock(WealthPlacementRepository.class),
-                mock(WealthRealEstateRepository.class),
-                mock(WealthCategoryRepository.class),
                 mock(PensionSettingsRepository.class),
                 mock(FiscalSettingsRepository.class),
                 mock(CashflowSettingsRepository.class),
@@ -116,7 +108,6 @@ class WriteFailureKeepsMemoryTest {
                 eventPublisher);
         persistenceManager.init();
 
-        patrimoineAdapter = new PatrimoinePersistenceAdapter(persistenceManager);
         retirementAdapter = new RetirementPersistenceAdapter(persistenceManager);
         settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
 
@@ -221,8 +212,13 @@ class WriteFailureKeepsMemoryTest {
     }
 
     private void assertEveryMutationFailsAndLeavesMemoryUntouched(Map<String, Runnable> mutations) {
-        var placements = patrimoineAdapter.getPlacements();
-        var assetCategories = patrimoineAdapter.getAssetCategories();
+        // R-30 : le patrimoine reel (silo) ne passe plus par ce cache ; ce test exerce volontairement
+        // l'ancienne mutation DomainMutations.savePatrimoineRow(String, Map), conservee telle quelle
+        // (code mort cote production) pour garder la couverture de l'ordre DB -> memoire du cache sur
+        // ce domaine. On lit donc directement le cache plutot que via l'adaptateur retire (meme principe
+        // que pour taxChildren ci-dessous depuis R-42).
+        var placements = persistenceManager.getBudgetData().getEffectivePlacements();
+        var assetCategories = persistenceManager.getBudgetData().getEffectiveAssetCategories();
         var taxChildren = persistenceManager.getBudgetData().getEffectiveTaxChildren();
         var settings = settingsAdapter.getSettings();
 
@@ -230,8 +226,8 @@ class WriteFailureKeepsMemoryTest {
             assertThatThrownBy(mutation::run).as(name).isSameAs(DB_DOWN);
 
             assertThat(persistenceManager.getBudgetData()).as(name).isSameAs(before);
-            assertThat(patrimoineAdapter.getPlacements()).as(name).isEqualTo(placements);
-            assertThat(patrimoineAdapter.getAssetCategories()).as(name).isEqualTo(assetCategories);
+            assertThat(persistenceManager.getBudgetData().getEffectivePlacements()).as(name).isEqualTo(placements);
+            assertThat(persistenceManager.getBudgetData().getEffectiveAssetCategories()).as(name).isEqualTo(assetCategories);
             assertThat(retirementAdapter.getRetirement()).as(name).isEqualTo(RETIREMENT_BEFORE);
             assertThat(persistenceManager.getBudgetData().getEffectiveTaxChildren()).as(name).isEqualTo(taxChildren);
             assertThat(settingsAdapter.getSettings()).as(name).isEqualTo(settings);

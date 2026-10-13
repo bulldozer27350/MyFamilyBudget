@@ -45,6 +45,7 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
@@ -59,6 +60,7 @@ class PatrimoineServiceImplTest {
     private PersistenceManager persistenceManager;
     private InMemoryGoalStore goalStore;
     private InMemoryLoanStore loanStore;
+    private InMemoryWealthStore wealthStore;
 
     @BeforeEach
     void setUp() {
@@ -70,11 +72,15 @@ class PatrimoineServiceImplTest {
         goalStore = new InMemoryGoalStore();
         loanStore = new InMemoryLoanStore();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
+        // R-30 : le patrimoine (placements, immobilier, categories d'actifs) ne passe plus par
+        // PersistenceManager/BudgetDataModel mais par le silo (JpaWealthStore) ; voir setBudgetData()
+        // ci-dessous, qui re-synchronise ce store a chaque fixture ecrite via persistenceManager.
+        wealthStore = new InMemoryWealthStore();
         PatrimoinePersistenceAdapter patrimoineAdapter = new PatrimoinePersistenceAdapter(
-                persistenceManager, null, null, null, treasuryStore.getDelegate());
+                wealthStore.getDelegate(), treasuryStore.getDelegate());
         service = new PatrimoineServiceImpl(
                 mapper, new DefaultPatrimoineProjectionService(), new DefaultPlacementEvolutionService(),
-                new PatrimoineCommandService(patrimoineAdapter),
+                new PatrimoineCommandService(patrimoineAdapter, silos -> { }, RecordingTransactionRunner.direct()),
                 new LoanCommandService(loanStore, silos -> { }, RecordingTransactionRunner.direct()),
                 new GoalCommandService(goalStore, goalStore, patrimoineAdapter,
                         silos -> { }, RecordingTransactionRunner.direct()),
@@ -85,6 +91,18 @@ class PatrimoineServiceImplTest {
                 treasuryStore,
                 loanStore,
                 bankStore);
+    }
+
+    /**
+     * R-30 : {@code persistenceManager.setBudgetData(...)} ne touche plus le silo Patrimoine ; les
+     * fixtures de ce fichier (placements, immobilier, categories d'actifs) doivent donc etre
+     * explicitement recopiees dans {@link #wealthStore} pour rester visibles par le service.
+     */
+    private void setBudgetData(BudgetDataModel data) {
+        persistenceManager.setBudgetData(data);
+        if (data != null) {
+            wealthStore.replace(data.placements(), data.realEstate(), List.of(), data.assetCategories());
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -615,7 +633,7 @@ class PatrimoineServiceImplTest {
         // versements de "Test Selencia" (pausePriority = 1), sans jamais activer le
         // mecanisme de refill (sweepEnabled = false ici).
         BudgetDataModel data = buildPauseScenarioBudget(false, null, BigDecimal.ZERO);
-        persistenceManager.setBudgetData(data);
+        setBudgetData(data);
 
         PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
 
@@ -669,7 +687,7 @@ class PatrimoineServiceImplTest {
         );
         BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(selencia, scpiEden), List.of(), null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
-        persistenceManager.setBudgetData(data);
+        setBudgetData(data);
 
         PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
         PatrimoinePerPlacementModel selenciaRows = proj.perPlacement().stream()
@@ -708,7 +726,7 @@ class PatrimoineServiceImplTest {
         );
         BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
-        persistenceManager.setBudgetData(data);
+        setBudgetData(data);
 
         PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
         List<PatrimoineYearModel> rows = proj.perPlacement().stream()
@@ -744,7 +762,7 @@ class PatrimoineServiceImplTest {
         );
         BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
-        persistenceManager.setBudgetData(data);
+        setBudgetData(data);
 
         PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
         List<PatrimoineYearModel> rows = proj.perPlacement().stream()
@@ -766,7 +784,7 @@ class PatrimoineServiceImplTest {
         // mais verifie via la courbe mensuelle individuelle (drawer de detail), qui doit
         // simuler tous les placements en arriere-plan pour evaluer la meme pause.
         BudgetDataModel data = buildPauseScenarioBudget(false, null, BigDecimal.ZERO);
-        persistenceManager.setBudgetData(data);
+        setBudgetData(data);
 
         ResponseEntity<PlacementEvolutionDto> resp = service.getPlacementEvolution("plc_selencia", false);
         assertEquals(HttpStatus.OK, resp.getStatusCode());

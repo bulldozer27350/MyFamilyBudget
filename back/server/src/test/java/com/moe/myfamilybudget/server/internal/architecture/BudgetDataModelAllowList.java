@@ -34,7 +34,8 @@ final class BudgetDataModelAllowList {
     static final List<Entry> ENTRIES = List.of(
             // application : factories
             // persistence : adaptateurs de lecture par cache global
-            new Entry(PERS + "adapter.PatrimoinePersistenceAdapter", "SILO-215"),
+            // R-30 (SILO-215) : PatrimoinePersistenceAdapter route desormais vers JpaWealthStore et
+            // JpaTreasuryStore (silos), il ne depend plus de PersistenceManager/BudgetDataModel.
             new Entry(PERS + "adapter.RetirementPersistenceAdapter", "SILO-210"),
             new Entry(PERS + "adapter.SettingsPersistenceAdapter", "SILO-220"),
             // persistence : cache, mutations et conversion globales

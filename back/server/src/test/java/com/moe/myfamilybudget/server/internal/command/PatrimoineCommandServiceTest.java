@@ -20,17 +20,22 @@ import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.domain.wealth.port.AssetCategoryField;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineWriter;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
  * DB-030 -- Le command service Patrimoine valide la commande, delegue au port d'ecriture et laisse
  * l'erreur de persistance remonter telle quelle ; l'adaptateur ecrit bien dans le modele relu par le
  * lecteur Patrimoine.
+ *
+ * <p>R-30 (SILO-215, lot B) : {@link PatrimoineWriter} (en pratique {@code JpaWealthStore}) reecrit la
+ * liste entiere a chaque mutation sans transaction englobante ni verrou propre : le service prend desormais
+ * le verrou du silo Patrimoine et englobe chaque ecriture dans une transaction, meme principe que
+ * {@code TresorerieCommandService} (R-20). Les tests de delegation/validation/propagation passent donc un
+ * verrou no-op et un {@link RecordingTransactionRunner#direct()}.
  */
 @DisplayName("DB-030 -- PatrimoineCommandService")
 class PatrimoineCommandServiceTest {
@@ -44,7 +49,7 @@ class PatrimoineCommandServiceTest {
     @BeforeEach
     void setUp() {
         writer = mock(PatrimoineWriter.class);
-        service = new PatrimoineCommandService(writer);
+        service = new PatrimoineCommandService(writer, silos -> { }, RecordingTransactionRunner.direct());
     }
 
     // --- succes : delegation au port ---
@@ -162,28 +167,27 @@ class PatrimoineCommandServiceTest {
     @Test
     @DisplayName("integration adaptateur : placement, historique et categories relus par le lecteur")
     void adapterWritesAreReadBackByReader() {
-        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
-        PatrimoinePersistenceAdapter adapter = new PatrimoinePersistenceAdapter(persistenceManager);
-        PatrimoineCommandService realService = new PatrimoineCommandService(adapter);
+        InMemoryWealthStore store = new InMemoryWealthStore();
+        PatrimoineCommandService realService =
+                new PatrimoineCommandService(store, silos -> { }, RecordingTransactionRunner.direct());
 
         realService.savePatrimoineRow(PatrimoineList.PLACEMENTS, Map.of("id", "plc_1", "label", "PEA", "category", "Actions"));
-        assertThat(adapter.getPlacements()).extracting(PlacementModel::id).containsExactly("plc_1");
+        assertThat(store.getPlacements()).extracting(PlacementModel::id).containsExactly("plc_1");
 
         Map<String, Object> entry = realService.addPlacementHistoryEntry("plc_1",
                 Map.of("date", "2026-01-01", "value", new BigDecimal("9500")));
         String entryId = (String) entry.get("id");
-        assertThat(adapter.getPlacements().get(0).history()).hasSize(1);
+        assertThat(store.getPlacements().get(0).history()).hasSize(1);
 
         realService.deletePlacementHistoryEntry("plc_1", entryId);
-        assertThat(adapter.getPlacements().get(0).history()).isEmpty();
+        assertThat(store.getPlacements().get(0).history()).isEmpty();
 
         realService.addAssetCategory(CATEGORY);
-        assertThat(adapter.getAssetCategories()).containsExactly(CATEGORY);
+        assertThat(store.getAssetCategories()).containsExactly(CATEGORY);
         realService.removeAssetCategory("cat_1");
-        assertThat(adapter.getAssetCategories()).isEmpty();
+        assertThat(store.getAssetCategories()).isEmpty();
 
         realService.deletePatrimoineRow(PatrimoineList.PLACEMENTS, "plc_1");
-        assertThat(adapter.getPlacements()).isEmpty();
+        assertThat(store.getPlacements()).isEmpty();
     }
 }

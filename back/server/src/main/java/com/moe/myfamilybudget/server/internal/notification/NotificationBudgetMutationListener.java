@@ -11,6 +11,7 @@ import com.moe.myfamilybudget.domain.goals.model.GoalsMutatedEvent;
 import com.moe.myfamilybudget.domain.tax.model.TaxMutatedEvent;
 import com.moe.myfamilybudget.domain.treasury.model.TreasuryMutatedEvent;
 import com.moe.myfamilybudget.domain.settings.model.AppSettingsMutatedEvent;
+import com.moe.myfamilybudget.domain.wealth.model.WealthMutatedEvent;
 import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
 
 /**
@@ -26,6 +27,7 @@ import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
  * SILO-214 (lot B) : même principe pour les prêts ({@link LoansMutatedEvent}).
  * SILO-216 (lot B1) : même principe pour la trésorerie ({@link TreasuryMutatedEvent}).
  * R-42 (lot B) : même principe pour la fiscalité ({@link TaxMutatedEvent}).
+ * SILO-215 (lot B, R-30) : même principe pour le patrimoine ({@link WealthMutatedEvent}).
  */
 @Component
 public class NotificationBudgetMutationListener {
@@ -68,6 +70,11 @@ public class NotificationBudgetMutationListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onTaxMutated(TaxMutatedEvent event) {
+        checkService.runAutomaticCheck();
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onWealthMutated(WealthMutatedEvent event) {
         checkService.runAutomaticCheck();
     }
 }

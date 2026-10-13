@@ -1,5 +1,6 @@
 package com.moe.myfamilybudget.persistence;
 
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -20,12 +21,10 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepo
 import com.moe.myfamilybudget.persistence.repository.*;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSnapshotWriter;
+import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
@@ -54,9 +53,6 @@ public class PersistenceManager {
     private final FiscalActualOverrideRepository fiscalActualOverrideRepository;
     private final PensionPlanRepository pensionPlanRepository;
     private final BankImportDocumentRepository bankImportDocumentRepository;
-    private final WealthPlacementRepository wealthPlacementRepository;
-    private final WealthRealEstateRepository wealthRealEstateRepository;
-    private final WealthCategoryRepository wealthCategoryRepository;
 
     // Gestion programmatique de la transaction pour l'initialisation au démarrage.
     // Voir le commentaire dans BudgetPersistenceGateway.save() : le @Transactional de classe ne
@@ -108,6 +104,11 @@ public class PersistenceManager {
     // main (tests unitaires).
     private TaxSnapshotWriter taxSnapshotWriter;
 
+    // R-30 : les placements (et leur historique), l'immobilier et les categories d'actifs vivent uniquement
+    // dans les tables wealth_*, ecrites par le silo Patrimoine. Meme principe que treasurySnapshotWriter
+    // ci-dessus : setBudgetData/resetData doivent les confier explicitement au silo.
+    private PatrimoineSnapshotWriter patrimoineSnapshotWriter;
+
     @Autowired
     public PersistenceManager(BudgetDataRepository budgetDataRepository,
                             SettingsRepository settingsRepository,
@@ -121,9 +122,6 @@ public class PersistenceManager {
                             FiscalActualOverrideRepository fiscalActualOverrideRepository,
                             PensionPlanRepository pensionPlanRepository,
                             BankImportDocumentRepository bankImportDocumentRepository,
-                            WealthPlacementRepository wealthPlacementRepository,
-                            WealthRealEstateRepository wealthRealEstateRepository,
-                            WealthCategoryRepository wealthCategoryRepository,
                             PensionSettingsRepository pensionSettingsRepository,
                             FiscalSettingsRepository fiscalSettingsRepository,
                             CashflowSettingsRepository cashflowSettingsRepository,
@@ -141,17 +139,13 @@ public class PersistenceManager {
         this.fiscalActualOverrideRepository = fiscalActualOverrideRepository;
         this.pensionPlanRepository = pensionPlanRepository;
         this.bankImportDocumentRepository = bankImportDocumentRepository;
-        this.wealthPlacementRepository = wealthPlacementRepository;
-        this.wealthRealEstateRepository = wealthRealEstateRepository;
-        this.wealthCategoryRepository = wealthCategoryRepository;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.gateway = new BudgetPersistenceGateway(
                 budgetDataRepository, placementRepository,
                 realEstateRepository, assetCategoryRepository,
                 goalRepository, fiscalChildRepository, fiscalBracketRepository,
                 fiscalRateOverrideRepository, fiscalActualOverrideRepository, pensionPlanRepository,
-                bankImportDocumentRepository, wealthPlacementRepository, wealthRealEstateRepository,
-                wealthCategoryRepository,
+                bankImportDocumentRepository,
                 pensionSettingsRepository, fiscalSettingsRepository, cashflowSettingsRepository);
         this.cacheStore = new BudgetCacheStore(this.gateway, this.transactionTemplate);
         this.mutationService = new BudgetMutationService(this.cacheStore);
@@ -169,6 +163,12 @@ public class PersistenceManager {
     @Autowired(required = false)
     public void setTaxSnapshotWriter(TaxSnapshotWriter taxSnapshotWriter) {
         this.taxSnapshotWriter = taxSnapshotWriter;
+    }
+
+    /** R-30 : silo Patrimoine auquel setBudgetData/resetData delegent placements, immobilier et categories. */
+    @Autowired(required = false)
+    public void setPatrimoineSnapshotWriter(PatrimoineSnapshotWriter patrimoineSnapshotWriter) {
+        this.patrimoineSnapshotWriter = patrimoineSnapshotWriter;
     }
 
     @PostConstruct
@@ -215,6 +215,12 @@ public class PersistenceManager {
                     data.getEffectiveTaxChildren(), data.getEffectiveTaxBrackets(),
                     data.getEffectiveTaxRateOverrides(), data.getEffectiveTaxActualOverrides());
         }
+        // R-30 : les virements (dernier argument) ne relevent pas du silo Patrimoine (DA-14) ; ils sont
+        // deja confies au silo Tresorerie ci-dessus.
+        if (patrimoineSnapshotWriter != null && data != null) {
+            patrimoineSnapshotWriter.replace(data.getEffectivePlacements(), data.getEffectiveRealEstate(),
+                    List.of(), data.getEffectiveAssetCategories());
+        }
         cacheStore.setBudgetData(data);
         publishMutated("setBudgetData");
     }
@@ -229,6 +235,9 @@ public class PersistenceManager {
         }
         if (taxSnapshotWriter != null) {
             taxSnapshotWriter.reset();
+        }
+        if (patrimoineSnapshotWriter != null) {
+            patrimoineSnapshotWriter.reset();
         }
         BudgetDataModel result = cacheStore.resetData();
         publishMutated("resetData");

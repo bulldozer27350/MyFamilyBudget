@@ -32,6 +32,7 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
@@ -47,6 +48,7 @@ class OverviewServiceImplTest {
     private OverviewMapper mapper;
     private PersistenceManager persistenceManager;
     private InMemoryTreasuryStore treasuryStore;
+    private InMemoryWealthStore wealthStore;
     private final InMemoryLoanStore loanStore = new InMemoryLoanStore();
 
     @BeforeEach
@@ -56,6 +58,7 @@ class OverviewServiceImplTest {
         treasuryStore = new InMemoryTreasuryStore();
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        wealthStore = new InMemoryWealthStore();
         overviewService = new OverviewServiceImpl(
                 mapper,
                 new DefaultRetirementCalculationService(),
@@ -68,7 +71,7 @@ class OverviewServiceImplTest {
                 appSettings,
                 appSettings,
                 treasuryStore,
-                new PatrimoinePersistenceAdapter(persistenceManager),
+                new PatrimoinePersistenceAdapter(wealthStore.getDelegate(), treasuryStore.getDelegate()),
                 new RetirementPersistenceAdapter(persistenceManager),
                 new InMemoryTaxStore(),
                 bankStore,
@@ -85,6 +88,10 @@ class OverviewServiceImplTest {
                     budgetData.oneoff(),
                     budgetData.variableIncomes(),
                     budgetData.variableOverrides());
+            // R-30 : le patrimoine (placements, immobilier, categories d'actifs) ne passe plus par le
+            // cache mais par le silo (JpaWealthStore) ; synchronise comme pour la tresorerie ci-dessus.
+            this.wealthStore.replace(budgetData.placements(), budgetData.realEstate(), List.of(),
+                    budgetData.assetCategories());
         }
     }
 

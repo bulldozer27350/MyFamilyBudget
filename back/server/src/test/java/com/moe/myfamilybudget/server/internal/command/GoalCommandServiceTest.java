@@ -122,7 +122,10 @@ class GoalCommandServiceTest {
         persistenceManager.init();
         InMemoryGoalStore adapter = new InMemoryGoalStore();
         GoalCommandService realService = new GoalCommandService(adapter, adapter,
-                new PatrimoinePersistenceAdapter(persistenceManager), silos -> { }, RecordingTransactionRunner.direct());
+                new PatrimoinePersistenceAdapter(
+                        new com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore().getDelegate(),
+                        new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore().getDelegate()),
+                silos -> { }, RecordingTransactionRunner.direct());
 
         realService.saveGoalRow(Map.of("id", "goal_1", "label", "Vacances", "targetAmount", new BigDecimal("3000"), "targetDate", "2027-07-01"));
 

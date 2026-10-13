@@ -48,7 +48,12 @@ class SnapshotFragmentWritersTest {
         retirement = new RetirementPersistenceAdapter(persistenceManager);
         tax = new InMemoryTaxStore();
         tresorerie = new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore();
-        patrimoine = new PatrimoinePersistenceAdapter(persistenceManager);
+        // R-30 : le patrimoine est desormais lui aussi un vrai silo (JpaWealthStore), plus un fragment
+        // du cache ; voir listBasedSilosResetToEmpty, qui relit directement l'adaptateur plutot que
+        // persistenceManager.getBudgetData().
+        patrimoine = new PatrimoinePersistenceAdapter(
+                new com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore().getDelegate(),
+                tresorerie.getDelegate());
         loans = new InMemoryLoanStore();
         goals = new InMemoryGoalStore();
         bank = new InMemoryBankStore();
@@ -151,8 +156,8 @@ class SnapshotFragmentWritersTest {
         goals.replace(null);
         bank.reset();
 
-        assertThat(persistenceManager.getBudgetData().getEffectivePlacements()).isEmpty();
-        assertThat(persistenceManager.getBudgetData().getEffectiveRealEstate()).isEmpty();
+        assertThat(patrimoine.getPlacements()).isEmpty();
+        assertThat(patrimoine.getRealEstate()).isEmpty();
         assertThat(persistenceManager.getBudgetData().getEffectiveTransfers()).isEmpty();
         assertThat(loans.getLoans()).isEmpty();
         assertThat(goals.getGoals()).isEmpty();
@@ -164,7 +169,7 @@ class SnapshotFragmentWritersTest {
         loans.reset();
         goals.reset();
 
-        assertThat(persistenceManager.getBudgetData().getEffectivePlacements()).isEmpty();
+        assertThat(patrimoine.getPlacements()).isEmpty();
         assertThat(loans.getLoans()).isEmpty();
         assertThat(goals.getGoals()).isEmpty();
         assertThat(settings().birthYear()).isEqualTo(1985);

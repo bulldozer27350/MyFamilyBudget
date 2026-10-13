@@ -44,9 +44,6 @@ import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepo
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 
 /**
  * FIX-020 -- Modifier un parametre ne depend plus de la presence de {@code sweepEnabled}.
@@ -79,9 +76,6 @@ class UpdateTaxSettingsMinimalBudgetTest {
                 mock(FiscalActualOverrideRepository.class),
                 mock(PensionPlanRepository.class),
                 mock(BankImportDocumentRepository.class),
-                mock(WealthPlacementRepository.class),
-                mock(WealthRealEstateRepository.class),
-                mock(WealthCategoryRepository.class),
                 mock(PensionSettingsRepository.class),
                 mock(FiscalSettingsRepository.class),
                 mock(CashflowSettingsRepository.class),

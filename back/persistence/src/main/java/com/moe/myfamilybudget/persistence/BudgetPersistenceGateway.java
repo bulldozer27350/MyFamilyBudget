@@ -24,7 +24,6 @@ import com.moe.myfamilybudget.persistence.converter.EntityModelConverter;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalEntityMapper;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntityMapper;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionEntityMapper;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthEntityMapper;
 import com.moe.myfamilybudget.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
@@ -47,9 +46,6 @@ import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
-import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
 
 /**
  * Passerelle vers la couche JPA : seule classe qui parle directement aux repositories Spring Data.
@@ -69,9 +65,6 @@ class BudgetPersistenceGateway {
     private final FiscalActualOverrideRepository fiscalActualOverrideRepository;
     private final PensionPlanRepository pensionPlanRepository;
     private final BankImportDocumentRepository bankImportDocumentRepository;
-    private final WealthPlacementRepository wealthPlacementRepository;
-    private final WealthRealEstateRepository wealthRealEstateRepository;
-    private final WealthCategoryRepository wealthCategoryRepository;
     // SILO-220 (lot B) : tables de parametres chez leurs proprietaires (Retraite, Fiscalite, Tresorerie),
     // alimentees en parallele de `settings` (meme principe que goalRepository avant SILO-212). R-50 : la table du
     // silo Parametres (`app_settings`) n'est plus alimentee ici, elle est ecrite directement par son silo.
@@ -90,9 +83,6 @@ class BudgetPersistenceGateway {
                               FiscalActualOverrideRepository fiscalActualOverrideRepository,
                               PensionPlanRepository pensionPlanRepository,
                               BankImportDocumentRepository bankImportDocumentRepository,
-                              WealthPlacementRepository wealthPlacementRepository,
-                              WealthRealEstateRepository wealthRealEstateRepository,
-                              WealthCategoryRepository wealthCategoryRepository,
                               PensionSettingsRepository pensionSettingsRepository,
                               FiscalSettingsRepository fiscalSettingsRepository,
                               CashflowSettingsRepository cashflowSettingsRepository) {
@@ -107,9 +97,6 @@ class BudgetPersistenceGateway {
         this.fiscalActualOverrideRepository = fiscalActualOverrideRepository;
         this.pensionPlanRepository = pensionPlanRepository;
         this.bankImportDocumentRepository = bankImportDocumentRepository;
-        this.wealthPlacementRepository = wealthPlacementRepository;
-        this.wealthRealEstateRepository = wealthRealEstateRepository;
-        this.wealthCategoryRepository = wealthCategoryRepository;
         this.pensionSettingsRepository = pensionSettingsRepository;
         this.fiscalSettingsRepository = fiscalSettingsRepository;
         this.cashflowSettingsRepository = cashflowSettingsRepository;
@@ -135,7 +122,6 @@ class BudgetPersistenceGateway {
         Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
         BudgetDataModel loaded = existingData.map(this::loadCompleteBudgetData).orElse(null);
         if (loaded != null) {
-            syncWealth(loaded);
             syncSettings(loaded);
             migrateCashflowSettingsIfMissing(loaded.getEffectiveSettings());
             migrateFiscalSettingsIfMissing(loaded.getEffectiveSettings());
@@ -178,7 +164,6 @@ class BudgetPersistenceGateway {
         saveRealEstate(model.realEstate(), entity);
         saveAssetCategories(model.assetCategories(), entity);
         syncPension(model.retirement());
-        syncWealth(model);
         syncSettings(model);
     }
 
@@ -191,23 +176,14 @@ class BudgetPersistenceGateway {
         pensionPlanRepository.save(PensionEntityMapper.toEntity(retirement));
     }
 
-    private void syncWealth(BudgetDataModel model) {
-        wealthPlacementRepository.deleteAll();
-        wealthRealEstateRepository.deleteAll();
-        wealthCategoryRepository.deleteAll();
-        wealthPlacementRepository.flush();
-        wealthRealEstateRepository.flush();
-        wealthCategoryRepository.flush();
-        wealthPlacementRepository.saveAll(WealthEntityMapper.toPlacementEntities(model.getEffectivePlacements()));
-        wealthRealEstateRepository.saveAll(WealthEntityMapper.toRealEstateEntities(model.getEffectiveRealEstate()));
-        wealthCategoryRepository.saveAll(WealthEntityMapper.toCategoryEntities(model.getEffectiveAssetCategories()));
-    }
-
     private void syncSettings(BudgetDataModel model) {
         SettingsModel s = model.getEffectiveSettings();
         // R-20 : cashflow_settings appartient au silo Tresorerie (JpaTreasuryStore) ; R-42 : fiscal_settings
         // appartient au silo Fiscalite (JpaTaxStore). Le cache, perime pour ces champs, ne doit plus les
-        // ecraser a chaque mutation d'un autre domaine.
+        // ecraser a chaque mutation d'un autre domaine. R-30 : meme principe pour les placements, l'immobilier
+        // et les categories d'actifs, ecrits directement par JpaWealthStore (silo Patrimoine) : syncWealth()
+        // a ete retiree pour ne plus reecraser ces tables a chaque sauvegarde d'un autre domaine avec un etat
+        // perime (voir PersistenceManager#setBudgetData pour l'import complet, delegue a PatrimoineSnapshotWriter).
         pensionSettingsRepository.deleteAll();
         pensionSettingsRepository.flush();
         pensionSettingsRepository.save(PensionSettingsMapper.toEntity(

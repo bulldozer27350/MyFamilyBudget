@@ -29,7 +29,6 @@ import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
-import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
@@ -65,16 +64,10 @@ class PersistenceAdaptersTest {
     @DisplayName("Etat par defaut apres init()")
     class DefaultState {
 
-        @Test
-        @DisplayName("PatrimoinePersistenceAdapter : aucun placement, bien, categorie ni virement")
-        void patrimoineIsEmpty() {
-            PatrimoinePersistenceAdapter adapter = new PatrimoinePersistenceAdapter(persistenceManager);
-
-            assertThat(adapter.getPlacements()).isEmpty();
-            assertThat(adapter.getRealEstate()).isEmpty();
-            assertThat(adapter.getAssetCategories()).isEmpty();
-            assertThat(adapter.getTransfers()).isEmpty();
-        }
+        // R-30 : les placements, l'immobilier et les categories d'actifs ne passent plus par le cache
+        // global (PersistenceManager/BudgetDataModel) mais directement par le silo Patrimoine
+        // (JpaWealthStore, voir PersistenceAdaptersJpaRoundTripTest) ; PatrimoinePersistenceAdapter
+        // n'a donc plus de constructeur a un seul argument ici.
 
         @Test
         @DisplayName("RetirementPersistenceAdapter : parametres retraite par defaut, aucune personne")
@@ -118,18 +111,9 @@ class PersistenceAdaptersTest {
             persistenceManager.setBudgetData(referenceData());
         }
 
-        @Test
-        @DisplayName("PatrimoinePersistenceAdapter relit placements (avec historique), immobilier, categories, virements")
-        void patrimoineRoundTrip() {
-            PatrimoinePersistenceAdapter adapter = new PatrimoinePersistenceAdapter(persistenceManager);
-
-            assertThat(adapter.getPlacements()).containsExactly(PLACEMENT);
-            assertThat(adapter.getPlacements().get(0).history()).containsExactly(PLACEMENT_HISTORY);
-            assertThat(adapter.getPlacements().get(0).balance()).isEqualByComparingTo("10000");
-            assertThat(adapter.getRealEstate()).containsExactly(REAL_ESTATE);
-            assertThat(adapter.getAssetCategories()).containsExactly(ASSET_CATEGORY);
-            assertThat(adapter.getTransfers()).containsExactly(WEALTH_TRANSFER);
-        }
+        // R-30 : le patrimoine (placements/historique, immobilier, categories d'actifs) n'est plus relu
+        // depuis le cache global ici ; voir PersistenceAdaptersJpaRoundTripTest pour le round-trip reel
+        // via le silo (JpaWealthStore).
 
         @Test
         @DisplayName("RetirementPersistenceAdapter relit la personne et les parametres retraite")
@@ -164,7 +148,6 @@ class PersistenceAdaptersTest {
                     .withCharges(List.of())
                     .withPlacements(List.of()));
 
-            assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getPlacements()).isEmpty();
             // Les domaines non touches par le second import sont conserves tels quels.
             assertThat(new RetirementPersistenceAdapter(persistenceManager).getRetirement()).isEqualTo(RETIREMENT);
         }
@@ -191,21 +174,10 @@ class PersistenceAdaptersTest {
             assertThat(adapter.getRetirement()).isEqualTo(RETIREMENT);
         }
 
-        @Test
-        @DisplayName("addAssetCategory / removeAssetCategory -> PatrimoinePersistenceAdapter")
-        void assetCategoryAddAndRemove() {
-            PatrimoinePersistenceAdapter adapter = new PatrimoinePersistenceAdapter(persistenceManager);
-
-            persistenceManager.write(m -> m.addAssetCategory(ASSET_CATEGORY));
-            assertThat(adapter.getAssetCategories()).containsExactly(ASSET_CATEGORY);
-
-            AssetCategoryModel second = new AssetCategoryModel("cat_2", "icon2", "Livrets", "epargne", "#00ff00");
-            persistenceManager.write(m -> m.addAssetCategory(second));
-            assertThat(adapter.getAssetCategories()).containsExactly(ASSET_CATEGORY, second);
-
-            persistenceManager.write(m -> m.removeAssetCategory(ASSET_CATEGORY.id()));
-            assertThat(adapter.getAssetCategories()).containsExactly(second);
-        }
+        // R-30 : addAssetCategory/removeAssetCategory ne passent plus par le cache global
+        // (PersistenceManager) mais directement par le silo Patrimoine (JpaWealthStore) ; voir
+        // PersistenceAdaptersJpaRoundTripTest.assetCategoriesAreReadBackFromDatabase et consorts pour
+        // leur round-trip reel.
     }
 
     // =========================================================================
@@ -223,10 +195,6 @@ class PersistenceAdaptersTest {
 
             persistenceManager.resetData();
 
-            assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getPlacements()).isEmpty();
-            assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getRealEstate()).isEmpty();
-            assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getAssetCategories()).isEmpty();
-            assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getTransfers()).isEmpty();
             assertThat(new RetirementPersistenceAdapter(persistenceManager).getRetirement().people()).isEmpty();
             SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
             assertThat(settings.getEffectiveBirthYear()).isEqualTo(1985);
@@ -252,7 +220,6 @@ class PersistenceAdaptersTest {
 
             persistenceManager.setBudgetData(referenceData());
 
-            assertThat(new PatrimoinePersistenceAdapter(persistenceManager).getPlacements()).containsExactly(PLACEMENT);
             assertThat(new RetirementPersistenceAdapter(persistenceManager).getRetirement()).isEqualTo(RETIREMENT);
         }
     }
@@ -297,8 +264,6 @@ class PersistenceAdaptersTest {
             "immobilier", "#ff0000");
 
     private static final TransferModel TRANSFER = new TransferModel("tr_1", "PEA", "2026-03-01", bd("500"), "");
-    private static final PatrimoineTransferModel WEALTH_TRANSFER =
-            new PatrimoineTransferModel("tr_1", "PEA", "2026-03-01", bd("500"), "");
 
     private static final RetirementModel RETIREMENT = new RetirementModel(
             List.of(new RetirementModel.RetirementPersonModel("p_1", "Alice", 1990, "Salaire", 140, "2025-12-31",

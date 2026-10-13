@@ -50,6 +50,7 @@ import com.moe.myfamilybudget.application.command.TresorerieCommandService;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
@@ -86,7 +87,7 @@ class TresorerieServiceImplTest {
                 appSettings,
                 new InMemoryTaxStore(),
                 treasuryStore,
-                new PatrimoinePersistenceAdapter(persistenceManager),
+                new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), treasuryStore.getDelegate()),
                 bankStore);
     }
 
