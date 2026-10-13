@@ -48,9 +48,11 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
  * <p>Comportement documente ({@code savePatrimoineRow} relit, modifie et reecrit la liste entiere sous verrou,
  * meme gabarit que {@code saveLoanRow} pour le Credit, R-11) : une creation concurrente de placements/biens
  * distincts ne perd aucune ligne ; deux sauvegardes de la meme ligne laissent une seule ligne, avec l'une des
- * deux valeurs ; une sauvegarde contre une suppression de la meme ligne recree la ligne (contrairement a la
- * Tresorerie) puisque {@code savePatrimoineRow} ajoute la ligne si elle est absente de la liste relue ; un
- * import contre une creation aboutit a l'un des deux ordres sequentiels.
+ * deux valeurs ; une sauvegarde contre une suppression de la meme ligne aboutit a l'un des deux ordres
+ * sequentiels (ligne absente si la sauvegarde est relue avant la suppression, recreee si la suppression est
+ * relue avant la sauvegarde) puisque {@code savePatrimoineRow} ajoute la ligne si elle est absente de la liste
+ * relue, memes gabarit et limite que {@code saveGoal}/{@code saveLoanRow} ; un import contre une creation
+ * aboutit egalement a l'un des deux ordres sequentiels.
  *
  * <p>Base H2 dediee pour ne pas partager l'etat avec les autres contextes de test. Le jeu de donnees de
  * reference ({@code mock-budget.json}) porte un placement ({@code plc_1}) et un bien ({@code re_1}), presents
@@ -127,8 +129,8 @@ class PatrimoineConcurrentMutationsApiTest {
     }
 
     @RepeatedTest(3)
-    @DisplayName("Sauvegarde contre suppression du meme placement : recree la ligne (contrat historique)")
-    void saveRacingWithDeleteAlwaysRecreatesTheRow() throws Exception {
+    @DisplayName("Sauvegarde contre suppression du meme placement : l'un des deux ordres sequentiels")
+    void saveRacingWithDeleteEndsInASerialOrder() throws Exception {
         callConcurrently(List.of(savePlacement(placementBody("plc_y", "Initial", 1000)))).forEach(result ->
                 assertThat(result.getResponse().getStatus()).isEqualTo(200));
 
@@ -138,10 +140,12 @@ class PatrimoineConcurrentMutationsApiTest {
 
         assertThat(results.get(0).getResponse().getStatus()).isEqualTo(200);
         assertThat(results.get(1).getResponse().getStatus()).isEqualTo(204);
-        // savePatrimoineRow relit la liste puis ajoute la ligne si absente : que la suppression passe avant ou
-        // apres la sauvegarde, plc_y existe toujours a la fin (contrairement a updateTresorerieRow).
-        assertThat(placementIds()).contains("plc_y");
-        assertThat(placementIdsServedByApi()).isEqualTo(placementIds());
+        // sauvegarde puis suppression : plc_y absent (la suppression relit l'etat deja sauvegarde) ;
+        // suppression puis sauvegarde : savePatrimoineRow ne retrouve plus la ligne et la recree (plc_y present,
+        // valeurs "Revise"/1500) -- meme patron que GoalConcurrentMutationsApiTest/CreditConcurrentMutationsApiTest.
+        List<String> stored = placementIds();
+        assertThat(stored).isIn(List.of(REFERENCE_PLACEMENT_ID), List.of(REFERENCE_PLACEMENT_ID, "plc_y"));
+        assertThat(placementIdsServedByApi()).isEqualTo(stored);
     }
 
     @RepeatedTest(3)
