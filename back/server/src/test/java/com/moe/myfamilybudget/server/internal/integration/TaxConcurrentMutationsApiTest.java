@@ -156,7 +156,7 @@ class TaxConcurrentMutationsApiTest {
     }
 
     private Callable<MvcResult> updateChildExitAge(int value) {
-        String body = "{\"field\":\"childExitAge\",\"value\":" + value + "}";
+        String body = "{\"action\":\"updateSettings\",\"field\":\"childExitAge\",\"value\":" + value + "}";
         return () -> mockMvc.perform(put("/api/v1/impots").contextPath("/api/v1")
                 .contentType(MediaType.APPLICATION_JSON).content(body)).andReturn();
     }
