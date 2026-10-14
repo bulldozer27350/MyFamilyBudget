@@ -1,6 +1,5 @@
 package com.moe.myfamilybudget.persistence;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -24,8 +23,6 @@ import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
-import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 
 /**
  * Mutations de domaine du budget (DB-060), extraites de {@link PersistenceManager}.
@@ -49,15 +46,10 @@ public final class DomainMutations {
     }
 
     /**
-     * Met à jour le montant mensuel d'un placement.
-     */
-    public void updatePlacementMonthly(String id, BigDecimal newMonthly) {
-        mutationService.updatePlacementMonthly(id, newMonthly);
-        publishMutated("updatePlacementMonthly");
-    }
-
-    /**
-     * Ajoute ou met à jour une ligne de patrimoine (real estate, placements).
+     * Ajoute ou met à jour une ligne de patrimoine (placements). R-30 (reste à nettoyer) : le reste de ce
+     * fichier miroir ce qui subsiste dans {@link BudgetMutationService} — voir son commentaire sur
+     * {@code savePatrimoineRow} pour le détail de ce qui a été retiré et de ce qui est volontairement
+     * conservé pour {@code WriteFailureKeepsMemoryTest} (VT-330).
      */
     public Map<String, Object> savePatrimoineRow(String listKey, Map<String, Object> body) {
         Map<String, Object> result = mutationService.savePatrimoineRow(listKey, body);
@@ -101,27 +93,11 @@ public final class DomainMutations {
     }
 
     /**
-     * Met à jour un champ d'une catégorie d'actif.
-     */
-    public void updateAssetCategory(String id, String field, Object value) {
-        mutationService.updateAssetCategory(id, field, value);
-        publishMutated("updateAssetCategory");
-    }
-
-    /**
      * Ajoute une nouvelle catégorie d'actif.
      */
     public void addAssetCategory(AssetCategoryModel category) {
         mutationService.addAssetCategory(category);
         publishMutated("addAssetCategory");
-    }
-
-    /**
-     * Supprime une catégorie d'actif.
-     */
-    public void removeAssetCategory(String id) {
-        mutationService.removeAssetCategory(id);
-        publishMutated("removeAssetCategory");
     }
 
     /**
@@ -138,32 +114,6 @@ public final class DomainMutations {
     public void deletePatrimoineRow(String listKey, String id) {
         mutationService.deletePatrimoineRow(listKey, id);
         publishMutated("deletePatrimoineRow");
-    }
-
-    /**
-     * Ajoute une entrée d'historique de valorisation à un placement.
-     */
-    public Map<String, Object> addPlacementHistoryEntry(String placementId, Map<String, Object> body) {
-        Map<String, Object> result = mutationService.addPlacementHistoryEntry(placementId, body);
-        publishMutated("addPlacementHistoryEntry");
-        return result;
-    }
-
-    /**
-     * Met à jour une entrée d'historique de valorisation d'un placement.
-     */
-    public Map<String, Object> updatePlacementHistoryEntry(String placementId, String entryId, Map<String, Object> body) {
-        Map<String, Object> result = mutationService.updatePlacementHistoryEntry(placementId, entryId, body);
-        publishMutated("updatePlacementHistoryEntry");
-        return result;
-    }
-
-    /**
-     * Supprime une entrée d'historique de valorisation d'un placement.
-     */
-    public void deletePlacementHistoryEntry(String placementId, String entryId) {
-        mutationService.deletePlacementHistoryEntry(placementId, entryId);
-        publishMutated("deletePlacementHistoryEntry");
     }
 
     // --- SILO-119 (lot B1) : remplacement et reinitialisation par silo ---
@@ -192,19 +142,6 @@ public final class DomainMutations {
     public void resetTaxSnapshot() {
         mutationService.resetTaxSnapshot();
         publishMutated("resetTaxSnapshot");
-    }
-
-    /** Remplace le patrimoine (placements, immobilier, categories d'actifs). */
-    public void replacePatrimoineSnapshot(List<PlacementModel> placements, List<RealEstateModel> realEstate,
-                                          List<AssetCategoryModel> assetCategories) {
-        mutationService.replacePatrimoineSnapshot(placements, realEstate, assetCategories);
-        publishMutated("replacePatrimoineSnapshot");
-    }
-
-    /** Remet le Patrimoine a vide. */
-    public void resetPatrimoineSnapshot() {
-        mutationService.resetPatrimoineSnapshot();
-        publishMutated("resetPatrimoineSnapshot");
     }
 
     /**

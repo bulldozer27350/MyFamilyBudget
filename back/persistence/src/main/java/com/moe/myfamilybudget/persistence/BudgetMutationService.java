@@ -1,7 +1,6 @@
 package com.moe.myfamilybudget.persistence;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -21,7 +20,6 @@ import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
-import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
@@ -71,26 +69,16 @@ class BudgetMutationService {
         this.cacheStore = cacheStore;
     }
 
-    public void updatePlacementMonthly(String id, BigDecimal newMonthly) {
-        if (id == null || newMonthly == null) {
-            return;
-        }
-        cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            List<PlacementModel> list = base.getEffectivePlacements().stream()
-                    .map(p -> Objects.equals(p.id(), id) ? new PlacementModel(p.id(), p.label(), p.category(),
-                            p.balance(), p.balanceDate(), newMonthly, p.monthlyFrom(), p.monthlyUntil(),
-                            p.ratePess(), p.rateCorr(), p.rateOpti(), p.excludedFromRetirement(), p.notes(),
-                            p.sweepPriority(), p.sweepCap(), p.pauseTriggerBalance(), p.pausePriority(),
-                            p.categoryId(), p.getEffectiveHistory()) : p)
-                    .toList();
-            return base.withPlacements(list);
-        });
-    }
-
     /**
-     * Sauvegarde ou crée une ligne de patrimoine (placements, transfers, realEstate). Les prêts s'écrivent dans leur
-     * silo (SILO-214, lot B).
+     * Sauvegarde ou crée une ligne de patrimoine (placements). Les prêts s'écrivent dans leur silo
+     * (SILO-214, lot B) ; R-30 (reste à nettoyer) : l'immobilier (listKey {@code realEstate}) ne passe plus
+     * par ici (silo Patrimoine, {@code JpaWealthStore}) et a été retiré, de même que
+     * {@code updatePlacementMonthly}, {@code updateAssetCategory}, {@code removeAssetCategory},
+     * {@code replacePatrimoineSnapshot}/{@code resetPatrimoineSnapshot} et l'historique de valorisation
+     * ({@code add}/{@code update}/{@code deletePlacementHistoryEntry}), tous devenus du code mort (zéro
+     * appelant en production ni dans les tests). {@code savePatrimoineRow}, {@code deletePatrimoineRow} et
+     * {@code addAssetCategory} restent : {@link com.moe.myfamilybudget.persistence.WriteFailureKeepsMemoryTest}
+     * (VT-330) les exerce volontairement pour garder la couverture de l'ordre DB -> mémoire du cache.
      */
     public Map<String, Object> savePatrimoineRow(String listKey, Map<String, Object> body) {
         Map<String, Object> resultRow = new HashMap<>();
@@ -171,39 +159,6 @@ class BudgetMutationService {
                 resultRow.put("categoryId", categoryId);
 
                 return base.withPlacements(list);
-            } else if ("realEstate".equalsIgnoreCase(listKey)) {
-                List<RealEstateModel> list = new ArrayList<>();
-                boolean found = false;
-
-                String label = getString(body, "label", "Nouveau bien");
-                String type = getString(body, "type", "Résidence Principale");
-                BigDecimal currentValue = getBigDecimal(body, "currentValue", BigDecimal.ZERO);
-                Integer valuationYear = getInteger(body, "valuationYear", 2026);
-                BigDecimal annualGrowthRate = getBigDecimal(body, "annualGrowthRate", new BigDecimal("0.02"));
-                String notes = getString(body, "notes", "");
-
-                RealEstateModel model = new RealEstateModel(uid, label, type, currentValue, valuationYear, annualGrowthRate, notes);
-
-                for (RealEstateModel re : base.getEffectiveRealEstate()) {
-                    if (Objects.equals(re.id(), uid)) {
-                        list.add(model);
-                        found = true;
-                    } else {
-                        list.add(re);
-                    }
-                }
-                if (!found) {
-                    list.add(model);
-                }
-
-                resultRow.put("label", label);
-                resultRow.put("type", type);
-                resultRow.put("currentValue", currentValue);
-                resultRow.put("valuationYear", valuationYear);
-                resultRow.put("annualGrowthRate", annualGrowthRate);
-                resultRow.put("notes", notes);
-
-                return base.withRealEstate(list);
             }
 
             return base;
@@ -333,34 +288,10 @@ class BudgetMutationService {
     }
 
     /**
-     * Met à jour une cellule d'une catégorie d'actif.
-     */
-    public void updateAssetCategory(String id, String field, Object value) {
-        if (id == null || field == null) return;
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            List<AssetCategoryModel> list = new ArrayList<>(base.getEffectiveAssetCategories());
-            List<AssetCategoryModel> updatedList = new ArrayList<>();
-            for (AssetCategoryModel c : list) {
-                if (Objects.equals(c.id(), id)) {
-                    AssetCategoryModel updatedCategory = new AssetCategoryModel(
-                            c.id(),
-                            "icon".equals(field) ? String.valueOf(value) : c.icon(),
-                            "name".equals(field) ? String.valueOf(value) : c.name(),
-                            "bucket".equals(field) ? String.valueOf(value) : c.bucket(),
-                            "color".equals(field) ? String.valueOf(value) : c.color()
-                    );
-                    updatedList.add(updatedCategory);
-                } else {
-                    updatedList.add(c);
-                }
-            }
-            return base.withAssetCategories(updatedList);
-        });
-    }
-
-    /**
-     * Ajoute une nouvelle catégorie d'actif.
+     * Ajoute une nouvelle catégorie d'actif. R-30 (reste à nettoyer) : conservée pour
+     * {@link com.moe.myfamilybudget.persistence.WriteFailureKeepsMemoryTest} (VT-330) ; voir le commentaire de
+     * {@link #savePatrimoineRow}. {@code updateAssetCategory} et {@code removeAssetCategory}, non exercées par
+     * ce test, étaient du code mort et ont été retirées.
      */
     public void addAssetCategory(AssetCategoryModel category) {
         if (category == null) return;
@@ -368,20 +299,6 @@ class BudgetMutationService {
             BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
             List<AssetCategoryModel> list = new ArrayList<>(base.getEffectiveAssetCategories());
             list.add(category);
-            return base.withAssetCategories(list);
-        });
-    }
-
-    /**
-     * Supprime une catégorie d'actif par ID.
-     */
-    public void removeAssetCategory(String id) {
-        if (id == null) return;
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            List<AssetCategoryModel> list = base.getEffectiveAssetCategories().stream()
-                    .filter(c -> !Objects.equals(c.id(), id))
-                    .toList();
             return base.withAssetCategories(list);
         });
     }
@@ -404,7 +321,7 @@ class BudgetMutationService {
     }
 
     /**
-     * Supprime une ligne de patrimoine (placements, transfers, realEstate).
+     * Supprime une ligne de patrimoine (placements).
      */
     public void deletePatrimoineRow(String listKey, String id) {
         if (listKey == null || id == null) {
@@ -419,118 +336,10 @@ class BudgetMutationService {
                         .filter(r -> !Objects.equals(r.id(), id))
                         .toList();
                 return base.withPlacements(list);
-            } else if ("realEstate".equalsIgnoreCase(listKey)) {
-                List<RealEstateModel> list = base.getEffectiveRealEstate().stream()
-                        .filter(r -> !Objects.equals(r.id(), id))
-                        .toList();
-                return base.withRealEstate(list);
             }
 
             return base;
         });
-    }
-
-    /**
-     * Ajoute une valeur reelle constatee a l'historique d'un placement (fenetre dediee
-     * "Historique" de l'onglet Patrimoine). Cree une ligne d'historique independante,
-     * conservee telle quelle (contrairement a l'ancienne implementation qui se contentait
-     * d'ecraser le solde de reference du placement).
-     */
-    public Map<String, Object> addPlacementHistoryEntry(String placementId, Map<String, Object> body) {
-        Map<String, Object> result = new HashMap<>();
-        if (placementId == null || body == null) return result;
-
-        String uid = "hist_" + UUID.randomUUID().toString().substring(0, 8);
-        String date = getString(body, "date", LocalDate.now().toString());
-        BigDecimal value = getBigDecimal(body, "value", BigDecimal.ZERO);
-        String notes = getString(body, "notes", "");
-
-        PlacementHistoryEntryModel entry = new PlacementHistoryEntryModel(uid, date, value, notes);
-        result.put("id", uid);
-        result.put("date", date);
-        result.put("value", value);
-        result.put("notes", notes);
-
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            List<PlacementModel> list = base.getEffectivePlacements().stream()
-                    .map(p -> {
-                        if (!Objects.equals(p.id(), placementId)) return p;
-                        List<PlacementHistoryEntryModel> history = new ArrayList<>(p.getEffectiveHistory());
-                        history.add(entry);
-                        return withHistory(p, history);
-                    })
-                    .toList();
-            return base.withPlacements(list);
-        });
-        return result;
-    }
-
-    /**
-     * Met a jour une ligne existante de l'historique d'un placement (date, valeur ou notes).
-     */
-    public Map<String, Object> updatePlacementHistoryEntry(String placementId, String entryId, Map<String, Object> body) {
-        Map<String, Object> result = new HashMap<>();
-        if (placementId == null || entryId == null || body == null) return result;
-
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            List<PlacementModel> list = base.getEffectivePlacements().stream()
-                    .map(p -> {
-                        if (!Objects.equals(p.id(), placementId)) return p;
-                        List<PlacementHistoryEntryModel> history = p.getEffectiveHistory().stream()
-                                .map(h -> {
-                                    if (!Objects.equals(h.id(), entryId)) return h;
-                                    String date = body.containsKey("date") ? getString(body, "date", h.date()) : h.date();
-                                    BigDecimal value = body.containsKey("value") ? getBigDecimal(body, "value", h.value()) : h.value();
-                                    String notes = body.containsKey("notes") ? getString(body, "notes", h.notes()) : h.notes();
-                                    return new PlacementHistoryEntryModel(h.id(), date, value, notes);
-                                })
-                                .toList();
-                        return withHistory(p, history);
-                    })
-                    .toList();
-            return base.withPlacements(list);
-        });
-        return result;
-    }
-
-    /**
-     * Supprime une ligne de l'historique d'un placement.
-     */
-    public void deletePlacementHistoryEntry(String placementId, String entryId) {
-        if (placementId == null || entryId == null) return;
-
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            List<PlacementModel> list = base.getEffectivePlacements().stream()
-                    .map(p -> {
-                        if (!Objects.equals(p.id(), placementId)) return p;
-                        List<PlacementHistoryEntryModel> history = p.getEffectiveHistory().stream()
-                                .filter(h -> !Objects.equals(h.id(), entryId))
-                                .toList();
-                        return withHistory(p, history);
-                    })
-                    .toList();
-            return base.withPlacements(list);
-        });
-    }
-
-    /**
-     * PlacementModel n'a pas de methode "withHistory" (ce n'est pas un besoin ailleurs dans le
-     * code) : ce petit utilitaire local reconstruit un PlacementModel identique avec un
-     * historique different, en reutilisant le constructeur complet (19 champs).
-     */
-    private PlacementModel withHistory(PlacementModel p, List<PlacementHistoryEntryModel> history) {
-        PlacementModel next = new PlacementModel(
-                p.id(), p.label(), p.category(), p.balance(), p.balanceDate(),
-                p.monthly(), p.monthlyFrom(), p.monthlyUntil(),
-                p.ratePess(), p.rateCorr(), p.rateOpti(),
-                p.excludedFromRetirement(), p.notes(),
-                p.sweepPriority(), p.sweepCap(), p.pauseTriggerBalance(),
-                p.pausePriority(), p.categoryId(), history
-        );
-        return syncBalanceFromHistory(next);
     }
 
     /**
@@ -617,22 +426,6 @@ class BudgetMutationService {
                     .withTaxRateOverrides(defaults.taxRateOverrides())
                     .withTaxActualOverrides(defaults.taxActualOverrides());
         });
-    }
-
-    /** Remplace le patrimoine : placements, immobilier et catégories d'actifs (SILO-216, DA-14 : virements dans Tresorerie). */
-    public void replacePatrimoineSnapshot(List<PlacementModel> placements, List<RealEstateModel> realEstate,
-                                          List<AssetCategoryModel> assetCategories) {
-        cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            return base.withPlacements(orEmpty(placements))
-                    .withRealEstate(orEmpty(realEstate))
-                    .withAssetCategories(orEmpty(assetCategories));
-        });
-    }
-
-    /** Remet le patrimoine à vide. */
-    public void resetPatrimoineSnapshot() {
-        replacePatrimoineSnapshot(null, null, null);
     }
 
     private static <T> List<T> orEmpty(List<T> list) {
