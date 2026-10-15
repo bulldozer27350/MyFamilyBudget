@@ -8,7 +8,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
@@ -21,7 +20,6 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepo
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
 
 /**
@@ -64,8 +62,6 @@ public final class PersistenceManagerTestFactory {
                 budgetDataRepository,
                 mock(SettingsRepository.class),
                 mock(PlacementRepository.class),
-                mock(RealEstateRepository.class),
-                mock(AssetCategoryRepository.class),
                 mock(GoalRepository.class),
                 mock(FiscalChildRepository.class),
                 mock(FiscalBracketRepository.class),

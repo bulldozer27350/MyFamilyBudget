@@ -11,13 +11,14 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import com.moe.myfamilybudget.persistence.entity.PlacementEntity;
-import com.moe.myfamilybudget.persistence.entity.RealEstateEntity;
 
 /**
  * Les taux sont stockes en fractions (0,0251 = 2,51 %). Sans precision explicite, Hibernate cree
  * des colonnes NUMERIC(38,2) et arrondit 0,0251 a 0,03 : un taux de pret « 2,5 % » revenait « 3 % »
  * apres rechargement. Ces tests relisent la valeur depuis la base (cache de premier niveau vide). Le taux des prets
- * est couvert par {@code CreditLoanJpaModelTest} (table {@code credit_loan}, SILO-214).
+ * est couvert par {@code CreditLoanJpaModelTest} (table {@code credit_loan}, SILO-214). R-30b : le taux de
+ * revalorisation immobilier (ex-{@code RealEstateEntity}, retiree) est desormais couvert par
+ * {@code WealthJpaModelTest} (table {@code wealth_real_estate}, SILO-215).
  */
 @DataJpaTest
 @DisplayName("RatePrecisionPersistenceTest -- les taux ne sont pas arrondis en base")
@@ -41,17 +42,5 @@ class RatePrecisionPersistenceTest {
         assertThat(reloaded.getRatePess()).isEqualByComparingTo("0.0125");
         assertThat(reloaded.getRateCorr()).isEqualByComparingTo("0.0275");
         assertThat(reloaded.getRateOpti()).isEqualByComparingTo("0.03125");
-    }
-
-    @Test
-    @DisplayName("Le taux de revalorisation immobilier est relu a l'identique")
-    void realEstateGrowthRateKeepsDecimals() {
-        RealEstateEntity realEstate = new RealEstateEntity("re-1", "Maison", "RP",
-                new BigDecimal("300000"), 2026, new BigDecimal("0.0175"), "");
-
-        Long id = em.persistAndFlush(realEstate).getId();
-        em.clear();
-
-        assertThat(em.find(RealEstateEntity.class, id).getAnnualGrowthRate()).isEqualByComparingTo("0.0175");
     }
 }

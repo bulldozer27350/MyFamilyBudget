@@ -2,24 +2,17 @@ package com.moe.myfamilybudget.persistence;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
 import java.util.function.UnaryOperator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
-import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
@@ -67,104 +60,6 @@ class BudgetMutationService {
 
     BudgetMutationService(BudgetCacheStore cacheStore) {
         this.cacheStore = cacheStore;
-    }
-
-    /**
-     * Sauvegarde ou crée une ligne de patrimoine (placements). Les prêts s'écrivent dans leur silo
-     * (SILO-214, lot B) ; R-30 (reste à nettoyer) : l'immobilier (listKey {@code realEstate}) ne passe plus
-     * par ici (silo Patrimoine, {@code JpaWealthStore}) et a été retiré, de même que
-     * {@code updatePlacementMonthly}, {@code updateAssetCategory}, {@code removeAssetCategory},
-     * {@code replacePatrimoineSnapshot}/{@code resetPatrimoineSnapshot} et l'historique de valorisation
-     * ({@code add}/{@code update}/{@code deletePlacementHistoryEntry}), tous devenus du code mort (zéro
-     * appelant en production ni dans les tests). {@code savePatrimoineRow}, {@code deletePatrimoineRow} et
-     * {@code addAssetCategory} restent : {@link com.moe.myfamilybudget.persistence.WriteFailureKeepsMemoryTest}
-     * (VT-330) les exerce volontairement pour garder la couverture de l'ordre DB -> mémoire du cache.
-     */
-    public Map<String, Object> savePatrimoineRow(String listKey, Map<String, Object> body) {
-        Map<String, Object> resultRow = new HashMap<>();
-        String givenId = body != null && body.get("id") != null ? String.valueOf(body.get("id")) : null;
-        String uid = (givenId != null && !givenId.trim().isEmpty()) ? givenId : ("pat_" + UUID.randomUUID().toString().substring(0, 8));
-        resultRow.put("id", uid);
-
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            int retireYear = (base.settings() != null ? base.settings().getEffectiveBirthYear() : 1985)
-                    + (base.settings() != null ? base.settings().getEffectiveRetireAge() : 64);
-
-            if ("placements".equalsIgnoreCase(listKey)) {
-                List<PlacementModel> list = new ArrayList<>();
-                boolean found = false;
-
-                String label = getString(body, "label", "Nouveau placement");
-                String category = getString(body, "category", "Epargne");
-                BigDecimal balance = getBigDecimal(body, "balance", BigDecimal.ZERO);
-                String balanceDate = getString(body, "balanceDate", "2026-01-01");
-                BigDecimal monthly = getBigDecimal(body, "monthly", BigDecimal.ZERO);
-                String monthlyFrom = getString(body, "monthlyFrom", "2026-01-01");
-                String monthlyUntil = getString(body, "monthlyUntil", retireYear + "-12-31");
-                BigDecimal ratePess = getBigDecimal(body, "ratePess", BigDecimal.ZERO);
-                BigDecimal rateCorr = getBigDecimal(body, "rateCorr", BigDecimal.ZERO);
-                BigDecimal rateOpti = getBigDecimal(body, "rateOpti", BigDecimal.ZERO);
-                Boolean excludedFromRetirement = body != null && body.containsKey("excludedFromRetirement")
-                        ? Boolean.valueOf(String.valueOf(body.get("excludedFromRetirement"))) : false;
-                String notes = getString(body, "notes", "");
-                Integer sweepPriority = getInteger(body, "sweepPriority", null);
-                BigDecimal sweepCap = getBigDecimal(body, "sweepCap", null);
-                BigDecimal pauseTriggerBalance = getBigDecimal(body, "pauseTriggerBalance", null);
-                Integer pausePriority = getInteger(body, "pausePriority", null);
-                String categoryId = getString(body, "categoryId", "");
-
-                // L'historique de valorisation (releves reels) n'est pas edite depuis ce
-                // formulaire generique : on le preserve tel quel pour la ligne existante afin
-                // de ne pas l'ecraser a chaque enregistrement du placement.
-                List<PlacementHistoryEntryModel> existingHistory = base.getEffectivePlacements().stream()
-                        .filter(p -> Objects.equals(p.id(), uid))
-                        .findFirst()
-                        .map(PlacementModel::getEffectiveHistory)
-                        .orElse(List.of());
-
-                PlacementModel model = new PlacementModel(uid, label, category, balance, balanceDate, monthly,
-                        monthlyFrom, monthlyUntil, ratePess, rateCorr, rateOpti, excludedFromRetirement, notes,
-                        sweepPriority, sweepCap, pauseTriggerBalance, pausePriority, categoryId, existingHistory);
-                model = syncBalanceFromHistory(model);
-
-                for (PlacementModel p : base.getEffectivePlacements()) {
-                    if (Objects.equals(p.id(), uid)) {
-                        list.add(model);
-                        found = true;
-                    } else {
-                        list.add(p);
-                    }
-                }
-                if (!found) {
-                    list.add(model);
-                }
-
-                resultRow.put("label", label);
-                resultRow.put("category", category);
-                resultRow.put("balance", balance);
-                resultRow.put("balanceDate", balanceDate);
-                resultRow.put("monthly", monthly);
-                resultRow.put("monthlyFrom", monthlyFrom);
-                resultRow.put("monthlyUntil", monthlyUntil);
-                resultRow.put("ratePess", ratePess);
-                resultRow.put("rateCorr", rateCorr);
-                resultRow.put("rateOpti", rateOpti);
-                resultRow.put("excludedFromRetirement", excludedFromRetirement);
-                resultRow.put("notes", notes);
-                resultRow.put("sweepPriority", sweepPriority);
-                resultRow.put("sweepCap", sweepCap);
-                resultRow.put("pauseTriggerBalance", pauseTriggerBalance);
-                resultRow.put("pausePriority", pausePriority);
-                resultRow.put("categoryId", categoryId);
-
-                return base.withPlacements(list);
-            }
-
-            return base;
-        });
-
-        return resultRow;
     }
 
     /**
@@ -288,22 +183,6 @@ class BudgetMutationService {
     }
 
     /**
-     * Ajoute une nouvelle catégorie d'actif. R-30 (reste à nettoyer) : conservée pour
-     * {@link com.moe.myfamilybudget.persistence.WriteFailureKeepsMemoryTest} (VT-330) ; voir le commentaire de
-     * {@link #savePatrimoineRow}. {@code updateAssetCategory} et {@code removeAssetCategory}, non exercées par
-     * ce test, étaient du code mort et ont été retirées.
-     */
-    public void addAssetCategory(AssetCategoryModel category) {
-        if (category == null) return;
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-            List<AssetCategoryModel> list = new ArrayList<>(base.getEffectiveAssetCategories());
-            list.add(category);
-            return base.withAssetCategories(list);
-        });
-    }
-
-    /**
      * Réinitialise les tranches d'impôt par défaut.
      */
     public void resetDefaultTaxBrackets() {
@@ -318,54 +197,6 @@ class BudgetMutationService {
             );
             return base.withTaxBrackets(defaultBrackets);
         });
-    }
-
-    /**
-     * Supprime une ligne de patrimoine (placements).
-     */
-    public void deletePatrimoineRow(String listKey, String id) {
-        if (listKey == null || id == null) {
-            return;
-        }
-
-        BudgetDataModel updated = cacheStore.applyAndPersist(current -> {
-            BudgetDataModel base = current != null ? current : cacheStore.createDefaultBudgetData();
-
-            if ("placements".equalsIgnoreCase(listKey)) {
-                List<PlacementModel> list = base.getEffectivePlacements().stream()
-                        .filter(r -> !Objects.equals(r.id(), id))
-                        .toList();
-                return base.withPlacements(list);
-            }
-
-            return base;
-        });
-    }
-
-    /**
-     * Le solde de reference (balance/balanceDate) du placement reste la source utilisee par
-     * Tresorerie et Vue d'ensemble (calculateDetailedFinancialTimeline cote front, projections
-     * cote back). Depuis que la saisie du solde a ete retiree du formulaire d'edition du
-     * placement (elle se fait desormais uniquement via l'historique), on le resynchronise ici
-     * automatiquement sur la derniere valeur d'historique connue a chaque mutation, pour que
-     * ces deux vues restent a jour sans action supplementaire de l'utilisateur. Les dates ISO
-     * (yyyy-MM-dd) se comparent correctement en tant que chaines, pas besoin de les parser.
-     */
-    private PlacementModel syncBalanceFromHistory(PlacementModel p) {
-        List<PlacementHistoryEntryModel> history = p.getEffectiveHistory();
-        PlacementHistoryEntryModel latest = history.stream()
-                .filter(h -> h.date() != null)
-                .max(Comparator.comparing(PlacementHistoryEntryModel::date))
-                .orElse(null);
-        if (latest == null) return p;
-        return new PlacementModel(
-                p.id(), p.label(), p.category(), latest.getEffectiveValue(), latest.date(),
-                p.monthly(), p.monthlyFrom(), p.monthlyUntil(),
-                p.ratePess(), p.rateCorr(), p.rateOpti(),
-                p.excludedFromRetirement(), p.notes(),
-                p.sweepPriority(), p.sweepCap(), p.pauseTriggerBalance(),
-                p.pausePriority(), p.categoryId(), history
-        );
     }
 
     // --- SILO-119 (lot B1) : remplacement et réinitialisation par silo (import et reset par fragments) ---

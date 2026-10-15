@@ -38,7 +38,7 @@ import com.moe.myfamilybudget.domain.treasury.model.TransferModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
+
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowChargeRepository;
@@ -71,7 +71,6 @@ import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.goals.core.persistence.JpaGoalStore;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
@@ -1008,8 +1007,6 @@ class PersistenceAdaptersJpaRoundTripTest {
                 context.getBean(BudgetDataRepository.class),
                 context.getBean(SettingsRepository.class),
                 context.getBean(PlacementRepository.class),
-                context.getBean(RealEstateRepository.class),
-                context.getBean(AssetCategoryRepository.class),
                 context.getBean(GoalRepository.class),
                 context.getBean(FiscalChildRepository.class),
                 context.getBean(FiscalBracketRepository.class),

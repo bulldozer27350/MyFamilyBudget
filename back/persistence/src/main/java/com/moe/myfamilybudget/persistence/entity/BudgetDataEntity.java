@@ -20,14 +20,12 @@ public class BudgetDataEntity {
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private SettingsEntity settings;
     
+    // R-30b : seuls les placements restent rattaches au hub, exerces par
+    // BudgetPersistenceGatewayRepeatedSaveTest (SILO-119 B2, collection enfant @OneToMany du hub). L'immobilier
+    // et les categories d'actifs vivent desormais uniquement dans wealth_real_estate / wealth_asset_category
+    // (silo Patrimoine).
     @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<PlacementEntity> placements = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<RealEstateEntity> realEstate = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "budgetData", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<AssetCategoryEntity> assetCategories = new ArrayList<>();
 
     // Constructors
     public BudgetDataEntity() {}
@@ -59,21 +57,5 @@ public class BudgetDataEntity {
     
     public void setPlacements(List<PlacementEntity> placements) {
         this.placements = placements;
-    }
-    
-    public List<RealEstateEntity> getRealEstate() {
-        return realEstate;
-    }
-    
-    public void setRealEstate(List<RealEstateEntity> realEstate) {
-        this.realEstate = realEstate;
-    }
-    
-    public List<AssetCategoryEntity> getAssetCategories() {
-        return assetCategories;
-    }
-    
-    public void setAssetCategories(List<AssetCategoryEntity> assetCategories) {
-        this.assetCategories = assetCategories;
     }
 }

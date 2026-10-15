@@ -44,8 +44,6 @@ public class PersistenceManager {
     private final BudgetDataRepository budgetDataRepository;
     private final SettingsRepository settingsRepository;
     private final PlacementRepository placementRepository;
-    private final RealEstateRepository realEstateRepository;
-    private final AssetCategoryRepository assetCategoryRepository;
     private final GoalRepository goalRepository;
     private final FiscalChildRepository fiscalChildRepository;
     private final FiscalBracketRepository fiscalBracketRepository;
@@ -113,8 +111,6 @@ public class PersistenceManager {
     public PersistenceManager(BudgetDataRepository budgetDataRepository,
                             SettingsRepository settingsRepository,
                             PlacementRepository placementRepository,
-                            RealEstateRepository realEstateRepository,
-                            AssetCategoryRepository assetCategoryRepository,
                             GoalRepository goalRepository,
                             FiscalChildRepository fiscalChildRepository,
                             FiscalBracketRepository fiscalBracketRepository,
@@ -130,8 +126,6 @@ public class PersistenceManager {
         this.budgetDataRepository = budgetDataRepository;
         this.settingsRepository = settingsRepository;
         this.placementRepository = placementRepository;
-        this.realEstateRepository = realEstateRepository;
-        this.assetCategoryRepository = assetCategoryRepository;
         this.goalRepository = goalRepository;
         this.fiscalChildRepository = fiscalChildRepository;
         this.fiscalBracketRepository = fiscalBracketRepository;
@@ -142,7 +136,6 @@ public class PersistenceManager {
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.gateway = new BudgetPersistenceGateway(
                 budgetDataRepository, placementRepository,
-                realEstateRepository, assetCategoryRepository,
                 goalRepository, fiscalChildRepository, fiscalBracketRepository,
                 fiscalRateOverrideRepository, fiscalActualOverrideRepository, pensionPlanRepository,
                 bankImportDocumentRepository,

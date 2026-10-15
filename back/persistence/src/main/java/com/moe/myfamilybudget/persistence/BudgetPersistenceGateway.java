@@ -7,13 +7,11 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.persistence.migration.LegacyObjectifAllocationMigrator;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
@@ -25,7 +23,6 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalEntityMapper;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntityMapper;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionEntityMapper;
 import com.moe.myfamilybudget.persistence.entity.BudgetDataEntity;
-import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsMapper;
@@ -45,7 +42,6 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepo
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 
 /**
  * Passerelle vers la couche JPA : seule classe qui parle directement aux repositories Spring Data.
@@ -56,8 +52,6 @@ class BudgetPersistenceGateway {
 
     private final BudgetDataRepository budgetDataRepository;
     private final PlacementRepository placementRepository;
-    private final RealEstateRepository realEstateRepository;
-    private final AssetCategoryRepository assetCategoryRepository;
     private final GoalRepository goalRepository;
     private final FiscalChildRepository fiscalChildRepository;
     private final FiscalBracketRepository fiscalBracketRepository;
@@ -74,8 +68,6 @@ class BudgetPersistenceGateway {
 
     BudgetPersistenceGateway(BudgetDataRepository budgetDataRepository,
                               PlacementRepository placementRepository,
-                              RealEstateRepository realEstateRepository,
-                              AssetCategoryRepository assetCategoryRepository,
                               GoalRepository goalRepository,
                               FiscalChildRepository fiscalChildRepository,
                               FiscalBracketRepository fiscalBracketRepository,
@@ -88,8 +80,6 @@ class BudgetPersistenceGateway {
                               CashflowSettingsRepository cashflowSettingsRepository) {
         this.budgetDataRepository = budgetDataRepository;
         this.placementRepository = placementRepository;
-        this.realEstateRepository = realEstateRepository;
-        this.assetCategoryRepository = assetCategoryRepository;
         this.goalRepository = goalRepository;
         this.fiscalChildRepository = fiscalChildRepository;
         this.fiscalBracketRepository = fiscalBracketRepository;
@@ -110,8 +100,6 @@ class BudgetPersistenceGateway {
         for (BudgetDataEntity existing : budgetDataRepository.findAll()) {
             Long id = existing.getId();
             placementRepository.deleteByBudgetDataId(id);
-            realEstateRepository.deleteByBudgetDataId(id);
-            assetCategoryRepository.deleteByBudgetDataId(id);
         }
         budgetDataRepository.flush();
         budgetDataRepository.deleteAll();
@@ -161,8 +149,6 @@ class BudgetPersistenceGateway {
         entity = budgetDataRepository.save(entity);
 
         savePlacements(model.placements(), entity);
-        saveRealEstate(model.realEstate(), entity);
-        saveAssetCategories(model.assetCategories(), entity);
         syncPension(model.retirement());
         syncSettings(model);
     }
@@ -180,10 +166,13 @@ class BudgetPersistenceGateway {
         SettingsModel s = model.getEffectiveSettings();
         // R-20 : cashflow_settings appartient au silo Tresorerie (JpaTreasuryStore) ; R-42 : fiscal_settings
         // appartient au silo Fiscalite (JpaTaxStore). Le cache, perime pour ces champs, ne doit plus les
-        // ecraser a chaque mutation d'un autre domaine. R-30 : meme principe pour les placements, l'immobilier
-        // et les categories d'actifs, ecrits directement par JpaWealthStore (silo Patrimoine) : syncWealth()
+        // ecraser a chaque mutation d'un autre domaine. R-30/R-30b : meme principe pour le patrimoine (placements,
+        // immobilier, categories d'actifs), ecrit directement par JpaWealthStore (silo Patrimoine) : syncWealth()
         // a ete retiree pour ne plus reecraser ces tables a chaque sauvegarde d'un autre domaine avec un etat
         // perime (voir PersistenceManager#setBudgetData pour l'import complet, delegue a PatrimoineSnapshotWriter).
+        // Seuls les placements restent rattaches au hub (BudgetDataEntity.placements), exerces par
+        // BudgetPersistenceGatewayRepeatedSaveTest (SILO-119 B2) : ils ne representent plus d'etat reel pour
+        // le silo Patrimoine.
         pensionSettingsRepository.deleteAll();
         pensionSettingsRepository.flush();
         pensionSettingsRepository.save(PensionSettingsMapper.toEntity(
@@ -232,17 +221,4 @@ class BudgetPersistenceGateway {
         }
     }
 
-    private void saveRealEstate(List<RealEstateModel> realEstate, BudgetDataEntity budgetData) {
-        realEstateRepository.deleteByBudgetDataId(budgetData.getId());
-        for (RealEstateModel re : realEstate) {
-            realEstateRepository.save(EntityModelConverter.toEntity(re, budgetData));
-        }
-    }
-
-    private void saveAssetCategories(List<AssetCategoryModel> assetCategories, BudgetDataEntity budgetData) {
-        assetCategoryRepository.deleteByBudgetDataId(budgetData.getId());
-        for (AssetCategoryModel ac : assetCategories) {
-            assetCategoryRepository.save(EntityModelConverter.toEntity(ac, budgetData));
-        }
-    }
 }

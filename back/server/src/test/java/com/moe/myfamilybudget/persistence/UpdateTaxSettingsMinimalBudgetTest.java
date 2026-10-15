@@ -22,7 +22,6 @@ import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.tax.port.TaxSettingField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingField;
-import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowChargeRepository;
@@ -42,7 +41,6 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepo
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
 
 /**
@@ -67,8 +65,6 @@ class UpdateTaxSettingsMinimalBudgetTest {
                 budgetDataRepository,
                 mock(SettingsRepository.class),
                 mock(PlacementRepository.class),
-                mock(RealEstateRepository.class),
-                mock(AssetCategoryRepository.class),
                 mock(GoalRepository.class),
                 mock(FiscalChildRepository.class),
                 mock(FiscalBracketRepository.class),

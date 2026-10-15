@@ -1,11 +1,9 @@
 package com.moe.myfamilybudget.persistence;
 
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.context.ApplicationEventPublisher;
 
-import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
@@ -46,18 +44,6 @@ public final class DomainMutations {
     }
 
     /**
-     * Ajoute ou met à jour une ligne de patrimoine (placements). R-30 (reste à nettoyer) : le reste de ce
-     * fichier miroir ce qui subsiste dans {@link BudgetMutationService} — voir son commentaire sur
-     * {@code savePatrimoineRow} pour le détail de ce qui a été retiré et de ce qui est volontairement
-     * conservé pour {@code WriteFailureKeepsMemoryTest} (VT-330).
-     */
-    public Map<String, Object> savePatrimoineRow(String listKey, Map<String, Object> body) {
-        Map<String, Object> result = mutationService.savePatrimoineRow(listKey, body);
-        publishMutated("savePatrimoineRow");
-        return result;
-    }
-
-    /**
      * Met à jour les données de retraite.
      */
     public void updateRetirement(RetirementModel retirement) {
@@ -93,27 +79,11 @@ public final class DomainMutations {
     }
 
     /**
-     * Ajoute une nouvelle catégorie d'actif.
-     */
-    public void addAssetCategory(AssetCategoryModel category) {
-        mutationService.addAssetCategory(category);
-        publishMutated("addAssetCategory");
-    }
-
-    /**
      * Réinitialise les tranches d'imposition par défaut.
      */
     public void resetDefaultTaxBrackets() {
         mutationService.resetDefaultTaxBrackets();
         publishMutated("resetDefaultTaxBrackets");
-    }
-
-    /**
-     * Supprime une ligne de patrimoine (real estate, placements).
-     */
-    public void deletePatrimoineRow(String listKey, String id) {
-        mutationService.deletePatrimoineRow(listKey, id);
-        publishMutated("deletePatrimoineRow");
     }
 
     // --- SILO-119 (lot B1) : remplacement et reinitialisation par silo ---

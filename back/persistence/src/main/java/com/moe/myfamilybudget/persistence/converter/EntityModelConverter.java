@@ -3,15 +3,11 @@ package com.moe.myfamilybudget.persistence.converter;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.persistence.entity.AssetCategoryEntity;
 import com.moe.myfamilybudget.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.persistence.entity.PlacementEntity;
 import com.moe.myfamilybudget.persistence.entity.PlacementHistoryEntryEntity;
-import com.moe.myfamilybudget.persistence.entity.RealEstateEntity;
 import com.moe.myfamilybudget.persistence.entity.SettingsEntity;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
@@ -147,60 +143,6 @@ public class EntityModelConverter {
         );
     }
 
-    // RealEstate conversions
-    public static RealEstateEntity toEntity(RealEstateModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        RealEstateEntity entity = new RealEstateEntity(
-            model.id(),
-            model.label(),
-            model.type(),
-            model.currentValue(),
-            model.valuationYear(),
-            model.annualGrowthRate(),
-            model.notes()
-        );
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static RealEstateModel toModel(RealEstateEntity entity) {
-        if (entity == null) return null;
-        return new RealEstateModel(
-            entity.getUid(),
-            entity.getLabel(),
-            entity.getType(),
-            entity.getCurrentValue(),
-            entity.getValuationYear(),
-            entity.getAnnualGrowthRate(),
-            entity.getNotes()
-        );
-    }
-
-    // AssetCategory conversions
-    public static AssetCategoryEntity toEntity(AssetCategoryModel model, BudgetDataEntity budgetData) {
-        if (model == null) return null;
-        AssetCategoryEntity entity = new AssetCategoryEntity(
-            model.id(),
-            model.icon(),
-            model.name(),
-            model.bucket()
-        );
-        entity.setColor(model.color());
-        entity.setBudgetData(budgetData);
-        return entity;
-    }
-
-    public static AssetCategoryModel toModel(AssetCategoryEntity entity) {
-        if (entity == null) return null;
-        return new AssetCategoryModel(
-            entity.getUid(),
-            entity.getIcon(),
-            entity.getName(),
-            entity.getBucket(),
-            entity.getColor()
-        );
-    }
-
     // BudgetData conversions
     public static BudgetDataEntity toEntity(BudgetDataModel model) {
         if (model == null) return null;
@@ -222,7 +164,7 @@ public class EntityModelConverter {
             List.of(), // revenus - lus depuis cashflow_income (SILO-216)
             List.of(), // charges - lues depuis cashflow_charge (SILO-216)
             entity.getPlacements().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
-            entity.getRealEstate().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
+            List.of(), // immobilier - lu depuis wealth_real_estate (SILO-215, R-30b)
             null, // Retirement - lue depuis les tables autonomes pension_* (DB-1100)
             List.of(), // taxChildren - lues depuis les tables autonomes fiscal_* (DB-1110)
             List.of(),
@@ -233,7 +175,7 @@ public class EntityModelConverter {
             List.of(), // variableIncomes - lus depuis cashflow_variable_income (SILO-216)
             List.of(), // variableOverrides - lus depuis cashflow_variable_override (SILO-216)
             null, // BankImport - handled separately due to JSON serialization
-            entity.getAssetCategories().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),
+            List.of(), // categories d'actifs - lues depuis wealth_asset_category (SILO-215, R-30b)
             List.of(), // prets - lus depuis la table autonome credit_loan (SILO-214)
             List.of() // objectifs - lus depuis les tables autonomes goal_* (DB-1120)
         );

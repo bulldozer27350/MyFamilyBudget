@@ -22,16 +22,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
-import com.moe.myfamilybudget.persistence.repository.AssetCategoryRepository;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
@@ -44,7 +40,6 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepo
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.RealEstateRepository;
 import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
 
 /**
@@ -54,9 +49,16 @@ import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
  * {@link BudgetMutatedEvent} n'est publie.
  *
  * <p>Deux points de defaillance sont simules sur des repositories mockes : l'ecriture de l'entite
- * principale (premier acces base) et l'ecriture des lignes enfants (base deja partiellement modifiee).
- * Dans les deux cas l'exception d'origine doit remonter telle quelle a l'appelant. La persistance JPA
- * reelle (rollback effectif) releve de VT-320 / VT-340.
+ * principale (premier acces base, {@code budgetDataRepository}) et l'ecriture d'une ligne enfant (base deja
+ * partiellement modifiee, {@code pensionPlanRepository} : {@code BudgetPersistenceGateway.syncPension} y
+ * ecrit inconditionnellement a chaque {@code save}, contrairement aux placements qui ne s'y ecrivent que si
+ * la mutation en cours en laisse au moins un). Dans les deux cas l'exception d'origine doit remonter telle
+ * quelle a l'appelant. La persistance JPA reelle (rollback effectif) releve de VT-320 / VT-340.
+ *
+ * <p>R-30b (arbitrage du 14/10/2026, option B) : ce test s'appuyait auparavant sur l'ancienne mutation
+ * {@code DomainMutations.savePatrimoineRow}/{@code deletePatrimoineRow}/{@code addAssetCategory} (Patrimoine),
+ * conservee uniquement pour lui. Il s'appuie desormais sur la Retraite (Patrimoine ne passe plus du tout par
+ * ce cache depuis R-30), ce qui a permis de retirer ce code mort.
  */
 class WriteFailureKeepsMemoryTest {
 
@@ -68,11 +70,8 @@ class WriteFailureKeepsMemoryTest {
     private static final RetirementModel RETIREMENT_AFTER = new RetirementModel(List.of(), new BigDecimal("50000"),
             new BigDecimal("0.02"), new BigDecimal("1.5"), "2026-01-01", new BigDecimal("0.02"));
 
-    private static final IncomeModel INCOME_REPLACEMENT = new IncomeModel("inc_replacement", "Prime",
-            new BigDecimal("999"), "2026-01-01", "2053-12-31", BigDecimal.ZERO, "", "");
-
     private BudgetDataRepository budgetDataRepository;
-    private PlacementRepository placementRepository;
+    private PensionPlanRepository pensionPlanRepository;
     private ApplicationEventPublisher eventPublisher;
     private PersistenceManager persistenceManager;
 
@@ -84,22 +83,20 @@ class WriteFailureKeepsMemoryTest {
     @BeforeEach
     void setUp() {
         budgetDataRepository = mock(BudgetDataRepository.class);
-        placementRepository = mock(PlacementRepository.class);
+        pensionPlanRepository = mock(PensionPlanRepository.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         databaseWorks();
 
         persistenceManager = new PersistenceManager(
                 budgetDataRepository,
                 mock(SettingsRepository.class),
-                placementRepository,
-                mock(RealEstateRepository.class),
-                mock(AssetCategoryRepository.class),
+                mock(PlacementRepository.class),
                 mock(GoalRepository.class),
                 mock(FiscalChildRepository.class),
                 mock(FiscalBracketRepository.class),
                 mock(FiscalRateOverrideRepository.class),
                 mock(FiscalActualOverrideRepository.class),
-                mock(PensionPlanRepository.class),
+                pensionPlanRepository,
                 mock(BankImportDocumentRepository.class),
                 mock(PensionSettingsRepository.class),
                 mock(FiscalSettingsRepository.class),
@@ -111,13 +108,9 @@ class WriteFailureKeepsMemoryTest {
         retirementAdapter = new RetirementPersistenceAdapter(persistenceManager);
         settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
 
-        // Etat de reference non trivial, ecrit alors que la base fonctionne.
-        persistenceManager.write(m -> m.savePatrimoineRow("placements",
-                Map.of("id", "plc_seed", "label", "Livret", "balance", new BigDecimal("1000"))));
-        // Deux placements : les mutations qui en suppriment un doivent encore en ecrire un autre, sinon elles
-        // n'atteignent jamais l'ecriture des lignes enfants (placementRepository.save).
-        persistenceManager.write(m -> m.savePatrimoineRow("placements",
-                Map.of("id", "plc_other", "label", "PEA", "balance", new BigDecimal("400"))));
+        // Etat de reference non trivial, ecrit alors que la base fonctionne. Des que le plan de retraite est
+        // non nul, syncPension ecrit inconditionnellement pensionPlanRepository a chaque mutation suivante,
+        // quel que soit le domaine mute : pas besoin d'un second "seed" comme avec les placements.
         persistenceManager.write(m -> m.updateRetirement(RETIREMENT_BEFORE));
 
         before = persistenceManager.getBudgetData();
@@ -133,7 +126,7 @@ class WriteFailureKeepsMemoryTest {
     void mainEntityFailureKeepsPreviousState() {
         databaseFailsOnMainEntity();
 
-        Map<String, Runnable> mutations = mutationsKeepingIncomes();
+        Map<String, Runnable> mutations = mutationsTriggeringChildWrite();
         mutations.put("resetData", persistenceManager::resetData);
         mutations.put("setBudgetData(null)", () -> persistenceManager.setBudgetData(null));
 
@@ -141,15 +134,15 @@ class WriteFailureKeepsMemoryTest {
     }
 
     // =========================================================================
-    // ECHEC PENDANT L'ECRITURE DES LIGNES ENFANTS
+    // ECHEC PENDANT L'ECRITURE D'UNE LIGNE ENFANT
     // =========================================================================
 
     @Test
     @DisplayName("Ligne enfant en echec (base deja partiellement ecrite) : l'etat memoire reste l'ancien")
     void childRowFailureKeepsPreviousState() {
-        databaseFailsOnChildRows();
+        databaseFailsOnChildRow();
 
-        assertEveryMutationFailsAndLeavesMemoryUntouched(mutationsKeepingIncomes());
+        assertEveryMutationFailsAndLeavesMemoryUntouched(mutationsTriggeringChildWrite());
     }
 
     // =========================================================================
@@ -162,8 +155,8 @@ class WriteFailureKeepsMemoryTest {
         databaseFailsOnMainEntity();
 
         assertThatThrownBy(() -> persistenceManager.write(m -> m.updateRetirement(RETIREMENT_AFTER))).isSameAs(DB_DOWN);
-        assertThatThrownBy(() -> persistenceManager.write(m -> m.savePatrimoineRow("placements",
-                Map.of("id", "plc_new", "label", "PEA", "balance", new BigDecimal("999"))))).isSameAs(DB_DOWN);
+        assertThatThrownBy(() -> persistenceManager.write(m -> m.updateRetirementSetting(
+                RetirementSettingField.RETIRE_AGE, 60))).isSameAs(DB_DOWN);
 
         assertThat(retirementAdapter.getRetirement()).isEqualTo(RETIREMENT_BEFORE);
         assertThat(persistenceManager.getBudgetData().retirement()).isEqualTo(RETIREMENT_BEFORE);
@@ -192,33 +185,19 @@ class WriteFailureKeepsMemoryTest {
     // OUTILLAGE
     // =========================================================================
 
-    /** Mutations qui laissent au moins un placement en base (plc_other) : elles atteignent toutes l'ecriture des lignes enfants. */
-    private Map<String, Runnable> mutationsKeepingIncomes() {
+    /** Mutations qui, le plan de retraite de {@link #before} etant non nul, atteignent toutes syncPension. */
+    private Map<String, Runnable> mutationsTriggeringChildWrite() {
         Map<String, Runnable> mutations = new LinkedHashMap<>();
-        mutations.put("savePatrimoineRow", () -> persistenceManager.write(m -> m.savePatrimoineRow("placements",
-                Map.of("id", "plc_seed", "label", "Livret modifie", "balance", new BigDecimal("5")))));
-        mutations.put("deletePatrimoineRow",
-                () -> persistenceManager.write(m -> m.deletePatrimoineRow("placements", "plc_seed")));
         mutations.put("updateRetirement", () -> persistenceManager.write(m -> m.updateRetirement(RETIREMENT_AFTER)));
         mutations.put("updateTaxConfig", () -> persistenceManager.write(m -> m.updateTaxConfig(
                 List.of(new TaxChildModel("tc_new", "Emma", 2015)), null, null, null)));
         mutations.put("updateRetirementSetting", () -> persistenceManager.write(m -> m.updateRetirementSetting(
                 RetirementSettingField.RETIRE_AGE, 60)));
-        mutations.put("addAssetCategory", () -> persistenceManager.write(m -> m.addAssetCategory(
-                new AssetCategoryModel("cat_new", "icon", "Nouvelle categorie", "bucket", "#ffffff"))));
-        mutations.put("setBudgetData", () -> persistenceManager.setBudgetData(
-                before.withPlacements(before.getEffectivePlacements().subList(1, 2))));
+        mutations.put("setBudgetData", () -> persistenceManager.setBudgetData(before.withRetirement(RETIREMENT_AFTER)));
         return mutations;
     }
 
     private void assertEveryMutationFailsAndLeavesMemoryUntouched(Map<String, Runnable> mutations) {
-        // R-30 : le patrimoine reel (silo) ne passe plus par ce cache ; ce test exerce volontairement
-        // l'ancienne mutation DomainMutations.savePatrimoineRow(String, Map), conservee telle quelle
-        // (code mort cote production) pour garder la couverture de l'ordre DB -> memoire du cache sur
-        // ce domaine. On lit donc directement le cache plutot que via l'adaptateur retire (meme principe
-        // que pour taxChildren ci-dessous depuis R-42).
-        var placements = persistenceManager.getBudgetData().getEffectivePlacements();
-        var assetCategories = persistenceManager.getBudgetData().getEffectiveAssetCategories();
         var taxChildren = persistenceManager.getBudgetData().getEffectiveTaxChildren();
         var settings = settingsAdapter.getSettings();
 
@@ -226,20 +205,17 @@ class WriteFailureKeepsMemoryTest {
             assertThatThrownBy(mutation::run).as(name).isSameAs(DB_DOWN);
 
             assertThat(persistenceManager.getBudgetData()).as(name).isSameAs(before);
-            assertThat(persistenceManager.getBudgetData().getEffectivePlacements()).as(name).isEqualTo(placements);
-            assertThat(persistenceManager.getBudgetData().getEffectiveAssetCategories()).as(name).isEqualTo(assetCategories);
             assertThat(retirementAdapter.getRetirement()).as(name).isEqualTo(RETIREMENT_BEFORE);
             assertThat(persistenceManager.getBudgetData().getEffectiveTaxChildren()).as(name).isEqualTo(taxChildren);
             assertThat(settingsAdapter.getSettings()).as(name).isEqualTo(settings);
         });
 
-        assertThat(placements).hasSize(2);
         // Aucune mutation en echec ne doit avoir declenche de controle des notifications.
         verifyNoInteractions(eventPublisher);
     }
 
     private void databaseWorks() {
-        reset(budgetDataRepository, placementRepository);
+        reset(budgetDataRepository, pensionPlanRepository);
         doAnswer(invocation -> invocation.getArgument(0)).when(budgetDataRepository).save(any());
     }
 
@@ -248,8 +224,8 @@ class WriteFailureKeepsMemoryTest {
         doThrow(DB_DOWN).when(budgetDataRepository).save(any());
     }
 
-    private void databaseFailsOnChildRows() {
+    private void databaseFailsOnChildRow() {
         databaseWorks();
-        doThrow(DB_DOWN).when(placementRepository).save(any());
+        doThrow(DB_DOWN).when(pensionPlanRepository).save(any());
     }
 }
