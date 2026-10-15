@@ -41,9 +41,9 @@ et de redémarrage sur PostgreSQL.
 | R-21 | Trésorerie, lot B2 : paramètres (`cashflow_settings` : pivot, solde de départ, sweep, seuils de cash) écrits directement et lus par un reader du silo ; retrait de sa part de `syncSettings` (DA-05) | R-20 | R-51 | Fait ! | | constaté livré par R-20 (947a176) : `JpaTreasuryStore.updateTresorerieSetting` écrit `cashflow_settings` sous verrou/transaction du silo (`TresorerieCommandService`), `getTresorerieSettings()` est le reader `@Primary`, `BudgetPersistenceGateway.syncSettings` n'écrit plus ces champs (migration one-shot au démarrage dans `migrateCashflowSettingsIfMissing`) | SILO-216 B, D9 |
 | R-22 | Trésorerie, lot B3 : tests | R-20, R-21 | R-71 | Fait ! (constaté déjà livré, commit 50f0717, doc non mis à jour à l'époque) | | 50f0717 | SILO-216 B2 |
 | R-30 | Patrimoine, lot B : store dans `wealth-core` pour placements (et historique), immobilier, catégories d'actifs ; retrait de `PatrimoinePersistenceAdapter`, de `syncWealth` et des relations du hub concernées ; ne touche plus aux virements | R-20 | R-31, R-60 | Fait ! Reste à nettoyer (suite) | | | SILO-215 B, DB-1150 |
-| R-30b | Patrimoine, suite du nettoyage de R-30 : `BudgetPersistenceGateway`/`EntityModelConverter`/`BudgetDataEntity` lisent et réécrivent encore `PlacementEntity`/`RealEstateEntity`/`AssetCategoryEntity`/`PlacementHistoryEntryEntity` (hub) en plus du silo ; `BudgetMutationService`/`DomainMutations.savePatrimoineRow`/`deletePatrimoineRow`/`addAssetCategory` (placements) sont du code mort côté production, conservés uniquement pour `WriteFailureKeepsMemoryTest` (VT-330) — à garder en l'état ou à migrer ce test vers un autre domaine avant de couper le reste ; `updatePlacementMonthly`, la branche `realEstate` de `save`/`deletePatrimoineRow`, `updateAssetCategory`, `removeAssetCategory`, l'historique de valorisation (`add`/`update`/`deletePlacementHistoryEntry`, `withHistory`) et `replace`/`resetPatrimoineSnapshot` ont déjà été retirés (code mort confirmé, zéro appelant) | R-30 | R-60 | À faire | | | SILO-215 B (reste) |
+| R-30b | Patrimoine, suite du nettoyage de R-30 : `BudgetPersistenceGateway`/`EntityModelConverter`/`BudgetDataEntity` lisent et réécrivent encore `PlacementEntity`/`RealEstateEntity`/`AssetCategoryEntity`/`PlacementHistoryEntryEntity` (hub) en plus du silo ; `BudgetMutationService`/`DomainMutations.savePatrimoineRow`/`deletePatrimoineRow`/`addAssetCategory` (placements) sont du code mort côté production, conservés uniquement pour `WriteFailureKeepsMemoryTest` (VT-330). **Arbitrage tranché le 14/10/2026 (option B)** : migrer VT-330 vers un autre domaine encore écrit par le hub (`pensionPlanRepository`/`syncPension`, cf. R-40) plutôt que garder le code mort Patrimoine ; implémentation non faite dans ce patch, à livrer dans un prochain patch R-30b dédié. `updatePlacementMonthly`, la branche `realEstate` de `save`/`deletePatrimoineRow`, `updateAssetCategory`, `removeAssetCategory`, l'historique de valorisation (`add`/`update`/`deletePlacementHistoryEntry`, `withHistory`) et `replace`/`resetPatrimoineSnapshot` ont déjà été retirés (code mort confirmé, zéro appelant) | R-30 | R-60 | À faire | | | SILO-215 B (reste) |
 | R-31 | Patrimoine, lot B2 : tests | R-30 | R-71 | Fait ! (placements et immobilier ; virements DA-14 et catégories d'actifs hors scope) | | | SILO-215 B2 |
-| R-40 | Retraite, lot B : écriture directe du plan de retraite et de `pension_settings` (année de naissance, âge de départ) sous `SiloMutationLock`, reader du silo dans `retirement-core`, retrait de `RetirementPersistenceAdapter`, de `syncPension` et de sa part de `syncSettings` (DA-05) | — | R-41, R-51, R-60 | En cours | | à renseigner (dernier commit de `main` : « lot B de nouveau démarré ») | SILO-210 B |
+| R-40 | Retraite, lot B : écriture directe du plan de retraite et de `pension_settings` (année de naissance, âge de départ) sous `SiloMutationLock`, reader du silo dans `retirement-core`, retrait de `RetirementPersistenceAdapter`, de `syncPension` et de sa part de `syncSettings` (DA-05). Vérifié le 14/10/2026 : seule la lecture est migrée (`PensionPlanRepository`) ; `updateRetirement`/`updateRetirementSetting` passent toujours par `PersistenceManager.write` (hub) dans `RetirementPersistenceAdapter` — le volet écriture (verrou de silo, événement de mutation, retrait du hub) reste entièrement à faire | — | R-41, R-51, R-60 | En cours | | à renseigner (dernier commit de `main` : « lot B de nouveau démarré ») | SILO-210 B |
 | R-41 | Retraite, lot B2 : tests | R-40 | R-71 | À faire | | | SILO-210 B2 |
 | R-42 | Fiscalité, lot B : écriture directe des enfants, barème, surcharges et de `fiscal_settings` (âge de sortie des enfants, abattement), retrait de `TaxPersistenceAdapter`, de `syncFiscal` et de sa part de `syncSettings` (DA-05) | — | R-43, R-51, R-60 | Fait ! | | | SILO-211 B |
 | R-43 | Fiscalité, lot B2 : tests | R-42 | R-71 | Fait ! | | | SILO-211 B2 |
@@ -63,15 +63,15 @@ et de redémarrage sur PostgreSQL.
 
 | ID | Patch | Dépend de | Bloque | Statut | Qui | Branche / commit | Réf. 21 |
 |---|---|---|---|---|---|---|---|
-| R-80 | Cas d'usage Fiscalité (`application-api`) | R-71 | R-90 | À faire | | | SILO-311 |
-| R-81 | Cas d'usage Patrimoine | R-71 | R-90 | À faire | | | SILO-312 |
-| R-82 | Cas d'usage Trésorerie | R-71 | R-90 | À faire | | | SILO-313 |
-| R-83 | Cas d'usage Banque et Pointage (import, opérations en attente, pointage) | R-71 | R-90 | À faire | | | SILO-314 |
-| R-84 | Cas d'usage Analyse | R-71 | R-90 | À faire | | | SILO-315 |
-| R-85 | Cas d'usage Overview | R-71 | R-90 | À faire | | | SILO-316 |
-| R-86 | Cas d'usage Prêts et taux de marché (aujourd'hui dans `server`) | R-71 | R-90 | À faire | | | SILO-317 |
-| R-87 | Cas d'usage Notifications (aujourd'hui dans `server`) | R-71 | R-90 | À faire | | | SILO-318 |
-| R-88 | Cas d'usage Paramètres et Système | R-71, R-52 | R-90 | À faire | | | SILO-319 |
+| R-80 | Cas d'usage Fiscalité (`application-api`) | — | R-90 | À faire | | | SILO-311 |
+| R-81 | Cas d'usage Patrimoine | — | R-90 | À faire | | | SILO-312 |
+| R-82 | Cas d'usage Trésorerie | — | R-90 | À faire | | | SILO-313 |
+| R-83 | Cas d'usage Banque et Pointage (import, opérations en attente, pointage) | — | R-90 | À faire | | | SILO-314 |
+| R-84 | Cas d'usage Analyse | — | R-90 | À faire | | | SILO-315 |
+| R-85 | Cas d'usage Overview | — | R-90 | À faire | | | SILO-316 |
+| R-86 | Cas d'usage Prêts et taux de marché (aujourd'hui dans `server`) ; propriétaire des suggestions de taux (`PlacementRateSuggestion*`) tranché le 14/10/2026 : cas d'usage transverse Patrimoine+Marché, rattaché à `application` (pas de module dédié) | — | R-90 | À faire | | | SILO-317 |
+| R-87 | Cas d'usage Notifications (aujourd'hui dans `server`) | — | R-90 | À faire | | | SILO-318 |
+| R-88 | Cas d'usage Paramètres et Système | R-52 | R-90 | À faire | | | SILO-319 |
 | R-90 | Module `web` : contrôleurs (dont Retraite), mappers DTO, `GlobalExceptionHandler`, CORS, `HeartbeatController` ; plus aucun `ResponseEntity` dans `application` | R-80 à R-88 | R-91 | À faire | | | SILO-320 |
 | R-91 | Module `bootstrap` : démarrage, câblage des implémentations, planificateurs (`MarketDataRefreshScheduler`, `EnableBankingSyncScheduler`), `NotificationBudgetMutationListener`, `TransactionRunner`, `SiloMutationLockRegistry`, `DesktopLauncher` | R-90, R-02, R-71 | R-92 | À faire | | | SILO-330 |
 | R-92 | `module-info` sur `application-*` et `web`, règles de visibilité complètes (DA-01) | R-91 | R-93 | À faire | | | SILO-340 |
@@ -92,22 +92,17 @@ et de redémarrage sur PostgreSQL.
 ## 4. Parallélisation et points ouverts
 
 **Lancer en parallèle dès maintenant** : R-01 (hors chemin critique des lots B, mais bloque R-51 et R-61), R-02, R-11, R-20, R-40
-(déjà en cours), R-52, R-72, V-01. Les lots B de silos distincts ne partagent pas de table, mais ils modifient tous
-`BudgetPersistenceGateway`, `PersistenceManager`, `BudgetMutationService` et `DomainMutations` : prévoir des conflits de fusion et
-fusionner un lot à la fois, CI verte avant le suivant (DA-07).
+(déjà en cours), R-52, R-72, V-01, R-80 à R-88 (plus de dépendance à R-71, voir arbitrages du 14/10/2026 ci-dessous). Les lots B de
+silos distincts ne partagent pas de table, mais ils modifient tous `BudgetPersistenceGateway`, `PersistenceManager`,
+`BudgetMutationService` et `DomainMutations` : prévoir des conflits de fusion et fusionner un lot à la fois, CI verte avant le
+suivant (DA-07).
 
-**Chemin critique** : R-20 → R-30 ; R-21 ; R-40 et R-42 → R-51 → R-61 → R-70 → R-71 → R-80 à R-88 → R-90 → R-91 → R-92 → R-93 → R-94.
+**Chemin critique** : R-20 → R-30 ; R-21 ; R-40 et R-42 → R-51 → R-61 → R-70 → R-71 → R-90 → R-91 → R-92 → R-93 → R-94 (R-80 à R-88
+tournent en parallèle, en amont de R-90 qui les attend tous).
 
 **Points ouverts**
 
-1. **Forme de Liquibase (R-01)** : recommandation, un fichier maître dans le composition root et des scripts par silo dans les
-   ressources de chaque `*-core`. À valider dans le patch.
-2. **Lot B de Retraite déjà en cours (R-40)** : il a été démarré avant DA-03 ; vérifier qu'il respecte la liste de la section 3.
-   Aucun script n'est nécessaire pour `pension_settings` si la version qui alimente les tables de paramètres (SILO-220 B1) a
-   tourné au moins une fois sur chaque base ; sinon, une copie scriptée est requise.
-3. **Dépendance de R-80 à R-88 envers R-71** : héritée du document 21 (« SILO-290 pour le reste »). Ces cas d'usage ne touchent pas
-   à la persistance ; si la dépendance n'est pas voulue, ils peuvent démarrer plus tôt, ce qui raccourcit le chemin critique.
-4. **Propriétaire des suggestions de taux** (`PlacementRateSuggestion*`, `PlacementRateSuggestionService`, dans `server`) :
-   aucune décision ; à trancher avant R-86 et R-91.
-5. **Granularité de R-20** : le lot Trésorerie est le plus gros (sept relations du hub, virements, `TresorerieFieldUpdateDispatcher`
-   et dix fichiers d'`updater`). Si l'agent le juge trop large, il le scinde lui-même et ajoute les lignes ici avant de commencer.
+Aucun pour l'instant. Les 5 points ouverts du premier jet ont été tranchés le 14/10/2026 : forme de Liquibase validée telle que
+livrée par R-01 lot A (pas de changement) ; avancement de R-40 vérifié (volet écriture restant, note ajoutée à sa ligne) ;
+dépendance de R-80 à R-88 envers R-71 retirée (ci-dessus) ; propriétaire des suggestions de taux tranché sur la ligne R-86 ;
+arbitrage VT-330/R-30b tranché (option B) sur la ligne R-30b, implémentation restant à livrer dans un patch dédié.
