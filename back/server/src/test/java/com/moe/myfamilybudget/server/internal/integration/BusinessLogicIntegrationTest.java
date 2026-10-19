@@ -41,7 +41,6 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
-import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
@@ -70,6 +69,11 @@ class BusinessLogicIntegrationTest {
     // placements/immobilier/categories vers le silo (JpaWealthStore) et les virements vers JpaTreasuryStore.
     @Autowired
     private com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader patrimoineReader;
+
+    // R-40 : meme principe pour la retraite ; le bean JpaRetirementStore (@Primary) lit directement
+    // pension_plan/pension_settings, sans passer par PersistenceManager.
+    @Autowired
+    private com.moe.myfamilybudget.domain.retirement.port.RetirementReader retirementStore;
 
     private static String mockBudgetJson;
 
@@ -413,7 +417,7 @@ class BusinessLogicIntegrationTest {
                 new SettingsPersistenceAdapter(persistenceManager), new SettingsPersistenceAdapter(persistenceManager),
                 new SettingsPersistenceAdapter(persistenceManager), CacheBackedAppSettings.of(persistenceManager),
                 CacheBackedAppSettings.of(persistenceManager), treasuryStore,
-                patrimoineReader, new RetirementPersistenceAdapter(persistenceManager),
+                patrimoineReader, retirementStore,
                 new InMemoryTaxStore(), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);
@@ -442,7 +446,7 @@ class BusinessLogicIntegrationTest {
                 new SettingsPersistenceAdapter(persistenceManager), new SettingsPersistenceAdapter(persistenceManager),
                 new SettingsPersistenceAdapter(persistenceManager), CacheBackedAppSettings.of(persistenceManager),
                 CacheBackedAppSettings.of(persistenceManager), treasuryStore,
-                patrimoineReader, new RetirementPersistenceAdapter(persistenceManager),
+                patrimoineReader, retirementStore,
                 new InMemoryTaxStore(), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);
@@ -466,7 +470,7 @@ class BusinessLogicIntegrationTest {
                 new SettingsPersistenceAdapter(persistenceManager), new SettingsPersistenceAdapter(persistenceManager),
                 new SettingsPersistenceAdapter(persistenceManager), CacheBackedAppSettings.of(persistenceManager),
                 CacheBackedAppSettings.of(persistenceManager), treasuryStore,
-                patrimoineReader, new RetirementPersistenceAdapter(persistenceManager),
+                patrimoineReader, retirementStore,
                 new InMemoryTaxStore(), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
         RetirementProjectionModel proj = retirementProjection(svc, data, alice);

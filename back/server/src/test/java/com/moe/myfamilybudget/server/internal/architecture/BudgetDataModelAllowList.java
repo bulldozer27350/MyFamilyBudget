@@ -21,7 +21,7 @@ final class BudgetDataModelAllowList {
     static final String FROZEN_ON = "2026-10-04";
 
     /** Taille maximale de la liste à la date de gel ; à abaisser à chaque suppression d'entrée. */
-    static final int FROZEN_SIZE = 8;
+    static final int FROZEN_SIZE = 7;
 
     /** Entrée : classe de premier niveau autorisée et patch qui retire son usage. */
     record Entry(String className, String removedBy) {}
@@ -36,7 +36,8 @@ final class BudgetDataModelAllowList {
             // persistence : adaptateurs de lecture par cache global
             // R-30 (SILO-215) : PatrimoinePersistenceAdapter route desormais vers JpaWealthStore et
             // JpaTreasuryStore (silos), il ne depend plus de PersistenceManager/BudgetDataModel.
-            new Entry(PERS + "adapter.RetirementPersistenceAdapter", "SILO-210"),
+            // R-40 : RetirementPersistenceAdapter est retire (JpaRetirementStore route desormais vers le
+            // silo Retraite, sans dependre de PersistenceManager/BudgetDataModel).
             new Entry(PERS + "adapter.SettingsPersistenceAdapter", "SILO-220"),
             // persistence : cache, mutations et conversion globales
             new Entry(PERS + "BudgetCacheStore", "SILO-230"),

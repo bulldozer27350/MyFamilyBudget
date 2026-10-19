@@ -25,7 +25,7 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableO
 import com.moe.myfamilybudget.domain.credit.port.LoanReader;
 import com.moe.myfamilybudget.domain.tax.core.persistence.JpaTaxStore;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
-import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.JpaRetirementStore;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
 
@@ -35,8 +35,9 @@ import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
  * {@link PersistenceManager}. Complete {@code ReaderPersistenceBoundaryArchTest}, qui garde la frontiere
  * statiquement.
  *
- * <p>Seul {@code SettingsPersistenceAdapter} lit encore le cache : les parametres Retraite restent stockes dans
- * le hub jusqu'a son lot B (R-40). La simulation et les hypotheses economiques sont lues dans leur table
+ * <p>R-40 : la retraite (plan et parametres) est desormais lue via {@code JpaRetirementStore}, qui ne passe
+ * plus par le cache. Seul {@code SettingsPersistenceAdapter} lit encore le cache, pour les champs qui n'ont
+ * pas (ou plus) de proprietaire dedie. La simulation et les hypotheses economiques sont lues dans leur table
  * autonome (R-50).
  *
  * <p>Base H2 dediee, pour ne pas partager d'etat avec les autres contextes de test.
@@ -76,8 +77,7 @@ class ReadersDoNotUseBudgetCacheTest {
                 context.getBean(com.moe.myfamilybudget.domain.wealth.core.persistence.JpaWealthStore.class);
         PatrimoinePersistenceAdapter patrimoine = new PatrimoinePersistenceAdapter(wealth, budget);
         JpaTaxStore tax = context.getBean(JpaTaxStore.class);
-        RetirementPersistenceAdapter retirement = new RetirementPersistenceAdapter(cache,
-                context.getBean(PensionPlanRepository.class));
+        JpaRetirementStore retirement = context.getBean(JpaRetirementStore.class);
         BankReader bank = context.getBean(BankReader.class);
         LoanReader loans = context.getBean(LoanReader.class);
         GoalReader goals = context.getBean(GoalReader.class);

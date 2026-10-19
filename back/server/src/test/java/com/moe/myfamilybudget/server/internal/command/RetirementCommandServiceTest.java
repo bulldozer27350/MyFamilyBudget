@@ -18,19 +18,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
-import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementWriter;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
  * DB-020 -- Le command service Retraite valide la commande, delegue au port d'ecriture et laisse l'erreur
  * de persistance remonter telle quelle ; l'adaptateur ecrit bien dans le modele relu par les lecteurs.
+ *
+ * <p>R-40 (lot B, meme gabarit que {@code TaxCommandServiceTest}/{@code TresorerieCommandServiceTest}) :
+ * chaque commande s'execute desormais dans une transaction, apres prise du verrou du silo Retraite.
  */
-@DisplayName("DB-020 -- RetirementCommandService")
+@DisplayName("DB-020 / R-40 -- RetirementCommandService")
 class RetirementCommandServiceTest {
 
     private static final RetirementModel RETIREMENT = new RetirementModel(
@@ -46,7 +46,7 @@ class RetirementCommandServiceTest {
     @BeforeEach
     void setUp() {
         writer = mock(RetirementWriter.class);
-        service = new RetirementCommandService(writer);
+        service = new RetirementCommandService(writer, silos -> { }, RecordingTransactionRunner.direct());
     }
 
     @Test
@@ -67,15 +67,14 @@ class RetirementCommandServiceTest {
     }
 
     @Test
-    @DisplayName("SET-020 : l'ecriture d'un parametre de retraite est relue par SettingsReader")
+    @DisplayName("SET-020 : l'ecriture d'un parametre de retraite est relue par RetirementSettingsReader")
     void retirementSettingIsReadBackThroughSettingsReader() {
-        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
+        InMemoryRetirementStore store = new InMemoryRetirementStore();
 
-        new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager))
+        new RetirementCommandService(store, silos -> { }, RecordingTransactionRunner.direct())
                 .updateRetirementSetting(RetirementSettingField.RETIRE_AGE, 62);
 
-        assertThat(new SettingsPersistenceAdapter(persistenceManager).getSettings().retireAge()).isEqualTo(62);
+        assertThat(store.getRetirementSettings().retireAge()).isEqualTo(62);
     }
 
     @Test
@@ -113,17 +112,14 @@ class RetirementCommandServiceTest {
     }
 
     @Test
-    @DisplayName("integration adaptateur : l'ecriture est relue par les ports de lecture, sans toucher au budget")
+    @DisplayName("integration adaptateur : l'ecriture est relue par les ports de lecture")
     void adapterWriteIsReadBackByReaders() {
-        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
-        RetirementPersistenceAdapter adapter = new RetirementPersistenceAdapter(persistenceManager);
-        InMemoryTreasuryStore budget = new InMemoryTreasuryStore();
-        assertThat(adapter.getRetirement().people()).isEmpty();
+        InMemoryRetirementStore store = new InMemoryRetirementStore();
+        assertThat(store.getRetirement().people()).isEmpty();
 
-        new RetirementCommandService(adapter).updateRetirement(RETIREMENT);
+        new RetirementCommandService(store, silos -> { }, RecordingTransactionRunner.direct())
+                .updateRetirement(RETIREMENT);
 
-        assertThat(adapter.getRetirement()).isEqualTo(RETIREMENT);
-        assertThat(budget.getIncomes()).isEmpty();
+        assertThat(store.getRetirement()).isEqualTo(RETIREMENT);
     }
 }

@@ -110,9 +110,9 @@ class BudgetPersistenceGateway {
         Optional<BudgetDataEntity> existingData = budgetDataRepository.findFirstByOrderByIdAsc();
         BudgetDataModel loaded = existingData.map(this::loadCompleteBudgetData).orElse(null);
         if (loaded != null) {
-            syncSettings(loaded);
             migrateCashflowSettingsIfMissing(loaded.getEffectiveSettings());
             migrateFiscalSettingsIfMissing(loaded.getEffectiveSettings());
+            migratePensionSettingsIfMissing(loaded.getEffectiveSettings());
         }
         return loaded;
     }
@@ -149,32 +149,27 @@ class BudgetPersistenceGateway {
         entity = budgetDataRepository.save(entity);
 
         savePlacements(model.placements(), entity);
-        syncPension(model.retirement());
-        syncSettings(model);
     }
 
-    private void syncPension(RetirementModel retirement) {
-        pensionPlanRepository.deleteAll();
-        pensionPlanRepository.flush();
-        if (retirement == null) {
+    // R-40 : pension_plan et pension_settings appartiennent desormais au silo Retraite (JpaRetirementStore),
+    // qui les ecrit directement a chaque mutation (meme principe que R-20/R-42 pour la Tresorerie et la
+    // Fiscalite). save() ne doit donc plus les resynchroniser inconditionnellement a chaque sauvegarde d'un
+    // autre domaine (ce serait rejouer un etat perime venant du cache). R-30/R-30b : meme principe pour le
+    // patrimoine (placements, immobilier, categories d'actifs), ecrit directement par JpaWealthStore (silo
+    // Patrimoine) : syncWealth() a ete retiree pour ne plus reecraser ces tables a chaque sauvegarde d'un
+    // autre domaine avec un etat perime (voir PersistenceManager#setBudgetData pour l'import complet, delegue
+    // a PatrimoineSnapshotWriter/RetirementSnapshotWriter). Seuls les placements restent rattaches au hub
+    // (BudgetDataEntity.placements), exerces par BudgetPersistenceGatewayRepeatedSaveTest (SILO-119 B2) : ils
+    // ne representent plus d'etat reel pour le silo Patrimoine.
+
+    // R-40 : pension_settings appartient desormais au silo Retraite (JpaRetirementStore), qui l'ecrit
+    // directement a chaque mutation. Au demarrage, si la table est vide (schema neuf, ou ligne supprimee),
+    // elle doit etre migree une fois depuis le blob `settings` historique, comme cashflow_settings et
+    // fiscal_settings.
+    private void migratePensionSettingsIfMissing(SettingsModel s) {
+        if (pensionSettingsRepository.count() > 0) {
             return;
         }
-        pensionPlanRepository.save(PensionEntityMapper.toEntity(retirement));
-    }
-
-    private void syncSettings(BudgetDataModel model) {
-        SettingsModel s = model.getEffectiveSettings();
-        // R-20 : cashflow_settings appartient au silo Tresorerie (JpaTreasuryStore) ; R-42 : fiscal_settings
-        // appartient au silo Fiscalite (JpaTaxStore). Le cache, perime pour ces champs, ne doit plus les
-        // ecraser a chaque mutation d'un autre domaine. R-30/R-30b : meme principe pour le patrimoine (placements,
-        // immobilier, categories d'actifs), ecrit directement par JpaWealthStore (silo Patrimoine) : syncWealth()
-        // a ete retiree pour ne plus reecraser ces tables a chaque sauvegarde d'un autre domaine avec un etat
-        // perime (voir PersistenceManager#setBudgetData pour l'import complet, delegue a PatrimoineSnapshotWriter).
-        // Seuls les placements restent rattaches au hub (BudgetDataEntity.placements), exerces par
-        // BudgetPersistenceGatewayRepeatedSaveTest (SILO-119 B2) : ils ne representent plus d'etat reel pour
-        // le silo Patrimoine.
-        pensionSettingsRepository.deleteAll();
-        pensionSettingsRepository.flush();
         pensionSettingsRepository.save(PensionSettingsMapper.toEntity(
                 new RetirementSettingsModel(s.birthYear(), s.retireAge())));
     }

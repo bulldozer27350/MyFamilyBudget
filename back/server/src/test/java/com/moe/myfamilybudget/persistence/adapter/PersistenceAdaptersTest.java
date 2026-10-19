@@ -69,18 +69,10 @@ class PersistenceAdaptersTest {
         // (JpaWealthStore, voir PersistenceAdaptersJpaRoundTripTest) ; PatrimoinePersistenceAdapter
         // n'a donc plus de constructeur a un seul argument ici.
 
-        @Test
-        @DisplayName("RetirementPersistenceAdapter : parametres retraite par defaut, aucune personne")
-        void retirementDefaults() {
-            RetirementModel retirement = new RetirementPersistenceAdapter(persistenceManager).getRetirement();
-
-            assertThat(retirement.people()).isEmpty();
-            assertThat(retirement.pass2026()).isEqualByComparingTo("47100");
-            assertThat(retirement.passGrowthRate()).isEqualByComparingTo("0.015");
-            assertThat(retirement.agircPointValue()).isEqualByComparingTo("1.4386");
-            assertThat(retirement.agircPointDateGlobal()).isEqualTo("2025-11-01");
-            assertThat(retirement.agircPointGrowthRate()).isEqualByComparingTo("0.01");
-        }
+        // R-40 : les parametres retraite par defaut (aucune personne) ne passent plus par le cache global
+        // (PersistenceManager/BudgetDataModel) mais directement par le silo Retraite (JpaRetirementStore,
+        // voir PersistenceAdaptersJpaRoundTripTest.importedRetirementIsReadFromPensionTables et consorts) ;
+        // RetirementPersistenceAdapter est retire.
 
         @Test
         @DisplayName("SettingsPersistenceAdapter : parametres par defaut")
@@ -113,19 +105,7 @@ class PersistenceAdaptersTest {
 
         // R-30 : le patrimoine (placements/historique, immobilier, categories d'actifs) n'est plus relu
         // depuis le cache global ici ; voir PersistenceAdaptersJpaRoundTripTest pour le round-trip reel
-        // via le silo (JpaWealthStore).
-
-        @Test
-        @DisplayName("RetirementPersistenceAdapter relit la personne et les parametres retraite")
-        void retirementRoundTrip() {
-            RetirementModel retirement = new RetirementPersistenceAdapter(persistenceManager).getRetirement();
-
-            assertThat(retirement).isEqualTo(RETIREMENT);
-            assertThat(retirement.people()).hasSize(1);
-            assertThat(retirement.people().get(0).name()).isEqualTo("Alice");
-            assertThat(retirement.people().get(0).trimestresValides()).isEqualTo(140);
-            assertThat(retirement.people().get(0).salaryHistory()).hasSize(3);
-        }
+        // via le silo (JpaWealthStore). R-40 : meme principe pour la retraite (JpaRetirementStore).
 
         @Test
         @DisplayName("SettingsPersistenceAdapter relit les parametres importes")
@@ -138,19 +118,9 @@ class PersistenceAdaptersTest {
             assertThat(settings.startBalance()).isEqualByComparingTo("5000");
         }
 
-        @Test
-        @DisplayName("un second import remplace integralement le premier (pas de fusion)")
-        void secondImportReplacesFirst() {
-            IncomeModel other = new IncomeModel("inc_2", "Freelance", bd("800"), "2027-01-01", "2030-12-31",
-                    bd("0"), "", "");
-            persistenceManager.setBudgetData(persistenceManager.getBudgetData()
-                    .withIncomes(List.of(other))
-                    .withCharges(List.of())
-                    .withPlacements(List.of()));
-
-            // Les domaines non touches par le second import sont conserves tels quels.
-            assertThat(new RetirementPersistenceAdapter(persistenceManager).getRetirement()).isEqualTo(RETIREMENT);
-        }
+        // R-40 : la verification "un second import remplace integralement le premier" s'appuyait
+        // uniquement sur RetirementPersistenceAdapter (retire) ; voir
+        // PersistenceAdaptersJpaRoundTripTest.secondImportReplacesFirstInDatabase pour le round-trip reel.
     }
 
     // =========================================================================
@@ -161,18 +131,9 @@ class PersistenceAdaptersTest {
     @DisplayName("Round-trip apres mutation ciblee")
     class TargetedMutationRoundTrip {
 
-        @Test
-        @DisplayName("updateRetirement -> RetirementPersistenceAdapter, sans toucher aux autres domaines")
-        void updateRetirement() {
-            persistenceManager.setBudgetData(referenceData().withRetirement(
-                    new RetirementModel(List.of(), bd("47100"), bd("0.015"), bd("1.4386"), "2025-01-01", bd("0.01"))));
-            RetirementPersistenceAdapter adapter = new RetirementPersistenceAdapter(persistenceManager);
-            assertThat(adapter.getRetirement().people()).isEmpty();
-
-            persistenceManager.write(m -> m.updateRetirement(RETIREMENT));
-
-            assertThat(adapter.getRetirement()).isEqualTo(RETIREMENT);
-        }
+        // R-40 : "updateRetirement -> RetirementPersistenceAdapter" s'appuyait uniquement sur l'adaptateur
+        // retire ; voir PersistenceAdaptersJpaRoundTripTest.retirementWritesAreVisibleThroughJpaReader pour
+        // le round-trip reel via le silo (JpaRetirementStore).
 
         // R-30 : addAssetCategory/removeAssetCategory ne passent plus par le cache global
         // (PersistenceManager) mais directement par le silo Patrimoine (JpaWealthStore) ; voir
@@ -195,7 +156,6 @@ class PersistenceAdaptersTest {
 
             persistenceManager.resetData();
 
-            assertThat(new RetirementPersistenceAdapter(persistenceManager).getRetirement().people()).isEmpty();
             SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
             assertThat(settings.getEffectiveBirthYear()).isEqualTo(1985);
             assertThat(settings.retireAge()).isEqualTo(64);
@@ -212,16 +172,10 @@ class PersistenceAdaptersTest {
                     .isEqualTo(1985);
         }
 
-        @Test
-        @DisplayName("un reset puis un nouvel import reste lisible par tous les adaptateurs")
-        void importAfterReset() {
-            persistenceManager.setBudgetData(referenceData());
-            persistenceManager.resetData();
-
-            persistenceManager.setBudgetData(referenceData());
-
-            assertThat(new RetirementPersistenceAdapter(persistenceManager).getRetirement()).isEqualTo(RETIREMENT);
-        }
+        // R-40 : "un reset puis un nouvel import reste lisible" s'appuyait uniquement sur
+        // RetirementPersistenceAdapter (retire) ; voir
+        // PersistenceAdaptersJpaRoundTripTest.importedRetirementIsReadFromPensionTables pour le round-trip
+        // reel via le silo (JpaRetirementStore).
     }
 
     // =========================================================================

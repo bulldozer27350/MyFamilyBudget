@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 
 /**
  * Repository autonome du domaine Retraite (DB-1000), sans lien avec {@code BudgetDataEntity}.
- * Additif : pas encore branche sur {@code RetirementPersistenceAdapter} (bascule en DB-1001).
+ * Branche sur {@code JpaRetirementStore} (silo Retraite, DB-1001, R-40).
  */
 @Repository
 public interface PensionPlanRepository extends JpaRepository<PensionPlanEntity, Long> {

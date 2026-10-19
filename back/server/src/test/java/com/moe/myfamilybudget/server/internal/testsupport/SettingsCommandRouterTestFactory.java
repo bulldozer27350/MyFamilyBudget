@@ -8,7 +8,6 @@ import com.moe.myfamilybudget.application.command.SimulationSettingsCommandServi
 import com.moe.myfamilybudget.application.command.TaxCommandService;
 import com.moe.myfamilybudget.application.command.TresorerieCommandService;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 
 /** SET-020 : assemble un {@link SettingsCommandRouter} adossé aux adapters d'un {@link PersistenceManager} de test. */
 public final class SettingsCommandRouterTestFactory {
@@ -33,7 +32,7 @@ public final class SettingsCommandRouterTestFactory {
         return new SettingsCommandRouter(
                 objectifsSettingsService,
                 new TaxCommandService(taxStore, silos -> { }, RecordingTransactionRunner.direct()),
-                new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager)),
+                new RetirementCommandService(new InMemoryRetirementStore(), silos -> { }, RecordingTransactionRunner.direct()),
                 new TresorerieCommandService(new InMemoryTreasuryStore(), silos -> { }, RecordingTransactionRunner.direct()),
                 new SimulationSettingsCommandService(appSettings, silos -> { }, RecordingTransactionRunner.direct()),
                 new EconomicAssumptionsCommandService(appSettings, silos -> { }, RecordingTransactionRunner.direct()));

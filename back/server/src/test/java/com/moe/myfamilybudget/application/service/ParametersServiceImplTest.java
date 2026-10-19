@@ -32,7 +32,7 @@ import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRep
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
-import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
@@ -98,7 +98,7 @@ class ParametersServiceImplTest {
                 appSettings,
                 patrimoine,
                 bankStore,
-                new RetirementPersistenceAdapter(persistenceManager),
+                new InMemoryRetirementStore(),
                 mapper,
                 objectifsSettingsService,
                 new PatrimoineCommandService(patrimoine,

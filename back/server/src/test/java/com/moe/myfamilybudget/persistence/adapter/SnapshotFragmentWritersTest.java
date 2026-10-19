@@ -21,6 +21,7 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
@@ -33,7 +34,7 @@ import com.moe.myfamilybudget.transition.model.SettingsModel;
 class SnapshotFragmentWritersTest {
 
     private PersistenceManager persistenceManager;
-    private RetirementPersistenceAdapter retirement;
+    private InMemoryRetirementStore retirement;
     private InMemoryTaxStore tax;
     private com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore tresorerie;
     private PatrimoinePersistenceAdapter patrimoine;
@@ -45,7 +46,7 @@ class SnapshotFragmentWritersTest {
     void setUp() {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        retirement = new RetirementPersistenceAdapter(persistenceManager);
+        retirement = new InMemoryRetirementStore();
         tax = new InMemoryTaxStore();
         tresorerie = new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore();
         // R-30 : le patrimoine est desormais lui aussi un vrai silo (JpaWealthStore), plus un fragment
@@ -73,25 +74,25 @@ class SnapshotFragmentWritersTest {
                 new BigDecimal("0.02"), new BigDecimal("1.4386"), "2025-11-01", new BigDecimal("0.01"));
         retirement.replace(new RetirementSettingsModel(1990, 60), plan);
 
-        assertThat(settings().birthYear()).isEqualTo(1990);
-        assertThat(settings().retireAge()).isEqualTo(60);
-        assertThat(persistenceManager.getBudgetData().retirement().pass2026()).isEqualByComparingTo("48000");
+        assertThat(retirement.getRetirementSettings().birthYear()).isEqualTo(1990);
+        assertThat(retirement.getRetirementSettings().retireAge()).isEqualTo(60);
+        assertThat(retirement.getRetirement().pass2026()).isEqualByComparingTo("48000");
         assertThat(tax.getTaxSettings().childExitAge()).isEqualTo(25);
         assertThat(tax.getTaxSettings().taxAbattement()).isEqualByComparingTo("0.12");
         assertThat(settings().pivotMode()).isEqualTo(before.pivotMode());
 
         retirement.reset();
 
-        assertThat(settings().birthYear()).isEqualTo(1985);
-        assertThat(settings().retireAge()).isEqualTo(64);
-        assertThat(persistenceManager.getBudgetData().retirement().pass2026()).isEqualByComparingTo("47100");
+        assertThat(retirement.getRetirementSettings().birthYear()).isEqualTo(1985);
+        assertThat(retirement.getRetirementSettings().retireAge()).isEqualTo(64);
+        assertThat(retirement.getRetirement().pass2026()).isEqualByComparingTo("47100");
         assertThat(tax.getTaxSettings().childExitAge()).isEqualTo(25);
     }
 
     @Test
     @DisplayName("Fiscalité : replace (listes absentes = vides) puis reset (barème par défaut)")
     void taxReplaceAndResetAreIsolated() {
-        retirement.replace(new RetirementSettingsModel(1975, 66), persistenceManager.getBudgetData().retirement());
+        retirement.replace(new RetirementSettingsModel(1975, 66), retirement.getRetirement());
 
         tax.replace(new TaxSettingsModel(25, new BigDecimal("0.12")), null,
                 List.of(new TaxBracketModel("tb_x", new BigDecimal("1000"), new BigDecimal("0.05"))), null, null);
@@ -100,7 +101,7 @@ class SnapshotFragmentWritersTest {
         assertThat(tax.getTaxSettings().taxAbattement()).isEqualByComparingTo("0.12");
         assertThat(tax.getTaxBrackets()).hasSize(1);
         assertThat(tax.getTaxChildren()).isEmpty();
-        assertThat(settings().birthYear()).isEqualTo(1975);
+        assertThat(retirement.getRetirementSettings().birthYear()).isEqualTo(1975);
 
         tax.reset();
 
@@ -108,8 +109,8 @@ class SnapshotFragmentWritersTest {
         assertThat(tax.getTaxSettings().taxAbattement()).isEqualByComparingTo("0.10");
         assertThat(tax.getTaxBrackets()).hasSize(5);
         assertThat(tax.getTaxBrackets().get(0).id()).isEqualTo("tb_1");
-        assertThat(settings().birthYear()).isEqualTo(1975);
-        assertThat(settings().retireAge()).isEqualTo(66);
+        assertThat(retirement.getRetirementSettings().birthYear()).isEqualTo(1975);
+        assertThat(retirement.getRetirementSettings().retireAge()).isEqualTo(66);
     }
 
     @Test

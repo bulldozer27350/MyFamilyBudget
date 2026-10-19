@@ -30,11 +30,12 @@ import com.moe.myfamilybudget.application.command.RetirementCommandService;
 import com.moe.myfamilybudget.application.usecase.DefaultRetirementUseCase;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
-import com.moe.myfamilybudget.persistence.adapter.RetirementPersistenceAdapter;
 import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
+import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 class RetraiteServiceImplTest {
 
@@ -51,6 +52,7 @@ class RetraiteServiceImplTest {
         calculationService = new DefaultRetirementCalculationService();
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
         service = new RetraiteServiceImpl(
                 mapper,
                 new DefaultRetirementUseCase(
@@ -61,10 +63,11 @@ class RetraiteServiceImplTest {
                         settingsAdapter,
                         appSettings,
                         appSettings,
-                        new RetirementPersistenceAdapter(persistenceManager),
+                        retirementStore,
                         new InMemoryTaxStore(),
                         new InMemoryTreasuryStore(),
-                        new RetirementCommandService(new RetirementPersistenceAdapter(persistenceManager))));
+                        new RetirementCommandService(retirementStore, silos -> { },
+                                RecordingTransactionRunner.direct())));
     }
 
     @Test

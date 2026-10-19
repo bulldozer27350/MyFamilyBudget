@@ -23,10 +23,11 @@ import jakarta.persistence.Table;
  *
  * <p>Contrairement a l'ancienne entite {@code RetirementEntity} (supprimee par DB-1100), cette entite n'a <strong>aucune relation vers
  * {@code BudgetDataEntity}</strong> : elle est la racine de son propre agregat (singleton fonctionnel : une
- * seule ligne, lue par {@code findFirstByOrderByIdAsc}). Elle est additive et n'est pas encore utilisee par
- * {@code RetirementPersistenceAdapter} (bascule en DB-1001). Le chemin legacy ({@code retirement},
- * {@code retirement_person}, {@code salary_history}) reste inchange. Le prefixe {@code Pension*} evite la
- * collision avec les classes legacy {@code Retirement*}.
+ * seule ligne, lue par {@code findFirstByOrderByIdAsc}). Elle est desormais le support exclusif en lecture et
+ * en ecriture du silo Retraite (DB-1001, R-40) : {@code JpaRetirementStore} ecrit et lit directement cette
+ * table, sans plus passer par {@code BudgetDataEntity} ni par le cache ({@code RetirementPersistenceAdapter}
+ * a ete retire par R-40). Le prefixe {@code Pension*} evite la collision avec les classes legacy
+ * {@code Retirement*} (modele de domaine, {@code retirement-api}).
  *
  * <p>Les taux, valeurs de point et ratios sont stockes avec 8 decimales (une precision par defaut les
  * arrondirait, voir {@code RatePrecisionPersistenceTest}) ; le PASS en 2 decimales.

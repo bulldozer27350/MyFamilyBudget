@@ -11,10 +11,12 @@ import jakarta.persistence.Table;
  * Paramètres généraux dont le silo Retraite est propriétaire (SILO-220, lot A) : année de naissance et âge de
  * départ. Singleton fonctionnel : une seule ligne, lue par {@code findFirstByOrderByIdAsc}.
  *
- * <p>Additif : cette entité n'a <strong>aucune relation vers {@code BudgetDataEntity}</strong> et n'est pas
- * encore utilisée par {@code SettingsPersistenceAdapter} (bascule au lot B). Les colonnes équivalentes de la
- * table historique {@code settings} restent la source de vérité jusque-là. Le PASS et son taux de croissance
- * sont déjà portés par {@link PensionPlanEntity}.
+ * <p>R-40 (lot B) : cette entité n'a <strong>aucune relation vers {@code BudgetDataEntity}</strong> et est
+ * désormais le support exclusif en lecture et en écriture, via {@code JpaRetirementStore}
+ * ({@code RetirementSettingsReader}/{@code RetirementSnapshotWriter}) ; {@code SettingsPersistenceAdapter}
+ * conserve son ancienne implémentation (table historique {@code settings}) mais n'est plus utilisé pour ces
+ * deux champs (voir {@code BudgetDataModelAllowList}). Le PASS et son taux de croissance sont portés par
+ * {@link PensionPlanEntity}.
  */
 @Entity
 @Table(name = "pension_settings")

@@ -69,6 +69,7 @@ import com.moe.myfamilybudget.domain.settings.core.persistence.JpaSimulationSett
 import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
 import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.goals.core.persistence.JpaGoalStore;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.JpaRetirementStore;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
 import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
@@ -224,7 +225,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(jpaBudgetAdapter(reader).getCharges()).isEmpty();
         assertThat(wealthStore().getPlacements()).isEmpty();
         // Les domaines non touches par le second import restent identiques.
-        assertSameContent(new RetirementPersistenceAdapter(reader).getRetirement(), RETIREMENT);
+        assertSameContent(retirementStore().getRetirement(), RETIREMENT);
     }
 
     // =========================================================================
@@ -240,7 +241,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         writer.write(m -> m.updateRetirement(RETIREMENT));
 
         PersistenceManager reader = freshReader();
-        assertSameContent(new RetirementPersistenceAdapter(reader).getRetirement(), RETIREMENT);
+        assertSameContent(retirementStore().getRetirement(), RETIREMENT);
         assertSameContent(jpaBudgetAdapter(reader).getIncomes(), List.of(INCOME));
         assertSameContent(taxStore().getTaxChildren(), List.of(TAX_CHILD));
     }
@@ -309,7 +310,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(wealthStore().getRealEstate()).isEmpty();
         assertThat(wealthStore().getAssetCategories()).isEmpty();
         assertThat(treasuryStore().getTransfers()).isEmpty();
-        assertThat(new RetirementPersistenceAdapter(reader).getRetirement().people()).isEmpty();
+        assertThat(retirementStore().getRetirement().people()).isEmpty();
         assertThat(taxStore().getTaxChildren()).isEmpty();
         assertThat(taxStore().getTaxRateOverrides()).isEmpty();
         assertThat(taxStore().getTaxActualOverrides()).isEmpty();
@@ -356,7 +357,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(goals).hasSize(1);
         assertThat(goals.get(0).id()).isEqualTo("goal_bare");
         assertThat(goals.get(0).allocations()).isNotNull().isEmpty();
-        assertThat(new RetirementPersistenceAdapter(reader).getRetirement().people()).isNotNull().isEmpty();
+        assertThat(retirementStore().getRetirement().people()).isNotNull().isEmpty();
     }
 
     @Test
@@ -654,8 +655,8 @@ class PersistenceAdaptersJpaRoundTripTest {
     // DB-1001 -- Retraite lue depuis les tables autonomes
     // =========================================================================
 
-    private RetirementPersistenceAdapter jpaRetirementAdapter(PersistenceManager manager) {
-        return new RetirementPersistenceAdapter(manager, context.getBean(PensionPlanRepository.class));
+    private JpaRetirementStore retirementStore() {
+        return context.getBean(JpaRetirementStore.class);
     }
 
     @Test
@@ -664,7 +665,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         writer.setBudgetData(referenceData());
 
         assertThat(context.getBean(PensionPlanRepository.class).count()).isEqualTo(1);
-        RetirementModel retirement = jpaRetirementAdapter(freshReader()).getRetirement();
+        RetirementModel retirement = retirementStore().getRetirement();
         assertSameContent(retirement, RETIREMENT);
         assertThat(retirement.people().get(0).salaryHistory()).extracting(h -> h.year())
                 .containsExactly(2023, 2024, 2025);
@@ -674,7 +675,7 @@ class PersistenceAdaptersJpaRoundTripTest {
     @DisplayName("DB-1001 -- updateRetirement est visible via la lecture JPA (un seul plan, ancien contenu remplace)")
     void retirementWritesAreVisibleThroughJpaReader() {
         writer.setBudgetData(referenceData());
-        RetirementPersistenceAdapter adapter = jpaRetirementAdapter(writer);
+        JpaRetirementStore adapter = retirementStore();
         RetirementModel updated = new RetirementModel(
                 List.of(new RetirementModel.RetirementPersonModel("p_2", "Bob", 1988, "Salaire", 120, "2025-12-31",
                         List.of(new RetirementModel.SalaryHistoryModel(2025, bd("41000"))),
@@ -685,7 +686,7 @@ class PersistenceAdaptersJpaRoundTripTest {
 
         assertThat(context.getBean(PensionPlanRepository.class).count()).isEqualTo(1);
         assertSameContent(adapter.getRetirement(), updated);
-        RetirementModel reread = jpaRetirementAdapter(freshReader()).getRetirement();
+        RetirementModel reread = retirementStore().getRetirement();
         assertSameContent(reread, updated);
         assertThat(reread.people().get(0).ratioPointsParEuro()).isEqualByComparingTo("0.00512345");
     }
@@ -698,7 +699,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         PersistenceManager restarted = freshReader();
 
         assertSameContent(restarted.getBudgetData().retirement(), RETIREMENT);
-        assertSameContent(jpaRetirementAdapter(restarted).getRetirement(), RETIREMENT);
+        assertSameContent(retirementStore().getRetirement(), RETIREMENT);
     }
 
     @Test
@@ -709,7 +710,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         writer.resetData();
 
         assertThat(context.getBean(PensionPlanRepository.class).count()).isLessThanOrEqualTo(1);
-        assertThat(jpaRetirementAdapter(writer).getRetirement().people()).isEmpty();
+        assertThat(retirementStore().getRetirement().people()).isEmpty();
     }
 
     // =========================================================================
@@ -1037,7 +1038,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(wealthStore().getAssetCategories(), List.of(ASSET_CATEGORY));
         assertSameContent(treasuryStore().getTransfers(), List.of(TRANSFER));
 
-        RetirementModel retirement = new RetirementPersistenceAdapter(reader).getRetirement();
+        RetirementModel retirement = retirementStore().getRetirement();
         assertSameContent(retirement, RETIREMENT);
         assertThat(retirement.people().get(0).salaryHistory()).hasSize(3);
 

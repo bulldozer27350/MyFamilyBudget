@@ -27,6 +27,8 @@ import com.moe.myfamilybudget.domain.treasury.port.TresorerieSnapshotWriter;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineSnapshotWriter;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.retirement.port.RetirementSnapshotWriter;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.tax.port.TaxSnapshotWriter;
 
@@ -107,6 +109,11 @@ public class PersistenceManager {
     // ci-dessus : setBudgetData/resetData doivent les confier explicitement au silo.
     private PatrimoineSnapshotWriter patrimoineSnapshotWriter;
 
+    // R-40 : les parametres Retraite (birthYear, retireAge) et le plan de retraite (personnes, PASS, AGIRC)
+    // vivent uniquement dans les tables pension_*, ecrites par le silo Retraite. Meme principe que
+    // taxSnapshotWriter ci-dessus : setBudgetData/resetData doivent les confier explicitement au silo.
+    private RetirementSnapshotWriter retirementSnapshotWriter;
+
     @Autowired
     public PersistenceManager(BudgetDataRepository budgetDataRepository,
                             SettingsRepository settingsRepository,
@@ -164,6 +171,12 @@ public class PersistenceManager {
         this.patrimoineSnapshotWriter = patrimoineSnapshotWriter;
     }
 
+    /** R-40 : silo Retraite auquel setBudgetData/resetData delegent les parametres et le plan de retraite. */
+    @Autowired(required = false)
+    public void setRetirementSnapshotWriter(RetirementSnapshotWriter retirementSnapshotWriter) {
+        this.retirementSnapshotWriter = retirementSnapshotWriter;
+    }
+
     @PostConstruct
     public void init() {
         cacheStore.init();
@@ -214,6 +227,11 @@ public class PersistenceManager {
             patrimoineSnapshotWriter.replace(data.getEffectivePlacements(), data.getEffectiveRealEstate(),
                     List.of(), data.getEffectiveAssetCategories());
         }
+        if (retirementSnapshotWriter != null && data != null) {
+            var s = data.getEffectiveSettings();
+            retirementSnapshotWriter.replace(
+                    new RetirementSettingsModel(s.birthYear(), s.retireAge()), data.retirement());
+        }
         cacheStore.setBudgetData(data);
         publishMutated("setBudgetData");
     }
@@ -231,6 +249,9 @@ public class PersistenceManager {
         }
         if (patrimoineSnapshotWriter != null) {
             patrimoineSnapshotWriter.reset();
+        }
+        if (retirementSnapshotWriter != null) {
+            retirementSnapshotWriter.reset();
         }
         BudgetDataModel result = cacheStore.resetData();
         publishMutated("resetData");
