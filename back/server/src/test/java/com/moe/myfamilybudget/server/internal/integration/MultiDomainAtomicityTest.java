@@ -42,6 +42,7 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
+import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
 
 /**
  * VT-340 -- Atomicite des mutations multi-domaines. Import, reinitialisation et sauvegarde des parametres
@@ -73,6 +74,12 @@ class MultiDomainAtomicityTest {
 
     @Autowired
     private PensionPlanRepository pensionPlanRepository;
+
+    // R-40 : retireAge n'est plus porte par le cache (BudgetDataModel.settings()) mais directement par
+    // pension_settings (silo Retraite, JpaRetirementStore), lu ici sans passer par PersistenceManager, pour
+    // la meme raison que treasuryStore ci-dessous pour les lignes de tresorerie.
+    @Autowired
+    private PensionSettingsRepository pensionSettingsRepository;
 
     @Autowired
     private FiscalChildRepository fiscalChildRepository;
@@ -163,8 +170,13 @@ class MultiDomainAtomicityTest {
                 .content("{\"settings\": {\"retireAge\": 60, \"goalSecureHorizonMonths\": 24}}"))
                 .andExpect(status().isOk());
 
-        assertThat(memory().settings().retireAge()).isEqualTo(60);
-        assertThat(readDatabase().settings().retireAge()).isEqualTo(60);
+        // R-40 : retireAge est ecrit directement dans pension_settings (silo Retraite), plus dans le cache
+        // (BudgetDataModel.settings()) ni dans le blob historique settings de budget_data ; on le relit donc
+        // via son proprietaire, dans une transaction fraiche pour prouver l'ecriture reelle en base (pas
+        // seulement dans le contexte de persistance de la requete HTTP qui vient de s'executer).
+        Integer persistedRetireAge = new TransactionTemplate(transactionManager).execute(status ->
+                pensionSettingsRepository.findFirstByOrderByIdAsc().orElseThrow().getRetireAge());
+        assertThat(persistedRetireAge).isEqualTo(60);
         assertThat(objectifsSettingsService.current().secureHorizonMonths()).isEqualTo(24);
     }
 
