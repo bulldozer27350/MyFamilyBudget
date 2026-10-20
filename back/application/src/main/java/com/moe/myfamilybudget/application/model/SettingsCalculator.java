@@ -17,17 +17,20 @@ public class SettingsCalculator {
             throw new IllegalArgumentException("SettingsView ne peut pas être null");
         }
 
-        int birthYear = settings.birthYear();
+        // R-40 correctif 4 : birthYear/retireAge/simulateUntilAge sont des Integer nullables sur
+        // SettingsView (silo non encore renseigné) ; on passe par les accesseurs Effective* (déjà
+        // prévus pour défaut) au lieu d'un unboxing direct, qui provoquait un NullPointerException.
+        int birthYear = settings.getEffectiveBirthYear();
         if (birthYear < 1900 || birthYear > 2100) {
             throw new IllegalArgumentException("Année de naissance invalide : " + birthYear);
         }
 
-        int retireAge = settings.retireAge();
+        int retireAge = settings.getEffectiveRetireAge();
         if (retireAge < 0 || retireAge > 120) {
             throw new IllegalArgumentException("Âge de départ à la retraite invalide : " + retireAge);
         }
 
-        int simulateUntilAge = settings.simulateUntilAge();
+        int simulateUntilAge = settings.getEffectiveSimulateUntilAge();
         if (simulateUntilAge < retireAge) {
             throw new IllegalArgumentException("L'âge de fin de simulation (" + simulateUntilAge +
                     ") doit être supérieur ou égal à l'âge de retraite (" + retireAge + ")");
