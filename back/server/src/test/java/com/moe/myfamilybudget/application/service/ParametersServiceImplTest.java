@@ -95,7 +95,10 @@ class ParametersServiceImplTest {
         PatrimoinePersistenceAdapter patrimoine =
                 new PatrimoinePersistenceAdapter(wealthStore, mock(JpaTreasuryStore.class));
         service = new ParametersServiceImpl(
-                settingsAdapter,
+                // R-40 : retireAge (silo Retraite) n'est plus lu depuis settingsAdapter (cache/blob settings
+                // historique) mais depuis le silo reel, ici retirementStore (meme instance qu'en ecriture,
+                // voir le commentaire plus haut).
+                retirementStore,
                 taxStore,
                 settingsAdapter,
                 appSettings,
