@@ -109,9 +109,9 @@ class ParametersServiceImplTest {
                 mapper,
                 objectifsSettingsService,
                 new PatrimoineCommandService(patrimoine,
-                        new SiloMutationLockRegistry(persistenceManager::lockForCurrentTransaction),
+                        new SiloMutationLockRegistry(),
                         RecordingTransactionRunner.direct()),
-                new SiloMutationLockRegistry(persistenceManager::lockForCurrentTransaction),
+                new SiloMutationLockRegistry(),
                 SettingsCommandRouterTestFactory.of(persistenceManager, objectifsSettingsService, taxStore,
                         retirementStore),
                 RecordingTransactionRunner.direct());
