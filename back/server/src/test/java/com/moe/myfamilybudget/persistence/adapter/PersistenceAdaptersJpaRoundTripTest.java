@@ -238,7 +238,10 @@ class PersistenceAdaptersJpaRoundTripTest {
         writer.setBudgetData(referenceData().withRetirement(
                 new RetirementModel(List.of(), bd("47100"), bd("0.015"), bd("1.4386"), "2025-01-01", bd("0.01"))));
 
-        writer.write(m -> m.updateRetirement(RETIREMENT));
+        // R-40 : updateRetirement passe desormais par le silo reel (JpaRetirementStore), plus par le hub
+        // (PersistenceManager.write ne l'atteint plus : syncPension a ete retire). Meme principe que
+        // taxStore().updateTaxConfig(...) ci-dessous pour la Fiscalite (R-42).
+        retirementStore().updateRetirement(RETIREMENT);
 
         PersistenceManager reader = freshReader();
         assertSameContent(retirementStore().getRetirement(), RETIREMENT);

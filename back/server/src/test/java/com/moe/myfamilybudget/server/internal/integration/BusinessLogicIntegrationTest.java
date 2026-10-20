@@ -71,9 +71,15 @@ class BusinessLogicIntegrationTest {
     private com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader patrimoineReader;
 
     // R-40 : meme principe pour la retraite ; le bean JpaRetirementStore (@Primary) lit directement
-    // pension_plan/pension_settings, sans passer par PersistenceManager.
+    // pension_plan/pension_settings, sans passer par PersistenceManager. Type concret (plutot qu'un port)
+    // car cette classe a aussi besoin de RetirementSettingsReader (voir retirementProjection ci-dessous) :
+    // GlobalBudgetSnapshotService.importSnapshot (le vrai chemin d'import, SILO-119 lot B2) n'ecrit plus du
+    // tout dans PersistenceManager/BudgetDataModel, donc persistenceManager.getBudgetData().retirement() et
+    // .getEffectiveSettings().birthYear()/retireAge() restent figes a leur valeur de demarrage apres un
+    // import reel (POST /api/v1/budget/import) ; avant R-40 cela "marchait" par accident, car
+    // RetirementPersistenceAdapter.replace() retombait sur le hub.
     @Autowired
-    private com.moe.myfamilybudget.domain.retirement.port.RetirementReader retirementStore;
+    private com.moe.myfamilybudget.domain.retirement.core.persistence.JpaRetirementStore retirementStore;
 
     private static String mockBudgetJson;
 
@@ -411,7 +417,7 @@ class BusinessLogicIntegrationTest {
         importMockBudget();
 
         BudgetDataModel data = persistenceManager.getBudgetData();
-        RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
+        RetirementModel.RetirementPersonModel alice = retirementStore.getRetirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
                 new SettingsPersistenceAdapter(persistenceManager), new SettingsPersistenceAdapter(persistenceManager),
@@ -440,7 +446,7 @@ class BusinessLogicIntegrationTest {
         importMockBudget();
 
         BudgetDataModel data = persistenceManager.getBudgetData();
-        RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
+        RetirementModel.RetirementPersonModel alice = retirementStore.getRetirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
                 new SettingsPersistenceAdapter(persistenceManager), new SettingsPersistenceAdapter(persistenceManager),
@@ -464,7 +470,7 @@ class BusinessLogicIntegrationTest {
     void testOverview_totalPensions() throws Exception {
         importMockBudget();
         BudgetDataModel data = persistenceManager.getBudgetData();
-        RetirementModel.RetirementPersonModel alice = data.retirement().people().get(0);
+        RetirementModel.RetirementPersonModel alice = retirementStore.getRetirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
                 new SettingsPersistenceAdapter(persistenceManager), new SettingsPersistenceAdapter(persistenceManager),
@@ -900,8 +906,12 @@ class BusinessLogicIntegrationTest {
      */
     private RetirementProjectionModel retirementProjection(
             OverviewServiceImpl svc, BudgetDataModel data, RetirementModel.RetirementPersonModel person) {
+        // R-40 : birthYear/retireAge et le plan de retraite viennent du silo reel (retirementStore), pas du
+        // cache (voir le commentaire sur le champ retirementStore). Seul le nombre d'enfants fiscaux reste lu
+        // via le cache ici (hors perimetre de ce patch ; sans effet sur le fixture de test, sans enfant).
         return svc.computeRetirementProjection(
-                new RetirementSettingsModel(data.getEffectiveSettings().birthYear(), data.getEffectiveSettings().retireAge()),
-                data.retirement(), treasuryStore.getIncomes(), data.getEffectiveTaxChildren().size(), person);
+                retirementStore.getRetirementSettings(),
+                retirementStore.getRetirement(), treasuryStore.getIncomes(), data.getEffectiveTaxChildren().size(),
+                person);
     }
 }

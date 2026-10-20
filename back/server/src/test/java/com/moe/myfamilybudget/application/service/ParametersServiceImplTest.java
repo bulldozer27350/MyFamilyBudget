@@ -62,6 +62,10 @@ class ParametersServiceImplTest {
         // ci-dessous, pour que childExitAge (silo Fiscalite) soit relu depuis la même instance que celle
         // où il a été écrit, au lieu du silo déconnecté créé par défaut dans SettingsCommandRouterTestFactory.
         InMemoryTaxStore taxStore = new InMemoryTaxStore();
+        // R-40 : meme principe pour retireAge (silo Retraite), partage entre la lecture (retirementSettingsReader)
+        // et le routeur d'ecriture ci-dessous, au lieu du silo deconnecte cree par defaut dans
+        // SettingsCommandRouterTestFactory.
+        InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
         // R-30 : Patrimoine ne passe plus par PersistenceManager/PatrimoinePersistenceAdapter(manager) mais
         // par le silo (JpaWealthStore), route par PatrimoinePersistenceAdapter(JpaWealthStore, JpaTreasuryStore).
         // Categories d'actifs reellement tenues en memoire (le test exerce un cycle add/update/remove/lecture) ;
@@ -98,14 +102,15 @@ class ParametersServiceImplTest {
                 appSettings,
                 patrimoine,
                 bankStore,
-                new InMemoryRetirementStore(),
+                retirementStore,
                 mapper,
                 objectifsSettingsService,
                 new PatrimoineCommandService(patrimoine,
                         new SiloMutationLockRegistry(persistenceManager::lockForCurrentTransaction),
                         RecordingTransactionRunner.direct()),
                 new SiloMutationLockRegistry(persistenceManager::lockForCurrentTransaction),
-                SettingsCommandRouterTestFactory.of(persistenceManager, objectifsSettingsService, taxStore),
+                SettingsCommandRouterTestFactory.of(persistenceManager, objectifsSettingsService, taxStore,
+                        retirementStore),
                 RecordingTransactionRunner.direct());
     }
 

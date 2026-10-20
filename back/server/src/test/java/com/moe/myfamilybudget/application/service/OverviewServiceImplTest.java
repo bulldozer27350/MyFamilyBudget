@@ -49,6 +49,7 @@ class OverviewServiceImplTest {
     private PersistenceManager persistenceManager;
     private InMemoryTreasuryStore treasuryStore;
     private InMemoryWealthStore wealthStore;
+    private InMemoryRetirementStore retirementStore;
     private final InMemoryLoanStore loanStore = new InMemoryLoanStore();
 
     @BeforeEach
@@ -59,6 +60,7 @@ class OverviewServiceImplTest {
         SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         wealthStore = new InMemoryWealthStore();
+        retirementStore = new InMemoryRetirementStore();
         overviewService = new OverviewServiceImpl(
                 mapper,
                 new DefaultRetirementCalculationService(),
@@ -72,7 +74,7 @@ class OverviewServiceImplTest {
                 appSettings,
                 treasuryStore,
                 new PatrimoinePersistenceAdapter(wealthStore.getDelegate(), treasuryStore.getDelegate()),
-                new InMemoryRetirementStore(),
+                retirementStore,
                 new InMemoryTaxStore(),
                 bankStore,
                 loanStore,
@@ -92,6 +94,12 @@ class OverviewServiceImplTest {
             // cache mais par le silo (JpaWealthStore) ; synchronise comme pour la tresorerie ci-dessus.
             this.wealthStore.replace(budgetData.placements(), budgetData.realEstate(), List.of(),
                     budgetData.assetCategories());
+            // R-40 : meme principe pour la retraite (plan et parametres birthYear/retireAge), qui ne passe
+            // plus par le cache mais par le silo (JpaRetirementStore, ici InMemoryRetirementStore).
+            this.retirementStore.replace(
+                    new RetirementSettingsModel(budgetData.getEffectiveSettings().birthYear(),
+                            budgetData.getEffectiveSettings().retireAge()),
+                    budgetData.retirement());
         }
     }
 
