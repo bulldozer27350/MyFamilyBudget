@@ -13,7 +13,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +27,11 @@ import com.moe.myfamilybudget.application.port.MutationSilo;
 /**
  * SILO-206 -- Verrouillage par silo : serialisation par silo, parallelisme entre silos disjoints, verrou tenu
  * jusqu'a la fin de la transaction, ordre fixe sans interblocage. Pas de Spring ni de base : la transaction est
- * simulee avec {@link TransactionSynchronizationManager}, comme dans BudgetCacheStoreConcurrencyTest (VT-350).
+ * simulee avec {@link TransactionSynchronizationManager}.
+ *
+ * <p>R-60 : {@code SiloMutationLockRegistry} relayait auparavant aussi le verrou global du cache
+ * ({@code GlobalCacheLockRelay}), retire car plus aucune ecriture de production ne passe par ce modele complet ;
+ * ce relais et les assertions qui le couvraient (compteur d'appels) sont retires de ce test.
  */
 @Timeout(60)
 @DisplayName("SILO-206 -- SiloMutationLockRegistry")
@@ -37,14 +40,12 @@ class SiloMutationLockRegistryTest {
     private static final long BLOCKED_MILLIS = 300;
     private static final long DONE_SECONDS = 10;
 
-    private AtomicInteger legacyLockCalls;
     private SiloMutationLockRegistry registry;
     private ExecutorService executor;
 
     @BeforeEach
     void setUp() {
-        legacyLockCalls = new AtomicInteger();
-        registry = new SiloMutationLockRegistry(legacyLockCalls::incrementAndGet);
+        registry = new SiloMutationLockRegistry();
         executor = Executors.newCachedThreadPool();
     }
 
@@ -65,8 +66,6 @@ class SiloMutationLockRegistryTest {
         beginSimulatedTransaction();
         registry.lockForCurrentTransaction(EnumSet.noneOf(MutationSilo.class));
         completeSimulatedTransaction(TransactionSynchronization.STATUS_COMMITTED);
-
-        assertThat(legacyLockCalls).hasValue(0);
     }
 
     @Test
@@ -132,15 +131,15 @@ class SiloMutationLockRegistryTest {
     }
 
     @Test
-    @DisplayName("re-entrance : redemander un silo deja tenu est sans effet, le verrou global n'est pris qu'une fois")
-    void reentranceTakesTheLegacyLockOnce() {
+    @DisplayName("re-entrance : redemander un silo deja tenu est sans effet")
+    void reentranceIsANoOp() {
         beginSimulatedTransaction();
-        registry.lockForCurrentTransaction(EnumSet.of(MutationSilo.RETIREMENT, MutationSilo.TAX));
-        registry.lockForCurrentTransaction(EnumSet.of(MutationSilo.TAX));
-        registry.lockForCurrentTransaction(EnumSet.of(MutationSilo.TAX, MutationSilo.GOALS));
+        assertThatCode(() -> {
+            registry.lockForCurrentTransaction(EnumSet.of(MutationSilo.RETIREMENT, MutationSilo.TAX));
+            registry.lockForCurrentTransaction(EnumSet.of(MutationSilo.TAX));
+            registry.lockForCurrentTransaction(EnumSet.of(MutationSilo.TAX, MutationSilo.GOALS));
+        }).doesNotThrowAnyException();
         completeSimulatedTransaction(TransactionSynchronization.STATUS_COMMITTED);
-
-        assertThat(legacyLockCalls).hasValue(1);
     }
 
     @Test
@@ -187,8 +186,6 @@ class SiloMutationLockRegistryTest {
         for (Future<Void> future : futures) {
             future.get(30, TimeUnit.SECONDS);
         }
-
-        assertThat(legacyLockCalls).hasValue(2 * rounds);
     }
 
     // --- transaction simulee -------------------------------------------------------------------------------

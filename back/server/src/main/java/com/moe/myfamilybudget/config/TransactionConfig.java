@@ -6,7 +6,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import com.moe.myfamilybudget.application.port.SiloMutationLock;
 import com.moe.myfamilybudget.application.port.TransactionRunner;
-import com.moe.myfamilybudget.persistence.adapter.GlobalCacheLockRelay;
 
 /**
  * Câblage des ports {@link TransactionRunner} (SILO-205) et {@link SiloMutationLock} (SILO-206) de l'application ;
@@ -20,9 +19,12 @@ public class TransactionConfig {
         return new SpringTransactionRunner(transactionManager);
     }
 
-    /** Relais transitoire vers le verrou global du cache, retiré avec lui (SILO-230). */
+    /**
+     * R-60 : ne relaie plus le verrou global du cache (plus aucune écriture de production ne passe
+     * par le modèle complet depuis R-20/R-30/R-40/R-42) ; {@code GlobalCacheLockRelay} est retiré.
+     */
     @Bean
-    public SiloMutationLock siloMutationLock(GlobalCacheLockRelay globalCacheLockRelay) {
-        return new SiloMutationLockRegistry(globalCacheLockRelay);
+    public SiloMutationLock siloMutationLock() {
+        return new SiloMutationLockRegistry();
     }
 }
