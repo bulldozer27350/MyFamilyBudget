@@ -22,7 +22,11 @@ public class PushSubscriptionEntity {
     @Column(name = "id", length = 64)
     private String id;
 
-    @Column(name = "endpoint", columnDefinition = "TEXT", nullable = false)
+    // VARCHAR borne (pas TEXT/CLOB) : la contrainte unique sur cette colonne n'est pas indexable sur
+    // un CLOB en H2 (echec Liquibase R-01 lot B, CI du 22 oct. 2026) ; 1024 caracteres couvre tres
+    // largement les endpoints Web Push observes (FCM, Mozilla, Apple : quelques centaines de
+    // caracteres au plus).
+    @Column(name = "endpoint", length = 1024, nullable = false)
     private String endpoint;
 
     @Column(name = "p256dh", length = 255, nullable = false)

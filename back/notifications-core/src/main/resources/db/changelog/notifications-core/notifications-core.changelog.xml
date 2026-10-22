@@ -24,7 +24,9 @@
                 <constraints nullable="false"/>
             </column>
             <column name="created_at" type="TIMESTAMP WITH TIME ZONE"/>
-            <column name="endpoint" type="TEXT">
+            <!-- VARCHAR borne, pas TEXT/CLOB : la contrainte unique (changeSet suivant) n'est pas
+                 indexable sur un CLOB en H2 (echec CI du 22 oct. 2026, cf. PushSubscriptionEntity). -->
+            <column name="endpoint" type="VARCHAR(1024)">
                 <constraints nullable="false"/>
             </column>
             <column name="p256dh" type="VARCHAR(255)">
