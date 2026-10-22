@@ -2,17 +2,18 @@ package com.moe.myfamilybudget.domain.notifications.core.persistence;
 
 import java.time.Instant;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 /**
  * Paramètres de notification modifiés par l'utilisateur, stockés en JSON (une ligne).
- * {@code @Lob} (CLOB), comme {@code LoanAdviceSettingsEntity} ; voir
- * {@code com.moe.myfamilybudget.infra.jpa.TextClobPostgreSQLDialect} (profil {@code docker}, module
- * {@code infra-jpa}) pour pourquoi ce n'est pas la colonne {@code oid} de PostgreSQL.
+ * {@code @JdbcTypeCode(SqlTypes.LONG32VARCHAR)}, pas {@code @Lob}, comme {@code LoanAdviceSettingsEntity} ;
+ * voir le Javadoc de {@code BankImportDocumentEntity} (module {@code bank-pointage-core}) pour pourquoi.
  */
 @Entity
 @Table(name = "notification_settings")
@@ -22,10 +23,9 @@ public class NotificationSettingsEntity {
     @Column(name = "id", length = 64)
     private String id;
 
-    // @Lob (CLOB) ; le mapping PostgreSQL CLOB->oid (risque documente plus haut) est neutralise
-    // par le dialecte TextClobPostgreSQLDialect (profil docker, module infra-jpa), pas ici au
-    // niveau du champ.
-    @Lob
+    // @JdbcTypeCode(SqlTypes.LONG32VARCHAR), pas @Lob (risque documente dans BankImportDocumentEntity) :
+    // text chez PostgreSQL, clob chez H2, lecture/ecriture en chaine ordinaire (jamais de Large Object).
+    @JdbcTypeCode(SqlTypes.LONG32VARCHAR)
     @Column(name = "payload_json")
     private String payloadJson;
 
