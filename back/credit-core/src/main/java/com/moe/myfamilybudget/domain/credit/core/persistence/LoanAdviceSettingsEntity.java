@@ -5,11 +5,14 @@ import java.time.Instant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 /**
  * Hypothèses de l'analyse des prêts modifiées par l'utilisateur, stockées en JSON (une ligne).
- * Colonne TEXT explicite et non {@code @Lob}, comme {@code MarketSnapshotEntity}.
+ * {@code @Lob} (CLOB), comme {@code MarketSnapshotEntity} ; voir
+ * {@code com.moe.myfamilybudget.infra.jpa.TextClobPostgreSQLDialect} (profil {@code docker}, module
+ * {@code infra-jpa}) pour pourquoi ce n'est pas la colonne {@code oid} de PostgreSQL.
  */
 @Entity
 @Table(name = "loan_advice_settings")
@@ -19,9 +22,11 @@ public class LoanAdviceSettingsEntity {
     @Column(name = "id", length = 64)
     private String id;
 
-    // VARCHAR(10485760), pas columnDefinition = "TEXT" (mismatch de validation Hibernate/Liquibase,
-    // echec CI du 22 oct. 2026, cf. BankImportDocumentEntity) ; toujours pas de @Lob.
-    @Column(name = "payload_json", length = 10485760)
+    // @Lob (CLOB) ; le mapping PostgreSQL CLOB->oid (risque documente plus haut) est neutralise
+    // par le dialecte TextClobPostgreSQLDialect (profil docker, module infra-jpa), pas ici au
+    // niveau du champ.
+    @Lob
+    @Column(name = "payload_json")
     private String payloadJson;
 
     @Column(name = "updated_at")

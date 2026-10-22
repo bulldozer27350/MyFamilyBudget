@@ -23,7 +23,10 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # R-01, correctif CI : dialecte maison (pas org.hibernate.dialect.PostgreSQLDialect standard),
+        # voir Javadoc de TextClobPostgreSQLDialect (module infra-jpa) pour le pourquoi (CLOB -> text,
+        # pas oid).
+        dialect: com.moe.myfamilybudget.infra.jpa.TextClobPostgreSQLDialect
   # R-01 (24-backlog-reste-a-faire.md), lot B : Liquibase bascule actif, ddl-auto en validate.
   # ATTENTION DEPLOIEMENT (DA-16 de 23-registre-decisions-actives.md) : la base PostgreSQL de prod
   # doit etre videe (reset propre : export JSON, DROP, reimport via /budget/import) AVANT de

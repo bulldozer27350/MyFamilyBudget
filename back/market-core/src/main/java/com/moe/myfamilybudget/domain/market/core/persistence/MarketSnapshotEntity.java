@@ -5,13 +5,16 @@ import java.time.Instant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 /**
  * Dernier instantané de données de marché (taux publics), stocké en JSON.
  *
- * Colonne TEXT explicite et non {@code @Lob}, pour la même raison que
- * {@code BankImportEntity} (supprimee en DB-1130) : éviter le mécanisme « Large Object » de PostgreSQL.
+ * {@code @Lob} (CLOB) ; voir {@code com.moe.myfamilybudget.infra.jpa.TextClobPostgreSQLDialect} (profil
+ * {@code docker}, module {@code infra-jpa}) pour comment le mécanisme « Large Object » de PostgreSQL
+ * (celui qui posait problème avec {@code BankImportEntity}, supprimee en DB-1130) est neutralisé sans
+ * renoncer à {@code @Lob}.
  */
 @Entity
 @Table(name = "market_snapshot")
@@ -21,9 +24,11 @@ public class MarketSnapshotEntity {
     @Column(name = "id", length = 64)
     private String id;
 
-    // VARCHAR(10485760), pas columnDefinition = "TEXT" (mismatch de validation Hibernate/Liquibase,
-    // echec CI du 22 oct. 2026, cf. BankImportDocumentEntity) ; toujours pas de @Lob.
-    @Column(name = "payload_json", length = 10485760)
+    // @Lob (CLOB) ; le mapping PostgreSQL CLOB->oid (risque documente plus haut) est neutralise
+    // par le dialecte TextClobPostgreSQLDialect (profil docker, module infra-jpa), pas ici au
+    // niveau du champ.
+    @Lob
+    @Column(name = "payload_json")
     private String payloadJson;
 
     @Column(name = "fetched_at")
