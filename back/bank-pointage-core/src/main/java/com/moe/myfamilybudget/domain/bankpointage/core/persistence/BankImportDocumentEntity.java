@@ -30,7 +30,12 @@ public class BankImportDocumentEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "json_data", columnDefinition = "TEXT", nullable = false)
+    // VARCHAR(10485760) (longueur max PostgreSQL pour varchar(n)) plutot que columnDefinition =
+    // "TEXT" : Hibernate validait ce champ comme VARCHAR (Types#VARCHAR) alors que le CLOB cree
+    // par Liquibase (R-01 lot B) est du Types#CLOB - meme intention "TEXT", deux lectures
+    // differentes selon qui cree la colonne (echec CI du 22 oct. 2026). Toujours pas de @Lob : un
+    // varchar(n), meme tres long, ne declenche pas le mecanisme PostgreSQL Large Object (oid).
+    @Column(name = "json_data", length = 10485760, nullable = false)
     private String jsonData;
 
     public BankImportDocumentEntity() {}

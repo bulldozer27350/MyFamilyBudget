@@ -21,7 +21,7 @@
                 <constraints nullable="false" primaryKey="true" primaryKeyName="market_snapshot_pkey"/>
             </column>
             <column name="fetched_at" type="TIMESTAMP WITH TIME ZONE"/>
-            <column name="payload_json" type="TEXT"/>
+            <column name="payload_json" type="VARCHAR(10485760)"/>
         </createTable>
     </changeSet>
 

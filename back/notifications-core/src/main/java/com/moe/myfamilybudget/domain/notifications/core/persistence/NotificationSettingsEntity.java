@@ -19,7 +19,9 @@ public class NotificationSettingsEntity {
     @Column(name = "id", length = 64)
     private String id;
 
-    @Column(name = "payload_json", columnDefinition = "TEXT")
+    // VARCHAR(10485760), pas columnDefinition = "TEXT" (mismatch de validation Hibernate/Liquibase,
+    // echec CI du 22 oct. 2026, cf. BankImportDocumentEntity) ; toujours pas de @Lob.
+    @Column(name = "payload_json", length = 10485760)
     private String payloadJson;
 
     @Column(name = "updated_at")

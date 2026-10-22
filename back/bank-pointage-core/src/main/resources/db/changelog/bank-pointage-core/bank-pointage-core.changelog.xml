@@ -20,7 +20,7 @@
             <column autoIncrement="true" name="id" type="BIGINT">
                 <constraints nullable="false" primaryKey="true" primaryKeyName="bank_import_document_pkey"/>
             </column>
-            <column name="json_data" type="TEXT">
+            <column name="json_data" type="VARCHAR(10485760)">
                 <constraints nullable="false"/>
             </column>
         </createTable>
