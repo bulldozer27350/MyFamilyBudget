@@ -9,9 +9,126 @@
         Silo Tresorerie (treasury-core) : changelog Liquibase du silo (R-01, 24-backlog-reste-a-faire.md).
         Tables actuelles : cashflow_settings, cashflow_income, cashflow_variable_income, cashflow_variable_override, cashflow_charge, cashflow_one_off, cashflow_transfer.
 
-        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline (etat actuel du schema,
-        genere via `mvn liquibase:generateChangeLog`, cf. db/changelog/README.md dans le module
-        server). Les changesets suivants (lots B de persistance par silo) s'ajoutent ensuite ici.
+        Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
+        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre, pas de
+        reverse-engineering de l'existant : voir 23-registre-decisions-actives.md, DA-16). Tables
+        legacy orphelines (anciens noms pre-renommage de silo, cf. LegacySchemaCleanup) exclues.
     -->
+
+    <changeSet author="R-01-lot-b" id="r01-treasury-core-1">
+        <createTable tableName="cashflow_charge">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="cashflow_charge_pkey"/>
+            </column>
+            <column name="category_id" type="VARCHAR(64)"/>
+            <column name="end_date" type="VARCHAR(32)"/>
+            <column name="growth_rate" type="numeric(19, 8)"/>
+            <column name="label" type="VARCHAR(255)"/>
+            <column name="monthly" type="numeric(19, 2)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="start_date" type="VARCHAR(32)"/>
+            <column name="uid" type="VARCHAR(64)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-treasury-core-2">
+        <createTable tableName="cashflow_income">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="cashflow_income_pkey"/>
+            </column>
+            <column name="category_id" type="VARCHAR(64)"/>
+            <column name="end_date" type="VARCHAR(32)"/>
+            <column name="growth_rate" type="numeric(19, 8)"/>
+            <column name="label" type="VARCHAR(255)"/>
+            <column name="monthly" type="numeric(19, 2)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="start_date" type="VARCHAR(32)"/>
+            <column name="uid" type="VARCHAR(64)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-treasury-core-3">
+        <createTable tableName="cashflow_one_off">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="cashflow_one_off_pkey"/>
+            </column>
+            <column name="amount" type="numeric(19, 2)"/>
+            <column name="entry_date" type="VARCHAR(32)"/>
+            <column name="label" type="VARCHAR(255)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uid" type="VARCHAR(64)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-treasury-core-4">
+        <createTable tableName="cashflow_settings">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="cashflow_settings_pkey"/>
+            </column>
+            <column name="cash_alert_threshold" type="numeric(19, 2)"/>
+            <column name="cash_ceiling" type="numeric(19, 2)"/>
+            <column name="cash_floor" type="numeric(19, 2)"/>
+            <column name="pivot_date" type="VARCHAR(32)"/>
+            <column name="pivot_mode" type="VARCHAR(32)"/>
+            <column name="start_balance" type="numeric(19, 2)"/>
+            <column name="sweep_enabled" type="BOOLEAN"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-treasury-core-5">
+        <createTable tableName="cashflow_transfer">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="cashflow_transfer_pkey"/>
+            </column>
+            <column name="amount" type="numeric(19, 2)"/>
+            <column name="entry_date" type="VARCHAR(32)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="placement" type="VARCHAR(255)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uid" type="VARCHAR(64)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-treasury-core-6">
+        <createTable tableName="cashflow_variable_income">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="cashflow_variable_income_pkey"/>
+            </column>
+            <column name="end_year" type="INTEGER"/>
+            <column name="label" type="VARCHAR(255)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rate" type="numeric(19, 8)"/>
+            <column name="ref_income_label" type="VARCHAR(255)"/>
+            <column name="start_year" type="INTEGER"/>
+            <column name="taxable" type="VARCHAR(32)"/>
+            <column name="variable_type" type="VARCHAR(32)"/>
+            <column name="uid" type="VARCHAR(64)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-treasury-core-7">
+        <createTable tableName="cashflow_variable_override">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="cashflow_variable_override_pkey"/>
+            </column>
+            <column name="amount" type="numeric(19, 2)"/>
+            <column name="label" type="VARCHAR(255)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="taxable" type="VARCHAR(32)"/>
+            <column name="uid" type="VARCHAR(64)"/>
+            <column name="year_value" type="INTEGER"/>
+        </createTable>
+    </changeSet>
 
 </databaseChangeLog>

@@ -9,9 +9,75 @@
         Silo Retraite (retirement-core) : changelog Liquibase du silo (R-01, 24-backlog-reste-a-faire.md).
         Tables actuelles : pension_settings, pension_plan, pension_person, pension_salary.
 
-        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline (etat actuel du schema,
-        genere via `mvn liquibase:generateChangeLog`, cf. db/changelog/README.md dans le module
-        server). Les changesets suivants (lots B de persistance par silo) s'ajoutent ensuite ici.
+        Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
+        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre, pas de
+        reverse-engineering de l'existant : voir 23-registre-decisions-actives.md, DA-16). Tables
+        legacy orphelines (anciens noms pre-renommage de silo, cf. LegacySchemaCleanup) exclues.
     -->
+
+    <changeSet author="R-01-lot-b" id="r01-retirement-core-1">
+        <createTable tableName="pension_person">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pension_person_pkey"/>
+            </column>
+            <column name="agirc_points" type="numeric(19, 8)"/>
+            <column name="birth_year" type="INTEGER"/>
+            <column name="cadre" type="BOOLEAN"/>
+            <column name="income_label" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ratio_points_par_euro" type="numeric(19, 8)"/>
+            <column name="trimestres_date" type="VARCHAR(32)"/>
+            <column name="trimestres_valides" type="INTEGER"/>
+            <column name="uid" type="VARCHAR(64)"/>
+            <column name="plan_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-retirement-core-2">
+        <createTable tableName="pension_plan">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pension_plan_pkey"/>
+            </column>
+            <column name="agirc_point_date_global" type="VARCHAR(32)"/>
+            <column name="agirc_point_growth_rate" type="numeric(19, 8)"/>
+            <column name="agirc_point_value" type="numeric(19, 8)"/>
+            <column name="pass_2026" type="numeric(19, 2)"/>
+            <column name="pass_growth_rate" type="numeric(19, 8)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-retirement-core-3">
+        <createTable tableName="pension_salary">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pension_salary_pkey"/>
+            </column>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="salary" type="numeric(19, 2)"/>
+            <column name="year_value" type="INTEGER"/>
+            <column name="person_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-retirement-core-4">
+        <createTable tableName="pension_settings">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pension_settings_pkey"/>
+            </column>
+            <column name="birth_year" type="INTEGER"/>
+            <column name="retire_age" type="INTEGER"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-retirement-core-5">
+        <addForeignKeyConstraint baseColumnNames="plan_id" baseTableName="pension_person" constraintName="fkjc6cnkrp54wtuasueb58ce2ck" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="pension_plan" validate="true"/>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-retirement-core-6">
+        <addForeignKeyConstraint baseColumnNames="person_id" baseTableName="pension_salary" constraintName="fkpm1jw74mn37cs041iv9bqh4a" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="pension_person" validate="true"/>
+    </changeSet>
 
 </databaseChangeLog>

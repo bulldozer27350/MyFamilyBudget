@@ -9,9 +9,70 @@
         Silo Fiscalite (tax-core) : changelog Liquibase du silo (R-01, 24-backlog-reste-a-faire.md).
         Tables actuelles : fiscal_settings, fiscal_bracket, fiscal_child, fiscal_rate_override, fiscal_actual_override.
 
-        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline (etat actuel du schema,
-        genere via `mvn liquibase:generateChangeLog`, cf. db/changelog/README.md dans le module
-        server). Les changesets suivants (lots B de persistance par silo) s'ajoutent ensuite ici.
+        Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
+        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre, pas de
+        reverse-engineering de l'existant : voir 23-registre-decisions-actives.md, DA-16). Tables
+        legacy orphelines (anciens noms pre-renommage de silo, cf. LegacySchemaCleanup) exclues.
     -->
+
+    <changeSet author="R-01-lot-b" id="r01-tax-core-1">
+        <createTable tableName="fiscal_actual_override">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="fiscal_actual_override_pkey"/>
+            </column>
+            <column name="amount" type="numeric(19, 2)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="year_value" type="INTEGER"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-tax-core-2">
+        <createTable tableName="fiscal_bracket">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="fiscal_bracket_pkey"/>
+            </column>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rate" type="numeric(19, 8)"/>
+            <column name="uid" type="VARCHAR(64)"/>
+            <column name="up_to" type="numeric(19, 2)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-tax-core-3">
+        <createTable tableName="fiscal_child">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="fiscal_child_pkey"/>
+            </column>
+            <column name="birth_year" type="INTEGER"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uid" type="VARCHAR(64)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-tax-core-4">
+        <createTable tableName="fiscal_rate_override">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="fiscal_rate_override_pkey"/>
+            </column>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rate" type="numeric(19, 8)"/>
+            <column name="year_value" type="INTEGER"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-tax-core-5">
+        <createTable tableName="fiscal_settings">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="fiscal_settings_pkey"/>
+            </column>
+            <column name="child_exit_age" type="INTEGER"/>
+            <column name="tax_abattement" type="numeric(19, 8)"/>
+        </createTable>
+    </changeSet>
 
 </databaseChangeLog>

@@ -6,16 +6,13 @@
             http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
 
     <!--
-        R-01 (back/server/doc/architecture/24-backlog-reste-a-faire.md), lot A : mise en place de
-        Liquibase, encore desactivee (spring.liquibase.enabled=false dans les trois profils) tant que
-        le lot B n'a pas fourni le changelog de baseline (etat actuel du schema, a generer localement
-        sur H2 et sur PostgreSQL, voir README.md dans ce dossier) et bascule ddl-auto en validate.
-
-        Un fichier d'inclusion par silo, dans les ressources du module *-core proprietaire des tables
-        (decision prise dans ce patch, point ouvert 1 de 24-backlog-reste-a-faire.md : fichier maitre
-        dans le composition root (`server`, futur `server-app` a MAVEN-130), scripts par silo dans
-        chaque *-core). Chaque fichier inclus est pour l'instant un changelog vide ; son premier
-        changeSet reel (baseline ou creation) sera ajoute au lot B.
+        R-01 (back/server/doc/architecture/24-backlog-reste-a-faire.md). Lot A : mise en place de
+        Liquibase, un fichier d'inclusion par silo dans les ressources du module *-core proprietaire
+        des tables (fichier maitre dans le composition root `server`, scripts par silo dans chaque
+        *-core). Lot B (DA-16 de 23-registre-decisions-actives.md) : chaque fichier inclus porte
+        desormais son changeSet de baseline ; spring.liquibase.enabled=true et ddl-auto=validate dans
+        les profils par defaut et docker (voir README.md dans ce dossier pour la procedure de
+        deploiement, encore a faire cote exploitant).
     -->
 
     <include file="db/changelog/retirement-core/retirement-core.changelog.xml" relativeToChangelogFile="false"/>

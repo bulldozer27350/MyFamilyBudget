@@ -9,9 +9,50 @@
         Silo Notifications (notifications-core) : changelog Liquibase du silo (R-01, 24-backlog-reste-a-faire.md).
         Tables actuelles : notification_settings, notification_sent_log, push_subscription.
 
-        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline (etat actuel du schema,
-        genere via `mvn liquibase:generateChangeLog`, cf. db/changelog/README.md dans le module
-        server). Les changesets suivants (lots B de persistance par silo) s'ajoutent ensuite ici.
+        Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
+        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre, pas de
+        reverse-engineering de l'existant : voir 23-registre-decisions-actives.md, DA-16). Tables
+        legacy orphelines (anciens noms pre-renommage de silo, cf. LegacySchemaCleanup) exclues.
     -->
+
+    <changeSet author="R-01-lot-b" id="r01-notifications-core-1">
+        <createTable tableName="push_subscription">
+            <column name="id" type="VARCHAR(64)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="push_subscription_pkey"/>
+            </column>
+            <column name="auth" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="endpoint" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="p256dh" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-notifications-core-2">
+        <addUniqueConstraint columnNames="endpoint" constraintName="ukqtek2d9716ho69tovncusqi88" tableName="push_subscription"/>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-notifications-core-3">
+        <createTable tableName="notification_sent_log">
+            <column name="dedup_key" type="VARCHAR(128)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="notification_sent_log_pkey"/>
+            </column>
+            <column name="last_sent_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-notifications-core-4">
+        <createTable tableName="notification_settings">
+            <column name="id" type="VARCHAR(64)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="notification_settings_pkey"/>
+            </column>
+            <column name="payload_json" type="TEXT"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE"/>
+        </createTable>
+    </changeSet>
 
 </databaseChangeLog>

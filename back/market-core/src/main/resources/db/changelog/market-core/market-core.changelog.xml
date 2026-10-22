@@ -9,9 +9,20 @@
         Silo Marche (market-core) : changelog Liquibase du silo (R-01, 24-backlog-reste-a-faire.md).
         Tables actuelles : market_snapshot.
 
-        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline (etat actuel du schema,
-        genere via `mvn liquibase:generateChangeLog`, cf. db/changelog/README.md dans le module
-        server). Les changesets suivants (lots B de persistance par silo) s'ajoutent ensuite ici.
+        Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
+        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre, pas de
+        reverse-engineering de l'existant : voir 23-registre-decisions-actives.md, DA-16). Tables
+        legacy orphelines (anciens noms pre-renommage de silo, cf. LegacySchemaCleanup) exclues.
     -->
+
+    <changeSet author="R-01-lot-b" id="r01-market-core-1">
+        <createTable tableName="market_snapshot">
+            <column name="id" type="VARCHAR(64)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="market_snapshot_pkey"/>
+            </column>
+            <column name="fetched_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="payload_json" type="TEXT"/>
+        </createTable>
+    </changeSet>
 
 </databaseChangeLog>

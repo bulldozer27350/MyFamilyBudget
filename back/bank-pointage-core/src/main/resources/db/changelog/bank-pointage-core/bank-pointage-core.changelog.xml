@@ -9,9 +9,30 @@
         Silo Banque et Pointage (bank-pointage-core) : changelog Liquibase du silo (R-01, 24-backlog-reste-a-faire.md).
         Tables actuelles : bank_import_document, enable_banking_sync_state.
 
-        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline (etat actuel du schema,
-        genere via `mvn liquibase:generateChangeLog`, cf. db/changelog/README.md dans le module
-        server). Les changesets suivants (lots B de persistance par silo) s'ajoutent ensuite ici.
+        Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
+        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre, pas de
+        reverse-engineering de l'existant : voir 23-registre-decisions-actives.md, DA-16). Tables
+        legacy orphelines (anciens noms pre-renommage de silo, cf. LegacySchemaCleanup) exclues.
     -->
+
+    <changeSet author="R-01-lot-b" id="r01-bank-pointage-core-1">
+        <createTable tableName="bank_import_document">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="bank_import_document_pkey"/>
+            </column>
+            <column name="json_data" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-bank-pointage-core-2">
+        <createTable tableName="enable_banking_sync_state">
+            <column name="account_uid" type="VARCHAR(64)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="enable_banking_sync_state_pkey"/>
+            </column>
+            <column name="last_booking_date" type="VARCHAR(10)"/>
+            <column name="last_sync_at" type="TIMESTAMP WITH TIME ZONE"/>
+        </createTable>
+    </changeSet>
 
 </databaseChangeLog>

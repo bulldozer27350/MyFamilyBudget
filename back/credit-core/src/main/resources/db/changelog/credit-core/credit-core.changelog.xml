@@ -9,9 +9,40 @@
         Silo Credit (credit-core) : changelog Liquibase du silo (R-01, 24-backlog-reste-a-faire.md).
         Tables actuelles : credit_loan, loan_advice_settings.
 
-        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline (etat actuel du schema,
-        genere via `mvn liquibase:generateChangeLog`, cf. db/changelog/README.md dans le module
-        server). Les changesets suivants (lots B de persistance par silo) s'ajoutent ensuite ici.
+        Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
+        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre, pas de
+        reverse-engineering de l'existant : voir 23-registre-decisions-actives.md, DA-16). Tables
+        legacy orphelines (anciens noms pre-renommage de silo, cf. LegacySchemaCleanup) exclues.
     -->
+
+    <changeSet author="R-01-lot-b" id="r01-credit-core-1">
+        <createTable tableName="credit_loan">
+            <column name="id" type="VARCHAR(64)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="credit_loan_pkey"/>
+            </column>
+            <column name="crd" type="numeric(19, 2)"/>
+            <column name="end_date" type="VARCHAR(32)"/>
+            <column name="initial_amount" type="numeric(19, 2)"/>
+            <column name="insurance" type="numeric(19, 2)"/>
+            <column name="label" type="VARCHAR(255)"/>
+            <column name="monthly" type="numeric(19, 2)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rate" type="numeric(19, 8)"/>
+            <column name="start_date" type="VARCHAR(32)"/>
+            <column name="step_date" type="VARCHAR(32)"/>
+            <column name="total_installments" type="INTEGER"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-credit-core-2">
+        <createTable tableName="loan_advice_settings">
+            <column name="id" type="VARCHAR(64)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="loan_advice_settings_pkey"/>
+            </column>
+            <column name="payload_json" type="TEXT"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE"/>
+        </createTable>
+    </changeSet>
 
 </databaseChangeLog>

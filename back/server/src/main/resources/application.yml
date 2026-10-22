@@ -22,15 +22,18 @@ spring:
     password:
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-  # R-01 (24-backlog-reste-a-faire.md), lot A : cablage inactif. Le lot B generera le changelog de
-  # baseline puis basculera enabled: true et ddl-auto: validate.
+  # R-01 (24-backlog-reste-a-faire.md), lot B : Liquibase bascule actif, ddl-auto en validate. Le
+  # fichier H2 local (./data/myfamilybudget) doit etre vide/neuf au premier demarrage avec ce patch
+  # (reset propre, DA-16 de 23-registre-decisions-actives.md) : Liquibase cree alors le schema depuis
+  # la baseline ci-dessous ; sur un fichier existant non vide et non suivi par Liquibase, le demarrage
+  # echoue (table deja existante), ce qui est le comportement attendu, pas un bug.
   liquibase:
-    enabled: false
+    enabled: true
     change-log: classpath:db/changelog/db.changelog-master.xml
   h2:
     console:

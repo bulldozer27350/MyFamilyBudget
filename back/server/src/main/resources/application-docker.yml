@@ -18,16 +18,19 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:myfamilybudget}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
-  # R-01 (24-backlog-reste-a-faire.md), lot A : cablage inactif. Le lot B generera le changelog de
-  # baseline puis basculera enabled: true et ddl-auto: validate.
+  # R-01 (24-backlog-reste-a-faire.md), lot B : Liquibase bascule actif, ddl-auto en validate.
+  # ATTENTION DEPLOIEMENT (DA-16 de 23-registre-decisions-actives.md) : la base PostgreSQL de prod
+  # doit etre videe (reset propre : export JSON, DROP, reimport via /budget/import) AVANT de
+  # redemarrer l'appli avec cette image. Sur une base non videe, Liquibase refuse de demarrer (tables
+  # deja existantes hors de son suivi) : echec attendu, pas un bug, c'est le garde-fou.
   liquibase:
-    enabled: false
+    enabled: true
     change-log: classpath:db/changelog/db.changelog-master.xml
   h2:
     console:

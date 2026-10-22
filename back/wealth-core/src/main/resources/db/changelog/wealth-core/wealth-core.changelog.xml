@@ -9,9 +9,91 @@
         Silo Patrimoine (wealth-core) : changelog Liquibase du silo (R-01, 24-backlog-reste-a-faire.md).
         Tables actuelles : wealth_category, wealth_placement, wealth_placement_history, wealth_real_estate.
 
-        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline (etat actuel du schema,
-        genere via `mvn liquibase:generateChangeLog`, cf. db/changelog/README.md dans le module
-        server). Les changesets suivants (lots B de persistance par silo) s'ajoutent ensuite ici.
+        Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
+        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre, pas de
+        reverse-engineering de l'existant : voir 23-registre-decisions-actives.md, DA-16). Tables
+        legacy orphelines (anciens noms pre-renommage de silo, cf. LegacySchemaCleanup) exclues.
     -->
+
+    <changeSet author="R-01-lot-b" id="r01-wealth-core-1">
+        <createTable tableName="wealth_category">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="wealth_category_pkey"/>
+            </column>
+            <column name="bucket" type="VARCHAR(64)"/>
+            <column name="color" type="VARCHAR(32)"/>
+            <column name="icon" type="VARCHAR(32)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uid" type="VARCHAR(64)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-wealth-core-2">
+        <createTable tableName="wealth_placement">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="wealth_placement_pkey"/>
+            </column>
+            <column name="balance" type="numeric(19, 2)"/>
+            <column name="balance_date" type="VARCHAR(32)"/>
+            <column name="category" type="VARCHAR(255)"/>
+            <column name="category_id" type="VARCHAR(64)"/>
+            <column name="excluded_from_retirement" type="BOOLEAN"/>
+            <column name="label" type="VARCHAR(255)"/>
+            <column name="monthly" type="numeric(19, 2)"/>
+            <column name="monthly_from" type="VARCHAR(32)"/>
+            <column name="monthly_until" type="VARCHAR(32)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="pause_priority" type="INTEGER"/>
+            <column name="pause_trigger_balance" type="numeric(19, 2)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rate_corr" type="numeric(19, 8)"/>
+            <column name="rate_opti" type="numeric(19, 8)"/>
+            <column name="rate_pess" type="numeric(19, 8)"/>
+            <column name="sweep_cap" type="numeric(19, 2)"/>
+            <column name="sweep_priority" type="INTEGER"/>
+            <column name="uid" type="VARCHAR(64)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-wealth-core-3">
+        <createTable tableName="wealth_placement_history">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="wealth_placement_history_pkey"/>
+            </column>
+            <column name="entry_date" type="VARCHAR(32)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uid" type="VARCHAR(64)"/>
+            <column name="value_amount" type="numeric(19, 2)"/>
+            <column name="placement_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-wealth-core-4">
+        <createTable tableName="wealth_real_estate">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="wealth_real_estate_pkey"/>
+            </column>
+            <column name="annual_growth_rate" type="numeric(19, 8)"/>
+            <column name="current_value" type="numeric(19, 2)"/>
+            <column name="label" type="VARCHAR(255)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR(255)"/>
+            <column name="uid" type="VARCHAR(64)"/>
+            <column name="valuation_year" type="INTEGER"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-wealth-core-5">
+        <addForeignKeyConstraint baseColumnNames="placement_id" baseTableName="wealth_placement_history" constraintName="fkjxcp9yakpgevlaqllkt8cqju3" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="wealth_placement" validate="true"/>
+    </changeSet>
 
 </databaseChangeLog>

@@ -9,9 +9,56 @@
         Silo Objectifs (goals-core) : changelog Liquibase du silo (R-01, 24-backlog-reste-a-faire.md).
         Tables actuelles : goal, goal_allocation, objectifs_settings.
 
-        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline (etat actuel du schema,
-        genere via `mvn liquibase:generateChangeLog`, cf. db/changelog/README.md dans le module
-        server). Les changesets suivants (lots B de persistance par silo) s'ajoutent ensuite ici.
+        Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
+        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre, pas de
+        reverse-engineering de l'existant : voir 23-registre-decisions-actives.md, DA-16). Tables
+        legacy orphelines (anciens noms pre-renommage de silo, cf. LegacySchemaCleanup) exclues.
     -->
+
+    <changeSet author="R-01-lot-b" id="r01-goals-core-1">
+        <createTable tableName="goal">
+            <column name="id" type="VARCHAR(64)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="goal_pkey"/>
+            </column>
+            <column name="allocated_amount" type="numeric(19, 2)"/>
+            <column name="label" type="VARCHAR(255)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_placement_id" type="VARCHAR(64)"/>
+            <column name="target_amount" type="numeric(19, 2)"/>
+            <column name="target_date" type="VARCHAR(32)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-goals-core-2">
+        <createTable tableName="goal_allocation">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="goal_allocation_pkey"/>
+            </column>
+            <column name="amount" type="numeric(19, 2)"/>
+            <column name="placement_id" type="VARCHAR(64)"/>
+            <column name="position" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uid" type="VARCHAR(64)"/>
+            <column name="goal_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-goals-core-3">
+        <createTable tableName="objectifs_settings">
+            <column name="id" type="VARCHAR(64)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="objectifs_settings_pkey"/>
+            </column>
+            <column name="liquid_horizon_months" type="INTEGER"/>
+            <column name="secure_horizon_months" type="INTEGER"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-goals-core-4">
+        <addForeignKeyConstraint baseColumnNames="goal_id" baseTableName="goal_allocation" constraintName="fk9x7x326ei2bs456m3dls4hmnn" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="goal" validate="true"/>
+    </changeSet>
 
 </databaseChangeLog>

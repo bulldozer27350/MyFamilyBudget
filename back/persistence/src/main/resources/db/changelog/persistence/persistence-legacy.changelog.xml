@@ -7,13 +7,102 @@
 
     <!--
         Tables encore legacy (R-01, 24-backlog-reste-a-faire.md) : hub budget_data (R-61), settings
-        (R-51/R-52), placement/real_estate/asset_category/placement_history_entry (R-30, pas encore
-        bascules vers wealth-core). Changelog du module persistence : tables actuelles : budget_data,
-        settings, placement, placement_history_entry, real_estate, asset_category.
+        (R-51/R-52), placement/placement_history_entry (R-30, pas encore bascules vers wealth-core).
+        Changelog du module persistence : tables actuelles : budget_data, settings, placement,
+        placement_history_entry.
 
-        Vide pour l'instant (lot A). Le lot B y ajoute le changeSet de baseline ; les tables qui
-        migrent vers un silo (ex. R-30 vers wealth-core) quittent ce fichier pour celui du silo au
-        patch qui les bascule, par un changeSet de renommage/deplacement, pas par copier-coller.
+        real_estate et asset_category, encore citees dans une version precedente de ce commentaire,
+        n'ont plus d'entite JPA dans le code actuel (migration deja faite vers wealth_real_estate et
+        wealth_category) : ce ne sont que des tables orphelines, exclues de la baseline ci-dessous au
+        meme titre que les autres noms legacy nettoyes par LegacySchemaCleanup (ex. tax_bracket,
+        income, objectif : voir 23-registre-decisions-actives.md, DA-16).
+
+        Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
+        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre). Les tables qui
+        migrent vers un silo (ex. future suite de R-30 vers wealth-core) quittent ce fichier pour
+        celui du silo au patch qui les bascule, par un changeSet de renommage/deplacement, pas par
+        copier-coller.
     -->
+
+    <changeSet author="R-01-lot-b" id="r01-persistence-1">
+        <createTable tableName="budget_data">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="budget_data_pkey"/>
+            </column>
+            <column name="settings_id" type="BIGINT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-persistence-2">
+        <addUniqueConstraint columnNames="settings_id" constraintName="uk2fmct21wgsqqlg74i0e1dcd7n" tableName="budget_data"/>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-persistence-3">
+        <createTable tableName="placement">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="placement_pkey"/>
+            </column>
+            <column name="balance" type="numeric(38, 2)"/>
+            <column name="balance_date" type="VARCHAR(255)"/>
+            <column name="category" type="VARCHAR(255)"/>
+            <column name="category_id" type="VARCHAR(255)"/>
+            <column name="excluded_from_retirement" type="BOOLEAN"/>
+            <column name="label" type="VARCHAR(255)"/>
+            <column name="monthly" type="numeric(38, 2)"/>
+            <column name="monthly_from" type="VARCHAR(255)"/>
+            <column name="monthly_until" type="VARCHAR(255)"/>
+            <column name="notes" type="VARCHAR(255)"/>
+            <column name="pause_priority" type="INTEGER"/>
+            <column name="pause_trigger_balance" type="numeric(38, 2)"/>
+            <column name="rate_corr" type="numeric(19, 8)"/>
+            <column name="rate_opti" type="numeric(19, 8)"/>
+            <column name="rate_pess" type="numeric(19, 8)"/>
+            <column name="sweep_cap" type="numeric(38, 2)"/>
+            <column name="sweep_priority" type="INTEGER"/>
+            <column name="uid" type="VARCHAR(255)"/>
+            <column name="budget_data_id" type="BIGINT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-persistence-4">
+        <createTable tableName="placement_history_entry">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="placement_history_entry_pkey"/>
+            </column>
+            <column name="date" type="VARCHAR(255)"/>
+            <column name="notes" type="VARCHAR(255)"/>
+            <column name="uid" type="VARCHAR(255)"/>
+            <column name="value_amount" type="numeric(38, 2)"/>
+            <column name="placement_id" type="BIGINT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-persistence-5">
+        <createTable tableName="settings">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="settings_pkey"/>
+            </column>
+            <column name="birth_year" type="INTEGER"/>
+            <column name="cash_alert_threshold" type="numeric(38, 2)"/>
+            <column name="cash_ceiling" type="numeric(38, 2)"/>
+            <column name="cash_floor" type="numeric(38, 2)"/>
+            <column name="child_exit_age" type="INTEGER"/>
+            <column name="inflation_rate" type="numeric(19, 8)"/>
+            <column name="pass2026" type="numeric(38, 2)"/>
+            <column name="pass_growth_rate" type="numeric(19, 8)"/>
+            <column name="pivot_date" type="VARCHAR(255)"/>
+            <column name="pivot_mode" type="VARCHAR(255)"/>
+            <column name="retire_age" type="INTEGER"/>
+            <column name="simulate_until_age" type="INTEGER"/>
+            <column name="start_balance" type="numeric(38, 2)"/>
+            <column name="sweep_enabled" type="BOOLEAN"/>
+            <column name="tax_abattement" type="numeric(19, 8)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-persistence-6">
+        <addForeignKeyConstraint baseColumnNames="settings_id" baseTableName="budget_data" constraintName="fkf6p9o787fy5j771te2tb8kut2" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="settings" validate="true"/>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-persistence-7">
+        <addForeignKeyConstraint baseColumnNames="placement_id" baseTableName="placement_history_entry" constraintName="fkfyopbe4abtcsnb7myq9bhai7l" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="placement" validate="true"/>
+    </changeSet>
+    <changeSet author="R-01-lot-b" id="r01-persistence-8">
+        <addForeignKeyConstraint baseColumnNames="budget_data_id" baseTableName="placement" constraintName="fkp8q5hxfw0wdx45hp6hq96rdcw" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="budget_data" validate="true"/>
+    </changeSet>
 
 </databaseChangeLog>

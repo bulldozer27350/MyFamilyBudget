@@ -401,6 +401,17 @@
         -->
         <profile>
             <id>liquibase-baseline</id>
+            <!--
+                R-01 lot B (echange agent du 20 oct. 2026) : outputChangeLogFile etait code en dur
+                ci-dessous (valeur litterale), ce qui ignorait silencieusement tout
+                -Dliquibase.outputChangeLogFile=... passe en ligne de commande (la sortie allait
+                toujours dans target/baseline.xml). Passer par une propriete Maven avec valeur par
+                defaut restaure la surcharge en ligne de commande (comportement standard Maven : un
+                -D du meme nom prend le pas sur <properties>).
+            -->
+            <properties>
+                <liquibase.outputChangeLogFile>${project.build.directory}/baseline.xml</liquibase.outputChangeLogFile>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -409,7 +420,7 @@
                         <version>${liquibase.version}</version>
                         <configuration>
                             <propertyFileWillOverride>true</propertyFileWillOverride>
-                            <outputChangeLogFile>${project.build.directory}/baseline.xml</outputChangeLogFile>
+                            <outputChangeLogFile>${liquibase.outputChangeLogFile}</outputChangeLogFile>
                         </configuration>
                     </plugin>
                 </plugins>

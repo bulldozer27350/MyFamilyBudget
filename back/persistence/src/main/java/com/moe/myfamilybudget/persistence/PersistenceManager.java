@@ -6,7 +6,6 @@ import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,9 +36,14 @@ import jakarta.annotation.PostConstruct;
 /**
  * Gestionnaire de persistance avec Spring Data JPA.
  * Les données sont conservées dans une base de données H2 et persistent entre les redémarrages du serveur.
+ *
+ * <p>Jusqu'à R-01 lot B, ce composant déclarait {@code @DependsOn("legacySchemaCleanup")} pour s'assurer que
+ * les clés étrangères legacy obsolètes (anciennes tables vers {@code budget_data}) étaient nettoyées avant la
+ * première écriture. Liquibase étant désormais actif et le schéma recréé à neuf (reset propre, voir
+ * 23-registre-decisions-actives.md, DA-16), ces tables orphelines n'existent plus : {@code LegacySchemaCleanup}
+ * a été retiré avec le même patch que la bascule Liquibase.
  */
 @Component
-@DependsOn("legacySchemaCleanup")
 @Transactional
 public class PersistenceManager {
 
