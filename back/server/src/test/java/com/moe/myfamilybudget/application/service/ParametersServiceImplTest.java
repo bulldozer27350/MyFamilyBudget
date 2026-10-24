@@ -33,8 +33,8 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
@@ -56,7 +56,6 @@ class ParametersServiceImplTest {
         persistenceManager.init();
         ObjectifsSettingsService objectifsSettingsService =
                 new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore());
-        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         // SET-020 : taxStore est partagé entre la lecture (taxSettingsReader) et le routeur d'écriture
         // ci-dessous, pour que childExitAge (silo Fiscalite) soit relu depuis la même instance que celle
@@ -66,6 +65,9 @@ class ParametersServiceImplTest {
         // et le routeur d'ecriture ci-dessous, au lieu du silo deconnecte cree par defaut dans
         // SettingsCommandRouterTestFactory.
         InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
+        // R-21 : meme principe pour tresorerieSettingsReader, plus lu depuis settingsAdapter (SILO-220 B2) mais
+        // depuis le silo reel.
+        InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         // R-30 : Patrimoine ne passe plus par PersistenceManager/PatrimoinePersistenceAdapter(manager) mais
         // par le silo (JpaWealthStore), route par PatrimoinePersistenceAdapter(JpaWealthStore, JpaTreasuryStore).
         // Categories d'actifs reellement tenues en memoire (le test exerce un cycle add/update/remove/lecture) ;
@@ -100,7 +102,7 @@ class ParametersServiceImplTest {
                 // voir le commentaire plus haut).
                 retirementStore,
                 taxStore,
-                settingsAdapter,
+                treasuryStore,
                 appSettings,
                 appSettings,
                 patrimoine,

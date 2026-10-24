@@ -8,55 +8,16 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.persistence.entity.BudgetDataEntity;
 import com.moe.myfamilybudget.persistence.entity.PlacementEntity;
 import com.moe.myfamilybudget.persistence.entity.PlacementHistoryEntryEntity;
-import com.moe.myfamilybudget.persistence.entity.SettingsEntity;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 
 public class EntityModelConverter {
 
-    // Settings conversions
-    public static SettingsEntity toEntity(SettingsModel model) {
-        if (model == null) return null;
-        SettingsEntity entity = new SettingsEntity(
-            model.birthYear(),
-            model.retireAge(),
-            model.simulateUntilAge(),
-            model.inflationRate(),
-            model.pivotDate(),
-            model.pivotMode(),
-            model.startBalance(),
-            model.childExitAge(),
-            model.taxAbattement(),
-            // SET-040 : colonnes heritees de SettingsEntity, plus ecrites (source unique : la retraite).
-            // Leur suppression physique releve des patchs DB-xxx.
-            null,
-            null
-        );
-        entity.setSweepEnabled(model.sweepEnabled());
-        entity.setCashCeiling(model.cashCeiling());
-        entity.setCashFloor(model.cashFloor());
-        entity.setCashAlertThreshold(model.cashAlertThreshold());
-        return entity;
-    }
-
-    public static SettingsModel toModel(SettingsEntity entity) {
-        if (entity == null) return null;
-        return new SettingsModel(
-            entity.getBirthYear(),
-            entity.getRetireAge(),
-            entity.getSimulateUntilAge(),
-            entity.getInflationRate(),
-            entity.getPivotDate(),
-            entity.getPivotMode(),
-            entity.getStartBalance(),
-            entity.getChildExitAge(),
-            entity.getTaxAbattement(),
-            entity.getSweepEnabled(),
-            entity.getCashCeiling(),
-            entity.getCashFloor(),
-            entity.getCashAlertThreshold()
-        );
-    }
+    // R-51 : SettingsEntity (et les conversions vers/depuis SettingsModel) est retire. Les 13 champs
+    // sans proprietaire dedie (simulateUntilAge, inflationRate, pivotDate, pivotMode, startBalance,
+    // childExitAge, taxAbattement, sweepEnabled, cashCeiling, cashFloor, cashAlertThreshold) sont morts
+    // depuis SET-040 ; birthYear/retireAge sont lus chez leur proprietaire (silo Retraite). BudgetDataModel
+    // continue de porter un champ settings() en memoire (valeurs par defaut via getEffectiveSettings()),
+    // mais il n'est plus alimente depuis la base ici.
 
     // Placement conversions
     public static PlacementEntity toEntity(PlacementModel model, BudgetDataEntity budgetData) {
@@ -148,7 +109,6 @@ public class EntityModelConverter {
         if (model == null) return null;
         
         BudgetDataEntity entity = new BudgetDataEntity();
-        entity.setSettings(toEntity(model.settings()));
         // DB-1100 : la retraite n'est plus rattachee au hub ; elle est stockee dans les tables autonomes
         // pension_* (PensionPlanEntity), ecrites par BudgetPersistenceGateway#syncPension.
         
@@ -160,7 +120,7 @@ public class EntityModelConverter {
         if (entity == null) return null;
         
         return new BudgetDataModel(
-            toModel(entity.getSettings()),
+            null, // settings - plus alimente depuis la base (R-51) ; valeurs par defaut via getEffectiveSettings()
             List.of(), // revenus - lus depuis cashflow_income (SILO-216)
             List.of(), // charges - lues depuis cashflow_charge (SILO-216)
             entity.getPlacements().stream().map(EntityModelConverter::toModel).collect(Collectors.toList()),

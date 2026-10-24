@@ -20,7 +20,8 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -36,12 +37,12 @@ class PointageServiceImplIntegrationTest {
     void setUp() {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         service = new PointageServiceImpl(
-                bankStore, new InMemoryTreasuryStore(),
+                bankStore, treasuryStore,
                 new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), new InMemoryTreasuryStore().getDelegate()),
-                settingsAdapter, settingsAdapter, settingsAdapter, appSettings, appSettings,
+                new InMemoryRetirementStore(), new InMemoryTaxStore(), treasuryStore, appSettings, appSettings,
                 new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()), new PointageMapper(),
                 new DefaultPointageCalculationService());
     }

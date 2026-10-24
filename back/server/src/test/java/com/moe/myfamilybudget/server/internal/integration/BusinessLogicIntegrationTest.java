@@ -41,7 +41,6 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 
@@ -61,9 +60,11 @@ class BusinessLogicIntegrationTest {
     private PersistenceManager persistenceManager;
 
     // R-20 : les lignes de tresorerie importees vivent dans le silo Tresorerie, pas dans le cache. Le bean
-    // JpaTreasuryStore (@Primary) implémente directement BudgetReader (R-20).
+    // JpaTreasuryStore (@Primary) implémente directement BudgetReader (R-20). R-51 : type concret (plutot
+    // qu'un port) car cette classe a aussi besoin de TresorerieSettingsReader (SettingsPersistenceAdapter,
+    // qui le fournissait, est retire), meme raison que retirementStore ci-dessous.
     @Autowired
-    private com.moe.myfamilybudget.domain.treasury.port.BudgetReader treasuryStore;
+    private com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore treasuryStore;
 
     // R-30 : meme principe pour le patrimoine ; le bean PatrimoinePersistenceAdapter (@Primary) route
     // placements/immobilier/categories vers le silo (JpaWealthStore) et les virements vers JpaTreasuryStore.
@@ -420,8 +421,8 @@ class BusinessLogicIntegrationTest {
         RetirementModel.RetirementPersonModel alice = retirementStore.getRetirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
-                new SettingsPersistenceAdapter(persistenceManager), new SettingsPersistenceAdapter(persistenceManager),
-                new SettingsPersistenceAdapter(persistenceManager), CacheBackedAppSettings.of(persistenceManager),
+                retirementStore, new InMemoryTaxStore(),
+                treasuryStore, CacheBackedAppSettings.of(persistenceManager),
                 CacheBackedAppSettings.of(persistenceManager), treasuryStore,
                 patrimoineReader, retirementStore,
                 new InMemoryTaxStore(), new InMemoryBankStore(),
@@ -449,8 +450,8 @@ class BusinessLogicIntegrationTest {
         RetirementModel.RetirementPersonModel alice = retirementStore.getRetirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
-                new SettingsPersistenceAdapter(persistenceManager), new SettingsPersistenceAdapter(persistenceManager),
-                new SettingsPersistenceAdapter(persistenceManager), CacheBackedAppSettings.of(persistenceManager),
+                retirementStore, new InMemoryTaxStore(),
+                treasuryStore, CacheBackedAppSettings.of(persistenceManager),
                 CacheBackedAppSettings.of(persistenceManager), treasuryStore,
                 patrimoineReader, retirementStore,
                 new InMemoryTaxStore(), new InMemoryBankStore(),
@@ -473,8 +474,8 @@ class BusinessLogicIntegrationTest {
         RetirementModel.RetirementPersonModel alice = retirementStore.getRetirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
-                new SettingsPersistenceAdapter(persistenceManager), new SettingsPersistenceAdapter(persistenceManager),
-                new SettingsPersistenceAdapter(persistenceManager), CacheBackedAppSettings.of(persistenceManager),
+                retirementStore, new InMemoryTaxStore(),
+                treasuryStore, CacheBackedAppSettings.of(persistenceManager),
                 CacheBackedAppSettings.of(persistenceManager), treasuryStore,
                 patrimoineReader, retirementStore,
                 new InMemoryTaxStore(), new InMemoryBankStore(),

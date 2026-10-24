@@ -17,9 +17,6 @@ public class BudgetDataEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private SettingsEntity settings;
-    
     // R-30b : seuls les placements restent rattaches au hub, exerces par
     // BudgetPersistenceGatewayRepeatedSaveTest (SILO-119 B2, collection enfant @OneToMany du hub). L'immobilier
     // et les categories d'actifs vivent desormais uniquement dans wealth_real_estate / wealth_asset_category
@@ -30,10 +27,6 @@ public class BudgetDataEntity {
     // Constructors
     public BudgetDataEntity() {}
     
-    public BudgetDataEntity(SettingsEntity settings) {
-        this.settings = settings;
-    }
-    
     // Getters and Setters
     public Long getId() {
         return id;
@@ -41,14 +34,6 @@ public class BudgetDataEntity {
     
     public void setId(Long id) {
         this.id = id;
-    }
-    
-    public SettingsEntity getSettings() {
-        return settings;
-    }
-    
-    public void setSettings(SettingsEntity settings) {
-        this.settings = settings;
     }
     
     public List<PlacementEntity> getPlacements() {

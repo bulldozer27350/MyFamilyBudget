@@ -13,10 +13,10 @@ import jakarta.persistence.Table;
  *
  * <p>R-40 (lot B) : cette entité n'a <strong>aucune relation vers {@code BudgetDataEntity}</strong> et est
  * désormais le support exclusif en lecture et en écriture, via {@code JpaRetirementStore}
- * ({@code RetirementSettingsReader}/{@code RetirementSnapshotWriter}) ; {@code SettingsPersistenceAdapter}
- * conserve son ancienne implémentation (table historique {@code settings}) mais n'est plus utilisé pour ces
- * deux champs (voir {@code BudgetDataModelAllowList}). Le PASS et son taux de croissance sont portés par
- * {@link PensionPlanEntity}.
+ * ({@code RetirementSettingsReader}/{@code RetirementSnapshotWriter}). R-51 : la table historique
+ * {@code settings} (et {@code SettingsPersistenceAdapter}, qui la lisait) est retirée ; ces deux champs n'ont
+ * plus jamais été portés que par cette entité (voir {@code BudgetDataModelAllowList}). Le PASS et son taux de
+ * croissance sont portés par {@link PensionPlanEntity}.
  */
 @Entity
 @Table(name = "pension_settings")

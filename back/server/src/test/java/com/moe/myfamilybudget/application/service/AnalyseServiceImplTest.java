@@ -22,7 +22,6 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
@@ -40,19 +39,21 @@ class AnalyseServiceImplTest {
         mapper = new AnalyseMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
+        InMemoryTaxStore taxStore = new InMemoryTaxStore();
+        InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         service = new AnalyseServiceImpl(mapper,
                 new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore()),
-                settingsAdapter,
-                settingsAdapter,
-                settingsAdapter,
+                retirementStore,
+                taxStore,
+                treasuryStore,
                 appSettings,
                 appSettings,
-                new InMemoryTreasuryStore(),
+                treasuryStore,
                 new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), new InMemoryTreasuryStore().getDelegate()),
-                new InMemoryRetirementStore(),
-                new InMemoryTaxStore(),
+                retirementStore,
+                taxStore,
                 new InMemoryLoanStore(),
                 bankStore,
                 new InMemoryGoalStore(),

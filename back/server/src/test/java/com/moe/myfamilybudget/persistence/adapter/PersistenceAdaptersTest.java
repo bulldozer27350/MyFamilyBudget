@@ -75,9 +75,9 @@ class PersistenceAdaptersTest {
         // RetirementPersistenceAdapter est retire.
 
         @Test
-        @DisplayName("SettingsPersistenceAdapter : parametres par defaut")
+        @DisplayName("BudgetDataModel.getEffectiveSettings() : parametres par defaut")
         void settingsDefaults() {
-            SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
+            SettingsModel settings = persistenceManager.getBudgetData().getEffectiveSettings();
 
             assertThat(settings.getEffectiveBirthYear()).isEqualTo(1985);
             assertThat(settings.retireAge()).isEqualTo(64);
@@ -108,9 +108,9 @@ class PersistenceAdaptersTest {
         // via le silo (JpaWealthStore). R-40 : meme principe pour la retraite (JpaRetirementStore).
 
         @Test
-        @DisplayName("SettingsPersistenceAdapter relit les parametres importes")
+        @DisplayName("BudgetDataModel.getEffectiveSettings() relit les parametres importes")
         void settingsRoundTrip() {
-            SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
+            SettingsModel settings = persistenceManager.getBudgetData().getEffectiveSettings();
 
             assertThat(settings).isEqualTo(SETTINGS);
             assertThat(settings.getEffectiveBirthYear()).isEqualTo(1990);
@@ -156,7 +156,7 @@ class PersistenceAdaptersTest {
 
             persistenceManager.resetData();
 
-            SettingsModel settings = new SettingsPersistenceAdapter(persistenceManager).getSettings();
+            SettingsModel settings = persistenceManager.getBudgetData().getEffectiveSettings();
             assertThat(settings.getEffectiveBirthYear()).isEqualTo(1985);
             assertThat(settings.retireAge()).isEqualTo(64);
         }
@@ -168,7 +168,7 @@ class PersistenceAdaptersTest {
 
             persistenceManager.setBudgetData(null);
 
-            assertThat(new SettingsPersistenceAdapter(persistenceManager).getSettings().getEffectiveBirthYear())
+            assertThat(persistenceManager.getBudgetData().getEffectiveSettings().getEffectiveBirthYear())
                     .isEqualTo(1985);
         }
 

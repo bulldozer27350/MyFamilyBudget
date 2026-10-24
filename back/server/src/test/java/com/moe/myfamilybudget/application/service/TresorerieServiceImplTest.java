@@ -52,7 +52,7 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
@@ -71,8 +71,9 @@ class TresorerieServiceImplTest {
         mapper = new TresorerieMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
+        InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
+        InMemoryTaxStore taxStore = new InMemoryTaxStore();
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         service = new TresorerieServiceImpl(
                 mapper, new TresorerieCommandService(treasuryStore, silos -> { }, RecordingTransactionRunner.direct()),
@@ -80,12 +81,12 @@ class TresorerieServiceImplTest {
                 new DefaultTaxCalculationService(),
                 new DefaultTresorerieCalculationService(),
                 new DefaultPointageCalculationService(),
-                settingsAdapter,
-                settingsAdapter,
-                settingsAdapter,
+                retirementStore,
+                taxStore,
+                treasuryStore,
                 appSettings,
                 appSettings,
-                new InMemoryTaxStore(),
+                taxStore,
                 treasuryStore,
                 new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), treasuryStore.getDelegate()),
                 bankStore);

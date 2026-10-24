@@ -22,7 +22,8 @@ import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
@@ -43,11 +44,11 @@ class StatementBankImportServiceImplIntegrationTest {
         service = new StatementBankImportServiceImpl(
                 bankStore, new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()),
                 mapper, new ExcelToCsvService(), new DefaultBankImportCalculationService());
-        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         pendingService = new PendingOperationsServiceImpl(
-                bankStore, new InMemoryTreasuryStore(),
-                settingsAdapter, settingsAdapter, settingsAdapter, appSettings, appSettings,
+                bankStore, treasuryStore,
+                new InMemoryRetirementStore(), new InMemoryTaxStore(), treasuryStore, appSettings, appSettings,
                 new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()),
                 mapper, new DefaultBankImportCalculationService());
     }

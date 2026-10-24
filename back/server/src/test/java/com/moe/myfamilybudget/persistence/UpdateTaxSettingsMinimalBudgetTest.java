@@ -41,7 +41,6 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepo
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
 
 /**
  * FIX-020 -- Modifier un parametre ne depend plus de la presence de {@code sweepEnabled}.
@@ -63,7 +62,6 @@ class UpdateTaxSettingsMinimalBudgetTest {
 
         persistenceManager = new PersistenceManager(
                 budgetDataRepository,
-                mock(SettingsRepository.class),
                 mock(PlacementRepository.class),
                 mock(GoalRepository.class),
                 mock(FiscalChildRepository.class),

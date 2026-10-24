@@ -88,8 +88,9 @@ class BudgetMutationService {
 
     /**
      * SET-030 : une mutation explicite par owner de paramètre, en remplacement de l'ancien dispatcher générique
-     * {@code updateTaxSettings(String, Object)}. Le stockage reste {@code SettingsEntity} (séparation relevant
-     * des patchs DB-xxx) ; seul le champ ciblé est modifié, les autres sont recopiés tels quels, y compris
+     * {@code updateTaxSettings(String, Object)}. Le stockage reste {@code BudgetDataModel.settings()}, en
+     * mémoire uniquement depuis le retrait de {@code SettingsEntity} (R-51) ; seul le champ ciblé est
+     * modifié, les autres sont recopiés tels quels, y compris
      * lorsqu'ils sont absents (FIX-020 : {@code sweepEnabled} est un {@code Boolean} nullable, aucun champ ne
      * doit être déballé pour la simple recopie, sous peine de {@link NullPointerException}).
      *

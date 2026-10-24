@@ -105,4 +105,52 @@
         <addForeignKeyConstraint baseColumnNames="budget_data_id" baseTableName="placement" constraintName="fkp8q5hxfw0wdx45hp6hq96rdcw" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="budget_data" validate="true"/>
     </changeSet>
 
+    <!--
+        R-51 (24-backlog-reste-a-faire.md, DA-15 de 23-registre-decisions-actives.md) : SettingsEntity est
+        retiree (avec SettingsPersistenceAdapter et SettingsRepository, deja retires cote Java ; syncSettings
+        etait deja retire par R-20/R-40/R-42). Le PASS (pass2026/passGrowthRate) appartient au domaine
+        Retraite (pension_plan.pass_2026/pass_growth_rate, silo retirement-core, voir
+        retirement-core.changelog.xml) : avant de supprimer les colonnes de settings, on copie une derniere
+        fois sa valeur vers pension_plan, uniquement la ou celle-ci est encore vide (on ne doit jamais ecraser
+        une valeur deja saisie cote Retraite). Les 13 autres colonnes de settings sont mortes depuis SET-040
+        (plus aucune donnee a y preserver) : simple suppression. `settings` et `pension_plan` sont toutes deux
+        des tables singleton (au plus une ligne, voir findFirstByOrderByIdAsc cote JPA) ; le ORDER BY id ASC
+        LIMIT 1 des sous-requetes est une precaution si cette hypothese etait un jour violee.
+    -->
+    <changeSet author="R-51" id="r51-persistence-1">
+        <sql>
+            UPDATE pension_plan
+            SET pass_2026 = (SELECT s.pass2026 FROM settings s ORDER BY s.id ASC LIMIT 1)
+            WHERE pass_2026 IS NULL
+              AND (SELECT s.pass2026 FROM settings s ORDER BY s.id ASC LIMIT 1) IS NOT NULL;
+        </sql>
+    </changeSet>
+    <changeSet author="R-51" id="r51-persistence-2">
+        <sql>
+            UPDATE pension_plan
+            SET pass_growth_rate = (SELECT s.pass_growth_rate FROM settings s ORDER BY s.id ASC LIMIT 1)
+            WHERE pass_growth_rate IS NULL
+              AND (SELECT s.pass_growth_rate FROM settings s ORDER BY s.id ASC LIMIT 1) IS NOT NULL;
+        </sql>
+    </changeSet>
+    <changeSet author="R-51" id="r51-persistence-3">
+        <dropColumn tableName="settings">
+            <column name="birth_year"/>
+            <column name="cash_alert_threshold"/>
+            <column name="cash_ceiling"/>
+            <column name="cash_floor"/>
+            <column name="child_exit_age"/>
+            <column name="inflation_rate"/>
+            <column name="pass2026"/>
+            <column name="pass_growth_rate"/>
+            <column name="pivot_date"/>
+            <column name="pivot_mode"/>
+            <column name="retire_age"/>
+            <column name="simulate_until_age"/>
+            <column name="start_balance"/>
+            <column name="sweep_enabled"/>
+            <column name="tax_abattement"/>
+        </dropColumn>
+    </changeSet>
+
 </databaseChangeLog>

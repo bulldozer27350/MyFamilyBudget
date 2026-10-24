@@ -30,7 +30,6 @@ import com.moe.myfamilybudget.application.command.RetirementCommandService;
 import com.moe.myfamilybudget.application.usecase.DefaultRetirementUseCase;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
@@ -50,22 +49,23 @@ class RetraiteServiceImplTest {
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         calculationService = new DefaultRetirementCalculationService();
-        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
+        InMemoryTaxStore taxStore = new InMemoryTaxStore();
+        InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         service = new RetraiteServiceImpl(
                 mapper,
                 new DefaultRetirementUseCase(
                         new RetirementInputFactory(),
                         calculationService,
-                        settingsAdapter,
-                        settingsAdapter,
-                        settingsAdapter,
+                        retirementStore,
+                        taxStore,
+                        treasuryStore,
                         appSettings,
                         appSettings,
                         retirementStore,
-                        new InMemoryTaxStore(),
-                        new InMemoryTreasuryStore(),
+                        taxStore,
+                        treasuryStore,
                         new RetirementCommandService(retirementStore, silos -> { },
                                 RecordingTransactionRunner.direct())));
     }

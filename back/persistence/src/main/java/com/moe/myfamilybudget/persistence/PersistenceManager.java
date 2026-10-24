@@ -48,7 +48,6 @@ import jakarta.annotation.PostConstruct;
 public class PersistenceManager {
 
     private final BudgetDataRepository budgetDataRepository;
-    private final SettingsRepository settingsRepository;
     private final PlacementRepository placementRepository;
     private final GoalRepository goalRepository;
     private final FiscalChildRepository fiscalChildRepository;
@@ -68,9 +67,7 @@ public class PersistenceManager {
     // Passerelle JPA (point 6 de l'audit, 1er incrément du Strangler Fig) : concentre tout
     // l'accès direct aux repositories Spring Data. Volontairement pas un bean Spring : une
     // instance est simplement construite ci-dessous, dans le constructeur, avec les mêmes
-    // repositories que ceux reçus par PersistenceManager — settingsRepository ne lui
-    // est pas transmis car il n'est jamais lu (settings est rattaché à BudgetDataEntity par cascade
-    // JPA, voir le commentaire dans BudgetPersistenceGateway.save()).
+    // repositories que ceux reçus par PersistenceManager.
     private final BudgetPersistenceGateway gateway;
 
     // Cache mémoire + point d'entrée unique de mutation (point 6 de l'audit, 2e incrément du
@@ -120,7 +117,6 @@ public class PersistenceManager {
 
     @Autowired
     public PersistenceManager(BudgetDataRepository budgetDataRepository,
-                            SettingsRepository settingsRepository,
                             PlacementRepository placementRepository,
                             GoalRepository goalRepository,
                             FiscalChildRepository fiscalChildRepository,
@@ -135,7 +131,6 @@ public class PersistenceManager {
                             PlatformTransactionManager transactionManager,
                             ApplicationEventPublisher eventPublisher) {
         this.budgetDataRepository = budgetDataRepository;
-        this.settingsRepository = settingsRepository;
         this.placementRepository = placementRepository;
         this.goalRepository = goalRepository;
         this.fiscalChildRepository = fiscalChildRepository;

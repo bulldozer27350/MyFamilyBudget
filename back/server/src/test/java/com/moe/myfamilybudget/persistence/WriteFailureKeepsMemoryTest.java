@@ -27,7 +27,6 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingField;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
@@ -40,7 +39,6 @@ import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepo
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
 
 /**
  * VT-330 -- Protege l'ordre voulu {@code DB -> memoire} de {@code BudgetCacheStore.applyAndPersist} :
@@ -82,8 +80,6 @@ class WriteFailureKeepsMemoryTest {
     private ApplicationEventPublisher eventPublisher;
     private PersistenceManager persistenceManager;
 
-    private SettingsPersistenceAdapter settingsAdapter;
-
     private BudgetDataModel before;
 
     @BeforeEach
@@ -95,7 +91,6 @@ class WriteFailureKeepsMemoryTest {
 
         persistenceManager = new PersistenceManager(
                 budgetDataRepository,
-                mock(SettingsRepository.class),
                 placementRepository,
                 mock(GoalRepository.class),
                 mock(FiscalChildRepository.class),
@@ -110,8 +105,6 @@ class WriteFailureKeepsMemoryTest {
                 mock(PlatformTransactionManager.class),
                 eventPublisher);
         persistenceManager.init();
-
-        settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
 
         // Etat de reference non trivial, ecrit alors que la base fonctionne. Des qu'un placement est
         // present, savePlacements ecrit inconditionnellement placementRepository a chaque mutation
@@ -205,7 +198,7 @@ class WriteFailureKeepsMemoryTest {
 
     private void assertEveryMutationFailsAndLeavesMemoryUntouched(Map<String, Runnable> mutations) {
         var taxChildren = persistenceManager.getBudgetData().getEffectiveTaxChildren();
-        var settings = settingsAdapter.getSettings();
+        var settings = persistenceManager.getBudgetData().getEffectiveSettings();
         var placements = persistenceManager.getBudgetData().getEffectivePlacements();
 
         mutations.forEach((name, mutation) -> {
@@ -214,7 +207,7 @@ class WriteFailureKeepsMemoryTest {
             assertThat(persistenceManager.getBudgetData()).as(name).isSameAs(before);
             assertThat(persistenceManager.getBudgetData().getEffectivePlacements()).as(name).isEqualTo(placements);
             assertThat(persistenceManager.getBudgetData().getEffectiveTaxChildren()).as(name).isEqualTo(taxChildren);
-            assertThat(settingsAdapter.getSettings()).as(name).isEqualTo(settings);
+            assertThat(persistenceManager.getBudgetData().getEffectiveSettings()).as(name).isEqualTo(settings);
         });
 
         // Aucune mutation en echec ne doit avoir declenche de controle des notifications.

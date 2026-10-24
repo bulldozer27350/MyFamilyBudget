@@ -72,7 +72,6 @@ import com.moe.myfamilybudget.domain.goals.core.persistence.JpaGoalStore;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.JpaRetirementStore;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
 import com.moe.myfamilybudget.persistence.repository.PlacementRepository;
-import com.moe.myfamilybudget.persistence.repository.SettingsRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
@@ -1009,7 +1008,6 @@ class PersistenceAdaptersJpaRoundTripTest {
     private PersistenceManager freshReader() {
         PersistenceManager reader = new PersistenceManager(
                 context.getBean(BudgetDataRepository.class),
-                context.getBean(SettingsRepository.class),
                 context.getBean(PlacementRepository.class),
                 context.getBean(GoalRepository.class),
                 context.getBean(FiscalChildRepository.class),
@@ -1050,7 +1048,7 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(taxStore().getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
         assertSameContent(taxStore().getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
 
-        SettingsModel settings = new SettingsPersistenceAdapter(reader).getSettings();
+        SettingsModel settings = reader.getBudgetData().getEffectiveSettings();
         assertThat(settings.birthYear()).isEqualTo(SETTINGS.birthYear());
         assertThat(settings.retireAge()).isEqualTo(SETTINGS.retireAge());
         assertThat(settings.simulateUntilAge()).isEqualTo(SETTINGS.simulateUntilAge());

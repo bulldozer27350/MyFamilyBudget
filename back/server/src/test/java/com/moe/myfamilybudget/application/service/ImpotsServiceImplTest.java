@@ -28,7 +28,6 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
@@ -49,9 +48,10 @@ class ImpotsServiceImplTest {
         mapper = new TaxMapper();
         persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
-        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         InMemoryTaxStore taxStore = new InMemoryTaxStore();
+        InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
+        InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         service = new ImpotsServiceImpl(
                 mapper,
                 new RetirementInputFactory(),
@@ -60,15 +60,15 @@ class ImpotsServiceImplTest {
                 new TaxCommandService(taxStore, silos -> { }, RecordingTransactionRunner.direct()),
                 SettingsCommandRouterTestFactory.of(persistenceManager,
                         new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore())),
-                settingsAdapter,
-                settingsAdapter,
-                settingsAdapter,
+                retirementStore,
+                taxStore,
+                treasuryStore,
                 appSettings,
                 appSettings,
                 taxStore,
-                new InMemoryTreasuryStore(),
+                treasuryStore,
                 new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), new InMemoryTreasuryStore().getDelegate()),
-                new InMemoryRetirementStore(),
+                retirementStore,
                 bankStore);
     }
 

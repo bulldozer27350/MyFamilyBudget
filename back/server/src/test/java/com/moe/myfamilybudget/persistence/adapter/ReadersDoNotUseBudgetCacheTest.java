@@ -36,8 +36,8 @@ import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
  * statiquement.
  *
  * <p>R-40 : la retraite (plan et parametres) est desormais lue via {@code JpaRetirementStore}, qui ne passe
- * plus par le cache. Seul {@code SettingsPersistenceAdapter} lit encore le cache, pour les champs qui n'ont
- * pas (ou plus) de proprietaire dedie. La simulation et les hypotheses economiques sont lues dans leur table
+ * plus par le cache. R-51 : {@code SettingsPersistenceAdapter}, qui lisait encore le cache pour les champs
+ * sans proprietaire dedie, est retire. La simulation et les hypotheses economiques sont lues dans leur table
  * autonome (R-50).
  *
  * <p>Base H2 dediee, pour ne pas partager d'etat avec les autres contextes de test.

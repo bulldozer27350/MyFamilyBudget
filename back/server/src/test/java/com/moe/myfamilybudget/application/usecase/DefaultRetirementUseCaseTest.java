@@ -22,7 +22,6 @@ import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculatio
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
-import com.moe.myfamilybudget.persistence.adapter.SettingsPersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
@@ -43,21 +42,22 @@ class DefaultRetirementUseCaseTest {
         PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
         persistenceManager.init();
         InMemoryRetirementStore retirementAdapter = new InMemoryRetirementStore();
-        SettingsPersistenceAdapter settingsAdapter = new SettingsPersistenceAdapter(persistenceManager);
+        InMemoryTaxStore taxStore = new InMemoryTaxStore();
+        InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         commandService = new RetirementCommandService(retirementAdapter, silos -> { },
                 RecordingTransactionRunner.direct());
         useCase = new DefaultRetirementUseCase(
                 new RetirementInputFactory(),
                 new DefaultRetirementCalculationService(),
-                settingsAdapter,
-                settingsAdapter,
-                settingsAdapter,
+                retirementAdapter,
+                taxStore,
+                treasuryStore,
                 appSettings,
                 appSettings,
                 retirementAdapter,
-                new InMemoryTaxStore(),
-                new InMemoryTreasuryStore(),
+                taxStore,
+                treasuryStore,
                 commandService);
     }
 
