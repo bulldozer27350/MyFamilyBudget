@@ -51,7 +51,7 @@ import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieAdjustmentKind;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieLineField;
 import com.moe.myfamilybudget.domain.treasury.port.TresorerieList;
-import com.moe.myfamilybudget.transition.error.UnknownTresorerieFieldException;
+import com.moe.myfamilybudget.domain.treasury.port.UnknownTresorerieFieldException;
 
 /**
  * Contrôleur REST de la trésorerie prévisionnelle (Trésorerie) : orchestration HTTP uniquement
