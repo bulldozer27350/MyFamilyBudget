@@ -154,16 +154,10 @@ class PersistenceAdaptersJpaRoundTripTest {
     // Import complet
     // =========================================================================
 
-    @Test
-    @DisplayName("import complet -> chaque adaptateur relit depuis la base ce qui a ete ecrit")
-    void fullImportIsReadBackFromDatabase() {
-        writer.setBudgetData(referenceData());
-
-        PersistenceManager reader = freshReader();
-
-        assertThat(reader).isNotSameAs(writer);
-        assertReferenceState(reader);
-    }
+    // R-61-09-a : fullImportIsReadBackFromDatabase (import complet -> chaque adaptateur relit) retire.
+    // Testait uniquement le hub (PersistenceManager/BudgetDataModel, freshReader()/assertReferenceState()) ;
+    // couverture entierement dupliquee par les tests "imported...IsReadFrom...Tables" de chaque silo plus bas
+    // dans ce meme fichier (Objectifs, Credit, Fiscalite, Retraite, Import bancaire, Patrimoine, Tresorerie).
 
     // R-51 : settingsAreCopiedToOwnerTables et ownerSettingsTablesAreMigratedAtStartup (SILO-220 B1)
     // verifiaient la copie birthYear/retireAge/childExitAge/taxAbattement/pivotDate/pivotMode/startBalance
@@ -262,40 +256,12 @@ class PersistenceAdaptersJpaRoundTripTest {
     // Reset
     // =========================================================================
 
-    @Test
-    @DisplayName("resetData -> tous les adaptateurs relisent l'etat par defaut depuis la base")
-    void resetIsReadBackFromDatabase() {
-        writer.setBudgetData(referenceData());
-
-        writer.resetData();
-
-        PersistenceManager reader = freshReader();
-        assertThat(jpaBudgetAdapter(reader).getIncomes()).isEmpty();
-        assertThat(jpaBudgetAdapter(reader).getCharges()).isEmpty();
-        assertThat(jpaBudgetAdapter(reader).getOneoffExpenses()).isEmpty();
-        assertThat(jpaBudgetAdapter(reader).getVariableIncomes()).isEmpty();
-        assertThat(jpaBudgetAdapter(reader).getVariableOverrides()).isEmpty();
-        assertThat(wealthStore().getPlacements()).isEmpty();
-        assertThat(wealthStore().getRealEstate()).isEmpty();
-        assertThat(wealthStore().getAssetCategories()).isEmpty();
-        assertThat(treasuryStore().getTransfers()).isEmpty();
-        assertThat(retirementStore().getRetirement().people()).isEmpty();
-        assertThat(taxStore().getTaxChildren()).isEmpty();
-        assertThat(taxStore().getTaxRateOverrides()).isEmpty();
-        assertThat(taxStore().getTaxActualOverrides()).isEmpty();
-        assertDefaultBrackets(taxStore().getTaxBrackets());
-    }
-
-    @Test
-    @DisplayName("reset puis nouvel import -> l'etat de reference est relu en base")
-    void importAfterResetIsReadBackFromDatabase() {
-        writer.setBudgetData(referenceData());
-        writer.resetData();
-
-        writer.setBudgetData(referenceData());
-
-        assertReferenceState(freshReader());
-    }
+    // R-61-09-a : resetIsReadBackFromDatabase et importAfterResetIsReadBackFromDatabase retires. Testaient
+    // uniquement le hub (writer.resetData()/freshReader()/assertReferenceState()) ; couverture du reset deja
+    // assuree, silo par silo, par resetEmptiesGoalTables, resetEmptiesCreditTable,
+    // resetClearsFiscalTablesAndRestoresDefaultBrackets, resetRestoresEmptyRetirementThroughJpa,
+    // resetRestoresEmptyBankImportThroughJpa, resetEmptiesWealthTables et resetEmptiesCashflowTables plus bas
+    // dans ce meme fichier.
 
     // =========================================================================
     // Cas optionnels
@@ -392,16 +358,11 @@ class PersistenceAdaptersJpaRoundTripTest {
         });
     }
 
-    @Test
-    @DisplayName("DB-1120 -- au demarrage, les objectifs du cache sont recharges depuis les tables goal_*")
-    void goalsAreReloadedFromGoalTablesOnStartup() {
-        goalStore().replace(List.of(GOAL));
-
-        PersistenceManager restarted = freshReader();
-
-        assertSameContent(restarted.getBudgetData().objectifs(), List.of(GOAL));
-        assertSameContent(goalStore().getGoals(), List.of(GOAL));
-    }
+    // R-61-09-a : goalsAreReloadedFromGoalTablesOnStartup et globalModelWriteDoesNotTouchGoalTables retires.
+    // Le premier relisait le modele global via freshReader() en plus de goalStore() (deja verifie par
+    // replacedGoalsAreReadFromGoalTables) ; le second prouvait l'absence d'effet d'une ecriture du hub sur
+    // les tables Objectifs, garantie devenue structurellement impossible a violer (plus de modele global
+    // capable d'ecrire ces tables) -- meme raisonnement que le 3e scenario ecarte en R-61-05.
 
     @Test
     @DisplayName("SILO-212 -- reset -> les tables autonomes sont videes")
@@ -412,17 +373,6 @@ class PersistenceAdaptersJpaRoundTripTest {
 
         assertThat(context.getBean(GoalRepository.class).count()).isZero();
         assertThat(goalStore().getGoals()).isEmpty();
-    }
-
-    @Test
-    @DisplayName("SILO-212 -- une ecriture du modele global ne touche plus aux tables Objectifs")
-    void globalModelWriteDoesNotTouchGoalTables() {
-        goalStore().replace(List.of(GOAL));
-
-        writer.setBudgetData(writer.getBudgetData().withObjectifs(List.of()));
-        writer.resetData();
-
-        assertSameContent(goalStore().getGoals(), List.of(GOAL));
     }
 
     // =========================================================================
@@ -452,15 +402,10 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(context.getBean(CreditLoanRepository.class).count()).isEqualTo(1);
     }
 
-    @Test
-    @DisplayName("SILO-214 -- les prets survivent au redemarrage du cache : ils ne dependent plus du PersistenceManager")
-    void loansSurviveCacheRestart() {
-        loanStore().replace(List.of(LOAN));
-
-        freshReader();
-
-        assertSameContent(loanStore().getLoans(), List.of(LOAN));
-    }
+    // R-61-09-a : loansSurviveCacheRestart et globalModelWriteDoesNotTouchCreditTable retires. Meme
+    // raisonnement que pour les Objectifs ci-dessus (voir note R-61-09-a plus haut) : "survivre au
+    // redemarrage du cache" n'a plus d'objet sans cache hub, et plus aucune ecriture du modele global ne
+    // peut atteindre la table des prets.
 
     @Test
     @DisplayName("SILO-214 -- reset -> la table autonome est videe")
@@ -471,17 +416,6 @@ class PersistenceAdaptersJpaRoundTripTest {
 
         assertThat(context.getBean(CreditLoanRepository.class).count()).isZero();
         assertThat(loanStore().getLoans()).isEmpty();
-    }
-
-    @Test
-    @DisplayName("SILO-214 -- une ecriture du modele global ne touche plus a la table des prets")
-    void globalModelWriteDoesNotTouchCreditTable() {
-        loanStore().replace(List.of(LOAN));
-
-        writer.setBudgetData(writer.getBudgetData().withLoans(List.of()));
-        writer.resetData();
-
-        assertSameContent(loanStore().getLoans(), List.of(LOAN));
     }
 
     // =========================================================================
@@ -503,30 +437,8 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(appSettingsStore().getEconomicAssumptions().inflationRate()).isEqualByComparingTo("0.01750001");
     }
 
-    @Test
-    @DisplayName("R-50 -- les parametres survivent au redemarrage du cache : ils ne dependent plus du PersistenceManager")
-    void appSettingsSurviveCacheRestart() {
-        appSettingsStore().updateSimulateUntilAge(90);
-        appSettingsStore().updateInflationRate(bd("0.03"));
-
-        freshReader();
-
-        assertThat(appSettingsStore().getSimulationSettings().simulateUntilAge()).isEqualTo(90);
-        assertThat(appSettingsStore().getEconomicAssumptions().inflationRate()).isEqualByComparingTo("0.03");
-    }
-
-    @Test
-    @DisplayName("R-50 -- une ecriture du modele global ou resetData() ne touche plus a app_settings")
-    void globalModelWriteDoesNotTouchAppSettings() {
-        appSettingsStore().updateSimulateUntilAge(90);
-        appSettingsStore().updateInflationRate(bd("0.03"));
-
-        writer.setBudgetData(referenceData());
-        writer.resetData();
-
-        assertThat(appSettingsStore().getSimulationSettings().simulateUntilAge()).isEqualTo(90);
-        assertThat(appSettingsStore().getEconomicAssumptions().inflationRate()).isEqualByComparingTo("0.03");
-    }
+    // R-61-09-a : appSettingsSurviveCacheRestart et globalModelWriteDoesNotTouchAppSettings retires. Meme
+    // raisonnement que pour les Objectifs et le Credit ci-dessus (voir note R-61-09-a plus haut).
 
     @Test
     @DisplayName("R-50 -- import et reinitialisation par les ports de transition")
@@ -590,22 +502,9 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertDefaultBrackets(taxStore().getTaxBrackets());
     }
 
-    @Test
-    @DisplayName("DB-1110 -- au demarrage, la fiscalite du cache est rechargee depuis les tables fiscal_*")
-    void fiscalDataIsReloadedFromFiscalTablesOnStartup() {
-        writer.setBudgetData(referenceData());
-
-        PersistenceManager reloaded = freshReader();
-        assertSameContent(reloaded.getBudgetData().taxChildren(), List.of(TAX_CHILD));
-        assertSameContent(reloaded.getBudgetData().taxBrackets(), CUSTOM_BRACKETS);
-        assertSameContent(reloaded.getBudgetData().taxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
-        assertSameContent(reloaded.getBudgetData().taxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
-
-        assertSameContent(taxStore().getTaxChildren(), List.of(TAX_CHILD));
-        assertSameContent(taxStore().getTaxBrackets(), CUSTOM_BRACKETS);
-        assertSameContent(taxStore().getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
-        assertSameContent(taxStore().getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
-    }
+    // R-61-09-a : fiscalDataIsReloadedFromFiscalTablesOnStartup retire. La relecture via le modele global
+    // (freshReader()) n'a plus d'objet sans cache hub ; la relecture via taxStore() est deja prouvee par
+    // importedTaxConfigIsReadFromFiscalTables ci-dessus.
 
     @Test
     @DisplayName("R-42 -- reinitialisation -> listes videes et bareme par defaut relu par JpaTaxStore")
@@ -660,16 +559,9 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(reread.people().get(0).ratioPointsParEuro()).isEqualByComparingTo("0.00512345");
     }
 
-    @Test
-    @DisplayName("DB-1100 -- au demarrage, la retraite du cache est rechargee depuis les tables pension_*")
-    void retirementIsReloadedFromPensionTablesOnStartup() {
-        writer.setBudgetData(referenceData());
-
-        PersistenceManager restarted = freshReader();
-
-        assertSameContent(restarted.getBudgetData().retirement(), RETIREMENT);
-        assertSameContent(retirementStore().getRetirement(), RETIREMENT);
-    }
+    // R-61-09-a : retirementIsReloadedFromPensionTablesOnStartup retire. La relecture via le modele global
+    // (freshReader()) n'a plus d'objet sans cache hub ; la relecture via retirementStore() est deja prouvee
+    // par importedRetirementIsReadFromPensionTables ci-dessus.
 
     @Test
     @DisplayName("DB-1001 -- reinitialisation -> la retraite par defaut (sans personne) est relue par JPA")
@@ -738,16 +630,9 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(reread.get(2999).id()).isEqualTo("tx_2999");
     }
 
-    @Test
-    @DisplayName("DB-1130 -- au demarrage, l'import bancaire du cache est recharge depuis bank_import_document")
-    void bankImportIsReloadedFromDocumentTableOnStartup() {
-        bankStore().replace(BANK_IMPORT);
-
-        PersistenceManager restarted = freshReader();
-
-        assertSameContent(restarted.getBudgetData().bankImport().transactions(), BANK_IMPORT.transactions());
-        assertSameContent(bankStore().getBankImport().transactions(), BANK_IMPORT.transactions());
-    }
+    // R-61-09-a : bankImportIsReloadedFromDocumentTableOnStartup retire. La relecture via le modele global
+    // (freshReader()) n'a plus d'objet sans cache hub ; la relecture via bankStore() est deja prouvee par
+    // importedBankImportIsReadFromDocumentTable ci-dessus.
 
     @Test
     @DisplayName("DB-1031 -- reinitialisation -> un import vide (jamais null) est relu par JPA")
@@ -990,35 +875,6 @@ class PersistenceAdaptersJpaRoundTripTest {
                 eventPublisher);
         reader.init();
         return reader;
-    }
-
-    private void assertReferenceState(PersistenceManager reader) {
-        com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore budget = jpaBudgetAdapter(reader);
-        assertSameContent(budget.getIncomes(), List.of(INCOME));
-        assertSameContent(budget.getCharges(), List.of(CHARGE));
-        assertSameContent(budget.getOneoffExpenses(), List.of(ONEOFF));
-        assertSameContent(budget.getVariableIncomes(), List.of(VARIABLE_INCOME));
-        assertSameContent(budget.getVariableOverrides(), List.of(VARIABLE_OVERRIDE));
-
-        assertSameContent(wealthStore().getPlacements(), List.of(PLACEMENT));
-        assertThat(wealthStore().getPlacements().get(0).history()).hasSize(1);
-        assertSameContent(wealthStore().getRealEstate(), List.of(REAL_ESTATE));
-        assertSameContent(wealthStore().getAssetCategories(), List.of(ASSET_CATEGORY));
-        assertSameContent(treasuryStore().getTransfers(), List.of(TRANSFER));
-
-        RetirementModel retirement = retirementStore().getRetirement();
-        assertSameContent(retirement, RETIREMENT);
-        assertThat(retirement.people().get(0).salaryHistory()).hasSize(3);
-
-        assertSameContent(taxStore().getTaxChildren(), List.of(TAX_CHILD));
-        assertSameContent(taxStore().getTaxBrackets(), CUSTOM_BRACKETS);
-        assertSameContent(taxStore().getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
-        assertSameContent(taxStore().getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
-
-        // R-51 : birthYear/retireAge/simulateUntilAge/inflationRate/pivotDate/pivotMode/startBalance/
-        // childExitAge/taxAbattement n'ont plus de support durable via BudgetDataModel.settings() depuis le
-        // retrait de SettingsEntity ; ils ne font plus partie de ce round-trip (voir le commentaire suivant
-        // fullImportIsReadBackFromDatabase, qui documente le retrait des deux tests SILO-220 B1 correspondants).
     }
 
     /** compareTo ignore l'echelle ; null-safe car certains champs (ex. plafond de tranche) valent null. */
