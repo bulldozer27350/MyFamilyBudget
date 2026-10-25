@@ -66,7 +66,6 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.application.settings.SettingsView;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
@@ -94,31 +93,36 @@ public class OverviewMapper {
                     List.of(), List.of(), List.of(), List.of(), null, ObjectifsParameters.defaults());
         }
 
-        SettingsModel settings = toSettingsModel(dto.getSettings());
+        SettingsDto settingsDto = dto.getSettings();
         List<TransferModel> transfers = dto.getTransfers() != null
                 ? dto.getTransfers().stream().map(this::toTransferModel).collect(Collectors.toList())
                 : List.of();
 
         return new BudgetSnapshotFragments(
-                settings != null ? new RetirementSettingsModel(settings.birthYear(), settings.retireAge()) : null,
+                settingsDto != null
+                        ? new RetirementSettingsModel(settingsDto.getBirthYear(), settingsDto.getRetireAge())
+                        : null,
                 withLegacyPassFallback(toRetirementModel(dto.getRetirement()), dto.getSettings()),
-                settings != null ? new TaxSettingsModel(settings.childExitAge(), settings.taxAbattement()) : null,
+                settingsDto != null
+                        ? new TaxSettingsModel(settingsDto.getChildExitAge(), settingsDto.getTaxAbattement())
+                        : null,
                 mapList(dto.getTaxChildren(), this::toTaxChildModel),
                 mapList(dto.getTaxBrackets(), this::toTaxBracketModel),
                 mapList(dto.getTaxRateOverrides(), this::toTaxRateOverrideModel),
                 mapList(dto.getTaxActualOverrides(), this::toTaxActualOverrideModel),
-                settings != null
-                        ? new TresorerieSettingsModel(settings.pivotDate(), settings.pivotMode(),
-                                settings.startBalance(), settings.sweepEnabled(), settings.cashCeiling(),
-                                settings.cashFloor(), settings.cashAlertThreshold())
+                settingsDto != null
+                        ? new TresorerieSettingsModel(settingsDto.getPivotDate(), settingsDto.getPivotMode(),
+                                settingsDto.getStartBalance(), settingsDto.getSweepEnabled(),
+                                settingsDto.getCashCeiling(), settingsDto.getCashFloor(),
+                                settingsDto.getCashAlertThreshold())
                         : null,
                 mapList(dto.getIncomes(), this::toIncomeModel),
                 mapList(dto.getCharges(), this::toChargeModel),
                 mapList(dto.getOneoff(), this::toOneOffExpenseModel),
                 mapList(dto.getVariableIncomes(), this::toVariableIncomeModel),
                 mapList(dto.getVariableOverrides(), this::toVariableOverrideModel),
-                settings != null ? new SimulationSettingsModel(settings.simulateUntilAge()) : null,
-                settings != null ? new EconomicAssumptionsModel(settings.inflationRate()) : null,
+                settingsDto != null ? new SimulationSettingsModel(settingsDto.getSimulateUntilAge()) : null,
+                settingsDto != null ? new EconomicAssumptionsModel(settingsDto.getInflationRate()) : null,
                 mapList(dto.getPlacements(), this::toPlacementModel),
                 mapList(dto.getRealEstate(), this::toRealEstateModel),
                 PatrimoineTransferConverter.toWealth(transfers),
@@ -297,17 +301,9 @@ public class OverviewMapper {
         return dto;
     }
 
-    private SettingsModel toSettingsModel(SettingsDto dto) {
-        if (dto == null)
-            return null;
-        return new SettingsModel(dto.getBirthYear(), dto.getRetireAge(), dto.getSimulateUntilAge(),
-                dto.getInflationRate(), dto.getPivotDate(), dto.getPivotMode(), dto.getStartBalance(),
-                dto.getChildExitAge(), dto.getTaxAbattement(), dto.getSweepEnabled(), dto.getCashCeiling(), dto.getCashFloor(), dto.getCashAlertThreshold());
-    }
-
     /**
      * Extrait les paramètres du domaine Objectifs d'un {@link BudgetDataDto} (RF-700) : ils ne
-     * font plus partie de {@link SettingsModel} mais restent portés par {@code settings} dans le
+     * font plus partie des paramètres généraux mais restent portés par {@code settings} dans le
      * contrat d'API.
      */
     public ObjectifsParameters toObjectifsParameters(BudgetDataDto dto) {
