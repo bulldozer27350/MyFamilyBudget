@@ -1,9 +1,6 @@
 package com.moe.myfamilybudget.server.internal.testsupport;
 
 import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.Map;
-import java.util.WeakHashMap;
 
 import com.moe.myfamilybudget.domain.settings.model.EconomicAssumptionsModel;
 import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
@@ -11,46 +8,40 @@ import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsWriter;
 import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
 import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsWriter;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 
 /**
  * Silo Parametres de test (R-50) pour les tests de services qui n'exercent pas la persistance du silo : tant qu'une
- * valeur n'a pas ete ecrite par un command service, la lecture retombe sur le {@code SettingsModel} du cache du
- * {@link PersistenceManager} de test (c'est ainsi que ces tests posent la profondeur de simulation et l'inflation
- * depuis un {@code BudgetDataModel}) ; une valeur ecrite est ensuite relue telle quelle. Une seule instance est
- * partagee par {@code PersistenceManager}, pour que les lecteurs et les command services d'un meme test voient le
- * meme etat. La vraie persistance ({@code JpaAppSettingsStore}) est couverte par {@code JpaAppSettingsStoreTest} et
- * par {@code PersistenceAdaptersJpaRoundTripTest}.
+ * valeur n'a pas ete ecrite par un command service, la lecture retombe sur une valeur par defaut en dur (85 ans de
+ * simulation, 2 % d'inflation — memes defauts que ceux portes historiquement par le hub) ; une valeur ecrite est
+ * ensuite relue telle quelle. Une instance donnee doit etre passee a la fois comme lecteur et comme redacteur dans
+ * un meme test, pour que les deux voient le meme etat (voir {@code new CacheBackedAppSettings()} utilise deux fois
+ * dans la construction du service sous test). La vraie persistance ({@code JpaAppSettingsStore}) est couverte par
+ * {@code JpaAppSettingsStoreTest} et par {@code PersistenceAdaptersJpaRoundTripTest}.
+ *
+ * <p>R-61-04 : ne depend plus du {@code PersistenceManager} du hub (retrait prevu par R-61,
+ * {@code 26-sequencage-r61-suppression-hub.md}) ; le partage par instance de {@code PersistenceManager}
+ * (WeakHashMap) est remplace par une simple instance creee par l'appelant.
  */
 public final class CacheBackedAppSettings implements SimulationSettingsReader, EconomicAssumptionsReader,
         SimulationSettingsWriter, EconomicAssumptionsWriter {
 
-    private static final Map<PersistenceManager, CacheBackedAppSettings> BY_MANAGER =
-            Collections.synchronizedMap(new WeakHashMap<>());
+    private static final int DEFAULT_SIMULATE_UNTIL_AGE = 85;
+    private static final BigDecimal DEFAULT_INFLATION_RATE = new BigDecimal("0.02");
 
-    private final PersistenceManager persistenceManager;
     private Integer simulateUntilAge;
     private BigDecimal inflationRate;
 
-    private CacheBackedAppSettings(PersistenceManager persistenceManager) {
-        this.persistenceManager = persistenceManager;
-    }
-
-    /** Instance partagee du {@code persistenceManager} donne. */
-    public static CacheBackedAppSettings of(PersistenceManager persistenceManager) {
-        return BY_MANAGER.computeIfAbsent(persistenceManager, CacheBackedAppSettings::new);
+    public CacheBackedAppSettings() {
     }
 
     @Override
     public SimulationSettingsModel getSimulationSettings() {
-        return new SimulationSettingsModel(simulateUntilAge != null ? simulateUntilAge
-                : persistenceManager.getBudgetData().getEffectiveSettings().simulateUntilAge());
+        return new SimulationSettingsModel(simulateUntilAge != null ? simulateUntilAge : DEFAULT_SIMULATE_UNTIL_AGE);
     }
 
     @Override
     public EconomicAssumptionsModel getEconomicAssumptions() {
-        return new EconomicAssumptionsModel(inflationRate != null ? inflationRate
-                : persistenceManager.getBudgetData().getEffectiveSettings().inflationRate());
+        return new EconomicAssumptionsModel(inflationRate != null ? inflationRate : DEFAULT_INFLATION_RATE);
     }
 
     @Override
@@ -70,7 +61,7 @@ public final class CacheBackedAppSettings implements SimulationSettingsReader, E
         try {
             return Integer.valueOf(String.valueOf(value).trim());
         } catch (NumberFormatException e) {
-            return 85;
+            return DEFAULT_SIMULATE_UNTIL_AGE;
         }
     }
 
@@ -78,7 +69,7 @@ public final class CacheBackedAppSettings implements SimulationSettingsReader, E
         try {
             return new BigDecimal(String.valueOf(value).trim().replace(",", "."));
         } catch (NumberFormatException e) {
-            return new BigDecimal("0.02");
+            return DEFAULT_INFLATION_RATE;
         }
     }
 }
