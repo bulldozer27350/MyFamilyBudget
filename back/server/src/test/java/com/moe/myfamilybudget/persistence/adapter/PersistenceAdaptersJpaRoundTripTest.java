@@ -49,10 +49,7 @@ import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableI
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowVariableOverrideRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsRepository;
-import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsEntity;
 import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalSettingsEntity;
-import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowSettingsEntity;
 import com.moe.myfamilybudget.domain.settings.core.persistence.AppSettingsRepository;
 import com.moe.myfamilybudget.domain.credit.core.persistence.CreditLoanRepository;
 import com.moe.myfamilybudget.domain.tax.core.persistence.JpaTaxStore;
@@ -168,44 +165,14 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertReferenceState(reader);
     }
 
-    @Test
-    @DisplayName("SILO-220 -- un import copie les parametres dans les tables de leurs proprietaires")
-    void settingsAreCopiedToOwnerTables() {
-        writer.setBudgetData(referenceData());
-
-        assertOwnerSettingsTables();
-    }
-
-    @Test
-    @DisplayName("SILO-220 -- au demarrage, les tables des proprietaires sont rechargees depuis `settings`")
-    void ownerSettingsTablesAreMigratedAtStartup() {
-        writer.setBudgetData(referenceData());
-        context.getBean(PensionSettingsRepository.class).deleteAll();
-        context.getBean(FiscalSettingsRepository.class).deleteAll();
-        context.getBean(CashflowSettingsRepository.class).deleteAll();
-
-        freshReader();
-
-        assertOwnerSettingsTables();
-    }
-
-    private void assertOwnerSettingsTables() {
-        List<PensionSettingsEntity> pension = context.getBean(PensionSettingsRepository.class).findAll();
-        assertThat(pension).hasSize(1);
-        assertThat(pension.get(0).getBirthYear()).isEqualTo(SETTINGS.birthYear());
-        assertThat(pension.get(0).getRetireAge()).isEqualTo(SETTINGS.retireAge());
-
-        List<FiscalSettingsEntity> fiscal = context.getBean(FiscalSettingsRepository.class).findAll();
-        assertThat(fiscal).hasSize(1);
-        assertThat(fiscal.get(0).getChildExitAge()).isEqualTo(SETTINGS.childExitAge());
-        assertThat(fiscal.get(0).getTaxAbattement()).isEqualByComparingTo(SETTINGS.taxAbattement());
-
-        List<CashflowSettingsEntity> cashflow = context.getBean(CashflowSettingsRepository.class).findAll();
-        assertThat(cashflow).hasSize(1);
-        assertThat(cashflow.get(0).getPivotDate()).isEqualTo(SETTINGS.pivotDate());
-        assertThat(cashflow.get(0).getPivotMode()).isEqualTo(SETTINGS.pivotMode());
-        assertThat(cashflow.get(0).getStartBalance()).isEqualByComparingTo(SETTINGS.startBalance());
-    }
+    // R-51 : settingsAreCopiedToOwnerTables et ownerSettingsTablesAreMigratedAtStartup (SILO-220 B1)
+    // verifiaient la copie birthYear/retireAge/childExitAge/taxAbattement/pivotDate/pivotMode/startBalance
+    // depuis le blob `settings` (SettingsEntity) vers pension_settings/fiscal_settings/cashflow_settings,
+    // au moment de l'import et au demarrage si ces tables etaient vides. SettingsEntity est retire (SILO-220
+    // B2, ce patch) : ce mecanisme de copie depuis `settings` n'existe plus, ces deux tests sont retires avec
+    // lui. Depuis R-20/R-40/R-42, la seule ecriture encore pertinente de ces champs passe par l'API de
+    // commande propre a chaque silo (ex. retirementStore().updateRetirementSetting(...)), pas par le modele
+    // generique BudgetDataModel.settings()/writer.setBudgetData(...) exerce ici.
 
     @Test
     @DisplayName("un second import remplace le premier en base (aucune ligne orpheline)")
@@ -1048,16 +1015,10 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertSameContent(taxStore().getTaxRateOverrides(), List.of(TAX_RATE_OVERRIDE));
         assertSameContent(taxStore().getTaxActualOverrides(), List.of(TAX_ACTUAL_OVERRIDE));
 
-        SettingsModel settings = reader.getBudgetData().getEffectiveSettings();
-        assertThat(settings.birthYear()).isEqualTo(SETTINGS.birthYear());
-        assertThat(settings.retireAge()).isEqualTo(SETTINGS.retireAge());
-        assertThat(settings.simulateUntilAge()).isEqualTo(SETTINGS.simulateUntilAge());
-        assertThat(settings.inflationRate()).isEqualByComparingTo(SETTINGS.inflationRate());
-        assertThat(settings.pivotDate()).isEqualTo(SETTINGS.pivotDate());
-        assertThat(settings.pivotMode()).isEqualTo(SETTINGS.pivotMode());
-        assertThat(settings.startBalance()).isEqualByComparingTo(SETTINGS.startBalance());
-        assertThat(settings.childExitAge()).isEqualTo(SETTINGS.childExitAge());
-        assertThat(settings.taxAbattement()).isEqualByComparingTo(SETTINGS.taxAbattement());
+        // R-51 : birthYear/retireAge/simulateUntilAge/inflationRate/pivotDate/pivotMode/startBalance/
+        // childExitAge/taxAbattement n'ont plus de support durable via BudgetDataModel.settings() depuis le
+        // retrait de SettingsEntity ; ils ne font plus partie de ce round-trip (voir le commentaire suivant
+        // fullImportIsReadBackFromDatabase, qui documente le retrait des deux tests SILO-220 B1 correspondants).
     }
 
     /** compareTo ignore l'echelle ; null-safe car certains champs (ex. plafond de tranche) valent null. */

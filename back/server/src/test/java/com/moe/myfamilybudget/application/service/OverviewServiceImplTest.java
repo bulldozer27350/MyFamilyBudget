@@ -18,6 +18,7 @@ import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
@@ -83,7 +84,14 @@ class OverviewServiceImplTest {
     private void setBudgetData(BudgetDataModel budgetData) {
         this.persistenceManager.setBudgetData(budgetData);
         if (budgetData != null) {
-            this.treasuryStore.replace(null,
+            // R-51 : sweepEnabled/cashCeiling/cashFloor/cashAlertThreshold/pivotDate/pivotMode/startBalance
+            // n'ont plus de lecteur de repli via SettingsPersistenceAdapter (retire) ; treasuryStore est
+            // desormais le seul TresorerieSettingsReader du test, il doit donc porter ces valeurs lui-meme
+            // (meme principe que retirementStore.replace(...) ci-dessous pour birthYear/retireAge).
+            SettingsModel s = budgetData.getEffectiveSettings();
+            this.treasuryStore.replace(
+                    new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
+                            s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()),
                     budgetData.incomes(),
                     budgetData.charges(),
                     budgetData.oneoff(),

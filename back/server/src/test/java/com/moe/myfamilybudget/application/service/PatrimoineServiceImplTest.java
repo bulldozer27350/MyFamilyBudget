@@ -39,6 +39,7 @@ import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineYearModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.transition.model.SettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
@@ -61,6 +62,7 @@ class PatrimoineServiceImplTest {
     private InMemoryGoalStore goalStore;
     private InMemoryLoanStore loanStore;
     private InMemoryWealthStore wealthStore;
+    private InMemoryTreasuryStore treasuryStore;
 
     @BeforeEach
     void setUp() {
@@ -70,7 +72,7 @@ class PatrimoineServiceImplTest {
         CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
         goalStore = new InMemoryGoalStore();
         loanStore = new InMemoryLoanStore();
-        InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
+        treasuryStore = new InMemoryTreasuryStore();
         // R-30 : le patrimoine (placements, immobilier, categories d'actifs) ne passe plus par
         // PersistenceManager/BudgetDataModel mais par le silo (JpaWealthStore) ; voir setBudgetData()
         // ci-dessous, qui re-synchronise ce store a chaque fixture ecrite via persistenceManager.
@@ -96,11 +98,21 @@ class PatrimoineServiceImplTest {
      * R-30 : {@code persistenceManager.setBudgetData(...)} ne touche plus le silo Patrimoine ; les
      * fixtures de ce fichier (placements, immobilier, categories d'actifs) doivent donc etre
      * explicitement recopiees dans {@link #wealthStore} pour rester visibles par le service.
+     *
+     * R-51 : sweepEnabled/cashCeiling/cashFloor/cashAlertThreshold n'ont plus de lecteur de repli via
+     * SettingsPersistenceAdapter (retire) ; treasuryStore est desormais le seul TresorerieSettingsReader
+     * du test, il doit donc porter ces valeurs lui-meme (meme principe que wealthStore ci-dessus).
      */
     private void setBudgetData(BudgetDataModel data) {
         persistenceManager.setBudgetData(data);
         if (data != null) {
             wealthStore.replace(data.placements(), data.realEstate(), List.of(), data.assetCategories());
+            SettingsModel s = data.getEffectiveSettings();
+            treasuryStore.replace(
+                    new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
+                            s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()),
+                    data.incomes(), data.charges(), data.oneoff(), data.variableIncomes(),
+                    data.variableOverrides());
         }
     }
 
