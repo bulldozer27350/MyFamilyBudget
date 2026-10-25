@@ -18,6 +18,7 @@ import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntityMapper;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalAllocationEntity;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntity;
 import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
+import com.moe.myfamilybudget.domain.goals.core.persistence.JpaGoalStore;
 
 /**
  * DB-1020 : le modele JPA autonome du domaine Objectifs (additif, sans lien avec le hub) doit
@@ -100,6 +101,39 @@ class GoalJpaModelTest {
         assertThat(repository.count()).isZero();
         assertThat(em.getEntityManager().createQuery("select count(a) from GoalAllocationEntity a", Long.class)
                 .getSingleResult()).isZero();
+    }
+
+    @Test
+    @DisplayName("R-61-05 : plusieurs replace() successifs dans la meme transaction ne levent pas "
+            + "d'exception (migre de BudgetPersistenceGatewayRepeatedSaveTest, SILO-119 B2)")
+    void successiveReplacesInOneTransactionDoNotOrphanAllocations() {
+        JpaGoalStore store = new JpaGoalStore(repository, event -> { });
+
+        store.replace(List.of(goal("g-1", "Voyage", alloc("a-1", "pl-1", "100.00"))));
+        store.replace(List.of(goal("g-1", "Voyage", alloc("a-1", "pl-1", "100.00"))));
+        store.replace(List.of(goal("g-1", "Voyage", alloc("a-1", "pl-1", "100.00")),
+                goal("g-2", "Etudes")));
+        em.flush();
+        em.clear();
+
+        assertThat(repository.count()).isEqualTo(2);
+        assertThat(em.getEntityManager().createQuery("select count(a) from GoalAllocationEntity a", Long.class)
+                .getSingleResult()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("R-61-05 : replace() puis reset() puis replace() dans la meme transaction "
+            + "(migre de BudgetPersistenceGatewayRepeatedSaveTest, SILO-119 B2)")
+    void replaceResetReplaceInOneTransaction() {
+        JpaGoalStore store = new JpaGoalStore(repository, event -> { });
+
+        store.replace(List.of(goal("g-1", "Voyage")));
+        store.reset();
+        store.replace(List.of(goal("g-1", "Voyage")));
+        em.flush();
+        em.clear();
+
+        assertThat(repository.count()).isEqualTo(1);
     }
 
     @Test
