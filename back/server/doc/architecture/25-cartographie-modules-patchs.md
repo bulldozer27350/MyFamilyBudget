@@ -61,7 +61,7 @@ git checkout main
 
 | ID | Dépend de | Dossiers à cloner | Décisions à consulter |
 |---|---|---|---|
-| R-61 | R-01, R-51, R-52, R-60 | `back/persistence`, `back/transition-snapshot`, `back/server`, `back/application` (fixtures de test), `back/pom.xml` (retrait du module) | DA-02 (aucune FK inter-silo : rien à préserver côté hub), DA-03 (script Liquibase de suppression, pas de `ddl-auto`), DA-04 (`LegacyObjectifAllocationMigrator` supprimé, pas déplacé), DA-07 (dernier maillon de la sortie du cache global, séquencement respecté) |
+| R-61 | R-01, R-51, R-52, R-60 | Découpé en 27 sous-patchs (`R-61-01` à `R-61-27`), voir `26-sequencage-r61-suppression-hub.md` — chaque sous-patch y liste ses propres fichiers, plus fins que `back/persistence`/`back/transition-snapshot`/`back/server`/`back/application` au complet | DA-02 (aucune FK inter-silo : rien à préserver côté hub), DA-03 (script Liquibase de suppression, pas de `ddl-auto`), DA-04 (`LegacyObjectifAllocationMigrator` supprimé, pas déplacé), DA-07 (dernier maillon de la sortie du cache global, séquencement respecté), DA-12 (bornes de `SettingsModel`/`SettingsReader`/`BudgetDataModelAllowList`, voir `26`) |
 | R-70 | R-61 | `back/server`, `back/infra-jpa`, `tests/e2e`, `tests/gate`, `.github/workflows`, `docker-compose.prod.yml` | DA-02 (le test de préfixe de table à écrire est exactement celui que DA-02 note comme absent aujourd'hui) |
 | R-71 | R-11, R-22, R-31, R-41, R-43, R-70 | `back/server/doc/architecture` (uniquement, pas `back/server/src`), `tests/gate` | Constat de porte, pas de nouvelle décision : relit DA-01 à DA-07 pour vérifier qu'aucune n'est restée "non appliquée" |
 
