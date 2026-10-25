@@ -10,20 +10,9 @@ import com.moe.myfamilybudget.application.notification.NotificationCheckService;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportMutatedEvent;
 import com.moe.myfamilybudget.domain.goals.model.GoalsMutatedEvent;
 import com.moe.myfamilybudget.domain.settings.model.AppSettingsMutatedEvent;
-import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
 
 /** SILO-180 : une mutation du budget déclenche le contrôle automatique des notifications (SILO-212 : objectifs inclus). */
 class NotificationBudgetMutationListenerTest {
-
-    @Test
-    @DisplayName("Mutation du budget : le contrôle automatique est lancé")
-    void budgetMutationTriggersAutomaticCheck() {
-        NotificationCheckService checkService = mock(NotificationCheckService.class);
-
-        new NotificationBudgetMutationListener(checkService).onBudgetMutated(new BudgetMutatedEvent("test"));
-
-        verify(checkService).runAutomaticCheck();
-    }
 
     @Test
     @DisplayName("Mutation des objectifs : le contrôle automatique est lancé")

@@ -13,17 +13,20 @@ import com.moe.myfamilybudget.domain.tax.model.TaxMutatedEvent;
 import com.moe.myfamilybudget.domain.treasury.model.TreasuryMutatedEvent;
 import com.moe.myfamilybudget.domain.settings.model.AppSettingsMutatedEvent;
 import com.moe.myfamilybudget.domain.wealth.model.WealthMutatedEvent;
-import com.moe.myfamilybudget.persistence.BudgetMutatedEvent;
 
 /**
- * Déclenchement automatique du contrôle des notifications : à chaque {@link BudgetMutatedEvent} (publié par
- * {@code PersistenceManager} après chaque mutation, « toute modification doit déclencher un contrôle des
- * notifications »), après le commit de la transaction en cours ({@link TransactionPhase#AFTER_COMMIT}) pour ne
- * lire que des données effectivement persistées. Reste dans le composition root : l'événement vient de la
- * persistance, que le silo Notifications ne connaît pas (SILO-180).
+ * Déclenchement automatique du contrôle des notifications : à chaque événement de mutation d'un silo, après le
+ * commit de la transaction en cours ({@link TransactionPhase#AFTER_COMMIT}) pour ne lire que des données
+ * effectivement persistées (« toute modification doit déclencher un contrôle des notifications »). Reste dans le
+ * composition root : les événements viennent de la persistance, que le silo Notifications ne connaît pas
+ * (SILO-180).
  *
- * <p>SILO-212 (lot B1) : les objectifs s'écrivent directement dans leur silo, sans {@code PersistenceManager} ;
- * leur adaptateur publie un {@link GoalsMutatedEvent}, traité de la même façon (même contrôle, même phase).
+ * <p>R-61-01 : l'ancien {@code BudgetMutatedEvent}, publié uniquement par le hub ({@code PersistenceManager}),
+ * n'était plus reçu en production (plus aucune écriture ne passe par le hub) ; son abonné {@code onBudgetMutated}
+ * est retiré. Chaque silo publie désormais son propre événement, listés ci-dessous.
+ *
+ * <p>SILO-212 (lot B1) : les objectifs s'écrivent directement dans leur silo, sans passer par le hub ; leur
+ * adaptateur publie un {@link GoalsMutatedEvent}, traité de la même façon (même contrôle, même phase).
  * SILO-213 (lot B) : même principe pour l'import bancaire ({@link BankImportMutatedEvent}).
  * SILO-214 (lot B) : même principe pour les prêts ({@link LoansMutatedEvent}).
  * SILO-216 (lot B1) : même principe pour la trésorerie ({@link TreasuryMutatedEvent}).
@@ -38,11 +41,6 @@ public class NotificationBudgetMutationListener {
 
     public NotificationBudgetMutationListener(NotificationCheckService checkService) {
         this.checkService = checkService;
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onBudgetMutated(BudgetMutatedEvent event) {
-        checkService.runAutomaticCheck();
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
