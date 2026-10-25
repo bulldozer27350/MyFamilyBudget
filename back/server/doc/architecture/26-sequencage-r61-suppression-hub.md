@@ -153,9 +153,9 @@ c'est elle que l'agent suivant doit lire en premier (état rouge/vert, ce qui a 
 
 | ID | Dépend de | Fichiers | Action | Statut | Qui | Branche / commit | Notes de passation |
 |---|---|---|---|---|---|---|---|
-| R-61-01 | — | `NotificationBudgetMutationListener.java`, `NotificationBudgetMutationListenerTest.java` | Retirer `onBudgetMutated`/`BudgetMutatedEvent` (méthode + import) des deux fichiers | À faire | | | |
-| R-61-02 | — | `OverviewMapper.java` | Remplacer `SettingsModel` par `SettingsDto` dans `toSnapshotFragments` (voir 3.1) | À faire | | | |
-| R-61-03 | — | `TresorerieServiceImpl.java` | Basculer vers `domain.treasury.port.UnknownTresorerieFieldException` | À faire | | | |
+| R-61-01 | — | `NotificationBudgetMutationListener.java`, `NotificationBudgetMutationListenerTest.java` | Retirer `onBudgetMutated`/`BudgetMutatedEvent` (méthode + import) des deux fichiers | Livré | Agent | — | Fait tel que spécifié, aucun écart |
+| R-61-02 | — | `OverviewMapper.java` | Remplacer `SettingsModel` par `SettingsDto` dans `toSnapshotFragments` (voir 3.1) | Livré | Agent | — | Fait tel que spécifié ; `toObjectifsParameters` : le `{@link SettingsModel}` du javadoc remplacé par du texte simple |
+| R-61-03 | — | `TresorerieServiceImpl.java` | Basculer vers `domain.treasury.port.UnknownTresorerieFieldException` | Livré | Agent | — | Fait tel que spécifié. **Jalon « vert attendu » de la Phase A confirmé** : `grep -rln "com\.moe\.myfamilybudget\.persistence\.\|com\.moe\.myfamilybudget\.transition\." back/application/src/main back/server/src/main` renvoie vide |
 
 ### Phase B — préparer le testsupport partagé
 
