@@ -10,7 +10,6 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchRule;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 
 /**
  * Règles ARCH-010 (voir doc/architecture/19-backlog-pre-maven-patchs.md) : interdictions explicites
@@ -30,8 +29,7 @@ import com.moe.myfamilybudget.transition.model.BudgetDataModel;
  *       ({@code Jpa*}, {@code *SettingsService}, {@code *SettingsStore}) ne sont pas des moteurs :
  *       ils sont exclus, leur déplacement relève des patchs de persistance ;</li>
  *   <li>seul le package {@code org.springframework.stereotype} est toléré dans les couches pures
- *       (déclaration de composants) ;</li>
- *   <li>{@code BudgetDataModel} vit dans {@code internal.model} et reste libre de se référencer.</li>
+ *       (déclaration de composants).</li>
  * </ul>
  */
 final class PureLayerRules {
@@ -71,12 +69,6 @@ final class PureLayerRules {
                     .and(not(SILO_PERSISTENCE))
                     .as("les couches pures (internal.calculation hors infra de paramétrage, "
                             + "internal.model, transition.model, application.model, application.overview, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, domain.settings, domain.notifications, hors persistance de silo domain.*.core.persistence)");
-
-    static final ArchRule NO_BUDGET_DATA_MODEL = noClasses()
-            .that(PURE_LAYER)
-            .and().areNotAssignableTo(BudgetDataModel.class)
-            .should().dependOnClassesThat().areAssignableTo(BudgetDataModel.class)
-            .as("les couches pures ne doivent pas dépendre de BudgetDataModel (ARCH-010)");
 
     static final ArchRule NO_PERSISTENCE = noClasses()
             .that(PURE_LAYER)

@@ -14,8 +14,7 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
  * l'un des composants du hub) pour compenser une migration. Les lectures passent par les ports
  * {@code *Reader}, les ecritures par les command services et leurs ports {@code *Writer}.
  *
- * <p>Regles strictes, sans gel : toute nouvelle violation fait echouer le build. Complete
- * {@link GlobalSnapshotBoundaryArchTest} (CLEAN-020), qui isole {@code setBudgetData} et {@code resetData}.
+ * <p>Regles strictes, sans gel : toute nouvelle violation fait echouer le build.
  */
 @AnalyzeClasses(packages = "com.moe.myfamilybudget", importOptions = ImportOption.DoNotIncludeTests.class)
 class ReaderPersistenceBoundaryArchTest {

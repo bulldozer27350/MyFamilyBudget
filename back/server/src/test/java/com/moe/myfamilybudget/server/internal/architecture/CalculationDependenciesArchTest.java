@@ -16,7 +16,6 @@ import com.moe.myfamilybudget.application.factory.AssetBucketResolver;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
@@ -26,7 +25,6 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.bankpointage.calculation.PointageCalculationService;
 import com.moe.myfamilybudget.application.model.PointageModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
@@ -34,17 +32,19 @@ import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 
 /**
  * Garde-fou d'architecture RF-001 (voir doc/architecture/00-principes.md, section
  * « Ce qu'il ne faut surtout pas faire » : « Faire dépendre un module métier de la
  * persistance ») et doc/architecture/01-sequencement.md, étape 1.
  *
- * <p>Règle : le package {@code internal.calculation} — les moteurs de calcul — ne doit pas
- * dépendre de {@link BudgetDataModel}. Un moteur de calcul reçoit un {@code XxxInput} dédié,
- * jamais le modèle persistant complet ; c'est le signal d'alerte central de tout le chantier de
- * découplage (test de conception à 4 questions, voir 00-principes.md).
+ * <p>Un moteur de calcul reçoit un {@code XxxInput} dédié, jamais le modèle persistant complet ;
+ * c'est le signal d'alerte central de tout le chantier de découplage (test de conception à 4
+ * questions, voir 00-principes.md). La règle générique qui l'imposait pour tout
+ * {@code internal.calculation} ({@code CALCULATION_DOES_NOT_DEPEND_ON_BUDGET_DATA_MODEL}) a été
+ * retirée en R-61-12 (suppression du hub, voir
+ * doc/architecture/26-sequencage-r61-suppression-hub.md) : les règles ci-dessous, propres à
+ * chaque domaine, couvraient déjà la totalité des moteurs et restent seules en place.
  *
  * <p>Les factories de composition ({@code RetirementInputFactory}, {@code TaxInputFactory}...)
  * vivent dans {@code internal.factory}, hors du périmètre de cette règle : elles sont le lieu
@@ -87,14 +87,6 @@ import com.moe.myfamilybudget.persistence.PersistenceManager;
 @AnalyzeClasses(packages = "com.moe.myfamilybudget", importOptions = ImportOption.DoNotIncludeTests.class)
 class CalculationDependenciesArchTest {
 
-    @ArchTest
-    static final ArchRule CALCULATION_DOES_NOT_DEPEND_ON_BUDGET_DATA_MODEL = noClasses()
-            .that().resideInAPackage("..internal.calculation..")
-            .should().dependOnClassesThat().areAssignableTo(BudgetDataModel.class)
-            .as("le package internal.calculation ne doit pas dépendre de BudgetDataModel "
-                    + "(doc/architecture/00-principes.md) ; règle durcie en RF-902 : "
-                    + "plus aucune violation n'existe depuis RF-901, voir la javadoc de cette classe");
-
     /**
      * Garde-fou du domaine Fiscalité (RF-203) : {@link DefaultTaxCalculationService} ne reçoit que
      * {@code TaxCalculationInput} et ne connaît aucun modèle persistant. Règle stricte (sans gel) :
@@ -104,8 +96,6 @@ class CalculationDependenciesArchTest {
     static final ArchRule TAX_ENGINE_DOES_NOT_DEPEND_ON_PERSISTENT_MODELS = noClasses()
             .that().areAssignableTo(DefaultTaxCalculationService.class)
             .should().dependOnClassesThat().belongToAnyOf(
-                    BudgetDataModel.class,
-                    SettingsModel.class,
                     IncomeModel.class,
                     VariableIncomeModel.class,
                     VariableOverrideModel.class,
@@ -127,11 +117,9 @@ class CalculationDependenciesArchTest {
     static final ArchRule POINTAGE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
             .that().areAssignableTo(PointageCalculationService.class)
             .should().dependOnClassesThat().belongToAnyOf(
-                    BudgetDataModel.class,
                     ChargeModel.class,
                     IncomeModel.class,
                     PlacementModel.class,
-                    SettingsModel.class,
                     PointageModel.class)
             .as("PointageCalculationService ne doit dépendre d'aucun modèle du budget : il consomme uniquement "
                     + "PointageInput (doc/architecture/07-domaine-banque-pointage.md)");
@@ -146,31 +134,12 @@ class CalculationDependenciesArchTest {
     static final ArchRule NOTIFICATION_RULES_DO_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
             .that().resideInAPackage("com.moe.myfamilybudget.domain.notifications..")
             .should().dependOnClassesThat().belongToAnyOf(
-                    BudgetDataModel.class,
                     BankImportModel.class,
                     ObjectifModel.class,
                     ObjectifAllocationModel.class,
-                    PlacementModel.class,
-                    SettingsModel.class)
+                    PlacementModel.class)
             .as("les règles de notification ne doivent dépendre d'aucun modèle du budget : elles "
                     + "consomment uniquement leur Input dédié "
-                    + "(doc/architecture/09-domaine-objectifs-notifications.md)");
-
-    /**
-     * Garde-fou du service applicatif de notifications (NOTIF-010) : le package {@code internal.notification}
-     * (adaptateurs JPA et écoute des mutations du budget depuis SILO-180) ne lit le budget que via les ports de lecture
-     * ({@code internal.port}) et ne dépend ni de {@link PersistenceManager} ni de {@link BudgetDataModel}.
-     * La règle ne vise volontairement pas {@code internal.factory} : les factories d'assemblage peuvent
-     * légitimement manipuler les modèles pendant la transition. Règle stricte (sans gel).
-     */
-    @ArchTest
-    static final ArchRule NOTIFICATION_PACKAGE_DOES_NOT_DEPEND_ON_PERSISTENCE_MANAGER = noClasses()
-            .that().resideInAPackage("..internal.notification..")
-            .should().dependOnClassesThat().belongToAnyOf(
-                    PersistenceManager.class,
-                    BudgetDataModel.class)
-            .as("le package internal.notification doit lire le budget via les ports de lecture "
-                    + "(internal.port), sans PersistenceManager ni BudgetDataModel "
                     + "(doc/architecture/09-domaine-objectifs-notifications.md)");
 
     /**
@@ -185,11 +154,9 @@ class CalculationDependenciesArchTest {
             .that().areAssignableTo(LoanAdviceCalculationService.class)
             .or().areAssignableTo(PlacementRateSuggestionService.class)
             .should().dependOnClassesThat().belongToAnyOf(
-                    BudgetDataModel.class,
                     LoanModel.class,
                     PlacementModel.class,
                     AssetCategoryModel.class,
-                    SettingsModel.class,
                     AssetBucketResolver.class)
             .as("les moteurs Crédit ne doivent dépendre d'aucun modèle du budget : ils consomment "
                     + "uniquement LoanAdviceInput et PlacementRateSuggestionInput "
@@ -206,10 +173,8 @@ class CalculationDependenciesArchTest {
             .that().areAssignableTo(PatrimoineProjectionService.class)
             .or().areAssignableTo(PlacementEvolutionService.class)
             .should().dependOnClassesThat().belongToAnyOf(
-                    BudgetDataModel.class,
                     PlacementModel.class,
-                    PlacementHistoryEntryModel.class,
-                    SettingsModel.class)
+                    PlacementHistoryEntryModel.class)
             .as("les moteurs patrimoniaux ne doivent dépendre d'aucun modèle du budget : ils "
                     + "consomment uniquement PatrimoineProjectionInput et PlacementEvolutionInput "
                     + "(doc/architecture/05-domaine-patrimoine.md)");
@@ -223,8 +188,6 @@ class CalculationDependenciesArchTest {
     static final ArchRule TREASURY_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
             .that().areAssignableTo(TresorerieCalculationService.class)
             .should().dependOnClassesThat().belongToAnyOf(
-                    BudgetDataModel.class,
-                    SettingsModel.class,
                     IncomeModel.class,
                     ChargeModel.class,
                     PlacementModel.class,
@@ -244,8 +207,6 @@ class CalculationDependenciesArchTest {
     static final ArchRule OVERVIEW_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
             .that().areAssignableTo(OverviewCalculationService.class)
             .should().dependOnClassesThat().belongToAnyOf(
-                    BudgetDataModel.class,
-                    SettingsModel.class,
                     IncomeModel.class,
                     ChargeModel.class,
                     PlacementModel.class,
@@ -265,8 +226,6 @@ class CalculationDependenciesArchTest {
     static final ArchRule ANALYSE_ENGINE_DOES_NOT_DEPEND_ON_BUDGET_MODELS = noClasses()
             .that().areAssignableTo(AnalyseCalculationService.class)
             .should().dependOnClassesThat().belongToAnyOf(
-                    BudgetDataModel.class,
-                    SettingsModel.class,
                     IncomeModel.class,
                     ChargeModel.class,
                     PlacementModel.class,
@@ -274,31 +233,6 @@ class CalculationDependenciesArchTest {
                     VariableOverrideModel.class)
             .as("AnalyseCalculationService ne doit dépendre d'aucun modèle du budget : il consomme uniquement "
                     + "AnalyseInput (doc/architecture/08-domaine-analyse.md)");
-
-    /**
-     * Garde-fou d'architecture VT-400 : Les moteurs de calcul et couches pures du domaine ne doivent pas
-     * dépendre de {@link PersistenceManager}.
-     */
-    @ArchTest
-    static final ArchRule ENGINES_DO_NOT_DEPEND_ON_PERSISTENCE_MANAGER = noClasses()
-            .that().resideInAPackage("..internal.calculation..")
-            .or().resideInAPackage("..internal.model..")
-            .or().resideInAPackage("com.moe.myfamilybudget.transition.model..")
-            .or().resideInAPackage("com.moe.myfamilybudget.application.model..")
-            .or().resideInAPackage("com.moe.myfamilybudget.application.overview..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.wealth..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.bankpointage..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.treasury..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.analysis..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.credit..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.goals..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.settings..")
-            .or().resideInAPackage("com.moe.myfamilybudget.domain.notifications..")
-            .should().dependOnClassesThat().areAssignableTo(PersistenceManager.class)
-            .as("les moteurs de calcul et calculateurs purs ne doivent pas dépendre de PersistenceManager "
-                    + "(doc/architecture/00-principes.md)");
 
     /**
      * Garde-fou d'architecture VT-400 : Les couches pures du domaine ne doivent pas

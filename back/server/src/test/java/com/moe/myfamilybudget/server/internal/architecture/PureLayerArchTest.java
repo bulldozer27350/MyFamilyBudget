@@ -15,9 +15,6 @@ import com.tngtech.archunit.lang.ArchRule;
 class PureLayerArchTest {
 
     @ArchTest
-    static final ArchRule NO_BUDGET_DATA_MODEL = PureLayerRules.NO_BUDGET_DATA_MODEL;
-
-    @ArchTest
     static final ArchRule NO_PERSISTENCE = PureLayerRules.NO_PERSISTENCE;
 
     @ArchTest

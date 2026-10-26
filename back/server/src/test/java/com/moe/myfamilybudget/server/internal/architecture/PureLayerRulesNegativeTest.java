@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.moe.myfamilybudget.server.internal.calculation.archfixture.CompliantEngineFixture;
-import com.moe.myfamilybudget.server.internal.calculation.archfixture.EngineWithBudgetDataModelFixture;
 import com.moe.myfamilybudget.server.internal.calculation.archfixture.EngineWithJpaApiFixture;
 import com.moe.myfamilybudget.server.internal.calculation.archfixture.EngineWithOpenApiDtoFixture;
 import com.moe.myfamilybudget.server.internal.calculation.archfixture.EngineWithPersistenceEntityFixture;
@@ -32,18 +31,10 @@ class PureLayerRulesNegativeTest {
     void compliantFixtureViolatesNothing() {
         JavaClasses compliant = classes(CompliantEngineFixture.class);
 
-        assertDoesNotThrow(() -> PureLayerRules.NO_BUDGET_DATA_MODEL.check(compliant));
         assertDoesNotThrow(() -> PureLayerRules.NO_PERSISTENCE.check(compliant));
         assertDoesNotThrow(() -> PureLayerRules.NO_JPA_API.check(compliant));
         assertDoesNotThrow(() -> PureLayerRules.NO_OPENAPI_DTO.check(compliant));
         assertDoesNotThrow(() -> PureLayerRules.SPRING_LIMITED_TO_STEREOTYPES.check(compliant));
-    }
-
-    @Test
-    @DisplayName("NO_BUDGET_DATA_MODEL échoue sur un moteur qui référence BudgetDataModel")
-    void budgetDataModelRuleFails() {
-        assertThrows(AssertionError.class,
-                () -> PureLayerRules.NO_BUDGET_DATA_MODEL.check(classes(EngineWithBudgetDataModelFixture.class)));
     }
 
     @Test
