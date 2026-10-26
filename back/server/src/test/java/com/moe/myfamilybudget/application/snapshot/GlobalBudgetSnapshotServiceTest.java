@@ -11,8 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 
 /**
  * CLEAN-020 -- Opérations globales isolées dans {@link GlobalBudgetSnapshotService} : export, import
@@ -25,19 +23,16 @@ class GlobalBudgetSnapshotServiceTest {
     @Autowired
     private GlobalBudgetSnapshotService snapshotService;
 
-    @Autowired
-    private PersistenceManager persistenceManager;
-
     @Test
     @DisplayName("import(null) n'écrit rien et renvoie l'état courant")
     void importNullKeepsCurrentState() {
         snapshotService.reset();
-        BudgetDataModel before = persistenceManager.getBudgetData();
+        BudgetDataDto before = snapshotService.export();
 
         BudgetDataDto result = snapshotService.importSnapshot(null);
 
-        assertThat(persistenceManager.getBudgetData()).isEqualTo(before);
-        assertThat(result).isEqualTo(snapshotService.export());
+        assertThat(snapshotService.export()).isEqualTo(before);
+        assertThat(result).isEqualTo(before);
     }
 
     @Test

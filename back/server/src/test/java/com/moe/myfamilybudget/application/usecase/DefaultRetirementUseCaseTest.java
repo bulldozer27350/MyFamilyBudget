@@ -20,11 +20,9 @@ import com.moe.myfamilybudget.application.usecase.retirement.RetraiteSaveCommand
 import com.moe.myfamilybudget.application.usecase.retirement.RetirementUseCase;
 import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 
@@ -39,12 +37,10 @@ class DefaultRetirementUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
         InMemoryRetirementStore retirementAdapter = new InMemoryRetirementStore();
         InMemoryTaxStore taxStore = new InMemoryTaxStore();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
-        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         commandService = new RetirementCommandService(retirementAdapter, silos -> { },
                 RecordingTransactionRunner.direct());
         useCase = new DefaultRetirementUseCase(

@@ -16,7 +16,6 @@ import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionServ
 import com.moe.myfamilybudget.api.model.CashflowYearDto;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
@@ -27,8 +26,6 @@ import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.RetirementPersonModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.SalaryHistoryModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
@@ -38,7 +35,6 @@ import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class OverviewServiceImplTest {
 
@@ -46,7 +42,7 @@ class OverviewServiceImplTest {
 
     private OverviewServiceImpl overviewService;
     private OverviewMapper mapper;
-    private PersistenceManager persistenceManager;
+    private CacheBackedAppSettings appSettings;
     private InMemoryTreasuryStore treasuryStore;
     private InMemoryWealthStore wealthStore;
     private InMemoryRetirementStore retirementStore;
@@ -55,9 +51,8 @@ class OverviewServiceImplTest {
     @BeforeEach
     void setUp() {
         mapper = new OverviewMapper();
-        persistenceManager = PersistenceManagerTestFactory.inMemory();
         treasuryStore = new InMemoryTreasuryStore();
-        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        appSettings = new CacheBackedAppSettings();
         wealthStore = new InMemoryWealthStore();
         retirementStore = new InMemoryRetirementStore();
         InMemoryTaxStore taxStore = new InMemoryTaxStore();
@@ -81,33 +76,20 @@ class OverviewServiceImplTest {
                 new InMemoryGoalStore());
     }
 
-    private void setBudgetData(BudgetDataModel budgetData) {
-        this.persistenceManager.setBudgetData(budgetData);
-        if (budgetData != null) {
-            // R-51 : sweepEnabled/cashCeiling/cashFloor/cashAlertThreshold/pivotDate/pivotMode/startBalance
-            // n'ont plus de lecteur de repli via SettingsPersistenceAdapter (retire) ; treasuryStore est
-            // desormais le seul TresorerieSettingsReader du test, il doit donc porter ces valeurs lui-meme
-            // (meme principe que retirementStore.replace(...) ci-dessous pour birthYear/retireAge).
-            SettingsModel s = budgetData.getEffectiveSettings();
-            this.treasuryStore.replace(
-                    new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
-                            s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()),
-                    budgetData.incomes(),
-                    budgetData.charges(),
-                    budgetData.oneoff(),
-                    budgetData.variableIncomes(),
-                    budgetData.variableOverrides());
-            // R-30 : le patrimoine (placements, immobilier, categories d'actifs) ne passe plus par le
-            // cache mais par le silo (JpaWealthStore) ; synchronise comme pour la tresorerie ci-dessus.
-            this.wealthStore.replace(budgetData.placements(), budgetData.realEstate(), List.of(),
-                    budgetData.assetCategories());
-            // R-40 : meme principe pour la retraite (plan et parametres birthYear/retireAge), qui ne passe
-            // plus par le cache mais par le silo (JpaRetirementStore, ici InMemoryRetirementStore).
-            this.retirementStore.replace(
-                    new RetirementSettingsModel(budgetData.getEffectiveSettings().birthYear(),
-                            budgetData.getEffectiveSettings().retireAge()),
-                    budgetData.retirement());
-        }
+    /**
+     * R-61-16 : amorcage direct des silos (plus de {@code BudgetDataModel}/{@code SettingsModel} ni de
+     * {@code PersistenceManager} comme intermediaire, grille 3.2 cas 3). Meme repartition que l'ancien
+     * {@code setBudgetData} : treasuryStore porte les parametres Tresorerie (pivot, solde, sweep, seuils de
+     * cash) ainsi que les revenus/charges ; wealthStore porte placements et immobilier ; retirementStore porte
+     * birthYear/retireAge et le plan de retraite. oneoff/transfers/variableIncomes/variableOverrides/
+     * assetCategories restent vides dans tous les appels de ce fichier (aucun test ne les exerce).
+     */
+    private void seedBudget(TresorerieSettingsModel tresorerieSettings, List<IncomeModel> incomes,
+            List<ChargeModel> charges, List<PlacementModel> placements, List<RealEstateModel> realEstate,
+            Integer birthYear, Integer retireAge, RetirementModel retirement) {
+        this.treasuryStore.replace(tresorerieSettings, incomes, charges, List.of(), List.of(), List.of(), List.of());
+        this.wealthStore.replace(placements, realEstate, List.of(), List.of());
+        this.retirementStore.replace(new RetirementSettingsModel(birthYear, retireAge), retirement);
     }
 
 
@@ -115,8 +97,8 @@ class OverviewServiceImplTest {
     @DisplayName("Should calculate financial projections and retirement metrics accurately")
     void testBuildOverview_NominalCase() {
         // Given
-        SettingsModel settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                new BigDecimal("10000"), 21, new BigDecimal("0.10"));
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", new BigDecimal("10000"), false, null, null, null);
 
         IncomeModel income1 = new IncomeModel("inc_1", "Salaire 1", new BigDecimal("3500"), "2026-01-01", "2048-12-31",
                 new BigDecimal("0.01"), "cat_1", null);
@@ -141,11 +123,8 @@ class OverviewServiceImplTest {
         RetirementModel retirement = new RetirementModel(List.of(person1), new BigDecimal("47100"),
                 new BigDecimal("0.015"), new BigDecimal("1.4386"), "2025-01-01", new BigDecimal("0.01"));
 
-        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(income1), List.of(charge1),
-                List.of(placement1), List.of(realEstate1), retirement, List.of(), List.of(), List.of(), List.of(),
-                List.of(), List.of(), List.of(), List.of(), null);
-
-        this.setBudgetData(budgetData); // Save to persistence for retrieval in service
+        this.seedBudget(tresorerieSettings, List.of(income1), List.of(charge1), List.of(placement1),
+                List.of(realEstate1), 1985, 64, retirement); // Save to persistence for retrieval in service
 
         // When
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
@@ -174,17 +153,14 @@ class OverviewServiceImplTest {
     @DisplayName("Should apply deflator correctly in constant euros mode")
     void testBuildOverview_ConstantEuros() {
         // Given
-        SettingsModel settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                new BigDecimal("10000"), 21, new BigDecimal("0.10"));
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", new BigDecimal("10000"), false, null, null, null);
 
         RealEstateModel realEstate1 = new RealEstateModel("re_1", "Appartement", "Investissement",
                 new BigDecimal("200000"), 2026, new BigDecimal("0.02"), null);
 
-        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(), List.of(), List.of(),
-                List.of(realEstate1), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
-                List.of(), null);
-
-        this.setBudgetData(budgetData); // Save to persistence for retrieval in service
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(), List.of(realEstate1), 1985, 64,
+                null); // Save to persistence for retrieval in service
         // When
         OverviewResponseDto currentEurosResponse = this.overviewService.getOverview(false).getBody();
         OverviewResponseDto constantEurosResponse = this.overviewService.getOverview(true).getBody();
@@ -198,9 +174,6 @@ class OverviewServiceImplTest {
     @DisplayName("Should calculate retirement projection trimestres and pensions correctly")
     void testRetirementProjection() {
         // Given
-        SettingsModel settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                BigDecimal.ZERO, 21, BigDecimal.ZERO);
-
         com.moe.myfamilybudget.domain.treasury.model.IncomeModel income = new com.moe.myfamilybudget.domain.treasury.model.IncomeModel(
                 "inc_1", "Salaire Moe", new BigDecimal("4000"), "2026-01-01", "2048-12-31", new BigDecimal("0.01"),
                 "cat_1", null);
@@ -210,15 +183,12 @@ class OverviewServiceImplTest {
                 List.of(new RetirementModel.SalaryHistoryModel(2025, new BigDecimal("48000"))), new BigDecimal("2000"),
                 new BigDecimal("0.0051"), false);
 
-        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(income), List.of(), List.of(), List.of(),
-                new RetirementModel(List.of(person), new BigDecimal("47100"), new BigDecimal("0.015"),
-                        new BigDecimal("1.4386"), "2025-01-01", new BigDecimal("0.01")),
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
+        RetirementModel retirement = new RetirementModel(List.of(person), new BigDecimal("47100"),
+                new BigDecimal("0.015"), new BigDecimal("1.4386"), "2025-01-01", new BigDecimal("0.01"));
 
         // When
         com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel projection = overviewService.computeRetirementProjection(
-                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()), budgetData.retirement(),
-                budgetData.getEffectiveIncomes(), budgetData.getEffectiveTaxChildren().size(), person);
+                new RetirementSettingsModel(1985, 64), retirement, List.of(income), 0, person);
 
         // Then
         assertThat(projection.ageDepart()).isEqualTo(64);
@@ -233,18 +203,15 @@ class OverviewServiceImplTest {
     @Test
     @DisplayName("Should include loans (passif) in the data returned by /overview")
     void testBuildOverview_LoansAreReturnedInDataDto() {
-        SettingsModel settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual",
-                BigDecimal.ZERO, 21, BigDecimal.ZERO);
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", BigDecimal.ZERO, false, null, null, null);
 
         LoanModel loan1 = new LoanModel("loan_1", "Pret RP", new BigDecimal("180000"), new BigDecimal("0.0080"),
                 new BigDecimal("950"), new BigDecimal("15"), "2020-01-01", "2045-01-01");
 
-        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(), List.of(), List.of(), List.of(), null,
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null,
-                List.of(), List.of());
-
         this.loanStore.replace(List.of(loan1));
-        this.setBudgetData(budgetData); // Save to persistence for retrieval in service
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(), List.of(), 1985, 64,
+                null); // Save to persistence for retrieval in service
 
         // When
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
@@ -265,10 +232,13 @@ class OverviewServiceImplTest {
         // doit declencher la pause (mecanisme pauseLevelFromAlerts, portage de
         // view/js/calculations.js) et suspendre les versements de "Test Selencia"
         // (pausePriority = 1) a partir de l'annee suivante.
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                false, null, null
-        );
+        // inflationRate a 0 (ancien SettingsModel.inflationRate), lu auparavant via le repli de
+        // CacheBackedAppSettings.of(persistenceManager) sur le budget courant ; preserve explicitement ici
+        // puisque le repli en dur de R-61-04 vaut 0.02 par defaut.
+        this.appSettings.updateInflationRate(BigDecimal.ZERO);
+
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", BigDecimal.ZERO, false, null, null, null);
 
         PlacementModel scpiEden = new PlacementModel(
                 "plc_scpi_eden", "Test SCPI Eden", "SCPI", new BigDecimal("3700"), "2026-01-01",
@@ -281,11 +251,8 @@ class OverviewServiceImplTest {
                 false, null, null, null, null, 1, "cat_av"
         );
 
-        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(), List.of(), List.of(selencia, scpiEden),
-                List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
-                List.of(), null);
-
-        this.setBudgetData(budgetData);
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(selencia, scpiEden), List.of(), 1985, 64,
+                null);
 
         // When
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
@@ -327,10 +294,10 @@ class OverviewServiceImplTest {
         // suspendu "Test Pausable" des l'annee 2. cashAlertThreshold n'etant pas configure
         // (null), ce mecanisme ne doit plus se declencher : seul un seuil d'alerte explicite
         // doit desormais augmenter le niveau de tension.
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                true, null, BigDecimal.ZERO, null
-        );
+        this.appSettings.updateInflationRate(BigDecimal.ZERO);
+
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", BigDecimal.ZERO, true, null, BigDecimal.ZERO, null);
 
         PlacementModel sweepAccount = new PlacementModel(
                 "plc_sweep", "Test Sweep Account", "Epargne", new BigDecimal("1000"), "2026-01-01",
@@ -343,11 +310,8 @@ class OverviewServiceImplTest {
                 false, null, null, null, null, 1, "cat_av"
         );
 
-        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable),
-                List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
-                List.of(), null);
-
-        this.setBudgetData(budgetData);
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), 1985,
+                64, null);
 
         // When
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
@@ -374,10 +338,10 @@ class OverviewServiceImplTest {
         // Given : memes donnees que le test precedent, mais avec un cashAlertThreshold
         // explicite (-1000) : la tresorerie de fin d'annee 1 (-2400) passe sous ce seuil, ce
         // qui doit suspendre "Test Pausable" a partir de l'annee 2.
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                true, null, BigDecimal.ZERO, new BigDecimal("-1000")
-        );
+        this.appSettings.updateInflationRate(BigDecimal.ZERO);
+
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", BigDecimal.ZERO, true, null, BigDecimal.ZERO, new BigDecimal("-1000"));
 
         PlacementModel sweepAccount = new PlacementModel(
                 "plc_sweep", "Test Sweep Account", "Epargne", new BigDecimal("1000"), "2026-01-01",
@@ -390,11 +354,8 @@ class OverviewServiceImplTest {
                 false, null, null, null, null, 1, "cat_av"
         );
 
-        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable),
-                List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
-                List.of(), null);
-
-        this.setBudgetData(budgetData);
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), 1985,
+                64, null);
 
         // When
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
@@ -417,10 +378,11 @@ class OverviewServiceImplTest {
     @Test
     @DisplayName("Should return sweepEnabled, cashCeiling and cashFloor in Overview response data.settings")
     void testBuildOverview_ReturnsSweepSettingsInData() {
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, "2026-01-01", "manual", new BigDecimal("1000"), 21, BigDecimal.ZERO,
-                true, new BigDecimal("7000"), new BigDecimal("5000")
-        );
+        this.appSettings.updateInflationRate(BigDecimal.ZERO);
+
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", new BigDecimal("1000"), true, new BigDecimal("7000"), new BigDecimal("5000"),
+                null);
 
         PlacementModel livretA = new PlacementModel(
                 "plc_livret_a", "Livret A", "Épargne", new BigDecimal("10000"), "2026-01-01",
@@ -428,11 +390,7 @@ class OverviewServiceImplTest {
                 false, null, 1, new BigDecimal("22950"), new BigDecimal("5000"), 1, "cat_epargne"
         );
 
-        BudgetDataModel budgetData = new BudgetDataModel(settings, List.of(), List.of(), List.of(livretA),
-                List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
-                List.of(), null);
-
-        this.setBudgetData(budgetData);
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(livretA), List.of(), 1985, 64, null);
 
         OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
 
