@@ -29,12 +29,10 @@ import com.moe.myfamilybudget.domain.goals.model.ObjectifAllocationModel;
 import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalWriter;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
@@ -118,8 +116,6 @@ class GoalCommandServiceTest {
     @Test
     @DisplayName("integration adaptateur : objectif ecrit puis supprime, relu par le lecteur")
     void adapterWritesAreReadBackByReader() {
-        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
         InMemoryGoalStore adapter = new InMemoryGoalStore();
         GoalCommandService realService = new GoalCommandService(adapter, adapter,
                 new PatrimoinePersistenceAdapter(

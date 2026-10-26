@@ -23,7 +23,6 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
@@ -36,26 +35,18 @@ class TreasuryInputFactoryTest {
 
     private final TreasuryInputFactory factory = new TreasuryInputFactory(new DefaultRetirementCalculationService(), new DefaultTaxCalculationService());
 
-    private static SettingsModel settings() {
-        return new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), null, "manual", new BigDecimal("1500"),
-                21, BigDecimal.ZERO);
-    }
-
     private static TreasuryInputFactory.Sources budget(
-            SettingsModel settings,
             List<IncomeModel> incomes,
             List<ChargeModel> charges,
             List<PlacementModel> placements,
             List<VariableIncomeModel> variableIncomes,
             List<VariableOverrideModel> variableOverrides) {
         return new TreasuryInputFactory.Sources(
-                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()),
-                new TaxSettingsModel(settings.childExitAge(), settings.taxAbattement()),
-                new TresorerieSettingsModel(settings.pivotDate(), settings.pivotMode(), settings.startBalance(),
-                        settings.sweepEnabled(), settings.cashCeiling(), settings.cashFloor(),
-                        settings.cashAlertThreshold()),
-                new SimulationSettingsModel(settings.simulateUntilAge()),
-                settings.inflationRate(),
+                new RetirementSettingsModel(1985, 64),
+                new TaxSettingsModel(21, BigDecimal.ZERO),
+                new TresorerieSettingsModel(null, "manual", new BigDecimal("1500"), false, null, null, null),
+                new SimulationSettingsModel(85),
+                new BigDecimal("0.02"),
                 null,
                 incomes, charges, placements, List.of(), List.of(), variableIncomes, variableOverrides,
                 List.of(), List.of(), List.of(), List.of(), null);
@@ -66,7 +57,7 @@ class TreasuryInputFactoryTest {
     void period() {
         IncomeModel income = new IncomeModel("i1", "Salaire", new BigDecimal("3000"), "2024-06-01", "2050-12-31",
                 null, "", "");
-        TreasuryInputFactory.Sources data = budget(settings(), List.of(income), List.of(), List.of(), List.of(), List.of());
+        TreasuryInputFactory.Sources data = budget(List.of(income), List.of(), List.of(), List.of(), List.of());
 
         TreasuryProjectionInput input = factory.from(data);
 
@@ -80,7 +71,7 @@ class TreasuryInputFactoryTest {
         IncomeModel income = new IncomeModel("i1", "Salaire", new BigDecimal("3000"), "2024-06-01", "2050-12-31",
                 new BigDecimal("0.01"), "", "");
         ChargeModel charge = new ChargeModel("c1", "Loyer", new BigDecimal("900"), "2024-01-01", "2050-12-31", null, "", "");
-        TreasuryInputFactory.Sources data = budget(settings(), List.of(income), List.of(charge), List.of(), List.of(), List.of());
+        TreasuryInputFactory.Sources data = budget(List.of(income), List.of(charge), List.of(), List.of(), List.of());
 
         TreasuryProjectionInput input = factory.from(data);
 
@@ -97,7 +88,7 @@ class TreasuryInputFactoryTest {
                 "Non", "", "");
         VariableOverrideModel override = new VariableOverrideModel("o1", "Prime", 2026, new BigDecimal("500"), "Oui", "");
         VariableOverrideModel otherLabel = new VariableOverrideModel("o2", "Autre", 2026, new BigDecimal("999"), null, "");
-        TreasuryInputFactory.Sources data = budget(settings(), List.of(), List.of(), List.of(), List.of(v), List.of(override, otherLabel));
+        TreasuryInputFactory.Sources data = budget(List.of(), List.of(), List.of(), List.of(v), List.of(override, otherLabel));
 
         TreasuryProjectionInput input = factory.from(data);
 
@@ -112,7 +103,7 @@ class TreasuryInputFactoryTest {
         PlacementModel paused = new PlacementModel("p1", "Livret A", "Livret", new BigDecimal("10000"), "2024-01-01",
                 new BigDecimal("300"), "2024-01", null, new BigDecimal("0.01"), new BigDecimal("0.02"),
                 new BigDecimal("0.03"), Boolean.FALSE, "", 1, null, new BigDecimal("50000"), 1, "");
-        TreasuryInputFactory.Sources data = budget(settings(), List.of(), List.of(), List.of(paused), List.of(), List.of());
+        TreasuryInputFactory.Sources data = budget(List.of(), List.of(), List.of(paused), List.of(), List.of());
 
         TreasuryProjectionInput input = factory.from(data);
 
@@ -124,7 +115,7 @@ class TreasuryInputFactoryTest {
     @Test
     @DisplayName("taxProjection et retirementIncome : une entrée par année de la période, aucune levée d'exception à vide")
     void taxAndRetirementProjectionsCoverThePeriod() {
-        TreasuryInputFactory.Sources data = budget(settings(), List.of(), List.of(), List.of(), List.of(), List.of());
+        TreasuryInputFactory.Sources data = budget(List.of(), List.of(), List.of(), List.of(), List.of());
 
         TreasuryProjectionInput input = factory.from(data);
 

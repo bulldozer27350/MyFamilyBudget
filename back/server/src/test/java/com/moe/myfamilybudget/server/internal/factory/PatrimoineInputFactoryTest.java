@@ -24,7 +24,6 @@ import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 
 /**
@@ -34,30 +33,37 @@ import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
  */
 class PatrimoineInputFactoryTest {
 
-    private static SettingsModel settings(BigDecimal cashCeiling, BigDecimal cashAlertThreshold) {
-        return new SettingsModel(
-                1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", new BigDecimal("1500"),
-                21, BigDecimal.ZERO, Boolean.TRUE, cashCeiling, new BigDecimal("200"), cashAlertThreshold);
+    private static RetirementSettingsModel retirementSettings() {
+        return new RetirementSettingsModel(1985, 64);
+    }
+
+    private static TresorerieSettingsModel tresorerieSettings(BigDecimal cashCeiling, BigDecimal cashAlertThreshold) {
+        return new TresorerieSettingsModel("2026-01-01", "manual", new BigDecimal("1500"), Boolean.TRUE,
+                cashCeiling, new BigDecimal("200"), cashAlertThreshold);
     }
 
     private static PatrimoineInputFactory.Sources budget(
-            SettingsModel settings,
+            RetirementSettingsModel retirementSettings,
+            TresorerieSettingsModel tresorerieSettings,
+            BigDecimal inflationRate,
             List<IncomeModel> incomes,
             List<ChargeModel> charges,
             List<PlacementModel> placements,
             List<OneOffExpenseModel> oneoff,
             List<PatrimoineTransferModel> transfers) {
-        if (settings == null) {
-            // mêmes valeurs par défaut que l'ancien BudgetDataModel.getEffectiveSettings()
-            settings = new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "", "manual", BigDecimal.ZERO,
-                    21, new BigDecimal("0.10"), null, null, null);
-        }
+        // mêmes valeurs par défaut que l'ancien BudgetDataModel.getEffectiveSettings()
+        RetirementSettingsModel effRetirement = retirementSettings != null ? retirementSettings
+                : new RetirementSettingsModel(1985, 64);
+        TresorerieSettingsModel effTresorerie = tresorerieSettings != null ? tresorerieSettings
+                : new TresorerieSettingsModel("", "manual", BigDecimal.ZERO, null, null, null, null);
+        BigDecimal effInflation = inflationRate != null ? inflationRate : new BigDecimal("0.02");
         return new PatrimoineInputFactory.Sources(
-                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()),
-                new TresorerieSettingsModel(settings.pivotDate(), settings.pivotMode(), settings.startBalance(),
-                        settings.sweepEnabled(), settings.cashCeiling(), settings.cashFloor(),
-                        settings.cashAlertThreshold()),
-                settings.inflationRate(), incomes, charges, placements, oneoff, transfers);
+                effRetirement, effTresorerie, effInflation,
+                incomes != null ? incomes : List.of(),
+                charges != null ? charges : List.of(),
+                placements != null ? placements : List.of(),
+                oneoff != null ? oneoff : List.of(),
+                transfers != null ? transfers : List.of());
     }
 
     private static PlacementModel placement(String label, String balanceDate, String from, String until) {
@@ -69,7 +75,8 @@ class PatrimoineInputFactoryTest {
     @Test
     @DisplayName("from() : horizon = première date connue du budget jusqu'à l'année de retraite")
     void horizon() {
-        PatrimoineInputFactory.Sources data = budget(settings(null, null), List.of(), List.of(),
+        PatrimoineInputFactory.Sources data = budget(retirementSettings(), tresorerieSettings(null, null),
+                new BigDecimal("0.02"), List.of(), List.of(),
                 List.of(placement("Livret A", "2024-06-15", "2025-01", null)), List.of(), List.of());
 
         PatrimoineProjectionInput input = PatrimoineInputFactory.from(data);
@@ -81,10 +88,11 @@ class PatrimoineInputFactoryTest {
     @Test
     @DisplayName("from() : si la retraite précède le début, l'horizon vaut début + 40 ans")
     void horizonFallbackWhenRetirementBeforeStart() {
-        SettingsModel earlyRetirement = new SettingsModel(
-                1950, 60, 85, BigDecimal.ZERO, "2026-01-01", "manual", BigDecimal.ZERO,
-                21, BigDecimal.ZERO, null, null, null, null);
-        PatrimoineInputFactory.Sources data = budget(earlyRetirement, List.of(), List.of(), List.of(), List.of(), List.of());
+        RetirementSettingsModel earlyRetirement = new RetirementSettingsModel(1950, 60);
+        TresorerieSettingsModel tresorerie = new TresorerieSettingsModel(
+                "2026-01-01", "manual", BigDecimal.ZERO, null, null, null, null);
+        PatrimoineInputFactory.Sources data = budget(earlyRetirement, tresorerie, BigDecimal.ZERO,
+                List.of(), List.of(), List.of(), List.of(), List.of());
 
         PatrimoineProjectionInput input = PatrimoineInputFactory.from(data);
 
@@ -95,7 +103,8 @@ class PatrimoineInputFactoryTest {
     @Test
     @DisplayName("from() : les paramètres reprennent inflation, solde de départ et seuils de trésorerie")
     void parameters() {
-        PatrimoineInputFactory.Sources data = budget(settings(new BigDecimal("8000"), new BigDecimal("1000")),
+        PatrimoineInputFactory.Sources data = budget(retirementSettings(),
+                tresorerieSettings(new BigDecimal("8000"), new BigDecimal("1000")), new BigDecimal("0.02"),
                 List.of(), List.of(), List.of(), List.of(), List.of());
 
         PatrimoineProjectionInput input = PatrimoineInputFactory.from(data);
@@ -109,7 +118,8 @@ class PatrimoineInputFactoryTest {
     @Test
     @DisplayName("from() : seuils de trésorerie non configurés => null")
     void unsetCashThresholdsStayNull() {
-        PatrimoineInputFactory.Sources data = budget(settings(null, null), List.of(), List.of(), List.of(), List.of(), List.of());
+        PatrimoineInputFactory.Sources data = budget(retirementSettings(), tresorerieSettings(null, null),
+                new BigDecimal("0.02"), List.of(), List.of(), List.of(), List.of(), List.of());
 
         PatrimoineProjectionInput input = PatrimoineInputFactory.from(data);
 
@@ -120,7 +130,8 @@ class PatrimoineInputFactoryTest {
     @Test
     @DisplayName("from() : un placement est traduit champ à champ, y compris la configuration de sweep et de pause")
     void placementMapping() {
-        PatrimoineInputFactory.Sources data = budget(settings(null, null), List.of(), List.of(),
+        PatrimoineInputFactory.Sources data = budget(retirementSettings(), tresorerieSettings(null, null),
+                new BigDecimal("0.02"), List.of(), List.of(),
                 List.of(placement("Livret A", "2025-03-10", "2025-04", "2030-12-31")), List.of(), List.of());
 
         PlacementProjectionInput placement = PatrimoineInputFactory.from(data).placements().get(0);
@@ -147,7 +158,8 @@ class PatrimoineInputFactoryTest {
     void placementWithMissingValues() {
         PlacementModel bare = new PlacementModel("pl1", "Vide", "Livret", null, "pas-une-date", null, null, null,
                 null, null, null, null, null);
-        PatrimoineInputFactory.Sources data = budget(settings(null, null), List.of(), List.of(), List.of(bare), List.of(), List.of());
+        PatrimoineInputFactory.Sources data = budget(retirementSettings(), tresorerieSettings(null, null),
+                new BigDecimal("0.02"), List.of(), List.of(), List.of(bare), List.of(), List.of());
 
         PlacementProjectionInput placement = PatrimoineInputFactory.from(data).placements().get(0);
 
@@ -170,7 +182,8 @@ class PatrimoineInputFactoryTest {
                 new PatrimoineTransferModel("t3", "Livret A", null, new BigDecimal("100"), null),
                 new PatrimoineTransferModel("t4", "Livret A", "n'importe quoi", new BigDecimal("100"), null),
                 new PatrimoineTransferModel("t5", "PEA", "2028-01", null, null));
-        PatrimoineInputFactory.Sources data = budget(settings(null, null), List.of(), List.of(), List.of(), List.of(), transfers);
+        PatrimoineInputFactory.Sources data = budget(retirementSettings(), tresorerieSettings(null, null),
+                new BigDecimal("0.02"), List.of(), List.of(), List.of(), List.of(), transfers);
 
         List<PlacementTransfer> result = PatrimoineInputFactory.from(data).transfers();
 
@@ -194,7 +207,8 @@ class PatrimoineInputFactoryTest {
                         BigDecimal.ZERO, null, null));
         List<OneOffExpenseModel> oneoff = List.of(
                 new OneOffExpenseModel("o1", "Voiture", "2026-06-01", new BigDecimal("500"), null));
-        PatrimoineInputFactory.Sources data = budget(settings(null, null), incomes, charges, List.of(), oneoff, List.of());
+        PatrimoineInputFactory.Sources data = budget(retirementSettings(), tresorerieSettings(null, null),
+                new BigDecimal("0.02"), incomes, charges, List.of(), oneoff, List.of());
 
         List<AnnualCashflow> years = PatrimoineInputFactory.from(data).cashflow().years();
 
@@ -215,7 +229,8 @@ class PatrimoineInputFactoryTest {
         List<ChargeModel> charges = List.of(
                 new ChargeModel("c1", "Loyer", new BigDecimal("1000"), "2026-01-01", "2027-12-31",
                         null, null, null));
-        PatrimoineInputFactory.Sources data = budget(settings(null, null), incomes, charges, List.of(), List.of(), List.of());
+        PatrimoineInputFactory.Sources data = budget(retirementSettings(), tresorerieSettings(null, null),
+                new BigDecimal("0.02"), incomes, charges, List.of(), List.of(), List.of());
 
         List<AnnualCashflow> years = PatrimoineInputFactory.from(data).cashflow().years();
 
@@ -226,7 +241,7 @@ class PatrimoineInputFactoryTest {
     @Test
     @DisplayName("from() : budget vide => entrée exploitable sans placements ni retraits")
     void emptyBudget() {
-        PatrimoineInputFactory.Sources data = budget(null, null, null, null, null, null);
+        PatrimoineInputFactory.Sources data = budget(null, null, null, null, null, null, null, null);
 
         PatrimoineProjectionInput input = PatrimoineInputFactory.from(data);
 
@@ -250,8 +265,9 @@ class PatrimoineInputFactoryTest {
                 new PlacementHistoryEntryModel("h1", "2025-03-01", new BigDecimal("1200"), null),
                 new PlacementHistoryEntryModel("h2", "pas une date", new BigDecimal("999"), null),
                 new PlacementHistoryEntryModel("h3", "2025-01-01", new BigDecimal("1100"), null)));
-        PatrimoineInputFactory.Sources data = budget(settings(new BigDecimal("9000"), new BigDecimal("300")), List.of(), List.of(),
-                List.of(traced), List.of(), List.of());
+        PatrimoineInputFactory.Sources data = budget(retirementSettings(),
+                tresorerieSettings(new BigDecimal("9000"), new BigDecimal("300")), new BigDecimal("0.02"),
+                List.of(), List.of(), List.of(traced), List.of(), List.of());
 
         PlacementEvolutionInput input = PatrimoineInputFactory.forPlacementEvolution(
                 data, traced, LocalDate.of(2026, 9, 28));
@@ -276,8 +292,8 @@ class PatrimoineInputFactoryTest {
         List<PatrimoineTransferModel> transfers = List.of(
                 new PatrimoineTransferModel("t1", "PEA", "2027-05-20", new BigDecimal("2000"), null),
                 new PatrimoineTransferModel("t2", null, "2027-05-20", new BigDecimal("100"), null));
-        PatrimoineInputFactory.Sources data = budget(settings(null, null), List.of(), List.of(),
-                List.of(withHistory, withoutHistory), List.of(), transfers);
+        PatrimoineInputFactory.Sources data = budget(retirementSettings(), tresorerieSettings(null, null),
+                new BigDecimal("0.02"), List.of(), List.of(), List.of(withHistory, withoutHistory), List.of(), transfers);
 
         PlacementEvolutionInput input = PatrimoineInputFactory.forPlacementEvolution(
                 data, withoutHistory, LocalDate.of(2026, 9, 28));

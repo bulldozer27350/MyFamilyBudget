@@ -15,7 +15,6 @@ import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionServ
 import com.moe.myfamilybudget.application.overview.OverviewInput;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjection;
 import com.moe.myfamilybudget.domain.wealth.calculation.RealEstateProjection;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
@@ -24,68 +23,50 @@ import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.wealth.model.ScenarioAmountsModel;
 
 /**
  * RF-900 : vérifie la création d'{@link OverviewInput} par {@link OverviewInputFactory}
- * à partir de {@link BudgetDataModel}.
+ * à partir de fragments par silo (SILO-117).
  */
 class OverviewInputFactoryTest {
 
     private final OverviewInputFactory factory = new OverviewInputFactory(new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(),
             new DefaultPatrimoineProjectionService(), new DefaultTresorerieCalculationService());
 
-    private static SettingsModel settings() {
-        return new SettingsModel(1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", new BigDecimal("5000"),
-                21, BigDecimal.ZERO);
+    private static RetirementSettingsModel retirementSettings() {
+        return new RetirementSettingsModel(1985, 64);
+    }
+
+    private static TaxSettingsModel taxSettings() {
+        return new TaxSettingsModel(21, BigDecimal.ZERO);
+    }
+
+    private static TresorerieSettingsModel tresorerieSettings() {
+        return new TresorerieSettingsModel("2026-01-01", "manual", new BigDecimal("5000"), false, null, null, null);
+    }
+
+    private static SimulationSettingsModel simulationSettings() {
+        return new SimulationSettingsModel(85);
     }
 
     /** SILO-117 : la factory reçoit des fragments, pas le snapshot global. */
-    private static OverviewInputFactory.Sources sources(BudgetDataModel data) {
-        SettingsModel s = data.getEffectiveSettings();
-        return new OverviewInputFactory.Sources(
-                new TreasuryInputFactory.Sources(
-                        new RetirementSettingsModel(s.birthYear(), s.retireAge()),
-                        new TaxSettingsModel(s.childExitAge(), s.taxAbattement()),
-                        new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(),
-                                s.sweepEnabled(), s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()),
-                        new SimulationSettingsModel(s.simulateUntilAge()),
-                        s.inflationRate(),
-                        data.retirement(), data.getEffectiveIncomes(), data.getEffectiveCharges(),
-                        data.getEffectivePlacements(), data.getEffectiveOneoff(), data.getEffectiveTransfers(),
-                        data.getEffectiveVariableIncomes(), data.getEffectiveVariableOverrides(),
-                        data.getEffectiveTaxChildren(), data.getEffectiveTaxBrackets(),
-                        data.getEffectiveTaxRateOverrides(), data.getEffectiveTaxActualOverrides(),
-                        data.bankImport()),
-                data.getEffectiveRealEstate());
-    }
-
-    private static BudgetDataModel budget(
-            SettingsModel settings,
+    private static OverviewInputFactory.Sources sources(
             List<IncomeModel> incomes,
             List<ChargeModel> charges,
             List<PlacementModel> placements,
             List<RealEstateModel> realEstates) {
-        return new BudgetDataModel(
-                settings,
-                incomes,
-                charges,
-                placements,
-                realEstates,
-                null,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                null,
-                List.of(),
-                List.of(),
-                List.of());
+        return new OverviewInputFactory.Sources(
+                new TreasuryInputFactory.Sources(
+                        retirementSettings(),
+                        taxSettings(),
+                        tresorerieSettings(),
+                        simulationSettings(),
+                        new BigDecimal("0.02"),
+                        null, incomes, charges, placements, List.of(), List.of(),
+                        List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                        null),
+                realEstates);
     }
 
     @Test
@@ -105,9 +86,8 @@ class OverviewInputFactoryTest {
         RealEstateModel re = new RealEstateModel("re1", "Résidence principale", "Maison",
                 new BigDecimal("200000"), 2026, new BigDecimal("0.02"), "");
 
-        BudgetDataModel data = budget(settings(), List.of(income), List.of(charge), List.of(p1, p2), List.of(re));
-
-        OverviewInput input = factory.from(sources(data), false, 2026);
+        OverviewInput input = factory.from(
+                sources(List.of(income), List.of(charge), List.of(p1, p2), List.of(re)), false, 2026);
 
         // 1. Projections présentes et non nulles
         assertThat(input.treasuryProjection()).isNotNull();
@@ -155,8 +135,8 @@ class OverviewInputFactoryTest {
                 BigDecimal.ZERO, null, null, new BigDecimal("0.00"),
                 new BigDecimal("0.00"), new BigDecimal("0.00"), true, "");
 
-        BudgetDataModel data = budget(settings(), List.of(income), List.of(), List.of(p1, p2), List.of());
-        OverviewInput input = factory.from(sources(data), false, 2026);
+        OverviewInput input = factory.from(
+                sources(List.of(income), List.of(), List.of(p1, p2), List.of()), false, 2026);
 
         PatrimoineProjection pat = input.patrimoineProjection();
         ScenarioAmountsModel financialOnly = pat.financialOnlyPatrimoine(0, BigDecimal.ONE);
