@@ -67,8 +67,10 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
 
 /**
  * DB-010 -- Round-trip des adaptateurs de lecture contre une vraie base (H2 en memoire, vrais repositories
- * JPA). Complete {@link PersistenceAdaptersTest} (VT-310), dont les repositories sont mockes et qui ne
- * prouve donc que la coherence du cache memoire.
+ * JPA). Completait {@code PersistenceAdaptersTest} (VT-310, repositories mockes, ne prouvait que la
+ * coherence du cache memoire) avant que ce dernier ne soit retire (R-61-10) : il ne testait plus que le
+ * comportement interne du hub ({@code PersistenceManager}/{@code BudgetDataModel}/{@code SettingsModel}),
+ * lui-meme en cours de suppression par ce decoupage.
  *
  * <p>R-61-09-b : il n'y a plus de hub ({@code PersistenceManager}/{@code BudgetDataModel}) a amorcer. Chaque
  * scenario ecrit directement dans le(s) silo(s) qu'il exerce (via les stores JPA reels, injectes depuis le
