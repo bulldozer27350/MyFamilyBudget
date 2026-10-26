@@ -20,9 +20,13 @@ import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
 import com.moe.myfamilybudget.application.command.TaxCommandService;
+import com.moe.myfamilybudget.application.command.RetirementCommandService;
+import com.moe.myfamilybudget.application.command.TresorerieCommandService;
+import com.moe.myfamilybudget.application.command.SettingsCommandRouter;
+import com.moe.myfamilybudget.application.command.SimulationSettingsCommandService;
+import com.moe.myfamilybudget.application.command.EconomicAssumptionsCommandService;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.application.mapper.TaxMapper;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
@@ -32,8 +36,6 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
-import com.moe.myfamilybudget.server.internal.testsupport.SettingsCommandRouterTestFactory;
 
 class ImpotsServiceImplTest {
 
@@ -41,25 +43,33 @@ class ImpotsServiceImplTest {
 
     private ImpotsServiceImpl service;
     private TaxMapper mapper;
-    private PersistenceManager persistenceManager;
 
     @BeforeEach
     void setUp() {
         mapper = new TaxMapper();
-        persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
-        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         InMemoryTaxStore taxStore = new InMemoryTaxStore();
         InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
+        // R-61-15 : SettingsCommandRouterTestFactory.of(PersistenceManager, ...) depend du hub (retrait prevu
+        // par R-61-21) ; le routeur est construit ici directement, memes stores par defaut que l'overload a
+        // deux arguments de la factory (taxStore/retirementStore/treasuryStore internes non partages, seule
+        // l'instance appSettings est partagee avec le service pour que simulateUntilAge/inflationRate restent
+        // relus depuis la meme instance qu'en ecriture, comme avant R-61-04).
+        SettingsCommandRouter settingsCommandRouter = new SettingsCommandRouter(
+                new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore()),
+                new TaxCommandService(new InMemoryTaxStore(), silos -> { }, RecordingTransactionRunner.direct()),
+                new RetirementCommandService(new InMemoryRetirementStore(), silos -> { }, RecordingTransactionRunner.direct()),
+                new TresorerieCommandService(new InMemoryTreasuryStore(), silos -> { }, RecordingTransactionRunner.direct()),
+                new SimulationSettingsCommandService(appSettings, silos -> { }, RecordingTransactionRunner.direct()),
+                new EconomicAssumptionsCommandService(appSettings, silos -> { }, RecordingTransactionRunner.direct()));
         service = new ImpotsServiceImpl(
                 mapper,
                 new RetirementInputFactory(),
                 new DefaultRetirementCalculationService(),
                 new DefaultTaxCalculationService(),
                 new TaxCommandService(taxStore, silos -> { }, RecordingTransactionRunner.direct()),
-                SettingsCommandRouterTestFactory.of(persistenceManager,
-                        new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore())),
+                settingsCommandRouter,
                 retirementStore,
                 taxStore,
                 treasuryStore,

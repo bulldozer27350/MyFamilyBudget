@@ -12,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
 import com.moe.myfamilybudget.application.mapper.AnalyseMapper;
 import com.moe.myfamilybudget.domain.analysis.core.DefaultAnalyseCalculationService;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
@@ -24,7 +23,6 @@ import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 class AnalyseServiceImplTest {
 
@@ -32,14 +30,11 @@ class AnalyseServiceImplTest {
 
     private AnalyseServiceImpl service;
     private AnalyseMapper mapper;
-    private PersistenceManager persistenceManager;
 
     @BeforeEach
     void setUp() {
         mapper = new AnalyseMapper();
-        persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
-        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
         InMemoryTaxStore taxStore = new InMemoryTaxStore();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();

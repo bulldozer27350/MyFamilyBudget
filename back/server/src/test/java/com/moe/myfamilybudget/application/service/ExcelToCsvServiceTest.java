@@ -24,11 +24,9 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import com.moe.myfamilybudget.domain.bankpointage.core.DefaultBankImportCalculationService;
 import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 @DisplayName("ExcelToCsvService & convertExcelToCsv Tests")
 class ExcelToCsvServiceTest {
@@ -41,8 +39,6 @@ class ExcelToCsvServiceTest {
     @BeforeEach
     void setUp() {
         service = new ExcelToCsvService();
-        PersistenceManager pm = PersistenceManagerTestFactory.inMemory();
-        pm.init();
         StatementBankImportMapper mapper = new StatementBankImportMapper();
         controller = new StatementBankImportServiceImpl(
                 bankStore, new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()), mapper, service,

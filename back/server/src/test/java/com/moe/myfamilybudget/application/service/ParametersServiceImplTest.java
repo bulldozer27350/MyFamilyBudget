@@ -22,6 +22,12 @@ import org.springframework.http.ResponseEntity;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.application.mapper.SettingsMapper;
 import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
+import com.moe.myfamilybudget.application.command.RetirementCommandService;
+import com.moe.myfamilybudget.application.command.TresorerieCommandService;
+import com.moe.myfamilybudget.application.command.SettingsCommandRouter;
+import com.moe.myfamilybudget.application.command.SimulationSettingsCommandService;
+import com.moe.myfamilybudget.application.command.EconomicAssumptionsCommandService;
+import com.moe.myfamilybudget.application.command.TaxCommandService;
 import com.moe.myfamilybudget.config.SiloMutationLockRegistry;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.JpaWealthStore;
@@ -29,7 +35,6 @@ import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryEntit
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthCategoryRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthPlacementRepository;
 import com.moe.myfamilybudget.domain.wealth.core.persistence.WealthRealEstateRepository;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
@@ -37,8 +42,6 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
-import com.moe.myfamilybudget.server.internal.testsupport.SettingsCommandRouterTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 class ParametersServiceImplTest {
@@ -47,16 +50,13 @@ class ParametersServiceImplTest {
 
     private ParametersServiceImpl service;
     private SettingsMapper mapper;
-    private PersistenceManager persistenceManager;
 
     @BeforeEach
     void setUp() {
         mapper = new SettingsMapper();
-        persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
         ObjectifsSettingsService objectifsSettingsService =
                 new ObjectifsSettingsService(new InMemoryObjectifsSettingsStore());
-        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         // SET-020 : taxStore est partagé entre la lecture (taxSettingsReader) et le routeur d'écriture
         // ci-dessous, pour que childExitAge (silo Fiscalite) soit relu depuis la même instance que celle
         // où il a été écrit, au lieu du silo déconnecté créé par défaut dans SettingsCommandRouterTestFactory.
@@ -96,6 +96,19 @@ class ParametersServiceImplTest {
                 mock(ApplicationEventPublisher.class));
         PatrimoinePersistenceAdapter patrimoine =
                 new PatrimoinePersistenceAdapter(wealthStore, mock(JpaTreasuryStore.class));
+        // R-61-15 : SettingsCommandRouterTestFactory.of(PersistenceManager, ...) depend du hub (retrait prevu
+        // par R-61-21) ; le routeur est construit ici directement, mêmes instances partagées que l'overload à
+        // quatre arguments de la factory (taxStore/retirementStore, pour childExitAge/retireAge, et appSettings,
+        // pour simulateUntilAge/inflationRate, relus depuis les mêmes instances qu'en écriture) ; le silo
+        // Trésorerie du routeur reste un InMemoryTreasuryStore déconnecté, comme avant ce patch (la factory
+        // n'acceptait pas de treasuryStore partagé dans cet overload).
+        SettingsCommandRouter settingsCommandRouter = new SettingsCommandRouter(
+                objectifsSettingsService,
+                new TaxCommandService(taxStore, silos -> { }, RecordingTransactionRunner.direct()),
+                new RetirementCommandService(retirementStore, silos -> { }, RecordingTransactionRunner.direct()),
+                new TresorerieCommandService(new InMemoryTreasuryStore(), silos -> { }, RecordingTransactionRunner.direct()),
+                new SimulationSettingsCommandService(appSettings, silos -> { }, RecordingTransactionRunner.direct()),
+                new EconomicAssumptionsCommandService(appSettings, silos -> { }, RecordingTransactionRunner.direct()));
         service = new ParametersServiceImpl(
                 // R-40 : retireAge (silo Retraite) n'est plus lu depuis settingsAdapter (cache/blob settings
                 // historique) mais depuis le silo reel, ici retirementStore (meme instance qu'en ecriture,
@@ -114,8 +127,7 @@ class ParametersServiceImplTest {
                         new SiloMutationLockRegistry(),
                         RecordingTransactionRunner.direct()),
                 new SiloMutationLockRegistry(),
-                SettingsCommandRouterTestFactory.of(persistenceManager, objectifsSettingsService, taxStore,
-                        retirementStore),
+                settingsCommandRouter,
                 RecordingTransactionRunner.direct());
     }
 
