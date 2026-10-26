@@ -9,7 +9,7 @@ import java.util.List;
  * <p>Règles de maintenance :
  * <ul>
  *   <li>la liste ne peut que décroître : ajouter une entrée est interdit (le test
- *       {@link BudgetDataModelUsageArchTest} échoue si la taille dépasse {@link #FROZEN_SIZE}) ;</li>
+ *       BudgetDataModelUsageArchTest échoue si la taille dépasse {@link #FROZEN_SIZE}) ;</li>
  *   <li>chaque entrée porte le patch SILO-xxx qui la supprime ;</li>
  *   <li>le patch qui retire l'usage supprime la ligne correspondante et abaisse {@link #FROZEN_SIZE} ;</li>
  *   <li>une entrée dont la classe n'existe plus fait échouer le test.</li>
