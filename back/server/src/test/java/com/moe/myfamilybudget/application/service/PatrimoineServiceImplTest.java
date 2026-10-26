@@ -33,14 +33,11 @@ import com.moe.myfamilybudget.application.command.GoalCommandService;
 import com.moe.myfamilybudget.application.command.LoanCommandService;
 import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.application.mapper.PatrimoineMapper;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineYearModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
@@ -49,7 +46,6 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
 import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 class PatrimoineServiceImplTest {
@@ -58,7 +54,6 @@ class PatrimoineServiceImplTest {
 
     private PatrimoineServiceImpl service;
     private PatrimoineMapper mapper;
-    private PersistenceManager persistenceManager;
     private InMemoryGoalStore goalStore;
     private InMemoryLoanStore loanStore;
     private InMemoryWealthStore wealthStore;
@@ -67,15 +62,13 @@ class PatrimoineServiceImplTest {
     @BeforeEach
     void setUp() {
         mapper = new PatrimoineMapper();
-        persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
-        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         goalStore = new InMemoryGoalStore();
         loanStore = new InMemoryLoanStore();
         treasuryStore = new InMemoryTreasuryStore();
-        // R-30 : le patrimoine (placements, immobilier, categories d'actifs) ne passe plus par
-        // PersistenceManager/BudgetDataModel mais par le silo (JpaWealthStore) ; voir setBudgetData()
-        // ci-dessous, qui re-synchronise ce store a chaque fixture ecrite via persistenceManager.
+        // R-30 : le patrimoine (placements, immobilier, categories d'actifs) ne passe plus par un
+        // modele global mais par le silo (JpaWealthStore) ; voir seedPatrimoine() ci-dessous, qui
+        // ecrit directement dans ce store pour chaque fixture du fichier.
         wealthStore = new InMemoryWealthStore();
         PatrimoinePersistenceAdapter patrimoineAdapter = new PatrimoinePersistenceAdapter(
                 wealthStore.getDelegate(), treasuryStore.getDelegate());
@@ -95,25 +88,18 @@ class PatrimoineServiceImplTest {
     }
 
     /**
-     * R-30 : {@code persistenceManager.setBudgetData(...)} ne touche plus le silo Patrimoine ; les
-     * fixtures de ce fichier (placements, immobilier, categories d'actifs) doivent donc etre
-     * explicitement recopiees dans {@link #wealthStore} pour rester visibles par le service.
-     *
-     * R-51 : sweepEnabled/cashCeiling/cashFloor/cashAlertThreshold n'ont plus de lecteur de repli via
-     * SettingsPersistenceAdapter (retire) ; treasuryStore est desormais le seul TresorerieSettingsReader
-     * du test, il doit donc porter ces valeurs lui-meme (meme principe que wealthStore ci-dessus).
+     * R-61-17 : amorcage direct des silos (plus de {@code BudgetDataModel}/{@code SettingsModel} ni de
+     * {@code PersistenceManager} comme intermediaire, grille 3.2 cas 3, meme patron que
+     * {@code OverviewServiceImplTest.seedBudget}) ; les fixtures de ce fichier (placements, parametres
+     * Tresorerie) sont ecrites directement dans {@link #wealthStore} et {@link #treasuryStore} pour
+     * rester visibles par le service. {@code assetCategories} est toujours {@code List.of()} ici : il ne
+     * reprend plus l'ancien champ statique partage {@code BudgetDataModel.activeCategories}
+     * (couplage latent entre tests), ecart deja assume sans perte de couverture dans
+     * {@code OverviewServiceImplTest} (R-61-16, aucune assertion dessus dans ce fichier non plus).
      */
-    private void setBudgetData(BudgetDataModel data) {
-        persistenceManager.setBudgetData(data);
-        if (data != null) {
-            wealthStore.replace(data.placements(), data.realEstate(), List.of(), data.assetCategories());
-            SettingsModel s = data.getEffectiveSettings();
-            treasuryStore.replace(
-                    new TresorerieSettingsModel(s.pivotDate(), s.pivotMode(), s.startBalance(), s.sweepEnabled(),
-                            s.cashCeiling(), s.cashFloor(), s.cashAlertThreshold()),
-                    data.incomes(), data.charges(), data.oneoff(), data.variableIncomes(),
-                    data.variableOverrides());
-        }
+    private void seedPatrimoine(List<PlacementModel> placements, TresorerieSettingsModel tresorerieSettings) {
+        wealthStore.replace(placements, List.of(), List.of(), List.of());
+        treasuryStore.replace(tresorerieSettings, List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
     }
 
     // -------------------------------------------------------------------------
@@ -616,7 +602,7 @@ class PatrimoineServiceImplTest {
      * que le niveau de pause atteint sa priorite. Les taux sont mis a zero pour isoler
      * l'effet des versements dans les assertions.
      */
-    private BudgetDataModel buildPauseScenarioBudget(boolean sweepEnabled, BigDecimal cashFloor, BigDecimal startBalance) {
+    private void seedPauseScenario(boolean sweepEnabled, BigDecimal cashFloor, BigDecimal startBalance) {
         PlacementModel scpiEden = new PlacementModel(
                 "plc_scpi_eden", "Test SCPI Eden", "SCPI", new BigDecimal("3700"), "2026-01-01",
                 BigDecimal.ZERO, "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
@@ -628,13 +614,11 @@ class PatrimoineServiceImplTest {
                 false, null, null, null, null, 1, "cat_av"
         );
 
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, "", "manual", startBalance, 21, BigDecimal.ZERO,
-                sweepEnabled, null, cashFloor
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "", "manual", startBalance, sweepEnabled, null, cashFloor, null
         );
 
-        return new BudgetDataModel(settings, List.of(), List.of(), List.of(selencia, scpiEden), List.of(), null,
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
+        seedPatrimoine(List.of(selencia, scpiEden), tresorerieSettings);
     }
 
     @Test
@@ -643,8 +627,7 @@ class PatrimoineServiceImplTest {
         // cela doit declencher la pause (mecanisme pauseLevelFromAlerts) et suspendre les
         // versements de "Test Selencia" (pausePriority = 1), sans jamais activer le
         // mecanisme de refill (sweepEnabled = false ici).
-        BudgetDataModel data = buildPauseScenarioBudget(false, null, BigDecimal.ZERO);
-        setBudgetData(data);
+        seedPauseScenario(false, null, BigDecimal.ZERO);
 
         PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
 
@@ -692,13 +675,10 @@ class PatrimoineServiceImplTest {
                 new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 false, null, null, null, null, 1, "cat_av"
         );
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, "", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                false, null, null
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "", "manual", BigDecimal.ZERO, false, null, null, null
         );
-        BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(selencia, scpiEden), List.of(), null,
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
-        setBudgetData(data);
+        seedPatrimoine(List.of(selencia, scpiEden), tresorerieSettings);
 
         PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
         PatrimoinePerPlacementModel selenciaRows = proj.perPlacement().stream()
@@ -731,13 +711,10 @@ class PatrimoineServiceImplTest {
                 new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 false, null, null, null, null, 1, "cat_av"
         );
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, "", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                true, null, BigDecimal.ZERO, null
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "", "manual", BigDecimal.ZERO, true, null, BigDecimal.ZERO, null
         );
-        BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), null,
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
-        setBudgetData(data);
+        seedPatrimoine(List.of(sweepAccount, pausable), tresorerieSettings);
 
         PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
         List<PatrimoineYearModel> rows = proj.perPlacement().stream()
@@ -767,13 +744,10 @@ class PatrimoineServiceImplTest {
                 new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 false, null, null, null, null, 1, "cat_av"
         );
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, BigDecimal.ZERO, "", "manual", BigDecimal.ZERO, 21, BigDecimal.ZERO,
-                true, null, BigDecimal.ZERO, new BigDecimal("-1000")
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "", "manual", BigDecimal.ZERO, true, null, BigDecimal.ZERO, new BigDecimal("-1000")
         );
-        BudgetDataModel data = new BudgetDataModel(settings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), null,
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
-        setBudgetData(data);
+        seedPatrimoine(List.of(sweepAccount, pausable), tresorerieSettings);
 
         PatrimoineProjectionsModel proj = service.computePatrimoineProjections(false);
         List<PatrimoineYearModel> rows = proj.perPlacement().stream()
@@ -794,8 +768,7 @@ class PatrimoineServiceImplTest {
         // Meme scenario que computePatrimoineProjections_suspendsContributionsWhenBufferWatchPlacementBelowThreshold,
         // mais verifie via la courbe mensuelle individuelle (drawer de detail), qui doit
         // simuler tous les placements en arriere-plan pour evaluer la meme pause.
-        BudgetDataModel data = buildPauseScenarioBudget(false, null, BigDecimal.ZERO);
-        setBudgetData(data);
+        seedPauseScenario(false, null, BigDecimal.ZERO);
 
         ResponseEntity<PlacementEvolutionDto> resp = service.getPlacementEvolution("plc_selencia", false);
         assertEquals(HttpStatus.OK, resp.getStatusCode());

@@ -14,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import com.moe.myfamilybudget.domain.bankpointage.core.DefaultPointageCalculationService;
 import com.moe.myfamilybudget.application.mapper.PointageMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
@@ -24,7 +23,6 @@ import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 
 @DisplayName("PointageServiceImpl OpenAPI Controller Unit Tests")
 class PointageServiceImplTest {
@@ -32,13 +30,10 @@ class PointageServiceImplTest {
     private final InMemoryBankStore bankStore = new InMemoryBankStore();
 
     private PointageServiceImpl service;
-    private PersistenceManager persistenceManager;
 
     @BeforeEach
     void setUp() {
-        persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
-        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         service = new PointageServiceImpl(
                 bankStore, treasuryStore,
