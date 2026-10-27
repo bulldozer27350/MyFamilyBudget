@@ -1,7 +1,10 @@
 # 26 — Séquençage de R-61 (suppression du hub et du modèle global)
 
-Statut : 🟡 premier jet (établi le 25 octobre 2026, à partir d'une exploration complète de
-`back/persistence`, `back/transition-snapshot`, `back/server` et `back/application` sur `main`)
+Statut : 🟢 clos (27 octobre 2026) — les 27 sous-patchs (`R-61-01` à `R-61-27`) sont tous
+« Livré » ; R-61 est passée à *Fait !* dans `24-backlog-reste-a-faire.md` ; DA-04 et DA-12 sont
+archivées en section 4 de `23-registre-decisions-actives.md`. Document conservé à titre
+historique (traçabilité du découpage et des écarts rencontrés), aucune action supplémentaire
+n'y est attendue.
 
 ## 1. Pourquoi ce document
 
@@ -219,7 +222,7 @@ ni `back/transition-snapshot` dans le reactor.
 
 | ID | Dépend de | Fichiers | Action | Statut | Qui | Branche / commit | Notes de passation |
 |---|---|---|---|---|---|---|---|
-| R-61-27 | R-61-26 | `24-backlog-reste-a-faire.md`, `25-cartographie-modules-patchs.md`, `23-registre-decisions-actives.md`, ce fichier | Passer la ligne R-61 de `24` à *Fait !* ; retirer la référence à ce fichier dans `25` (la ligne R-61 n'a plus de dossiers à cloner) ; archiver DA-04 et DA-12 dans `23` (section 4, « appliquées et verrouillées »), preuve = ce découpage ; marquer ce document `26` comme clos en en-tête | À faire | | | |
+| R-61-27 | R-61-26 | `24-backlog-reste-a-faire.md`, `25-cartographie-modules-patchs.md`, `23-registre-decisions-actives.md`, ce fichier | Passer la ligne R-61 de `24` à *Fait !* ; retirer la référence à ce fichier dans `25` (la ligne R-61 n'a plus de dossiers à cloner) ; archiver DA-04 et DA-12 dans `23` (section 4, « appliquées et verrouillées »), preuve = ce découpage ; marquer ce document `26` comme clos en en-tête | Livré | Agent | — | Fait tel que spécifié. `24-backlog-reste-a-faire.md` : ligne R-61 passée à *Fait !* (Qui = Agent, Branche = —), texte de l'objectif complété d'un résumé de ce qu'a livré R-61-27. `25-cartographie-modules-patchs.md` : colonne « Dossiers à cloner » de la ligne R-61 remplacée par un texte de clôture (plus de dossiers à cloner, renvoi aux 27 sous-patchs livrés) ; la colonne « Décisions à consulter » garde ses 5 entrées DA mais DA-04/DA-12 précisent désormais « archivée en section 4 de 23 ». `23-registre-decisions-actives.md` : DA-04 et DA-12 retirées de la section 3 (« Décisions actives ») et ajoutées à la section 4 (« Archivables : appliquées et verrouillées »), chacune avec sa preuve d'application (suppression du module `persistence`/`transition-snapshot`, R-61-23 à R-61-25) et ce qui la verrouille (absence des fichiers/modules, ce document 26). En-tête de ce document 26 marqué 🟢 clos. **R-61 est désormais entièrement terminé** (27/27 sous-patchs livrés) ; `git apply --check` + application réelle validées sur clone frais `core.autocrlf=true` au HEAD de départ (après fusion de R-61-26) |
 
 ## 5. Rappel : critère de « Fait ! » pour R-61
 
