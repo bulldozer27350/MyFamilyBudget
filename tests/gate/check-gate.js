@@ -46,10 +46,8 @@ const POMS = [
   path.join(ROOT, 'back', 'market-core', 'pom.xml'),
   path.join(ROOT, 'back', 'api', 'pom.xml'),
   path.join(ROOT, 'back', 'infra-jpa', 'pom.xml'),
-  path.join(ROOT, 'back', 'transition-snapshot', 'pom.xml'),
   path.join(ROOT, 'back', 'application-api', 'pom.xml'),
   path.join(ROOT, 'back', 'application', 'pom.xml'),
-  path.join(ROOT, 'back', 'persistence', 'pom.xml'),
   path.join(ROOT, 'back', 'server', 'pom.xml'),
 ];
 
@@ -79,9 +77,10 @@ const POM_FORBIDDEN = [/<skipTests>\s*true/i, /<testFailureIgnore>\s*true/i, /<s
 // Porte A (SILO-190, doc/architecture/21-plan-silotage.md) : silos isoles.
 const BACK = path.join(ROOT, 'back');
 const SILOS = ['retirement', 'tax', 'wealth', 'bank-pointage', 'treasury', 'analysis', 'credit', 'goals', 'notifications', 'market'];
-// Seuls modules autorises a referencer BudgetDataModel dans leurs sources de production (le type vit dans
-// transition-snapshot jusqu'a SILO-230 ; la persistance le manipule jusqu'a SILO-210 a SILO-216 et SILO-230).
-const BUDGET_DATA_MODEL_MODULES = ['persistence', 'transition-snapshot'];
+// R-71 (Porte B) : BudgetDataModel et les modules persistence/transition-snapshot qui le portaient ont
+// disparu du reactor (R-61-23 a R-61-27) ; plus aucun module n'a besoin d'exemption, la liste reste vide en
+// garde-fou permanent (aucune reintroduction, dans aucun module, ne doit plus passer ce controle).
+const BUDGET_DATA_MODEL_MODULES = [];
 
 const violations = [];
 
@@ -145,7 +144,8 @@ function checkStatic() {
  * verifies par les autres etapes de la CI ; ici :
  *   1. `application` ne declare aucun `*-core` de silo (ni reliquat `domain-xxx`) dans son pom ;
  *   2. aucune source de production d `application` ne reference un package `domain.<silo>.core` ;
- *   3. aucun `BudgetDataModel` hors persistance (et transition-snapshot, qui le porte) dans les sources de production.
+ *   3. aucun `BudgetDataModel` dans les sources de production (R-71 : garde-fou permanent, le type et les modules
+ *      qui le portaient ont disparu du reactor, aucune exemption de module n'est plus necessaire).
  */
 function checkPorteA() {
   const appPom = path.join(BACK, 'application', 'pom.xml');
