@@ -28,28 +28,23 @@ import com.moe.myfamilybudget.application.mapper.RetraiteMapper;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
 import com.moe.myfamilybudget.application.command.RetirementCommandService;
 import com.moe.myfamilybudget.application.usecase.DefaultRetirementUseCase;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 class RetraiteServiceImplTest {
 
     private RetraiteServiceImpl service;
     private RetraiteMapper mapper;
-    private PersistenceManager persistenceManager;
     private RetirementCalculationService calculationService;
 
     @BeforeEach
     void setUp() {
         mapper = new RetraiteMapper();
-        persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
         calculationService = new DefaultRetirementCalculationService();
-        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
         InMemoryTaxStore taxStore = new InMemoryTaxStore();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();

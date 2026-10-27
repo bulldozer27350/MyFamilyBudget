@@ -38,7 +38,6 @@ import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieResultModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSuggestionModel;
@@ -47,7 +46,6 @@ import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewCellModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
 import com.moe.myfamilybudget.application.command.TresorerieCommandService;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
@@ -55,7 +53,6 @@ import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 class TresorerieServiceImplTest {
@@ -64,17 +61,14 @@ class TresorerieServiceImplTest {
 
     private TresorerieServiceImpl service;
     private TresorerieMapper mapper;
-    private PersistenceManager persistenceManager;
 
     @BeforeEach
     void setUp() {
         mapper = new TresorerieMapper();
-        persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
         InMemoryTaxStore taxStore = new InMemoryTaxStore();
-        CacheBackedAppSettings appSettings = CacheBackedAppSettings.of(persistenceManager);
+        CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         service = new TresorerieServiceImpl(
                 mapper, new TresorerieCommandService(treasuryStore, silos -> { }, RecordingTransactionRunner.direct()),
                 new DefaultRetirementCalculationService(),
@@ -501,9 +495,15 @@ class TresorerieServiceImplTest {
     // CALCULS & PROJECTIONS TRESORERIE
     // -------------------------------------------------------------------------
 
-    /** Fragments équivalents à ceux que {@code BudgetDataModel} fournissait avant SILO-113. */
+    /** Fragments équivalents à ceux que {@code BudgetDataModel} fournissait avant SILO-113 (R-61-18 : amorçage
+     * direct par silo, grille 3.2 cas 3, patron {@code TreasuryInputFactoryTest.budget}, plus de
+     * {@code SettingsModel} comme intermédiaire). */
     private static TreasuryInputFactory.Sources sources(
-            SettingsModel settings,
+            RetirementSettingsModel retirementSettings,
+            TaxSettingsModel taxSettings,
+            TresorerieSettingsModel tresorerieSettings,
+            SimulationSettingsModel simulationSettings,
+            BigDecimal inflationRate,
             List<IncomeModel> incomes,
             List<ChargeModel> charges,
             List<OneOffExpenseModel> oneoff,
@@ -511,13 +511,7 @@ class TresorerieServiceImplTest {
             List<VariableOverrideModel> variableOverrides,
             BankImportModel bankImport) {
         return new TreasuryInputFactory.Sources(
-                new RetirementSettingsModel(settings.birthYear(), settings.retireAge()),
-                new TaxSettingsModel(settings.childExitAge(), settings.taxAbattement()),
-                new TresorerieSettingsModel(settings.pivotDate(), settings.pivotMode(), settings.startBalance(),
-                        settings.sweepEnabled(), settings.cashCeiling(), settings.cashFloor(),
-                        settings.cashAlertThreshold()),
-                new SimulationSettingsModel(settings.simulateUntilAge()),
-                settings.inflationRate(),
+                retirementSettings, taxSettings, tresorerieSettings, simulationSettings, inflationRate,
                 null,
                 incomes, charges, List.of(), oneoff, List.of(), variableIncomes, variableOverrides,
                 List.of(), List.of(), List.of(), List.of(), bankImport);
@@ -525,10 +519,6 @@ class TresorerieServiceImplTest {
 
     @Test
     void computeTresorerie_withCompleteData_buildsAllFields() {
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, BigDecimal.valueOf(1000), "2026-01-01", "manual",
-                BigDecimal.valueOf(0.02), 21, BigDecimal.valueOf(0.10));
-
         IncomeModel salary = new IncomeModel(
                 "inc_1", "Salaire", BigDecimal.valueOf(3000),
                 "2026-01-01", "2049-12-31", BigDecimal.valueOf(0.01), "cat_1", "Notes"
@@ -569,7 +559,12 @@ class TresorerieServiceImplTest {
         );
 
         TreasuryInputFactory.Sources data = sources(
-                settings, List.of(salary), List.of(rent), List.of(travel), List.of(bonus), List.of(bonusReal),
+                new RetirementSettingsModel(1985, 64),
+                new TaxSettingsModel(21, BigDecimal.valueOf(0.10)),
+                new TresorerieSettingsModel("2026-01-01", "manual", BigDecimal.valueOf(0.02), false, null, null, null),
+                new SimulationSettingsModel(85),
+                BigDecimal.valueOf(1000),
+                List.of(salary), List.of(rent), List.of(travel), List.of(bonus), List.of(bonusReal),
                 bankImport);
 
         TresorerieResultModel result = service.computeTresorerie(data, false);
