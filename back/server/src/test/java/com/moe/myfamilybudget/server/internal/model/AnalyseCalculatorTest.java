@@ -1,7 +1,5 @@
 package com.moe.myfamilybudget.server.internal.model;
 
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,39 +28,23 @@ class AnalyseCalculatorTest {
 
     private final AnalyseCalculationService calculator = new DefaultAnalyseCalculationService();
 
-    /** SILO-115 : la factory reçoit des fragments, pas le snapshot global. */
-    private static PointageInputFactory.Sources sources(BudgetDataModel data) {
-        return new PointageInputFactory.Sources(
-                data.charges(), data.incomes(), data.placements(),
-                data.settings() != null ? data.settings().inflationRate() : null);
+    /**
+     * SILO-115 : la factory reçoit des fragments, pas le snapshot global.
+     *
+     * <p>R-61-21 : amorçage par fragments directs (plus de {@code BudgetDataModel}/
+     * {@code SettingsModel}, retirés avec le hub).
+     */
+    private static PointageInputFactory.Sources sources(List<ChargeModel> charges, List<IncomeModel> incomes,
+            List<PlacementModel> placements, BigDecimal inflationRate) {
+        return new PointageInputFactory.Sources(charges, incomes, placements, inflationRate);
     }
 
     @Test
     @DisplayName("computeAnalyse doit calculer correctement les KPIs, catégories et lignes d'atterrissage sur le modèle interne")
     void testComputeAnalyse() {
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", BigDecimal.ZERO, 21, new BigDecimal("0.10"));
         ChargeModel charge = new ChargeModel("c1", "Loyer", new BigDecimal("1000"), "2026-01-01", "2030-12-31", new BigDecimal("0.01"), "cat1", "");
         IncomeModel income = new IncomeModel("i1", "Salaire", new BigDecimal("3000"), "2026-01-01", "2030-12-31", BigDecimal.ZERO, "cat2", "");
         PlacementModel placement = new PlacementModel("p1", "Livret A", "Épargne", new BigDecimal("5000"), "2026-01-01", new BigDecimal("200"), "2026-01-01", "2030-12-31", new BigDecimal("0.01"), new BigDecimal("0.02"), new BigDecimal("0.03"), false, "");
-
-        BudgetDataModel data = new BudgetDataModel(
-                settings,
-                List.of(income),
-                List.of(charge),
-                List.of(placement),
-                List.of(),
-                null,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                null
-        );
 
         CategoryModel cat1 = new CategoryModel("cat1", "Logement", "Dépense", "Oui");
         CategoryModel cat2 = new CategoryModel("cat2", "Salaire", "Revenu", "Non");
@@ -83,7 +65,8 @@ class AnalyseCalculatorTest {
                 List.of(matching)
         );
 
-        AnalyseResultModel result = calculator.computeAnalyse(new AnalyseInputFactory().from(bankImport, sources(data), 12));
+        AnalyseResultModel result = calculator.computeAnalyse(new AnalyseInputFactory().from(
+                bankImport, sources(List.of(charge), List.of(income), List.of(placement), new BigDecimal("0.02")), 12));
 
         assertThat(result).isNotNull();
         assertThat(result.kpis()).isNotNull();
@@ -96,28 +79,8 @@ class AnalyseCalculatorTest {
     @Test
     @DisplayName("computeAnalyse doit ventiler correctement les dépenses par catégorie pour les transactions ventilées (splits)")
     void testComputeAnalyseWithSplits() {
-        SettingsModel settings = new SettingsModel(
-                1985, 64, 85, new BigDecimal("0.02"), "2026-01-01", "manual", BigDecimal.ZERO, 21, new BigDecimal("0.10"));
         ChargeModel chargeFood = new ChargeModel("c_food", "Alimentation", new BigDecimal("400"), "2026-01-01", "2030-12-31", BigDecimal.ZERO, "cat_food", "");
         ChargeModel chargeClothes = new ChargeModel("c_clothes", "Vêtements", new BigDecimal("100"), "2026-01-01", "2030-12-31", BigDecimal.ZERO, "cat_clothes", "");
-
-        BudgetDataModel data = new BudgetDataModel(
-                settings,
-                List.of(),
-                List.of(chargeFood, chargeClothes),
-                List.of(),
-                List.of(),
-                null,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                null
-        );
 
         CategoryModel catFood = new CategoryModel("cat_food", "Alimentation", "Dépense", "Non");
         CategoryModel catClothes = new CategoryModel("cat_clothes", "Habillement", "Dépense", "Oui"); // compressible
@@ -143,7 +106,8 @@ class AnalyseCalculatorTest {
                 List.of(matching)
         );
 
-        AnalyseResultModel result = calculator.computeAnalyse(new AnalyseInputFactory().from(bankImport, sources(data), 12));
+        AnalyseResultModel result = calculator.computeAnalyse(new AnalyseInputFactory().from(
+                bankImport, sources(List.of(chargeFood, chargeClothes), List.of(), List.of(), new BigDecimal("0.02")), 12));
 
         assertThat(result).isNotNull();
         // Check total expenses and compressible
