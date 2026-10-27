@@ -70,12 +70,6 @@ final class PureLayerRules {
                     .as("les couches pures (internal.calculation hors infra de paramétrage, "
                             + "internal.model, transition.model, application.model, application.overview, domain.retirement, domain.tax, domain.wealth, domain.bankpointage, domain.treasury, domain.analysis, domain.credit, domain.goals, domain.settings, domain.notifications, hors persistance de silo domain.*.core.persistence)");
 
-    static final ArchRule NO_PERSISTENCE = noClasses()
-            .that(PURE_LAYER)
-            .should().dependOnClassesThat().resideInAPackage("com.moe.myfamilybudget.persistence..")
-            .as("les couches pures ne doivent dépendre ni de PersistenceManager, ni des entités JPA, "
-                    + "ni des repositories, ni des adapters (module persistence) (ARCH-010)");
-
     static final ArchRule NO_JPA_API = noClasses()
             .that(PURE_LAYER)
             .should().dependOnClassesThat().resideInAnyPackage(

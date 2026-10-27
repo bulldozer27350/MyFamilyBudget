@@ -17,10 +17,8 @@ import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
 /**
@@ -44,8 +42,6 @@ class InterSiloIntegrityCharacterizationTest {
 
     @BeforeEach
     void setUp() {
-        PersistenceManager persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
         // R-20 / DA-14 : les virements vivent dans le silo Tresorerie ; Patrimoine ne les lit ni ne les ecrit sans lui.
         // R-30 : placements/immobilier/categories vivent desormais dans le silo Patrimoine (JpaWealthStore).
         patrimoine = new PatrimoinePersistenceAdapter(

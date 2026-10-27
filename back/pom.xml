@@ -63,7 +63,6 @@
         <module>infra-jpa</module>
         <module>application-api</module>
         <module>application</module>
-        <module>persistence</module>
         <module>server</module>
     </modules>
 
@@ -234,12 +233,6 @@
                 <artifactId>application</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.moe.myfamilybudget</groupId>
-                <artifactId>persistence</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
             <dependency>
                 <groupId>org.openapitools</groupId>
                 <artifactId>jackson-databind-nullable</artifactId>

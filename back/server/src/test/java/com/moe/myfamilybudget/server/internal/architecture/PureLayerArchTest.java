@@ -15,9 +15,6 @@ import com.tngtech.archunit.lang.ArchRule;
 class PureLayerArchTest {
 
     @ArchTest
-    static final ArchRule NO_PERSISTENCE = PureLayerRules.NO_PERSISTENCE;
-
-    @ArchTest
     static final ArchRule NO_JPA_API = PureLayerRules.NO_JPA_API;
 
     @ArchTest

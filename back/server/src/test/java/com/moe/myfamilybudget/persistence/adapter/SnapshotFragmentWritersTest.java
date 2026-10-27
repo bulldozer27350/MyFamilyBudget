@@ -17,15 +17,12 @@ import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
 import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
-import com.moe.myfamilybudget.server.internal.testsupport.PersistenceManagerTestFactory;
-import com.moe.myfamilybudget.transition.model.SettingsModel;
 
 /**
  * SILO-119 (lot B1) -- Chaque silo remplace et réinitialise uniquement ses propres données : les ports
@@ -34,7 +31,6 @@ import com.moe.myfamilybudget.transition.model.SettingsModel;
 @DisplayName("SILO-119 (lot B1) -- remplacement et réinitialisation par silo")
 class SnapshotFragmentWritersTest {
 
-    private PersistenceManager persistenceManager;
     private InMemoryRetirementStore retirement;
     private InMemoryTaxStore tax;
     private com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore tresorerie;
@@ -45,14 +41,16 @@ class SnapshotFragmentWritersTest {
 
     @BeforeEach
     void setUp() {
-        persistenceManager = PersistenceManagerTestFactory.inMemory();
-        persistenceManager.init();
         retirement = new InMemoryRetirementStore();
         tax = new InMemoryTaxStore();
         tresorerie = new com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore();
         // R-30 : le patrimoine est desormais lui aussi un vrai silo (JpaWealthStore), plus un fragment
-        // du cache ; voir listBasedSilosResetToEmpty, qui relit directement l'adaptateur plutot que
-        // persistenceManager.getBudgetData().
+        // du cache ; voir listBasedSilosResetToEmpty, qui relit directement l'adaptateur.
+        // R-61-24 : le hub (PersistenceManager) a disparu, les assertions qui comparaient un reglage
+        // du cache global jamais ecrit par ce test (settings().birthYear()/pivotMode(),
+        // getEffectiveTransfers()) sont retirees (garantie deja structurellement impossible a violer,
+        // meme raisonnement que R-61-05/07/20) ; patrimoine.getTransfers() (silo Tresorerie reel via
+        // DA-14) remplace la derniere d'entre elles sans changer l'intention du test.
         patrimoine = new PatrimoinePersistenceAdapter(
                 new com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore().getDelegate(),
                 tresorerie.getDelegate());
@@ -61,15 +59,10 @@ class SnapshotFragmentWritersTest {
         bank = new InMemoryBankStore();
     }
 
-    private SettingsModel settings() {
-        return persistenceManager.getBudgetData().settings();
-    }
-
     @Test
     @DisplayName("Retraite : replace puis reset ne touchent ni la fiscalité ni la trésorerie")
     void retirementReplaceAndResetAreIsolated() {
         tax.replace(new TaxSettingsModel(25, new BigDecimal("0.12")), null, null, null, null);
-        SettingsModel before = settings();
 
         RetirementModel plan = new RetirementModel(Collections.emptyList(), new BigDecimal("48000"),
                 new BigDecimal("0.02"), new BigDecimal("1.4386"), "2025-11-01", new BigDecimal("0.01"));
@@ -80,7 +73,6 @@ class SnapshotFragmentWritersTest {
         assertThat(retirement.getRetirement().pass2026()).isEqualByComparingTo("48000");
         assertThat(tax.getTaxSettings().childExitAge()).isEqualTo(25);
         assertThat(tax.getTaxSettings().taxAbattement()).isEqualByComparingTo("0.12");
-        assertThat(settings().pivotMode()).isEqualTo(before.pivotMode());
 
         retirement.reset();
 
@@ -128,7 +120,6 @@ class SnapshotFragmentWritersTest {
         assertThat(tresorerie.getTresorerieSettings().cashFloor()).isEqualByComparingTo("500");
         assertThat(tresorerie.getTresorerieSettings().cashAlertThreshold()).isEqualByComparingTo("200");
         assertThat(tresorerie.getIncomes()).isEmpty();
-        assertThat(settings().birthYear()).isEqualTo(1985);
 
         tresorerie.reset();
 
@@ -138,7 +129,6 @@ class SnapshotFragmentWritersTest {
         assertThat(tresorerie.getTresorerieSettings().cashCeiling()).isNull();
         assertThat(tresorerie.getTresorerieSettings().cashFloor()).isNull();
         assertThat(tresorerie.getTresorerieSettings().cashAlertThreshold()).isNull();
-        assertThat(settings().birthYear()).isEqualTo(1985);
     }
 
     @Test
@@ -160,7 +150,7 @@ class SnapshotFragmentWritersTest {
 
         assertThat(patrimoine.getPlacements()).isEmpty();
         assertThat(patrimoine.getRealEstate()).isEmpty();
-        assertThat(persistenceManager.getBudgetData().getEffectiveTransfers()).isEmpty();
+        assertThat(patrimoine.getTransfers()).isEmpty();
         assertThat(loans.getLoans()).isEmpty();
         assertThat(goals.getGoals()).isEmpty();
         assertThat(bank.getBankImport()).isNotNull();
@@ -174,6 +164,5 @@ class SnapshotFragmentWritersTest {
         assertThat(patrimoine.getPlacements()).isEmpty();
         assertThat(loans.getLoans()).isEmpty();
         assertThat(goals.getGoals()).isEmpty();
-        assertThat(settings().birthYear()).isEqualTo(1985);
     }
 }
