@@ -3,11 +3,13 @@ package com.moe.myfamilybudget.server.internal.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -20,35 +22,27 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.test.web.servlet.MvcResult;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsStore;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
-import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentMapper;
-import com.moe.myfamilybudget.persistence.converter.EntityModelConverter;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalEntityMapper;
-import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntityMapper;
-import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionEntityMapper;
-import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
-import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
-import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
-import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
-import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionSettingsRepository;
 
 /**
  * VT-340 -- Atomicite des mutations multi-domaines. Import, reinitialisation et sauvegarde des parametres
- * ecrivent dans deux domaines (budget puis parametres Objectifs) : quand la seconde ecriture echoue, la
- * premiere doit etre annulee, en base ET en memoire. L'echec est simule sur le store Objectifs (spy) ; la
- * base est relue directement pour prouver le rollback reel, pas seulement le cache.
+ * ecrivent dans plusieurs domaines (budget puis parametres Objectifs) : quand la seconde ecriture echoue, la
+ * premiere doit etre annulee, en base ET telle qu'exposee par l'API. L'echec est simule sur le store
+ * Objectifs (spy) ; l'etat est relu via {@code GET /budget} (contrat public, assemble par
+ * {@code GlobalBudgetSnapshotService} directement depuis les ports des silos reels) pour prouver le rollback
+ * reel, pas seulement un cache.
+ *
+ * <p>R-61-20 : depuis SILO-119 (lot B2), {@code GET /budget} ne passe plus par {@code PersistenceManager} ni
+ * par {@code BudgetDataModel} -- comparer la reponse avant/apres couvre exactement le meme risque (rollback
+ * coherent entre tous les domaines ecrits) que l'ancienne reconstruction manuelle via le hub et les
+ * repositories de chaque silo, sans en dependre (meme principe que la migration de
+ * {@code GlobalBudgetSnapshotServiceTest} en R-61-16).
  *
  * <p>Base H2 dediee : le contexte contient un bean espionne et ne doit pas partager la base des autres
  * contextes de test.
@@ -64,54 +58,15 @@ class MultiDomainAtomicityTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private PersistenceManager persistenceManager;
+    private ObjectMapper objectMapper;
 
     @Autowired
     private ObjectifsSettingsService objectifsSettingsService;
 
-    @Autowired
-    private BudgetDataRepository budgetDataRepository;
-
-    @Autowired
-    private PensionPlanRepository pensionPlanRepository;
-
-    // R-40 : retireAge n'est plus porte par le cache (BudgetDataModel.settings()) mais directement par
-    // pension_settings (silo Retraite, JpaRetirementStore), lu ici sans passer par PersistenceManager, pour
-    // la meme raison que treasuryStore ci-dessous pour les lignes de tresorerie.
-    @Autowired
-    private PensionSettingsRepository pensionSettingsRepository;
-
-    @Autowired
-    private FiscalChildRepository fiscalChildRepository;
-
-    @Autowired
-    private FiscalBracketRepository fiscalBracketRepository;
-
-    @Autowired
-    private FiscalRateOverrideRepository fiscalRateOverrideRepository;
-
-    @Autowired
-    private FiscalActualOverrideRepository fiscalActualOverrideRepository;
-
-    @Autowired
-    private GoalRepository goalRepository;
-
-    @Autowired
-    private BankImportDocumentRepository bankImportDocumentRepository;
-
-    @Autowired
-    private PlatformTransactionManager transactionManager;
-
-    // R-20 : les lignes de tresorerie ne vivent plus que dans les tables cashflow_* (silo Tresorerie), le cache
-    // du PersistenceManager ne les porte plus. Elles sont relues via le store du silo.
-    @Autowired
-    private com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore treasuryStore;
-
     @MockitoSpyBean
     private ObjectifsSettingsStore objectifsStore;
 
-    private BudgetDataModel memoryBefore;
-    private BudgetDataModel databaseBefore;
+    private JsonNode budgetBefore;
 
     @BeforeEach
     void importReferenceDataset() throws Exception {
@@ -120,14 +75,13 @@ class MultiDomainAtomicityTest {
                 .andExpect(status().isOk());
         objectifsSettingsService.save(new ObjectifsParameters(12, 3));
 
-        memoryBefore = memory();
-        databaseBefore = readDatabase();
-        assertThat(memoryBefore.settings().retireAge()).isEqualTo(64);
-        assertThat(ids(databaseBefore)).containsExactly("inc_1");
+        budgetBefore = exportBudget();
+        assertThat(budgetBefore.path("settings").path("retireAge").asInt()).isEqualTo(64);
+        assertThat(incomeIds(budgetBefore)).containsExactly("inc_1");
     }
 
     @Test
-    @DisplayName("Import : echec de l'ecriture Objectifs => budget importe annule en base et en memoire")
+    @DisplayName("Import : echec de l'ecriture Objectifs => budget importe annule en base et dans l'API")
     void failedImportIsRolledBack() throws Exception {
         doThrow(STORE_DOWN).when(objectifsStore).save(any());
 
@@ -170,64 +124,32 @@ class MultiDomainAtomicityTest {
                 .content("{\"settings\": {\"retireAge\": 60, \"goalSecureHorizonMonths\": 24}}"))
                 .andExpect(status().isOk());
 
-        // R-40 : retireAge est ecrit directement dans pension_settings (silo Retraite), plus dans le cache
-        // (BudgetDataModel.settings()) ni dans le blob historique settings de budget_data ; on le relit donc
-        // via son proprietaire, dans une transaction fraiche pour prouver l'ecriture reelle en base (pas
-        // seulement dans le contexte de persistance de la requete HTTP qui vient de s'executer).
-        Integer persistedRetireAge = new TransactionTemplate(transactionManager).execute(status ->
-                pensionSettingsRepository.findFirstByOrderByIdAsc().orElseThrow().getRetireAge());
-        assertThat(persistedRetireAge).isEqualTo(60);
+        // R-40 : retireAge est ecrit directement dans pension_settings (silo Retraite), plus dans un cache
+        // partage ; on le relit via le contrat expose (GET /budget, compose par SettingsComposer depuis les
+        // ports proprietaires), pour prouver l'ecriture reelle en base plutot que seulement dans le contexte
+        // de persistance de la requete HTTP qui vient de s'executer.
+        assertThat(exportBudget().path("settings").path("retireAge").asInt()).isEqualTo(60);
         assertThat(objectifsSettingsService.current().secureHorizonMonths()).isEqualTo(24);
     }
 
-    private void assertStateUnchanged() {
-        assertThat(memory()).isEqualTo(memoryBefore);
-        assertThat(readDatabase()).isEqualTo(databaseBefore);
+    private void assertStateUnchanged() throws Exception {
+        assertThat(exportBudget()).isEqualTo(budgetBefore);
         assertThat(objectifsSettingsService.current()).isEqualTo(new ObjectifsParameters(12, 3));
     }
 
-    /** Relit la base sans passer par le cache memoire. */
-    private BudgetDataModel readDatabase() {
-        return new TransactionTemplate(transactionManager).execute(status ->
-                EntityModelConverter.toModel(budgetDataRepository.findFirstByOrderByIdAsc().orElseThrow())
-                        .withRetirement(PensionEntityMapper.toModel(
-                                pensionPlanRepository.findFirstByOrderByIdAsc().orElse(null)))
-                        .withTaxChildren(FiscalEntityMapper.toChildModels(
-                                fiscalChildRepository.findAllByOrderByPositionAsc()))
-                        .withTaxBrackets(FiscalEntityMapper.toBracketModels(
-                                fiscalBracketRepository.findAllByOrderByPositionAsc()))
-                        .withTaxRateOverrides(FiscalEntityMapper.toRateOverrideModels(
-                                fiscalRateOverrideRepository.findAllByOrderByPositionAsc()))
-                        .withTaxActualOverrides(FiscalEntityMapper.toActualOverrideModels(
-                                fiscalActualOverrideRepository.findAllByOrderByPositionAsc()))
-                        .withObjectifs(GoalEntityMapper.toModels(
-                                goalRepository.findAllByOrderByPositionAsc()))
-                        .withBankImport(BankImportDocumentMapper.toModel(
-                                bankImportDocumentRepository.findFirstByOrderByIdAsc().orElse(null)))
-                        .withIncomes(treasuryStore.getIncomes())
-                        .withCharges(treasuryStore.getCharges())
-                        .withOneoff(treasuryStore.getOneoffExpenses())
-                        .withVariableIncomes(treasuryStore.getVariableIncomes())
-                        .withVariableOverrides(treasuryStore.getVariableOverrides())
-                        .withTransfers(treasuryStore.getTransfers()));
+    /** Etat complet du budget tel qu'expose par le contrat public (silos reels, sans passer par un cache). */
+    private JsonNode exportBudget() throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/budget").contextPath("/api/v1"))
+                .andExpect(status().isOk()).andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString(StandardCharsets.UTF_8));
     }
 
-    /** Etat du cache (hors Tresorerie) complete par les lignes de tresorerie telles que le silo les stocke. */
-    private BudgetDataModel memory() {
-        return withTreasury(persistenceManager.getBudgetData());
-    }
-
-    private BudgetDataModel withTreasury(BudgetDataModel model) {
-        return model.withIncomes(treasuryStore.getIncomes())
-                .withCharges(treasuryStore.getCharges())
-                .withOneoff(treasuryStore.getOneoffExpenses())
-                .withVariableIncomes(treasuryStore.getVariableIncomes())
-                .withVariableOverrides(treasuryStore.getVariableOverrides())
-                .withTransfers(treasuryStore.getTransfers());
-    }
-
-    private static List<String> ids(BudgetDataModel model) {
-        return model.getEffectiveIncomes().stream().map(IncomeModel::id).toList();
+    private static List<String> incomeIds(JsonNode budget) {
+        List<String> ids = new ArrayList<>();
+        for (JsonNode income : budget.path("incomes")) {
+            ids.add(income.path("id").asText());
+        }
+        return ids;
     }
 
     /**

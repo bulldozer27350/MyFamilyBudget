@@ -29,32 +29,26 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
-import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentMapper;
-import com.moe.myfamilybudget.persistence.converter.EntityModelConverter;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalEntityMapper;
-import com.moe.myfamilybudget.domain.goals.core.persistence.GoalEntityMapper;
-import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionEntityMapper;
-import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
-import com.moe.myfamilybudget.persistence.repository.BudgetDataRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalActualOverrideRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalBracketRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalChildRepository;
-import com.moe.myfamilybudget.domain.tax.core.persistence.FiscalRateOverrideRepository;
-import com.moe.myfamilybudget.domain.goals.core.persistence.GoalRepository;
-import com.moe.myfamilybudget.domain.retirement.core.persistence.PensionPlanRepository;
+import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
 
 /**
- * VT-350 -- Deux appels simultanes sur la meme ressource, de bout en bout (HTTP, Spring, H2). Les appels
- * partent en meme temps ; chaque test relit ensuite la memoire ET la base (sans passer par le cache) pour
- * prouver l'absence de corruption.
+ * VT-350 -- Deux appels simultanes sur la meme ressource, de bout en bout (HTTP, Spring, H2).
+ * Les appels partent en meme temps ; chaque test relit ensuite les charges telles que les sert
+ * {@link BudgetReader} (silo Tresorerie, {@code JpaTreasuryStore}) pour prouver l'absence de
+ * corruption.
+ *
+ * <p>R-61-20 : depuis R-20, les lignes de tresorerie ne vivent plus que dans les tables
+ * {@code cashflow_*}, lues directement a chaque appel (pas de cache separe de la base) -- la
+ * double lecture memoire/base de la version precedente de ce test (via {@code PersistenceManager})
+ * n'avait donc plus d'objet : {@code PersistenceManager.getBudgetData()} ne portait plus les
+ * charges depuis R-20 (ecrasees par {@code treasuryStore} a chaque lecture) et n'etait jamais mis
+ * a jour par la production (aucun appelant reel, voir {@code 26-sequencage-r61-suppression-hub.md}).
+ * Chaque test compare desormais l'etat lu via {@link BudgetReader} a celui que sert l'API HTTP, ce
+ * qui couvre le meme risque (coherence stockage/API) sans repasser par le hub.
  *
  * <p>Comportement documente : les ecritures sont serialisees, aucune n'est perdue quand elles portent sur des
  * champs ou des lignes differentes ; sur un meme champ la derniere ecriture gagne (l'ordre n'est pas
@@ -77,39 +71,7 @@ class ConcurrentMutationsApiTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private PersistenceManager persistenceManager;
-
-    @Autowired
-    private BudgetDataRepository budgetDataRepository;
-
-    @Autowired
-    private PensionPlanRepository pensionPlanRepository;
-
-    @Autowired
-    private FiscalChildRepository fiscalChildRepository;
-
-    @Autowired
-    private FiscalBracketRepository fiscalBracketRepository;
-
-    @Autowired
-    private FiscalRateOverrideRepository fiscalRateOverrideRepository;
-
-    @Autowired
-    private FiscalActualOverrideRepository fiscalActualOverrideRepository;
-
-    @Autowired
-    private GoalRepository goalRepository;
-
-    @Autowired
-    private BankImportDocumentRepository bankImportDocumentRepository;
-
-    @Autowired
-    private PlatformTransactionManager transactionManager;
-
-    // R-20 : les lignes de tresorerie ne vivent plus que dans les tables cashflow_* (silo Tresorerie), le cache
-    // du PersistenceManager ne les porte plus. Elles sont relues via le store du silo.
-    @Autowired
-    private com.moe.myfamilybudget.domain.treasury.core.persistence.JpaTreasuryStore treasuryStore;
+    private BudgetReader budgetReader;
 
     private String datasetJson;
 
@@ -119,11 +81,11 @@ class ConcurrentMutationsApiTest {
         mockMvc.perform(post("/api/v1/budget/import").contextPath("/api/v1")
                 .contentType(MediaType.APPLICATION_JSON).content(datasetJson))
                 .andExpect(status().isOk());
-        assertThat(chargeIds(memory())).containsExactly("chg_1");
+        assertThat(chargeIds()).containsExactly("chg_1");
     }
 
     @Test
-    @DisplayName("Creations simultanees : toutes les lignes sont conservees, identifiants distincts, base = memoire")
+    @DisplayName("Creations simultanees : toutes les lignes sont conservees, identifiants distincts, base = API")
     void concurrentCreationsAreAllKept() throws Exception {
         int calls = 8;
         List<Callable<MvcResult>> requests = new ArrayList<>();
@@ -142,16 +104,8 @@ class ConcurrentMutationsApiTest {
 
         List<String> expected = new ArrayList<>(createdIds);
         expected.add("chg_1");
-        assertThat(chargeIds(memory())).containsExactlyInAnyOrderElementsOf(expected);
-        assertThat(chargeIds(readDatabase())).containsExactlyInAnyOrderElementsOf(expected);
-
-        MvcResult api = mockMvc.perform(get("/api/v1/tresorerie").contextPath("/api/v1"))
-                .andExpect(status().isOk()).andReturn();
-        List<String> served = new ArrayList<>();
-        for (JsonNode charge : objectMapper.readTree(api.getResponse().getContentAsString()).path("charges")) {
-            served.add(charge.path("id").asText());
-        }
-        assertThat(served).containsExactlyInAnyOrderElementsOf(expected);
+        assertThat(chargeIds()).containsExactlyInAnyOrderElementsOf(expected);
+        assertThat(idsServedByApi()).containsExactlyInAnyOrderElementsOf(expected);
     }
 
     @Test
@@ -163,15 +117,13 @@ class ConcurrentMutationsApiTest {
 
         results.forEach(result -> assertThat(result.getResponse().getStatus()).isEqualTo(200));
 
-        for (BudgetDataModel state : List.of(memory(), readDatabase())) {
-            ChargeModel charge = charge(state, "chg_1");
-            assertThat(charge.label()).isEqualTo("Loyer revise");
-            assertThat(charge.monthly()).isEqualByComparingTo("950");
-        }
+        ChargeModel charge = charge("chg_1");
+        assertThat(charge.label()).isEqualTo("Loyer revise");
+        assertThat(charge.monthly()).isEqualByComparingTo("950");
     }
 
     @RepeatedTest(3)
-    @DisplayName("Meme champ de la meme ligne : l'une des deux valeurs gagne, base = memoire")
+    @DisplayName("Meme champ de la meme ligne : l'une des deux valeurs gagne, base = API")
     void updatesOfSameFieldEndWithOneOfTheValues() throws Exception {
         List<MvcResult> results = callConcurrently(List.of(
                 updateCharge("chg_1", "monthly", "950"),
@@ -179,11 +131,9 @@ class ConcurrentMutationsApiTest {
 
         results.forEach(result -> assertThat(result.getResponse().getStatus()).isEqualTo(200));
 
-        ChargeModel inMemory = charge(memory(), "chg_1");
-        ChargeModel inDatabase = charge(readDatabase(), "chg_1");
-        assertThat(inMemory.monthly().intValue()).isIn(950, 1000);
-        assertThat(inDatabase.monthly()).isEqualByComparingTo(inMemory.monthly());
-        assertThat(inDatabase.label()).isEqualTo(inMemory.label());
+        ChargeModel stored = charge("chg_1");
+        assertThat(stored.monthly().intValue()).isIn(950, 1000);
+        assertThat(idsServedByApi()).contains("chg_1");
     }
 
     @Test
@@ -195,12 +145,12 @@ class ConcurrentMutationsApiTest {
 
         assertThat(results.get(0).getResponse().getStatus()).isEqualTo(200);
         assertThat(results.get(1).getResponse().getStatus()).isEqualTo(204);
-        assertThat(chargeIds(memory())).isEmpty();
-        assertThat(chargeIds(readDatabase())).isEmpty();
+        assertThat(chargeIds()).isEmpty();
+        assertThat(idsServedByApi()).isEmpty();
     }
 
     @RepeatedTest(3)
-    @DisplayName("Import contre creation : l'un des deux ordres sequentiels, base = memoire")
+    @DisplayName("Import contre creation : l'un des deux ordres sequentiels, base = API")
     void importRacingWithCreationEndsInASerialOrder() throws Exception {
         List<MvcResult> results = callConcurrently(List.of(
                 importDataset(),
@@ -211,9 +161,9 @@ class ConcurrentMutationsApiTest {
         String createdId = objectMapper.readTree(results.get(1).getResponse().getContentAsString()).path("id").asText();
 
         // creation puis import : l'import ecrase la creation ; import puis creation : les deux sont presentes.
-        List<String> memory = chargeIds(memory());
-        assertThat(memory).isIn(List.of("chg_1"), List.of("chg_1", createdId));
-        assertThat(chargeIds(readDatabase())).isEqualTo(memory);
+        List<String> stored = chargeIds();
+        assertThat(stored).isIn(List.of("chg_1"), List.of("chg_1", createdId));
+        assertThat(idsServedByApi()).containsExactlyInAnyOrderElementsOf(stored);
     }
 
     private Callable<MvcResult> createCharge(String label) {
@@ -263,51 +213,24 @@ class ConcurrentMutationsApiTest {
         }
     }
 
-    /** Relit la base sans passer par le cache memoire. */
-    private BudgetDataModel readDatabase() {
-        return new TransactionTemplate(transactionManager).execute(status ->
-                EntityModelConverter.toModel(budgetDataRepository.findFirstByOrderByIdAsc().orElseThrow())
-                        .withRetirement(PensionEntityMapper.toModel(
-                                pensionPlanRepository.findFirstByOrderByIdAsc().orElse(null)))
-                        .withTaxChildren(FiscalEntityMapper.toChildModels(
-                                fiscalChildRepository.findAllByOrderByPositionAsc()))
-                        .withTaxBrackets(FiscalEntityMapper.toBracketModels(
-                                fiscalBracketRepository.findAllByOrderByPositionAsc()))
-                        .withTaxRateOverrides(FiscalEntityMapper.toRateOverrideModels(
-                                fiscalRateOverrideRepository.findAllByOrderByPositionAsc()))
-                        .withTaxActualOverrides(FiscalEntityMapper.toActualOverrideModels(
-                                fiscalActualOverrideRepository.findAllByOrderByPositionAsc()))
-                        .withObjectifs(GoalEntityMapper.toModels(
-                                goalRepository.findAllByOrderByPositionAsc()))
-                        .withBankImport(BankImportDocumentMapper.toModel(
-                                bankImportDocumentRepository.findFirstByOrderByIdAsc().orElse(null)))
-                        .withIncomes(treasuryStore.getIncomes())
-                        .withCharges(treasuryStore.getCharges())
-                        .withOneoff(treasuryStore.getOneoffExpenses())
-                        .withVariableIncomes(treasuryStore.getVariableIncomes())
-                        .withVariableOverrides(treasuryStore.getVariableOverrides())
-                        .withTransfers(treasuryStore.getTransfers()));
+    /** Identifiants des charges telles que portees par le silo Tresorerie. */
+    private List<String> chargeIds() {
+        return budgetReader.getCharges().stream().map(ChargeModel::id).toList();
     }
 
-    /** Etat du cache (hors Tresorerie) complete par les lignes de tresorerie telles que le silo les stocke. */
-    private BudgetDataModel memory() {
-        return withTreasury(persistenceManager.getBudgetData());
+    private ChargeModel charge(String id) {
+        return budgetReader.getCharges().stream().filter(c -> id.equals(c.id())).findFirst().orElseThrow();
     }
 
-    private BudgetDataModel withTreasury(BudgetDataModel model) {
-        return model.withIncomes(treasuryStore.getIncomes())
-                .withCharges(treasuryStore.getCharges())
-                .withOneoff(treasuryStore.getOneoffExpenses())
-                .withVariableIncomes(treasuryStore.getVariableIncomes())
-                .withVariableOverrides(treasuryStore.getVariableOverrides())
-                .withTransfers(treasuryStore.getTransfers());
-    }
-
-    private static List<String> chargeIds(BudgetDataModel model) {
-        return model.getEffectiveCharges().stream().map(ChargeModel::id).toList();
-    }
-
-    private static ChargeModel charge(BudgetDataModel model, String id) {
-        return model.getEffectiveCharges().stream().filter(c -> id.equals(c.id())).findFirst().orElseThrow();
+    /** Identifiants des charges tels que l'API les sert (tresorerie). */
+    private List<String> idsServedByApi() throws Exception {
+        MvcResult api = mockMvc.perform(get("/api/v1/tresorerie").contextPath("/api/v1"))
+                .andExpect(status().isOk()).andReturn();
+        List<String> served = new ArrayList<>();
+        for (JsonNode charge : objectMapper.readTree(api.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .path("charges")) {
+            served.add(charge.path("id").asText());
+        }
+        return served;
     }
 }
