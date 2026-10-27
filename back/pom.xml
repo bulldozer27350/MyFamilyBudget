@@ -61,7 +61,6 @@
         <module>market-core</module>
         <module>api</module>
         <module>infra-jpa</module>
-        <module>transition-snapshot</module>
         <module>application-api</module>
         <module>application</module>
         <module>persistence</module>

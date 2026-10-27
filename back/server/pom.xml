@@ -134,12 +134,6 @@
             <artifactId>market-core</artifactId>
         </dependency>
 
-        <!-- Snapshot global de transition : BudgetDataModel, SettingsModel et ports transverses (MAVEN-100) -->
-        <dependency>
-            <groupId>com.moe.myfamilybudget</groupId>
-            <artifactId>transition-snapshot</artifactId>
-        </dependency>
-
         <!-- API applicative : ports transactionnels implémentés par le composition root (SILO-300) -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>
