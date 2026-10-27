@@ -34,10 +34,8 @@ COPY back/market-api/pom.xml back/market-api/pom.xml
 COPY back/market-core/pom.xml back/market-core/pom.xml
 COPY back/api/pom.xml back/api/pom.xml
 COPY back/infra-jpa/pom.xml back/infra-jpa/pom.xml
-COPY back/transition-snapshot/pom.xml back/transition-snapshot/pom.xml
 COPY back/application-api/pom.xml back/application-api/pom.xml
 COPY back/application/pom.xml back/application/pom.xml
-COPY back/persistence/pom.xml back/persistence/pom.xml
 COPY back/server/pom.xml back/server/pom.xml
 
 # Telechargement des dependances en s'appuyant sur le cache persistant .m2
@@ -72,10 +70,8 @@ COPY back/market-api back/market-api
 COPY back/market-core back/market-core
 COPY back/api back/api
 COPY back/infra-jpa back/infra-jpa
-COPY back/transition-snapshot back/transition-snapshot
 COPY back/application-api back/application-api
 COPY back/application back/application
-COPY back/persistence back/persistence
 COPY back/server back/server
 
 # Compilation du JAR executable avec réutilisation du cache .m2

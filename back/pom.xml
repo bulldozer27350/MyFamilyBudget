@@ -220,11 +220,6 @@
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
-                <artifactId>transition-snapshot</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>application-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
