@@ -30,7 +30,7 @@ import com.moe.myfamilybudget.domain.goals.model.ObjectifModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
-import com.moe.myfamilybudget.persistence.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.domain.goals.port.GoalReader;
 import com.moe.myfamilybudget.domain.goals.port.GoalWriter;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
