@@ -16,8 +16,8 @@ import com.tngtech.archunit.lang.ArchRule;
  *
  * <p>Aucune de leurs classes ne doit revenir aux types globaux de transition : {@code BudgetDataModel},
  * {@code SettingsModel}, {@code SettingsReader} ou son assembleur {@code SettingsModelAssembler}. Règle
- * stricte, sans gel : le silo ne figure pas dans la liste de {@link BudgetDataModelAllowList} et ne doit
- * jamais y entrer.
+ * stricte, sans gel : le silo ne figurait déjà pas dans la liste fermée d'exceptions du hub (retirée
+ * en R-61-25) et ne doit jamais en recevoir une équivalente.
  */
 @AnalyzeClasses(packages = "com.moe.myfamilybudget", importOptions = ImportOption.DoNotIncludeTests.class)
 class GoalsNotificationsFragmentInputsArchTest {
