@@ -33,11 +33,9 @@ import com.moe.myfamilybudget.domain.treasury.core.DefaultTresorerieCalculationS
 import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionService;
 import com.moe.myfamilybudget.application.service.OverviewServiceImpl;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
-import com.moe.myfamilybudget.transition.model.BudgetDataModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel;
-import com.moe.myfamilybudget.persistence.PersistenceManager;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
@@ -55,9 +53,6 @@ class BusinessLogicIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @Autowired
-    private PersistenceManager persistenceManager;
 
     // R-20 : les lignes de tresorerie importees vivent dans le silo Tresorerie, pas dans le cache. Le bean
     // JpaTreasuryStore (@Primary) implémente directement BudgetReader (R-20). R-51 : type concret (plutot
@@ -417,17 +412,16 @@ class BusinessLogicIntegrationTest {
     void testRetraite_trimestres_surcote() throws Exception {
         importMockBudget();
 
-        BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = retirementStore.getRetirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
                 retirementStore, new InMemoryTaxStore(),
-                treasuryStore, CacheBackedAppSettings.of(persistenceManager),
-                CacheBackedAppSettings.of(persistenceManager), treasuryStore,
+                treasuryStore, new CacheBackedAppSettings(),
+                new CacheBackedAppSettings(), treasuryStore,
                 patrimoineReader, retirementStore,
                 new InMemoryTaxStore(), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
-        RetirementProjectionModel proj = retirementProjection(svc, data, alice);
+        RetirementProjectionModel proj = retirementProjection(svc, alice);
 
         // trimestresDateYear=2025, salaire actif 2026..2053 = 28 annees * 4 = 112
         // total = 140 + 112 = 252
@@ -446,17 +440,16 @@ class BusinessLogicIntegrationTest {
     void testRetraite_pension_coherence() throws Exception {
         importMockBudget();
 
-        BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = retirementStore.getRetirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
                 retirementStore, new InMemoryTaxStore(),
-                treasuryStore, CacheBackedAppSettings.of(persistenceManager),
-                CacheBackedAppSettings.of(persistenceManager), treasuryStore,
+                treasuryStore, new CacheBackedAppSettings(),
+                new CacheBackedAppSettings(), treasuryStore,
                 patrimoineReader, retirementStore,
                 new InMemoryTaxStore(), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
-        RetirementProjectionModel proj = retirementProjection(svc, data, alice);
+        RetirementProjectionModel proj = retirementProjection(svc, alice);
 
         assertThat(proj.pensionBaseAnnuelle()).isGreaterThan(BigDecimal.ZERO);
         assertThat(proj.pensionComplementaireAnnuelle()).isGreaterThan(BigDecimal.ZERO);
@@ -470,17 +463,16 @@ class BusinessLogicIntegrationTest {
     @DisplayName("GET /overview => totalPensions = pensionTotaleMensuelle d Alice")
     void testOverview_totalPensions() throws Exception {
         importMockBudget();
-        BudgetDataModel data = persistenceManager.getBudgetData();
         RetirementModel.RetirementPersonModel alice = retirementStore.getRetirement().people().get(0);
         OverviewServiceImpl svc = new OverviewServiceImpl(new OverviewMapper(), new DefaultRetirementCalculationService(), new DefaultTaxCalculationService(), new DefaultPatrimoineProjectionService(),
                 new DefaultTresorerieCalculationService(),
                 retirementStore, new InMemoryTaxStore(),
-                treasuryStore, CacheBackedAppSettings.of(persistenceManager),
-                CacheBackedAppSettings.of(persistenceManager), treasuryStore,
+                treasuryStore, new CacheBackedAppSettings(),
+                new CacheBackedAppSettings(), treasuryStore,
                 patrimoineReader, retirementStore,
                 new InMemoryTaxStore(), new InMemoryBankStore(),
                 new InMemoryLoanStore(), new InMemoryGoalStore());
-        RetirementProjectionModel proj = retirementProjection(svc, data, alice);
+        RetirementProjectionModel proj = retirementProjection(svc, alice);
 
         MvcResult result = mockMvc.perform(get("/api/v1/overview").contextPath("/api/v1")).andExpect(status().isOk()).andReturn();
         double totalPensions = objectMapper.readTree(result.getResponse().getContentAsString()).path("totalPensions").asDouble();
@@ -902,17 +894,17 @@ class BusinessLogicIntegrationTest {
      * SILO-117 : le service prend des fragments Retraite, plus le snapshot global.
      *
      * <p>R-20 : les revenus importes vivent dans le silo Tresorerie (tables {@code cashflow_*}), plus dans
-     * le cache du {@code PersistenceManager} ({@code data.getEffectiveIncomes()} y est donc perime depuis
-     * l'import via {@code GlobalBudgetSnapshotService}) ; on les relit depuis le {@code treasuryStore}.
+     * le cache du hub ; on les relit depuis le {@code treasuryStore}.
      */
     private RetirementProjectionModel retirementProjection(
-            OverviewServiceImpl svc, BudgetDataModel data, RetirementModel.RetirementPersonModel person) {
+            OverviewServiceImpl svc, RetirementModel.RetirementPersonModel person) {
         // R-40 : birthYear/retireAge et le plan de retraite viennent du silo reel (retirementStore), pas du
-        // cache (voir le commentaire sur le champ retirementStore). Seul le nombre d'enfants fiscaux reste lu
-        // via le cache ici (hors perimetre de ce patch ; sans effet sur le fixture de test, sans enfant).
+        // cache (voir le commentaire sur le champ retirementStore). R-61-19 : le nombre d'enfants fiscaux
+        // n'est plus lu via le hub (retire, grille 3.2 cas 3) ; fixe a 0, meme valeur que le fixture
+        // mock-budget.json (aucun enfant fiscal), aucune perte de couverture.
         return svc.computeRetirementProjection(
                 retirementStore.getRetirementSettings(),
-                retirementStore.getRetirement(), treasuryStore.getIncomes(), data.getEffectiveTaxChildren().size(),
+                retirementStore.getRetirement(), treasuryStore.getIncomes(), 0,
                 person);
     }
 }
