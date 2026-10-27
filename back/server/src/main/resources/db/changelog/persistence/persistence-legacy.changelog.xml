@@ -153,4 +153,29 @@
         </dropColumn>
     </changeSet>
 
+    <!--
+        R-61 (24-backlog-reste-a-faire.md, 26-sequencage-r61-suppression-hub.md) : suppression du hub
+        et du modele global (BudgetDataEntity, PlacementEntity, PlacementHistoryEntryEntity, et ce qui
+        reste de SettingsEntity apres R-51) ; plus aucun code Java du module persistence (supprime en
+        bloc en R-61-24) n'ecrit ni ne lit ces 4 tables. DA-02 : aucune cle etrangere inter-silo a
+        preserver ici, ces FK ne relient que des tables legacy entre elles (budget_data -> settings,
+        placement -> budget_data, placement_history_entry -> placement) ; cascadeConstraints="true"
+        supprime ces FK avec leur table sans sequence manuelle supplementaire. Ordre : les tables
+        enfants (au sens FK) d'abord, settings en dernier (n'est plus reference par aucune FK depuis la
+        suppression de settings_id -> aucune contrainte sur budget_data a ce stade, mais l'ordre suit
+        quand meme child -> parent par coherence avec le schema d'origine).
+    -->
+    <changeSet author="R-61" id="r61-persistence-1">
+        <dropTable cascadeConstraints="true" tableName="placement_history_entry"/>
+    </changeSet>
+    <changeSet author="R-61" id="r61-persistence-2">
+        <dropTable cascadeConstraints="true" tableName="placement"/>
+    </changeSet>
+    <changeSet author="R-61" id="r61-persistence-3">
+        <dropTable cascadeConstraints="true" tableName="budget_data"/>
+    </changeSet>
+    <changeSet author="R-61" id="r61-persistence-4">
+        <dropTable cascadeConstraints="true" tableName="settings"/>
+    </changeSet>
+
 </databaseChangeLog>
