@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -28,24 +27,10 @@ import com.moe.myfamilybudget.api.model.TresorerieResponseDto;
 import com.moe.myfamilybudget.api.model.UpdateTresorerieLigneRequestDto;
 import com.moe.myfamilybudget.api.model.VariableIncomeDto;
 import com.moe.myfamilybudget.api.model.VariableOverrideDto;
-import com.moe.myfamilybudget.application.factory.TreasuryInputFactory;
-import com.moe.myfamilybudget.application.mapper.TresorerieMapper;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.domain.treasury.model.CategoryOptionModel;
-import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
-import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
-import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
-import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
-import com.moe.myfamilybudget.domain.tax.model.TaxSettingsModel;
-import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
-import com.moe.myfamilybudget.domain.settings.model.SimulationSettingsModel;
-import com.moe.myfamilybudget.domain.treasury.model.TresorerieResultModel;
-import com.moe.myfamilybudget.domain.treasury.model.TresorerieSuggestionModel;
-import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
-import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewCellModel;
-import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
 import com.moe.myfamilybudget.application.command.TresorerieCommandService;
+import com.moe.myfamilybudget.application.mapper.TresorerieMapper;
+import com.moe.myfamilybudget.application.usecase.DefaultTreasuryUseCase;
+import com.moe.myfamilybudget.application.usecase.treasury.TreasuryUseCase;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
@@ -55,6 +40,13 @@ import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
 import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 
+/**
+ * R-82 (meme gabarit que {@code ImpotsServiceImplTest}) : {@code TresorerieServiceImpl} ne garde plus que
+ * la conversion HTTP ; la composition de la reponse et l'ecriture passent par {@link DefaultTreasuryUseCase}
+ * (voir {@code DefaultTreasuryUseCaseTest} pour la couverture detaillee du cas d'usage, y compris
+ * {@code computeTresorerie}/{@code buildCategoryOptions}, desormais prives). Ce test verifie uniquement la
+ * traduction HTTP (ajout/mise a jour/suppression de lignes, ajustement, lecture).
+ */
 class TresorerieServiceImplTest {
 
     private final InMemoryBankStore bankStore = new InMemoryBankStore();
@@ -69,8 +61,8 @@ class TresorerieServiceImplTest {
         InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
         InMemoryTaxStore taxStore = new InMemoryTaxStore();
         CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
-        service = new TresorerieServiceImpl(
-                mapper, new TresorerieCommandService(treasuryStore, silos -> { }, RecordingTransactionRunner.direct()),
+        TreasuryUseCase treasuryUseCase = new DefaultTreasuryUseCase(
+                new TresorerieCommandService(treasuryStore, silos -> { }, RecordingTransactionRunner.direct()),
                 new DefaultRetirementCalculationService(),
                 new DefaultTaxCalculationService(),
                 new DefaultTresorerieCalculationService(),
@@ -84,6 +76,7 @@ class TresorerieServiceImplTest {
                 treasuryStore,
                 new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), treasuryStore.getDelegate()),
                 bankStore);
+        service = new TresorerieServiceImpl(mapper, treasuryUseCase);
     }
 
     // -------------------------------------------------------------------------
@@ -490,140 +483,4 @@ class TresorerieServiceImplTest {
         assertEquals(new BigDecimal("3200.0"), updated.getMonthly());
     }
 
-
-    // -------------------------------------------------------------------------
-    // CALCULS & PROJECTIONS TRESORERIE
-    // -------------------------------------------------------------------------
-
-    /** Fragments équivalents à ceux que {@code BudgetDataModel} fournissait avant SILO-113 (R-61-18 : amorçage
-     * direct par silo, grille 3.2 cas 3, patron {@code TreasuryInputFactoryTest.budget}, plus de
-     * {@code SettingsModel} comme intermédiaire). */
-    private static TreasuryInputFactory.Sources sources(
-            RetirementSettingsModel retirementSettings,
-            TaxSettingsModel taxSettings,
-            TresorerieSettingsModel tresorerieSettings,
-            SimulationSettingsModel simulationSettings,
-            BigDecimal inflationRate,
-            List<IncomeModel> incomes,
-            List<ChargeModel> charges,
-            List<OneOffExpenseModel> oneoff,
-            List<VariableIncomeModel> variableIncomes,
-            List<VariableOverrideModel> variableOverrides,
-            BankImportModel bankImport) {
-        return new TreasuryInputFactory.Sources(
-                retirementSettings, taxSettings, tresorerieSettings, simulationSettings, inflationRate,
-                null,
-                incomes, charges, List.of(), oneoff, List.of(), variableIncomes, variableOverrides,
-                List.of(), List.of(), List.of(), List.of(), bankImport);
-    }
-
-    @Test
-    void computeTresorerie_withCompleteData_buildsAllFields() {
-        IncomeModel salary = new IncomeModel(
-                "inc_1", "Salaire", BigDecimal.valueOf(3000),
-                "2026-01-01", "2049-12-31", BigDecimal.valueOf(0.01), "cat_1", "Notes"
-        );
-
-        ChargeModel rent = new ChargeModel(
-                "ch_1", "Loyer", BigDecimal.valueOf(1000),
-                "2026-01-01", "2049-12-31", BigDecimal.valueOf(0.02), "cat_2", "Loyer principal"
-        );
-
-        OneOffExpenseModel travel = new OneOffExpenseModel(
-                "one_1", "Voyage", "2026-07-15", BigDecimal.valueOf(1500), "Vacances été"
-        );
-
-        VariableIncomeModel bonus = new VariableIncomeModel(
-                "var_1", "Prime annuelle", "Salaire", BigDecimal.valueOf(0.10),
-                2026, 2049, "Oui"
-        );
-
-        VariableOverrideModel bonusReal = new VariableOverrideModel(
-                "ov_1", "Prime annuelle", 2026, BigDecimal.valueOf(3500), "Oui"
-        );
-
-        BankImportModel.CategoryModel cat1 = new BankImportModel.CategoryModel("cat_1", "Revenus");
-        BankImportModel.CategoryModel cat2 = new BankImportModel.CategoryModel("cat_2", "Logement");
-        BankImportModel bankImport = new BankImportModel(
-                List.of(
-                        new BankImportModel.BankTransactionModel("tx_1", "2026-01-10", "Loyer Janvier", BigDecimal.valueOf(-1050)),
-                        new BankImportModel.BankTransactionModel("tx_2", "2026-02-10", "Loyer Février", BigDecimal.valueOf(-1050)),
-                        new BankImportModel.BankTransactionModel("tx_3", "2026-03-10", "Loyer Mars", BigDecimal.valueOf(-1050))
-                ),
-                List.of(cat1, cat2),
-                List.of(
-                        new BankImportModel.MatchingModel("2026-01", List.of(new BankImportModel.MatchingLinkModel("ch_1", List.of("tx_1")))),
-                        new BankImportModel.MatchingModel("2026-02", List.of(new BankImportModel.MatchingLinkModel("ch_1", List.of("tx_2")))),
-                        new BankImportModel.MatchingModel("2026-03", List.of(new BankImportModel.MatchingLinkModel("ch_1", List.of("tx_3"))))
-                )
-        );
-
-        TreasuryInputFactory.Sources data = sources(
-                new RetirementSettingsModel(1985, 64),
-                new TaxSettingsModel(21, BigDecimal.valueOf(0.10)),
-                new TresorerieSettingsModel("2026-01-01", "manual", BigDecimal.valueOf(0.02), false, null, null, null),
-                new SimulationSettingsModel(85),
-                BigDecimal.valueOf(1000),
-                List.of(salary), List.of(rent), List.of(travel), List.of(bonus), List.of(bonusReal),
-                bankImport);
-
-        TresorerieResultModel result = service.computeTresorerie(data, false);
-
-        assertNotNull(result);
-        assertEquals(2049, result.retireYear());
-        assertEquals(1, result.incomes().size());
-        assertEquals(1, result.charges().size());
-        assertEquals(1, result.oneoff().size());
-        assertEquals(1, result.variableIncomes().size());
-        assertEquals(1, result.variableOverrides().size());
-
-        // Labels
-        assertEquals(List.of("Salaire"), result.incomeLabels());
-        assertEquals(List.of("Prime annuelle"), result.variableIncomeLabels());
-
-        // Category options
-        assertEquals(3, result.categoryOptions().size());
-        assertEquals("", result.categoryOptions().get(0).value());
-        assertEquals("— Non liée —", result.categoryOptions().get(0).label());
-        assertEquals("Logement", result.categoryOptions().get(1).label());
-        assertEquals("Revenus", result.categoryOptions().get(2).label());
-
-        // Suggestions: Loyer budgeté 1000€, réel constaté 1050€ => écart 50€ (>= 10€)
-        assertFalse(result.suggestions().isEmpty());
-        TresorerieSuggestionModel suggestion = result.suggestions().get(0);
-        assertEquals("ch_1", suggestion.id());
-        assertEquals("Loyer", suggestion.label());
-        assertEquals("charge", suggestion.kind());
-        assertEquals(new BigDecimal("1000.00"), suggestion.budgeted());
-        assertEquals(new BigDecimal("1050.00"), suggestion.avg3m());
-        assertEquals(new BigDecimal("50.00"), suggestion.ecart());
-        assertEquals(new BigDecimal("5.00"), suggestion.ecartPct());
-
-        // Variable preview
-        assertFalse(result.variablePreview().isEmpty());
-        VariablePreviewModel preview = result.variablePreview().get(0);
-        assertEquals("Prime annuelle", preview.label());
-        assertEquals(4, preview.cells().size());
-        // Cell 2026 is overridden (real) with 3500
-        VariablePreviewCellModel cell2026 = preview.cells().get(0);
-        assertEquals(2026, cell2026.year());
-        assertEquals(new BigDecimal("3500"), cell2026.amount());
-        assertTrue(cell2026.isReal());
-    }
-
-    @Test
-    void buildCategoryOptions_sortsFrenchCollatorAndHandlesEmptyCategories() {
-        BankImportModel.CategoryModel catA = new BankImportModel.CategoryModel("cat_a", "Épargne");
-        BankImportModel.CategoryModel catB = new BankImportModel.CategoryModel("cat_b", "Alimentation");
-        BankImportModel.CategoryModel catC = new BankImportModel.CategoryModel("cat_c", "Énergie");
-
-        BankImportModel bankImport = new BankImportModel(List.of(), List.of(catA, catB, catC), List.of());
-
-        List<CategoryOptionModel> options = service.buildCategoryOptions(bankImport);
-        assertEquals(4, options.size()); // 1 default + 3 sorted
-        assertEquals("", options.get(0).value());
-        assertEquals("Alimentation", options.get(1).label());
-        assertEquals("Énergie", options.get(2).label());
-        assertEquals("Épargne", options.get(3).label());
-    }
 }
