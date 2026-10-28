@@ -13,9 +13,10 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 /**
- * Garde-fou SILO-300 (voir doc/architecture/21-plan-silotage.md) : l'API applicative ({@code application-api},
- * packages {@code com.moe.myfamilybudget.application.port} et
- * {@code com.moe.myfamilybudget.application.usecase.retirement}) ne connait ni Spring, ni JPA, ni le contrat REST
+ * Garde-fou SILO-300 (voir doc/architecture/21-plan-silotage.md), etendu par R-80 : l'API applicative
+ * ({@code application-api}, packages {@code com.moe.myfamilybudget.application.port},
+ * {@code com.moe.myfamilybudget.application.usecase.retirement} et
+ * {@code com.moe.myfamilybudget.application.usecase.tax}) ne connait ni Spring, ni JPA, ni le contrat REST
  * genere, ni l'implementation de l'application, ni la persistance, ni le module {@code server}, ni les silos.
  * L'implementation des cas d'usage ({@code com.moe.myfamilybudget.application.usecase}, module {@code application})
  * n'est pas dans le perimetre : elle est le lieu de la traduction entre types des silos et modeles applicatifs.
@@ -26,7 +27,8 @@ class ApplicationApiIndependenceArchTest {
     @ArchTest
     static final ArchRule APPLICATION_API_IS_SELF_CONTAINED = noClasses()
             .that().resideInAnyPackage("com.moe.myfamilybudget.application.port..",
-                    "com.moe.myfamilybudget.application.usecase.retirement..")
+                    "com.moe.myfamilybudget.application.usecase.retirement..",
+                    "com.moe.myfamilybudget.application.usecase.tax..")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "org.springframework..", "jakarta..", "org.hibernate..",
                     "com.moe.myfamilybudget.api..",
@@ -41,24 +43,32 @@ class ApplicationApiIndependenceArchTest {
             .as("application-api ne depend ni de Spring, ni de JPA, ni de l'OpenAPI genere, ni de l'implementation "
                     + "de l'application, ni de la persistance, ni de server, ni des silos (SILO-300)");
 
-    /** Evite une regle vide : les ports et le cas d'usage Retraite doivent etre dans le perimetre analyse. */
+    /**
+     * Evite une regle vide : les ports et les cas d'usage Retraite et Fiscalite doivent etre dans le
+     * perimetre analyse.
+     */
     @Test
     void coversThePortsAndUseCasesOfTheApplicationApi() {
         JavaClasses classes = new ClassFileImporter().withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("com.moe.myfamilybudget.application.port",
-                        "com.moe.myfamilybudget.application.usecase.retirement");
+                        "com.moe.myfamilybudget.application.usecase.retirement",
+                        "com.moe.myfamilybudget.application.usecase.tax");
         assertThat(classes.stream().map(c -> c.getSimpleName()))
                 .contains("TransactionRunner", "SiloMutationLock", "MutationSilo",
-                        "RetirementUseCase", "RetraiteResultModel", "RetraitePersonWithProjectionModel");
+                        "RetirementUseCase", "RetraiteResultModel", "RetraitePersonWithProjectionModel",
+                        "TaxUseCase", "TaxResultModel", "TaxConfigSaveCommand");
     }
 
-    /** Le cas d'usage Retraite est implemente dans {@code application}, pas dans {@code application-api}. */
+    /**
+     * Les cas d'usage Retraite et Fiscalite sont implementes dans {@code application}, pas dans
+     * {@code application-api}.
+     */
     @Test
-    void retirementUseCaseIsImplementedOutsideTheApi() {
+    void retirementAndTaxUseCasesAreImplementedOutsideTheApi() {
         JavaClasses classes = new ClassFileImporter().withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("com.moe.myfamilybudget.application.usecase");
         assertThat(classes.stream().filter(c -> c.getPackageName().equals("com.moe.myfamilybudget.application.usecase"))
                 .map(c -> c.getSimpleName()))
-                .contains("DefaultRetirementUseCase");
+                .contains("DefaultRetirementUseCase", "DefaultTaxUseCase");
     }
 }

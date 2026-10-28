@@ -15,28 +15,35 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
-import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
-import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
-import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
-import com.moe.myfamilybudget.application.command.TaxCommandService;
+import com.moe.myfamilybudget.application.command.EconomicAssumptionsCommandService;
 import com.moe.myfamilybudget.application.command.RetirementCommandService;
-import com.moe.myfamilybudget.application.command.TresorerieCommandService;
 import com.moe.myfamilybudget.application.command.SettingsCommandRouter;
 import com.moe.myfamilybudget.application.command.SimulationSettingsCommandService;
-import com.moe.myfamilybudget.application.command.EconomicAssumptionsCommandService;
+import com.moe.myfamilybudget.application.command.TaxCommandService;
+import com.moe.myfamilybudget.application.command.TresorerieCommandService;
 import com.moe.myfamilybudget.application.factory.RetirementInputFactory;
 import com.moe.myfamilybudget.application.mapper.TaxMapper;
-import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
-import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
-import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
+import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
+import com.moe.myfamilybudget.application.usecase.DefaultTaxUseCase;
+import com.moe.myfamilybudget.domain.retirement.calculation.RetirementCalculationService;
+import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
+import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
 import com.moe.myfamilybudget.server.internal.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
-import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
-import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
 
+/**
+ * R-80 : {@code ImpotsServiceImpl} ne garde plus que la conversion HTTP ; la composition de la reponse
+ * et l'ecriture passent par {@link DefaultTaxUseCase} (voir {@code DefaultTaxUseCaseTest} pour la
+ * couverture detaillee du cas d'usage). Ce test verifie uniquement la traduction HTTP et le routage de
+ * l'action generique {@code updateSettings} (reste hors du cas d'usage, voir R-88).
+ */
 class ImpotsServiceImplTest {
 
     private final InMemoryBankStore bankStore = new InMemoryBankStore();
@@ -51,6 +58,8 @@ class ImpotsServiceImplTest {
         InMemoryTaxStore taxStore = new InMemoryTaxStore();
         InMemoryRetirementStore retirementStore = new InMemoryRetirementStore();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
+        TaxCommandService taxCommandService = new TaxCommandService(taxStore, silos -> { },
+                RecordingTransactionRunner.direct());
         // R-61-15 : SettingsCommandRouterTestFactory.of(PersistenceManager, ...) depend du hub (retrait prevu
         // par R-61-21) ; le routeur est construit ici directement, memes stores par defaut que l'overload a
         // deux arguments de la factory (taxStore/retirementStore/treasuryStore internes non partages, seule
@@ -63,13 +72,12 @@ class ImpotsServiceImplTest {
                 new TresorerieCommandService(new InMemoryTreasuryStore(), silos -> { }, RecordingTransactionRunner.direct()),
                 new SimulationSettingsCommandService(appSettings, silos -> { }, RecordingTransactionRunner.direct()),
                 new EconomicAssumptionsCommandService(appSettings, silos -> { }, RecordingTransactionRunner.direct()));
-        service = new ImpotsServiceImpl(
-                mapper,
+        RetirementCalculationService retirementCalculationService = new DefaultRetirementCalculationService();
+        DefaultTaxUseCase taxUseCase = new DefaultTaxUseCase(
                 new RetirementInputFactory(),
-                new DefaultRetirementCalculationService(),
+                retirementCalculationService,
                 new DefaultTaxCalculationService(),
-                new TaxCommandService(taxStore, silos -> { }, RecordingTransactionRunner.direct()),
-                settingsCommandRouter,
+                taxCommandService,
                 retirementStore,
                 taxStore,
                 treasuryStore,
@@ -80,6 +88,7 @@ class ImpotsServiceImplTest {
                 new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), new InMemoryTreasuryStore().getDelegate()),
                 retirementStore,
                 bankStore);
+        service = new ImpotsServiceImpl(mapper, taxUseCase, settingsCommandRouter);
     }
 
     @Test

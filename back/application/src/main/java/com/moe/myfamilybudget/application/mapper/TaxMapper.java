@@ -11,17 +11,22 @@ import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
-import com.moe.myfamilybudget.application.settings.SettingsView;
-import com.moe.myfamilybudget.domain.tax.model.TaxActualOverrideModel;
-import com.moe.myfamilybudget.domain.tax.model.TaxBracketModel;
-import com.moe.myfamilybudget.domain.tax.model.TaxChildModel;
-import com.moe.myfamilybudget.domain.tax.model.TaxRateOverrideModel;
-import com.moe.myfamilybudget.application.model.TaxResultModel;
-import com.moe.myfamilybudget.domain.tax.model.TaxYearlyModel;
+import com.moe.myfamilybudget.application.usecase.tax.TaxActualOverrideModel;
+import com.moe.myfamilybudget.application.usecase.tax.TaxBracketModel;
+import com.moe.myfamilybudget.application.usecase.tax.TaxChildModel;
+import com.moe.myfamilybudget.application.usecase.tax.TaxConfigSaveCommand;
+import com.moe.myfamilybudget.application.usecase.tax.TaxRateOverrideModel;
+import com.moe.myfamilybudget.application.usecase.tax.TaxResultModel;
+import com.moe.myfamilybudget.application.usecase.tax.TaxSettingsViewModel;
+import com.moe.myfamilybudget.application.usecase.tax.TaxYearlyModel;
 
 /**
- * Mapper assurant la conversion entre le Modèle Interne (Records) et la couche DTO / API Map.
+ * Mapper assurant la conversion entre le modèle applicatif ({@code application-api}, package
+ * {@code application.usecase.tax}) et la couche DTO / API Map.
+ *
+ * <p>R-80 : ce mapper ne connaît plus aucun type d'un silo (ni {@code domain.tax.model}, ni
+ * {@code domain.retirement.model}) ; {@code pass2026}/{@code passGrowthRate} sont rappelés directement
+ * depuis {@link TaxResultModel} (composés par le cas d'usage {@code TaxUseCase}).
  */
 @Component
 public class TaxMapper {
@@ -29,18 +34,9 @@ public class TaxMapper {
     private static final Logger LOG = LoggerFactory.getLogger(TaxMapper.class);
 
     /**
-     * Variante sans retraite : les clés {@code pass2026} / {@code passGrowthRate} de {@code settings} sont
-     * alors {@code null}. Les services d'API utilisent {@link #toResponseMap(TaxResultModel, RetirementModel)}.
+     * Convertit un TaxResultModel (modèle applicatif) en une Map d'objets sérialisables JSON pour l'API.
      */
     public Map<String, Object> toResponseMap(TaxResultModel model) {
-        return toResponseMap(model, null);
-    }
-
-    /**
-     * Convertit un TaxResultModel (modèle interne) en une Map d'objets sérialisables JSON pour l'API.
-     * SET-040 : {@code pass2026} / {@code passGrowthRate} de {@code settings} sont relus depuis la retraite.
-     */
-    public Map<String, Object> toResponseMap(TaxResultModel model, RetirementModel retirement) {
         Map<String, Object> response = new HashMap<>();
 
         if (model == null) {
@@ -100,7 +96,7 @@ public class TaxMapper {
         // 5. Settings
         Map<String, Object> settingsMap = new HashMap<>();
         if (model.settings() != null) {
-            SettingsView s = model.settings();
+            TaxSettingsViewModel s = model.settings();
             settingsMap.put("birthYear", s.birthYear());
             settingsMap.put("retireAge", s.retireAge());
             settingsMap.put("simulateUntilAge", s.simulateUntilAge());
@@ -110,8 +106,8 @@ public class TaxMapper {
             settingsMap.put("startBalance", s.startBalance());
             settingsMap.put("childExitAge", s.childExitAge());
             settingsMap.put("taxAbattement", s.taxAbattement());
-            settingsMap.put("pass2026", retirement != null ? retirement.pass2026() : null);
-            settingsMap.put("passGrowthRate", retirement != null ? retirement.passGrowthRate() : null);
+            settingsMap.put("pass2026", model.pass2026());
+            settingsMap.put("passGrowthRate", model.passGrowthRate());
             settingsMap.put("sweepEnabled", s.sweepEnabled());
             settingsMap.put("cashCeiling", s.cashCeiling());
             settingsMap.put("cashFloor", s.cashFloor());
@@ -137,6 +133,62 @@ public class TaxMapper {
         response.put("taxPreview", previewList);
 
         return response;
+    }
+
+    /**
+     * Construit la commande de sauvegarde à partir du corps JSON. Une liste absente du corps reste
+     * {@code null} dans la commande (contrat historique : conserve la valeur déjà enregistrée).
+     */
+    public TaxConfigSaveCommand toSaveCommandFromMap(Map<String, Object> map) {
+        List<TaxChildModel> children = null;
+        if (map != null && map.get("taxChildren") instanceof List<?> rawList) {
+            children = rawList.stream()
+                    .filter(Map.class::isInstance)
+                    .map(m -> {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> itemMap = (Map<String, Object>) m;
+                        return toTaxChildModel(itemMap);
+                    })
+                    .toList();
+        }
+
+        List<TaxBracketModel> brackets = null;
+        if (map != null && map.get("taxBrackets") instanceof List<?> rawList) {
+            brackets = rawList.stream()
+                    .filter(Map.class::isInstance)
+                    .map(m -> {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> itemMap = (Map<String, Object>) m;
+                        return toTaxBracketModel(itemMap);
+                    })
+                    .toList();
+        }
+
+        List<TaxRateOverrideModel> rateOverrides = null;
+        if (map != null && map.get("taxRateOverrides") instanceof List<?> rawList) {
+            rateOverrides = rawList.stream()
+                    .filter(Map.class::isInstance)
+                    .map(m -> {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> itemMap = (Map<String, Object>) m;
+                        return toTaxRateOverrideModel(itemMap);
+                    })
+                    .toList();
+        }
+
+        List<TaxActualOverrideModel> actualOverrides = null;
+        if (map != null && map.get("taxActualOverrides") instanceof List<?> rawList) {
+            actualOverrides = rawList.stream()
+                    .filter(Map.class::isInstance)
+                    .map(m -> {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> itemMap = (Map<String, Object>) m;
+                        return toTaxActualOverrideModel(itemMap);
+                    })
+                    .toList();
+        }
+
+        return new TaxConfigSaveCommand(children, brackets, rateOverrides, actualOverrides);
     }
 
     public TaxChildModel toTaxChildModel(Map<String, Object> map) {
