@@ -25,17 +25,16 @@ import com.moe.myfamilybudget.api.model.PlacementEvolutionDto;
 import com.moe.myfamilybudget.api.model.PlacementHistoryEntryDto;
 import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
-import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
-import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
 import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionService;
 import com.moe.myfamilybudget.domain.wealth.core.DefaultPlacementEvolutionService;
 import com.moe.myfamilybudget.application.command.GoalCommandService;
 import com.moe.myfamilybudget.application.command.LoanCommandService;
 import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
 import com.moe.myfamilybudget.application.mapper.PatrimoineMapper;
-import com.moe.myfamilybudget.domain.wealth.model.PatrimoinePerPlacementModel;
-import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
-import com.moe.myfamilybudget.domain.wealth.model.PatrimoineYearModel;
+import com.moe.myfamilybudget.application.usecase.DefaultWealthUseCase;
+import com.moe.myfamilybudget.application.usecase.wealth.PatrimoinePerPlacementModel;
+import com.moe.myfamilybudget.application.usecase.wealth.PatrimoineProjectionsModel;
+import com.moe.myfamilybudget.application.usecase.wealth.PatrimoineYearModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
@@ -72,12 +71,9 @@ class PatrimoineServiceImplTest {
         wealthStore = new InMemoryWealthStore();
         PatrimoinePersistenceAdapter patrimoineAdapter = new PatrimoinePersistenceAdapter(
                 wealthStore.getDelegate(), treasuryStore.getDelegate());
-        service = new PatrimoineServiceImpl(
-                mapper, new DefaultPatrimoineProjectionService(), new DefaultPlacementEvolutionService(),
+        DefaultWealthUseCase wealthUseCase = new DefaultWealthUseCase(
+                new DefaultPatrimoineProjectionService(), new DefaultPlacementEvolutionService(),
                 new PatrimoineCommandService(patrimoineAdapter, silos -> { }, RecordingTransactionRunner.direct()),
-                new LoanCommandService(loanStore, silos -> { }, RecordingTransactionRunner.direct()),
-                new GoalCommandService(goalStore, goalStore, patrimoineAdapter,
-                        silos -> { }, RecordingTransactionRunner.direct()),
                 new InMemoryRetirementStore(),
                 treasuryStore,
                 appSettings,
@@ -85,6 +81,11 @@ class PatrimoineServiceImplTest {
                 treasuryStore,
                 loanStore,
                 bankStore);
+        service = new PatrimoineServiceImpl(
+                mapper, wealthUseCase,
+                new LoanCommandService(loanStore, silos -> { }, RecordingTransactionRunner.direct()),
+                new GoalCommandService(goalStore, goalStore, patrimoineAdapter,
+                        silos -> { }, RecordingTransactionRunner.direct()));
     }
 
     /**

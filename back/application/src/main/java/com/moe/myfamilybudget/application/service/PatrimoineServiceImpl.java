@@ -1,8 +1,7 @@
 package com.moe.myfamilybudget.application.service;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
@@ -14,108 +13,50 @@ import com.moe.myfamilybudget.api.model.UpdatePlacementHistoriquePointRequest;
 import com.moe.myfamilybudget.api.model.PatrimoineResponseDto;
 import com.moe.myfamilybudget.api.model.PlacementEvolutionDto;
 import com.moe.myfamilybudget.api.model.PlacementHistoryEntryDto;
-import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
-import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolution;
-import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
-import com.moe.myfamilybudget.application.factory.PatrimoineInputFactory;
-import com.moe.myfamilybudget.application.mapper.PatrimoineMapper;
-import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
-import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
 import com.moe.myfamilybudget.application.command.GoalCommandService;
 import com.moe.myfamilybudget.application.command.LoanCommandService;
-import com.moe.myfamilybudget.application.command.PatrimoineCommandService;
-import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
-import com.moe.myfamilybudget.domain.treasury.port.BudgetReader;
-import com.moe.myfamilybudget.domain.credit.port.LoanReader;
-import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
-import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
-import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
-import com.moe.myfamilybudget.domain.treasury.port.TresorerieSettingsReader;
-import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
+import com.moe.myfamilybudget.application.mapper.PatrimoineMapper;
+import com.moe.myfamilybudget.application.usecase.wealth.PatrimoineProjectionsModel;
+import com.moe.myfamilybudget.application.usecase.wealth.PlacementEvolutionModel;
+import com.moe.myfamilybudget.application.usecase.wealth.WealthResultModel;
+import com.moe.myfamilybudget.application.usecase.wealth.WealthUseCase;
 
 /**
- * RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
- * {@code PersistenceManager}. SILO-112 : plus de {@code BudgetDataModel} ; chaque fragment est lu chez son
- * propriétaire ({@link RetirementSettingsReader}, {@link TresorerieSettingsReader},
- * {@link EconomicAssumptionsReader}, {@link PatrimoineReader}, {@link BudgetReader}, {@link LoanReader},
- * {@link BankReader}) et transmis à {@link PatrimoineInputFactory} et à
- * {@link PatrimoineMapper#toPatrimoineResponseDto}.
+ * R-81 (même gabarit que {@code ImpotsServiceImpl}, SILO-312) : ce service ne garde que la conversion
+ * vers le monde HTTP ({@link ResponseEntity}, DTO). La composition de la réponse (lectures des
+ * fragments, construction de l'entrée du moteur, appel du moteur, traduction des types des silos) est
+ * portée par le cas d'usage {@link WealthUseCase} ({@code application-api}), implémenté par
+ * {@code DefaultWealthUseCase}.
+ *
+ * <p>DB-041 : les prêts ("loans", alias "credits") et les objectifs ("objectifs") n'appartiennent pas
+ * au cas d'usage Patrimoine : ce routage générique par {@code listKey} reste ici, comme avant R-81
+ * (même mécanisme que pour {@code settingsCommandRouter} dans {@code ImpotsServiceImpl}, R-80).
+ *
+ * <p>RF-B01 (doc/architecture/13-persistance.md) : plus d'appel direct à {@code PersistenceManager}.
  */
 @RestController
 public class PatrimoineServiceImpl implements PatrimoineApi {
 
     private final PatrimoineMapper mapper;
-    private final PatrimoineProjectionService projectionService;
-    private final PlacementEvolutionService evolutionService;
-    private final PatrimoineCommandService patrimoineCommandService;
+    private final WealthUseCase wealthUseCase;
     private final LoanCommandService loanCommandService;
     private final GoalCommandService goalCommandService;
-    private final RetirementSettingsReader retirementSettingsReader;
-    private final TresorerieSettingsReader tresorerieSettingsReader;
-    private final EconomicAssumptionsReader economicAssumptionsReader;
-    private final PatrimoineReader patrimoineReader;
-    private final BudgetReader budgetReader;
-    private final LoanReader loanReader;
-    private final BankReader bankReader;
 
     public PatrimoineServiceImpl(
             PatrimoineMapper mapper,
-            PatrimoineProjectionService projectionService,
-            PlacementEvolutionService evolutionService,
-            PatrimoineCommandService patrimoineCommandService,
+            WealthUseCase wealthUseCase,
             LoanCommandService loanCommandService,
-            GoalCommandService goalCommandService,
-            RetirementSettingsReader retirementSettingsReader,
-            TresorerieSettingsReader tresorerieSettingsReader,
-            EconomicAssumptionsReader economicAssumptionsReader,
-            PatrimoineReader patrimoineReader,
-            BudgetReader budgetReader,
-            LoanReader loanReader,
-            BankReader bankReader) {
+            GoalCommandService goalCommandService) {
         this.mapper = mapper;
-        this.projectionService = projectionService;
-        this.evolutionService = evolutionService;
-        this.patrimoineCommandService = patrimoineCommandService;
+        this.wealthUseCase = wealthUseCase;
         this.loanCommandService = loanCommandService;
         this.goalCommandService = goalCommandService;
-        this.retirementSettingsReader = retirementSettingsReader;
-        this.tresorerieSettingsReader = tresorerieSettingsReader;
-        this.economicAssumptionsReader = economicAssumptionsReader;
-        this.patrimoineReader = patrimoineReader;
-        this.budgetReader = budgetReader;
-        this.loanReader = loanReader;
-        this.bankReader = bankReader;
-    }
-
-    private PatrimoineInputFactory.Sources readSources(List<PlacementModel> placements, List<PatrimoineTransferModel> transfers) {
-        return new PatrimoineInputFactory.Sources(
-                retirementSettingsReader.getRetirementSettings(),
-                tresorerieSettingsReader.getTresorerieSettings(),
-                economicAssumptionsReader.getEconomicAssumptions().inflationRate(),
-                budgetReader.getIncomes(),
-                budgetReader.getCharges(),
-                placements,
-                budgetReader.getOneoffExpenses(),
-                transfers);
     }
 
     @Override
     public ResponseEntity<PatrimoineResponseDto> getPatrimoine(Boolean useConstantEuros) {
-        List<PlacementModel> placements = patrimoineReader.getPlacements();
-        List<PatrimoineTransferModel> transfers = patrimoineReader.getTransfers();
-        PatrimoineProjectionsModel projections = this.projectionService.compute(
-                PatrimoineInputFactory.from(readSources(placements, transfers)),
-                Boolean.TRUE.equals(useConstantEuros));
-        PatrimoineResponseDto response = this.mapper.toPatrimoineResponseDto(
-                placements,
-                transfers,
-                patrimoineReader.getRealEstate(),
-                loanReader.getLoans(),
-                patrimoineReader.getAssetCategories(),
-                bankReader.getBankImport(),
-                projections);
-        return ResponseEntity.ok(response);
+        WealthResultModel resultModel = wealthUseCase.getPatrimoine(Boolean.TRUE.equals(useConstantEuros));
+        return ResponseEntity.ok(mapper.toPatrimoineResponseDto(resultModel));
     }
 
     @Override
@@ -127,7 +68,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         } else if (isGoalList(listKey)) {
             this.goalCommandService.saveGoalRow(map);
         } else {
-            this.patrimoineCommandService.savePatrimoineRow(PatrimoineList.fromKey(listKey), map);
+            wealthUseCase.savePatrimoineRow(listKey, map);
         }
         return ResponseEntity.ok().build();
     }
@@ -139,7 +80,7 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
         } else if (isGoalList(listKey)) {
             this.goalCommandService.deleteGoalRow(id);
         } else {
-            this.patrimoineCommandService.deletePatrimoineRow(PatrimoineList.fromKey(listKey), id);
+            wealthUseCase.deletePatrimoineRow(listKey, id);
         }
         return ResponseEntity.noContent().build();
     }
@@ -157,11 +98,11 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
     @Override
     public ResponseEntity<PlacementHistoryEntryDto> addPlacementHistoriquePoint(String placementId, AddPlacementHistoriquePointRequest body) {
         if (body == null) return ResponseEntity.ok().build();
-        Map<String, Object> map = new java.util.HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("date", body.getDate());
         map.put("value", body.getValue());
         map.put("notes", body.getNotes());
-        Map<String, Object> saved = this.patrimoineCommandService.addPlacementHistoryEntry(placementId, map);
+        Map<String, Object> saved = wealthUseCase.addPlacementHistoryEntry(placementId, map);
         PlacementHistoryEntryDto dto = new PlacementHistoryEntryDto();
         dto.setId((String) saved.get("id"));
         dto.setDate((String) saved.get("date"));
@@ -174,45 +115,35 @@ public class PatrimoineServiceImpl implements PatrimoineApi {
     @Override
     public ResponseEntity<Void> updatePlacementHistoriquePoint(String placementId, String entryId, UpdatePlacementHistoriquePointRequest body) {
         if (body != null) {
-            Map<String, Object> map = new java.util.HashMap<>();
+            Map<String, Object> map = new HashMap<>();
             if (body.getDate() != null) map.put("date", body.getDate());
             if (body.getValue() != null) map.put("value", body.getValue());
             if (body.getNotes() != null) map.put("notes", body.getNotes());
-            this.patrimoineCommandService.updatePlacementHistoryEntry(placementId, entryId, map);
+            wealthUseCase.updatePlacementHistoryEntry(placementId, entryId, map);
         }
         return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<Void> deletePlacementHistoriquePoint(String placementId, String entryId) {
-        this.patrimoineCommandService.deletePlacementHistoryEntry(placementId, entryId);
+        wealthUseCase.deletePlacementHistoryEntry(placementId, entryId);
         return ResponseEntity.noContent().build();
     }
 
     @Override
     public ResponseEntity<PlacementEvolutionDto> getPlacementEvolution(String placementId, Boolean useConstantEuros) {
-        List<PlacementModel> placements = patrimoineReader.getPlacements();
-        PlacementModel placement = placements.stream()
-                .filter(p -> java.util.Objects.equals(p.id(), placementId))
-                .findFirst()
-                .orElse(null);
-        if (placement == null) {
+        PlacementEvolutionModel evolution = wealthUseCase.getPlacementEvolution(placementId, Boolean.TRUE.equals(useConstantEuros));
+        if (evolution == null) {
             return ResponseEntity.notFound().build();
         }
-        PlacementEvolution evolution = this.evolutionService.compute(
-                PatrimoineInputFactory.forPlacementEvolution(
-                        readSources(placements, patrimoineReader.getTransfers()), placement, LocalDate.now()),
-                Boolean.TRUE.equals(useConstantEuros));
         return ResponseEntity.ok(this.mapper.toPlacementEvolutionDto(evolution));
     }
 
     /**
-     * Façade mince (RF-301) : projection annuelle déléguée à {@link PatrimoineProjectionService}.
-     * Visibilité réduite au package ({@code PatrimoineServiceImplTest} est dans le même package).
+     * Façade mince (RF-301) : projection annuelle déléguée à {@link WealthUseCase}. Visibilité réduite
+     * au package ({@code PatrimoineServiceImplTest} est dans le même package).
      */
     PatrimoineProjectionsModel computePatrimoineProjections(boolean useConstantEuros) {
-        return this.projectionService.compute(
-                PatrimoineInputFactory.from(readSources(patrimoineReader.getPlacements(), patrimoineReader.getTransfers())),
-                useConstantEuros);
+        return wealthUseCase.computePatrimoineProjections(useConstantEuros);
     }
 }

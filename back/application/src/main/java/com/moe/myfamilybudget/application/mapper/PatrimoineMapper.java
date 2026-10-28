@@ -24,18 +24,32 @@ import com.moe.myfamilybudget.api.model.PlacementEvolutionPointDto;
 import com.moe.myfamilybudget.api.model.PlacementHistoryEntryDto;
 import com.moe.myfamilybudget.api.model.RealEstateDto;
 import com.moe.myfamilybudget.api.model.TransferDto;
-import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolution;
-import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.domain.credit.model.LoanModel;
-import com.moe.myfamilybudget.domain.wealth.model.PatrimoinePerPlacementModel;
-import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
-import com.moe.myfamilybudget.domain.wealth.model.PatrimoineYearModel;
-import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
-import com.moe.myfamilybudget.domain.wealth.model.PlacementHistoryEntryModel;
-import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
-import com.moe.myfamilybudget.domain.wealth.model.PatrimoineTransferModel;
+import com.moe.myfamilybudget.application.usecase.wealth.AssetCategoryModel;
+import com.moe.myfamilybudget.application.usecase.wealth.BankImportCategoryModel;
+import com.moe.myfamilybudget.application.usecase.wealth.LoanModel;
+import com.moe.myfamilybudget.application.usecase.wealth.PatrimoinePerPlacementModel;
+import com.moe.myfamilybudget.application.usecase.wealth.PatrimoineProjectionsModel;
+import com.moe.myfamilybudget.application.usecase.wealth.PatrimoineTransferModel;
+import com.moe.myfamilybudget.application.usecase.wealth.PatrimoineYearModel;
+import com.moe.myfamilybudget.application.usecase.wealth.PlacementEvolutionModel;
+import com.moe.myfamilybudget.application.usecase.wealth.PlacementHistoryEntryModel;
+import com.moe.myfamilybudget.application.usecase.wealth.PlacementModel;
+import com.moe.myfamilybudget.application.usecase.wealth.RealEstateModel;
+import com.moe.myfamilybudget.application.usecase.wealth.WealthResultModel;
 
+/**
+ * Mapper assurant la conversion entre le modèle applicatif ({@code application-api}, package
+ * {@code application.usecase.wealth}) et les DTO OpenAPI.
+ *
+ * <p>R-81 : ce mapper ne connaît plus aucun type d'un silo (ni {@code domain.wealth.model}, ni
+ * {@code domain.credit.model}, ni {@code domain.bankpointage.model}) ; seule la traduction vers les DTO
+ * reste ici, la composition (lecture des silos, moteur de calcul) est portée par {@code WealthUseCase}.
+ *
+ * <p>Les anciennes méthodes {@code toPlacementModel}/{@code toTransferModel}/{@code toLoanModel}/
+ * {@code toRealEstateModel} (DTO vers modèle de domaine) n'avaient plus aucun appelant avant ce patch
+ * (vérifié par recherche globale) ; elles sont retirées plutôt que portées vers des types d'écriture
+ * applicatifs qui n'auraient aucun usage.
+ */
 @Component
 public class PatrimoineMapper {
 
@@ -62,38 +76,11 @@ public class PatrimoineMapper {
         dto.setPauseTriggerBalance(m.pauseTriggerBalance());
         dto.setPausePriority(m.pausePriority());
         dto.setCategoryId(m.categoryId());
-        dto.setHistory(m.getEffectiveHistory().stream()
+        List<PlacementHistoryEntryModel> history = m.history() != null ? m.history() : Collections.emptyList();
+        dto.setHistory(history.stream()
                 .map(this::toPlacementHistoryEntryDto)
                 .collect(Collectors.toList()));
         return dto;
-    }
-
-    public PlacementModel toPlacementModel(PlacementDto dto) {
-        if (dto == null) return null;
-        List<PlacementHistoryEntryModel> history = dto.getHistory() != null ? dto.getHistory().stream()
-                .map(this::toPlacementHistoryEntryModel)
-                .collect(Collectors.toList()) : Collections.emptyList();
-        return new PlacementModel(
-                dto.getId(),
-                dto.getLabel(),
-                dto.getCategory(),
-                dto.getBalance(),
-                dto.getBalanceDate(),
-                dto.getMonthly(),
-                dto.getMonthlyFrom(),
-                dto.getMonthlyUntil(),
-                dto.getRatePess(),
-                dto.getRateCorr(),
-                dto.getRateOpti(),
-                dto.getExcludedFromRetirement(),
-                dto.getNotes(),
-                dto.getSweepPriority(),
-                dto.getSweepCap(),
-                dto.getPauseTriggerBalance(),
-                dto.getPausePriority(),
-                dto.getCategoryId(),
-                history
-        );
     }
 
     public PlacementHistoryEntryDto toPlacementHistoryEntryDto(PlacementHistoryEntryModel m) {
@@ -106,16 +93,6 @@ public class PatrimoineMapper {
         return dto;
     }
 
-    public PlacementHistoryEntryModel toPlacementHistoryEntryModel(PlacementHistoryEntryDto dto) {
-        if (dto == null) return null;
-        return new PlacementHistoryEntryModel(
-                dto.getId(),
-                dto.getDate(),
-                dto.getValue(),
-                dto.getNotes()
-        );
-    }
-
     public TransferDto toTransferDto(PatrimoineTransferModel m) {
         if (m == null) return null;
         TransferDto dto = new TransferDto();
@@ -125,17 +102,6 @@ public class PatrimoineMapper {
         dto.setAmount(m.amount());
         dto.setNotes(m.notes());
         return dto;
-    }
-
-    public PatrimoineTransferModel toTransferModel(TransferDto dto) {
-        if (dto == null) return null;
-        return new PatrimoineTransferModel(
-                dto.getId(),
-                dto.getPlacement(),
-                dto.getDate(),
-                dto.getAmount(),
-                dto.getNotes()
-        );
     }
 
     public LoanDto toLoanDto(LoanModel m) {
@@ -155,23 +121,6 @@ public class PatrimoineMapper {
         return dto;
     }
 
-    public LoanModel toLoanModel(LoanDto dto) {
-        if (dto == null) return null;
-        return new LoanModel(
-                dto.getId(),
-                dto.getLabel(),
-                dto.getCrd(),
-                dto.getRate(),
-                dto.getMonthly(),
-                dto.getInsurance(),
-                dto.getStartDate(),
-                dto.getEndDate(),
-                dto.getInitialAmount(),
-                dto.getTotalInstallments(),
-                dto.getStepDate()
-        );
-    }
-
     public RealEstateDto toRealEstateDto(RealEstateModel m) {
         if (m == null) return null;
         RealEstateDto dto = new RealEstateDto();
@@ -183,19 +132,6 @@ public class PatrimoineMapper {
         dto.setAnnualGrowthRate(m.annualGrowthRate());
         dto.setNotes(m.notes());
         return dto;
-    }
-
-    public RealEstateModel toRealEstateModel(RealEstateDto dto) {
-        if (dto == null) return null;
-        return new RealEstateModel(
-                dto.getId(),
-                dto.getLabel(),
-                dto.getType(),
-                dto.getCurrentValue(),
-                dto.getValuationYear(),
-                dto.getAnnualGrowthRate(),
-                dto.getNotes()
-        );
     }
 
     public PatrimoineYearDto toPatrimoineYearDto(PatrimoineYearModel m) {
@@ -235,10 +171,10 @@ public class PatrimoineMapper {
     }
 
     /**
-     * Traduit la chronologie du domaine en DTO : horodatage UTC, date ISO et libellé
-     * « jj/Mois/aaaa » sont des éléments de présentation, produits ici et non par le moteur.
+     * Traduit la chronologie en DTO : horodatage UTC, date ISO et libellé « jj/Mois/aaaa » sont des
+     * éléments de présentation, produits ici et non par le moteur.
      */
-    public PlacementEvolutionDto toPlacementEvolutionDto(PlacementEvolution m) {
+    public PlacementEvolutionDto toPlacementEvolutionDto(PlacementEvolutionModel m) {
         if (m == null) return null;
         List<PlacementEvolutionPointDto> points = m.points().stream().map(pt -> {
             PlacementEvolutionPointDto dto = new PlacementEvolutionPointDto();
@@ -270,44 +206,36 @@ public class PatrimoineMapper {
     }
 
     /**
-     * SILO-112 : construit la réponse à partir de fragments lus chez leurs propriétaires (plus de
-     * {@code BudgetDataModel}). Les listes {@code null} sont lues comme vides ; seules les catégories de
-     * l'import bancaire sont utilisées.
+     * SILO-112 : construit la réponse à partir du modèle applicatif composé par {@code WealthUseCase}.
+     * Les listes {@code null} sont lues comme vides ; seules les catégories de l'import bancaire sont
+     * utilisées.
      */
-    public PatrimoineResponseDto toPatrimoineResponseDto(
-            List<PlacementModel> placementModels,
-            List<PatrimoineTransferModel> transferModels,
-            List<RealEstateModel> realEstateModels,
-            List<LoanModel> loanModels,
-            List<AssetCategoryModel> assetCategoryModels,
-            BankImportModel bankImport,
-            PatrimoineProjectionsModel projections) {
-        List<PlacementDto> placements = orEmpty(placementModels).stream()
+    public PatrimoineResponseDto toPatrimoineResponseDto(WealthResultModel model) {
+        List<PlacementDto> placements = orEmpty(model.placements()).stream()
                 .map(this::toPlacementDto)
                 .collect(Collectors.toList());
 
-        List<TransferDto> transfers = orEmpty(transferModels).stream()
+        List<TransferDto> transfers = orEmpty(model.transfers()).stream()
                 .map(this::toTransferDto)
                 .collect(Collectors.toList());
 
-        List<RealEstateDto> realEstate = orEmpty(realEstateModels).stream()
+        List<RealEstateDto> realEstate = orEmpty(model.realEstate()).stream()
                 .map(this::toRealEstateDto)
                 .collect(Collectors.toList());
 
-        List<LoanDto> loans = orEmpty(loanModels).stream()
+        List<LoanDto> loans = orEmpty(model.loans()).stream()
                 .map(this::toLoanDto)
                 .collect(Collectors.toList());
 
-        List<AssetCategoryDto> assetCategories = orEmpty(assetCategoryModels).stream()
+        List<AssetCategoryDto> assetCategories = orEmpty(model.assetCategories()).stream()
                 .map(this::toAssetCategoryDto)
                 .collect(Collectors.toList());
 
-        List<BankImportCategoryDto> bankCategories = bankImport != null && bankImport.categories() != null ?
-                bankImport.categories().stream()
-                        .map(this::toBankImportCategoryDto)
-                        .collect(Collectors.toList()) : Collections.emptyList();
-        
-        PatrimoineProjectionsDto projDto = toPatrimoineProjectionsDto(projections);
+        List<BankImportCategoryDto> bankCategories = orEmpty(model.bankCategories()).stream()
+                .map(this::toBankImportCategoryDto)
+                .collect(Collectors.toList());
+
+        PatrimoineProjectionsDto projDto = toPatrimoineProjectionsDto(model.projections());
 
         PatrimoineResponseDto dto = new PatrimoineResponseDto();
         dto.setPlacements(placements);
@@ -334,7 +262,7 @@ public class PatrimoineMapper {
         return dto;
     }
 
-    public BankImportCategoryDto toBankImportCategoryDto(BankImportModel.CategoryModel m) {
+    public BankImportCategoryDto toBankImportCategoryDto(BankImportCategoryModel m) {
         if (m == null) return null;
         BankImportCategoryDto dto = new BankImportCategoryDto();
         dto.setId(m.id());

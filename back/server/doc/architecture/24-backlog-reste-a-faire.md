@@ -64,7 +64,7 @@ et de redémarrage sur PostgreSQL.
 | ID | Patch | Dépend de | Bloque | Statut | Qui | Branche / commit | Réf. 21 |
 |---|---|---|---|---|---|---|---|
 | R-80 | Cas d'usage Fiscalité (`application-api`) | — | R-90 | Fait ! | Agent | — | SILO-311 |
-| R-81 | Cas d'usage Patrimoine | — | R-90 | À faire | | | SILO-312 |
+| R-81 | Cas d'usage Patrimoine | — | R-90 | Fait ! | Agent | — | SILO-312 |
 | R-82 | Cas d'usage Trésorerie | — | R-90 | À faire | | | SILO-313 |
 | R-83 | Cas d'usage Banque et Pointage (import, opérations en attente, pointage) | — | R-90 | À faire | | | SILO-314 |
 | R-84 | Cas d'usage Analyse | — | R-90 | À faire | | | SILO-315 |
