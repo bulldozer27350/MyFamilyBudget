@@ -1,23 +1,37 @@
 package com.moe.myfamilybudget.application.mapper;
 
-import com.moe.myfamilybudget.domain.treasury.model.TresorerieResultModel;
-import com.moe.myfamilybudget.domain.treasury.model.TresorerieSuggestionModel;
 import com.moe.myfamilybudget.api.model.*;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import com.moe.myfamilybudget.domain.treasury.model.CashflowYearModel;
-import com.moe.myfamilybudget.domain.treasury.model.CategoryOptionModel;
-import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
-import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
-import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
-import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
-import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
-import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewCellModel;
-import com.moe.myfamilybudget.domain.treasury.model.VariablePreviewModel;
+import com.moe.myfamilybudget.application.usecase.treasury.CashflowYearModel;
+import com.moe.myfamilybudget.application.usecase.treasury.CategoryOptionModel;
+import com.moe.myfamilybudget.application.usecase.treasury.ChargeModel;
+import com.moe.myfamilybudget.application.usecase.treasury.IncomeModel;
+import com.moe.myfamilybudget.application.usecase.treasury.OneOffExpenseModel;
+import com.moe.myfamilybudget.application.usecase.treasury.TresorerieResultModel;
+import com.moe.myfamilybudget.application.usecase.treasury.TresorerieSuggestionModel;
+import com.moe.myfamilybudget.application.usecase.treasury.VariableIncomeModel;
+import com.moe.myfamilybudget.application.usecase.treasury.VariableOverrideModel;
+import com.moe.myfamilybudget.application.usecase.treasury.VariablePreviewCellModel;
+import com.moe.myfamilybudget.application.usecase.treasury.VariablePreviewModel;
 
+/**
+ * Mapper assurant la conversion entre le modèle applicatif ({@code application-api}, package
+ * {@code application.usecase.treasury}) et les DTO OpenAPI.
+ *
+ * <p>R-82 : ce mapper ne connaît plus aucun type d'un silo ({@code domain.treasury.model}) ; seule la
+ * traduction vers les DTO reste ici, la composition (lecture des silos, moteur de calcul, moyennes
+ * réelles, suggestions) est portée par {@code TreasuryUseCase}.
+ *
+ * <p>Les anciennes méthodes {@code toIncomeModel}/{@code toChargeModel}/{@code toOneOffExpenseModel}/
+ * {@code toVariableIncomeModel}/{@code toVariableOverrideModel}/{@code toCategoryOptionModel} (DTO vers
+ * modèle de domaine) n'avaient plus aucun appelant dans le périmètre cloné pour ce patch
+ * ({@code back/application-api}, {@code back/treasury-api}, {@code back/application}) ; elles sont
+ * retirées, comme pour {@code PatrimoineMapper} (R-81).
+ */
 @Component
 public class TresorerieMapper {
 
@@ -49,11 +63,6 @@ public class TresorerieMapper {
         dto.setValue(m.value());
         dto.setLabel(m.label());
         return dto;
-    }
-
-    public CategoryOptionModel toCategoryOptionModel(CategoryOptionDto dto) {
-        if (dto == null) return null;
-        return new CategoryOptionModel(dto.getValue(), dto.getLabel());
     }
 
     public TresorerieSuggestionDto toTresorerieSuggestionDto(TresorerieSuggestionModel m) {
@@ -123,12 +132,6 @@ public class TresorerieMapper {
         return dto;
     }
 
-    public IncomeModel toIncomeModel(IncomeDto dto) {
-        if (dto == null) return null;
-        return new IncomeModel(dto.getId(), dto.getLabel(), dto.getMonthly(), dto.getStart(), dto.getEnd(),
-                dto.getGrowthRate(), dto.getCategoryId(), dto.getNotes());
-    }
-
     public ChargeDto toChargeDto(ChargeModel m) {
         if (m == null) return null;
         ChargeDto dto = new ChargeDto();
@@ -143,12 +146,6 @@ public class TresorerieMapper {
         return dto;
     }
 
-    public ChargeModel toChargeModel(ChargeDto dto) {
-        if (dto == null) return null;
-        return new ChargeModel(dto.getId(), dto.getLabel(), dto.getMonthly(), dto.getStart(), dto.getEnd(),
-                dto.getGrowthRate(), dto.getCategoryId(), dto.getNotes());
-    }
-
     public OneOffExpenseDto toOneOffExpenseDto(OneOffExpenseModel m) {
         if (m == null) return null;
         OneOffExpenseDto dto = new OneOffExpenseDto();
@@ -158,11 +155,6 @@ public class TresorerieMapper {
         dto.setAmount(m.amount());
         dto.setNotes(m.notes());
         return dto;
-    }
-
-    public OneOffExpenseModel toOneOffExpenseModel(OneOffExpenseDto dto) {
-        if (dto == null) return null;
-        return new OneOffExpenseModel(dto.getId(), dto.getLabel(), dto.getDate(), dto.getAmount(), dto.getNotes());
     }
 
     public VariableIncomeDto toVariableIncomeDto(VariableIncomeModel m) {
@@ -178,12 +170,6 @@ public class TresorerieMapper {
         return dto;
     }
 
-    public VariableIncomeModel toVariableIncomeModel(VariableIncomeDto dto) {
-        if (dto == null) return null;
-        return new VariableIncomeModel(dto.getId(), dto.getLabel(), dto.getRefIncomeLabel(), dto.getRate(),
-                dto.getStartYear(), dto.getEndYear(), dto.getTaxable());
-    }
-
     public VariableOverrideDto toVariableOverrideDto(VariableOverrideModel m) {
         if (m == null) return null;
         VariableOverrideDto dto = new VariableOverrideDto();
@@ -193,10 +179,5 @@ public class TresorerieMapper {
         dto.setAmount(m.amount());
         dto.setTaxable(m.taxable());
         return dto;
-    }
-
-    public VariableOverrideModel toVariableOverrideModel(VariableOverrideDto dto) {
-        if (dto == null) return null;
-        return new VariableOverrideModel(dto.getId(), dto.getLabel(), dto.getYear(), dto.getAmount(), dto.getTaxable());
     }
 }

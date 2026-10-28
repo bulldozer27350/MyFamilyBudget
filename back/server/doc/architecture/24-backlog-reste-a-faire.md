@@ -65,7 +65,7 @@ et de redémarrage sur PostgreSQL.
 |---|---|---|---|---|---|---|---|
 | R-80 | Cas d'usage Fiscalité (`application-api`) | — | R-90 | Fait ! | Agent | — | SILO-311 |
 | R-81 | Cas d'usage Patrimoine | — | R-90 | Fait ! | Agent | — | SILO-312 |
-| R-82 | Cas d'usage Trésorerie | — | R-90 | À faire | | | SILO-313 |
+| R-82 | Cas d'usage Trésorerie : extraction de la composition de la réponse (lectures des fragments, construction de l'entrée du moteur, moyennes réelles, suggestions, traduction des types des silos) depuis `TresorerieServiceImpl` vers `TreasuryUseCase` (`application-api`, package `application.usecase.treasury`) / `DefaultTreasuryUseCase`, même gabarit que R-80/R-81 ; `TresorerieServiceImpl` ne garde que la conversion HTTP, `TresorerieMapper` ne connaît plus `domain.treasury.model` (ses anciennes méthodes DTO→modèle de domaine, sans appelant dans le périmètre cloné, sont retirées comme pour R-81) | — | R-90 | Fait ! | Agent | — | SILO-313 |
 | R-83 | Cas d'usage Banque et Pointage (import, opérations en attente, pointage) | — | R-90 | À faire | | | SILO-314 |
 | R-84 | Cas d'usage Analyse | — | R-90 | À faire | | | SILO-315 |
 | R-85 | Cas d'usage Overview | — | R-90 | À faire | | | SILO-316 |
