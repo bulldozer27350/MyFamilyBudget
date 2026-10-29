@@ -11,15 +11,21 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
 import com.moe.myfamilybudget.domain.bankpointage.core.DefaultBankImportCalculationService;
+import com.moe.myfamilybudget.domain.bankpointage.core.DefaultPointageCalculationService;
 import com.moe.myfamilybudget.api.model.ImportBankTransactionsRequestDto;
 import com.moe.myfamilybudget.api.model.ReconcilePendingOperations200Response;
 import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
+import com.moe.myfamilybudget.application.mapper.PointageMapper;
 import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
+import com.moe.myfamilybudget.application.usecase.DefaultBankPointageUseCase;
+import com.moe.myfamilybudget.application.usecase.bankpointage.BankPointageUseCase;
+import com.moe.myfamilybudget.server.internal.adapter.PatrimoinePersistenceAdapter;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
@@ -35,17 +41,21 @@ class StatementBankImportServiceImplIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        StatementBankImportMapper mapper = new StatementBankImportMapper();
-        service = new StatementBankImportServiceImpl(
-                bankStore, new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()),
-                mapper, new ExcelToCsvService(), new DefaultBankImportCalculationService());
+        // R-83 : la composition de la réponse et l'écriture sont désormais portées par le cas d'usage
+        // BankPointageUseCase (implémenté par DefaultBankPointageUseCase) ; ce test ne vérifie que la
+        // traduction HTTP du contrôleur. Les deux contrôleurs partagent le même cas d'usage
+        // (donc le même bankStore) comme auparavant.
         CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
-        pendingService = new PendingOperationsServiceImpl(
+        BankPointageUseCase bankPointageUseCase = new DefaultBankPointageUseCase(
                 bankStore, treasuryStore,
+                new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), treasuryStore.getDelegate()),
                 new InMemoryRetirementStore(), new InMemoryTaxStore(), treasuryStore, appSettings, appSettings,
                 new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()),
-                mapper, new DefaultBankImportCalculationService());
+                new DefaultBankImportCalculationService(), new DefaultPointageCalculationService(),
+                new StatementBankImportMapper(), new PointageMapper());
+        service = new StatementBankImportServiceImpl(bankPointageUseCase, new ExcelToCsvService());
+        pendingService = new PendingOperationsServiceImpl(bankPointageUseCase);
     }
 
     @Test

@@ -22,16 +22,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
-import com.moe.myfamilybudget.domain.bankpointage.core.DefaultBankImportCalculationService;
-import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
-import com.moe.myfamilybudget.application.command.BankImportCommandService;
-import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
-import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
-
 @DisplayName("ExcelToCsvService & convertExcelToCsv Tests")
 class ExcelToCsvServiceTest {
-
-    private final InMemoryBankStore bankStore = new InMemoryBankStore();
 
     private ExcelToCsvService service;
     private StatementBankImportServiceImpl controller;
@@ -39,10 +31,9 @@ class ExcelToCsvServiceTest {
     @BeforeEach
     void setUp() {
         service = new ExcelToCsvService();
-        StatementBankImportMapper mapper = new StatementBankImportMapper();
-        controller = new StatementBankImportServiceImpl(
-                bankStore, new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()), mapper, service,
-                new DefaultBankImportCalculationService());
+        // R-83 : convertExcelToCsv est un utilitaire de format pur, qui n'implique aucun appel au cas
+        // d'usage Banque/Pointage (cf. javadoc de StatementBankImportServiceImpl) ; inutile d'en construire un ici.
+        controller = new StatementBankImportServiceImpl(null, service);
     }
 
     @Test

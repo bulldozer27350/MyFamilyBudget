@@ -10,10 +10,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
+import com.moe.myfamilybudget.domain.bankpointage.core.DefaultBankImportCalculationService;
 import com.moe.myfamilybudget.domain.bankpointage.core.DefaultPointageCalculationService;
 import com.moe.myfamilybudget.application.mapper.PointageMapper;
+import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.application.command.BankImportCommandService;
+import com.moe.myfamilybudget.application.usecase.DefaultBankPointageUseCase;
+import com.moe.myfamilybudget.application.usecase.bankpointage.BankPointageUseCase;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
 import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
 import com.moe.myfamilybudget.server.internal.testsupport.RecordingTransactionRunner;
@@ -32,14 +36,19 @@ class PointageServiceImplIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // R-83 : la composition de la réponse et l'écriture sont désormais portées par le cas d'usage
+        // BankPointageUseCase (implémenté par DefaultBankPointageUseCase) ; ce test ne vérifie que la
+        // traduction HTTP du contrôleur.
         CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
-        service = new PointageServiceImpl(
+        BankPointageUseCase bankPointageUseCase = new DefaultBankPointageUseCase(
                 bankStore, treasuryStore,
-                new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), new InMemoryTreasuryStore().getDelegate()),
+                new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), treasuryStore.getDelegate()),
                 new InMemoryRetirementStore(), new InMemoryTaxStore(), treasuryStore, appSettings, appSettings,
-                new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()), new PointageMapper(),
-                new DefaultPointageCalculationService());
+                new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()),
+                new DefaultBankImportCalculationService(), new DefaultPointageCalculationService(),
+                new StatementBankImportMapper(), new PointageMapper());
+        service = new PointageServiceImpl(bankPointageUseCase);
     }
 
     @Test
