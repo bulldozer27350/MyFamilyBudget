@@ -1,9 +1,5 @@
 package com.moe.myfamilybudget.server.internal.impl;
 
-import java.time.Instant;
-import java.util.UUID;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -13,83 +9,61 @@ import com.moe.myfamilybudget.api.model.NotificationParametresValuesDto;
 import com.moe.myfamilybudget.api.model.NotificationVerificationResultDto;
 import com.moe.myfamilybudget.api.model.PushPublicKeyDto;
 import com.moe.myfamilybudget.api.model.PushSubscriptionDto;
-import com.moe.myfamilybudget.server.internal.mapper.NotificationsMapper;
-import com.moe.myfamilybudget.application.notification.NotificationCheckService;
-import com.moe.myfamilybudget.domain.notifications.calculation.NotificationSettingsService;
-import com.moe.myfamilybudget.domain.notifications.model.PushSubscriptionModel;
-import com.moe.myfamilybudget.domain.notifications.port.PushSubscriptionStore;
-import com.moe.myfamilybudget.domain.notifications.rules.NotificationSettingsParameters;
+import com.moe.myfamilybudget.application.mapper.NotificationsMapper;
+import com.moe.myfamilybudget.application.usecase.notifications.NotificationParametersSaveCommand;
+import com.moe.myfamilybudget.application.usecase.notifications.NotificationsUseCase;
+import com.moe.myfamilybudget.application.usecase.notifications.PushSubscriptionCommand;
 
 /**
  * Contrôleur REST implémentant le contrat OpenAPI NotificationsApi (tag Notifications) : façade
- * mince, sur le modèle d'{@code AnalysePretsServiceImpl}.
+ * mince, tout le traitement métier est dans {@link NotificationsUseCase} (R-87, SILO-318, même
+ * gabarit que {@code AnalysePretsServiceImpl}/{@code OverviewServiceImpl}).
+ *
+ * <p>Ce contrôleur ne garde que la conversion HTTP ({@link ResponseEntity}, DTOs).
  */
 @RestController
 public class NotificationsServiceImpl implements NotificationsApi {
 
-    private final NotificationSettingsService settingsService;
-    private final NotificationCheckService checkService;
-    private final PushSubscriptionStore subscriptionStore;
+    private final NotificationsUseCase notificationsUseCase;
     private final NotificationsMapper mapper;
 
-    @Value("${myfamilybudget.notifications.push.vapid-public-key:}")
-    private String vapidPublicKey;
-
-    public NotificationsServiceImpl(NotificationSettingsService settingsService,
-            NotificationCheckService checkService, PushSubscriptionStore subscriptionStore,
-            NotificationsMapper mapper) {
-        this.settingsService = settingsService;
-        this.checkService = checkService;
-        this.subscriptionStore = subscriptionStore;
+    public NotificationsServiceImpl(NotificationsUseCase notificationsUseCase, NotificationsMapper mapper) {
+        this.notificationsUseCase = notificationsUseCase;
         this.mapper = mapper;
     }
 
     @Override
     public ResponseEntity<NotificationParametresDto> getNotificationsParametres() {
-        return ResponseEntity.ok(mapper.toParametresDto(settingsService.current(), settingsService.defaults()));
+        return ResponseEntity.ok(mapper.toParametresDto(notificationsUseCase.getNotificationsParametres()));
     }
 
     @Override
     public ResponseEntity<NotificationParametresDto> updateNotificationsParametres(
             NotificationParametresValuesDto body) {
-        NotificationSettingsParameters saved = settingsService.save(mapper.toParameters(body));
-        return ResponseEntity.ok(mapper.toParametresDto(saved, settingsService.defaults()));
+        NotificationParametersSaveCommand command = mapper.toSaveCommand(body);
+        return ResponseEntity.ok(mapper.toParametresDto(notificationsUseCase.updateNotificationsParametres(command)));
     }
 
     @Override
     public ResponseEntity<NotificationVerificationResultDto> verifyNotifications() {
-        int sent = checkService.runManualCheck();
-        NotificationVerificationResultDto dto = new NotificationVerificationResultDto();
-        dto.setAlertsSent(sent);
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(mapper.toVerificationResultDto(notificationsUseCase.verifyNotifications()));
     }
 
     @Override
     public ResponseEntity<PushPublicKeyDto> getPushPublicKey() {
-        PushPublicKeyDto dto = new PushPublicKeyDto();
-        dto.setPublicKey(vapidPublicKey == null || vapidPublicKey.isBlank() ? null : vapidPublicKey);
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(mapper.toPushPublicKeyDto(notificationsUseCase.getPushPublicKey()));
     }
 
     @Override
     public ResponseEntity<Void> registerPushSubscription(PushSubscriptionDto body) {
-        if (body == null || body.getEndpoint() == null || body.getEndpoint().isBlank()
-                || body.getKeys() == null || body.getKeys().getP256dh() == null
-                || body.getKeys().getAuth() == null) {
-            throw new IllegalArgumentException("Abonnement push incomplet (endpoint et clés requis).");
-        }
-        if (!subscriptionStore.existsByEndpoint(body.getEndpoint())) {
-            // Déjà enregistré sinon : endpoint stable, rien à faire.
-            subscriptionStore.save(new PushSubscriptionModel(
-                    UUID.randomUUID().toString(), body.getEndpoint(),
-                    body.getKeys().getP256dh(), body.getKeys().getAuth(), Instant.now()));
-        }
+        PushSubscriptionCommand command = mapper.toPushSubscriptionCommand(body);
+        notificationsUseCase.registerPushSubscription(command);
         return ResponseEntity.noContent().build();
     }
 
     @Override
     public ResponseEntity<Void> unregisterPushSubscription(String endpoint) {
-        subscriptionStore.deleteByEndpoint(endpoint);
+        notificationsUseCase.unregisterPushSubscription(endpoint);
         return ResponseEntity.noContent().build();
     }
 }

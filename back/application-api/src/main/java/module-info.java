@@ -3,6 +3,7 @@ module com.moe.myfamilybudget.application.api {
     exports com.moe.myfamilybudget.application.usecase.analysis;
     exports com.moe.myfamilybudget.application.usecase.bankpointage;
     exports com.moe.myfamilybudget.application.usecase.loanmarket;
+    exports com.moe.myfamilybudget.application.usecase.notifications;
     exports com.moe.myfamilybudget.application.usecase.overview;
     exports com.moe.myfamilybudget.application.usecase.retirement;
     exports com.moe.myfamilybudget.application.usecase.tax;

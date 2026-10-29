@@ -33,6 +33,7 @@ class ApplicationApiIndependenceArchTest {
             .that().resideInAnyPackage("com.moe.myfamilybudget.application.port..",
                     "com.moe.myfamilybudget.application.usecase.analysis..",
                     "com.moe.myfamilybudget.application.usecase.loanmarket..",
+                    "com.moe.myfamilybudget.application.usecase.notifications..",
                     "com.moe.myfamilybudget.application.usecase.overview..",
                     "com.moe.myfamilybudget.application.usecase.retirement..",
                     "com.moe.myfamilybudget.application.usecase.tax..",
@@ -62,6 +63,7 @@ class ApplicationApiIndependenceArchTest {
                 .importPackages("com.moe.myfamilybudget.application.port",
                         "com.moe.myfamilybudget.application.usecase.analysis",
                         "com.moe.myfamilybudget.application.usecase.loanmarket",
+                        "com.moe.myfamilybudget.application.usecase.notifications",
                         "com.moe.myfamilybudget.application.usecase.overview",
                         "com.moe.myfamilybudget.application.usecase.retirement",
                         "com.moe.myfamilybudget.application.usecase.tax",
@@ -70,6 +72,7 @@ class ApplicationApiIndependenceArchTest {
                 .contains("TransactionRunner", "SiloMutationLock", "MutationSilo",
                         "AnalysisUseCase", "AnalyseResultModel",
                         "LoanMarketUseCase", "LoanAdviceResultModel", "RateSuggestionsModel",
+                        "NotificationsUseCase", "NotificationParametersModel", "NotificationVerificationResultModel",
                         "OverviewUseCase", "OverviewResultModel",
                         "RetirementUseCase", "RetraiteResultModel", "RetraitePersonWithProjectionModel",
                         "TaxUseCase", "TaxResultModel", "TaxConfigSaveCommand",
@@ -77,7 +80,7 @@ class ApplicationApiIndependenceArchTest {
     }
 
     /**
-     * Les cas d'usage Retraite, Fiscalite, Patrimoine, Overview et LoanMarket sont implementes dans {@code application}, pas
+     * Les cas d'usage Retraite, Fiscalite, Patrimoine, Overview, LoanMarket et Notifications sont implementes dans {@code application}, pas
      * dans {@code application-api}.
      */
     @Test
@@ -86,6 +89,6 @@ class ApplicationApiIndependenceArchTest {
                 .importPackages("com.moe.myfamilybudget.application.usecase");
         assertThat(classes.stream().filter(c -> c.getPackageName().equals("com.moe.myfamilybudget.application.usecase"))
                 .map(c -> c.getSimpleName()))
-                .contains("DefaultRetirementUseCase", "DefaultTaxUseCase", "DefaultWealthUseCase", "DefaultAnalysisUseCase", "DefaultOverviewUseCase", "DefaultLoanMarketUseCase");
+                .contains("DefaultRetirementUseCase", "DefaultTaxUseCase", "DefaultWealthUseCase", "DefaultAnalysisUseCase", "DefaultOverviewUseCase", "DefaultLoanMarketUseCase", "DefaultNotificationsUseCase");
     }
 }
