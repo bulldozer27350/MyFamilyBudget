@@ -6,12 +6,12 @@ import com.moe.myfamilybudget.api.model.AnalyseKpiDto;
 import com.moe.myfamilybudget.api.model.AnalyseLandingRowDto;
 import com.moe.myfamilybudget.api.model.AnalyseMonthlyCompareDto;
 import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
-import com.moe.myfamilybudget.domain.analysis.model.AnalyseCategorySummaryModel;
-import com.moe.myfamilybudget.domain.analysis.model.AnalyseDriftRowModel;
-import com.moe.myfamilybudget.domain.analysis.model.AnalyseKpiModel;
-import com.moe.myfamilybudget.domain.analysis.model.AnalyseLandingRowModel;
-import com.moe.myfamilybudget.domain.analysis.model.AnalyseMonthlyCompareModel;
-import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseCategorySummaryModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseDriftRowModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseKpiModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseLandingRowModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseMonthlyCompareModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseResultModel;
 import org.springframework.stereotype.Component;
 
 import java.util.stream.Collectors;

@@ -13,8 +13,9 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 /**
- * Garde-fou SILO-300 (voir doc/architecture/21-plan-silotage.md), etendu par R-80 puis R-81 : l'API
+ * Garde-fou SILO-300 (voir doc/architecture/21-plan-silotage.md), etendu par R-80, R-81 puis R-84 : l'API
  * applicative ({@code application-api}, packages {@code com.moe.myfamilybudget.application.port},
+ * {@code com.moe.myfamilybudget.application.usecase.analysis},
  * {@code com.moe.myfamilybudget.application.usecase.retirement},
  * {@code com.moe.myfamilybudget.application.usecase.tax} et
  * {@code com.moe.myfamilybudget.application.usecase.wealth}) ne connait ni Spring, ni JPA, ni le contrat
@@ -29,6 +30,7 @@ class ApplicationApiIndependenceArchTest {
     @ArchTest
     static final ArchRule APPLICATION_API_IS_SELF_CONTAINED = noClasses()
             .that().resideInAnyPackage("com.moe.myfamilybudget.application.port..",
+                    "com.moe.myfamilybudget.application.usecase.analysis..",
                     "com.moe.myfamilybudget.application.usecase.retirement..",
                     "com.moe.myfamilybudget.application.usecase.tax..",
                     "com.moe.myfamilybudget.application.usecase.wealth..")

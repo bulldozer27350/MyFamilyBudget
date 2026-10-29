@@ -3,14 +3,11 @@ package com.moe.myfamilybudget.application.service;
 import com.moe.myfamilybudget.application.factory.PatrimoineTransferConverter;
 import com.moe.myfamilybudget.api.controller.AnalyseApi;
 import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
-import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseInput;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
-import com.moe.myfamilybudget.application.factory.AnalyseInputFactory;
-import com.moe.myfamilybudget.application.factory.PointageInputFactory;
 import com.moe.myfamilybudget.application.mapper.AnalyseMapper;
 import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
-import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService;
-import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseResultModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalysisUseCase;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.application.settings.SettingsComposer;
 import com.moe.myfamilybudget.application.settings.SettingsView;
@@ -46,15 +43,21 @@ import org.springframework.web.bind.annotation.RestController;
  * est assemblée directement depuis les ports. R-52 : le bloc {@code settings} de la réponse REST (contrat
  * inchangé) et le taux d'inflation des lignes budgétaires sont composés directement depuis les cinq ports
  * propriétaires ({@link SettingsComposer}), sans passer par {@code transition.port.SettingsReader}.
- * SILO-155 : le moteur est reçu sous son interface ({@link AnalyseCalculationService}, {@code analysis-api}) ;
- * son implémentation vit dans {@code analysis-core} et est câblée par le composition root.
+ *
+ * <p>R-84 (même gabarit que {@code ImpotsServiceImpl}, {@code TresorerieServiceImpl}, SILO-315) : ce
+ * service ne garde que la conversion vers le monde HTTP ({@link ResponseEntity}, DTO). Le calcul de
+ * l'analyse (construction de l'entrée du moteur, appel du moteur, traduction des types du silo) est
+ * porté par le cas d'usage {@link AnalysisUseCase} ({@code application-api}), implémenté par
+ * {@code DefaultAnalysisUseCase}. La composition du budget réexposé par l'API ({@code data}, voir
+ * {@link BudgetFacadeView}) reste ici : elle est partagée avec Overview et l'import/export
+ * ({@code GlobalBudgetSnapshotService}), hors périmètre de ce cas d'usage.
  */
 @RestController
 public class AnalyseServiceImpl implements AnalyseApi {
 
     private final AnalyseMapper analyseMapper;
     private final ObjectifsSettingsService objectifsSettingsService;
-    private final AnalyseInputFactory analyseInputFactory;
+    private final AnalysisUseCase analysisUseCase;
     private final RetirementSettingsReader retirementSettingsReader;
     private final TaxSettingsReader taxSettingsReader;
     private final TresorerieSettingsReader tresorerieSettingsReader;
@@ -67,11 +70,11 @@ public class AnalyseServiceImpl implements AnalyseApi {
     private final LoanReader loanReader;
     private final BankReader bankReader;
     private final GoalReader goalReader;
-    private final AnalyseCalculationService analyseCalculationService;
 
     public AnalyseServiceImpl(
             AnalyseMapper analyseMapper,
             ObjectifsSettingsService objectifsSettingsService,
+            AnalysisUseCase analysisUseCase,
             RetirementSettingsReader retirementSettingsReader,
             TaxSettingsReader taxSettingsReader,
             TresorerieSettingsReader tresorerieSettingsReader,
@@ -83,11 +86,10 @@ public class AnalyseServiceImpl implements AnalyseApi {
             TaxReader taxReader,
             LoanReader loanReader,
             BankReader bankReader,
-            GoalReader goalReader,
-            AnalyseCalculationService analyseCalculationService) {
+            GoalReader goalReader) {
         this.analyseMapper = analyseMapper;
         this.objectifsSettingsService = objectifsSettingsService;
-        this.analyseInputFactory = new AnalyseInputFactory();
+        this.analysisUseCase = analysisUseCase;
         this.retirementSettingsReader = retirementSettingsReader;
         this.taxSettingsReader = taxSettingsReader;
         this.tresorerieSettingsReader = tresorerieSettingsReader;
@@ -100,7 +102,6 @@ public class AnalyseServiceImpl implements AnalyseApi {
         this.loanReader = loanReader;
         this.bankReader = bankReader;
         this.goalReader = goalReader;
-        this.analyseCalculationService = analyseCalculationService;
     }
 
     @Override
@@ -114,10 +115,7 @@ public class AnalyseServiceImpl implements AnalyseApi {
         List<PlacementModel> placements = patrimoineReader.getPlacements();
         BankImportModel bankImport = bankReader.getBankImport();
 
-        PointageInputFactory.Sources sources = new PointageInputFactory.Sources(
-                charges, incomes, placements, settings.inflationRate());
-        AnalyseInput input = analyseInputFactory.from(bankImport, sources, monthsBack);
-        AnalyseResultModel resultModel = analyseCalculationService.computeAnalyse(input);
+        AnalyseResultModel resultModel = analysisUseCase.getAnalyse(monthsBack);
 
         BudgetFacadeView view = new BudgetFacadeView(
                 settings, incomes, charges, placements, patrimoineReader.getRealEstate(),

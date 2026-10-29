@@ -14,7 +14,7 @@ import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
 import com.moe.myfamilybudget.api.model.BudgetDataDto;
 import com.moe.myfamilybudget.api.model.OverviewResponseDto;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
-import com.moe.myfamilybudget.domain.analysis.model.AnalyseResultModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseResultModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.application.model.OverviewResultModel;
 import com.moe.myfamilybudget.application.settings.SettingsView;
