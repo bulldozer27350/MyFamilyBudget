@@ -58,7 +58,12 @@ import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
 import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.treasury.model.OneOffExpenseModel;
-import com.moe.myfamilybudget.application.model.OverviewResultModel;
+import com.moe.myfamilybudget.application.usecase.overview.OverviewCashflowYearModel;
+import com.moe.myfamilybudget.application.usecase.overview.OverviewPatrimoinePerPlacementModel;
+import com.moe.myfamilybudget.application.usecase.overview.OverviewPatrimoineProjectionsModel;
+import com.moe.myfamilybudget.application.usecase.overview.OverviewPatrimoineYearModel;
+import com.moe.myfamilybudget.application.usecase.overview.OverviewResultModel;
+import com.moe.myfamilybudget.application.usecase.overview.OverviewTripleAmountModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoinePerPlacementModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineProjectionsModel;
 import com.moe.myfamilybudget.domain.wealth.model.PatrimoineYearModel;
@@ -231,6 +236,73 @@ public class OverviewMapper {
         dto.setFireRente(fireRenteDto);
         dto.setFinancialOnlyRente(financialOnlyRenteDto);
 
+        return dto;
+    }
+
+    public CashflowYearDto toCashflowYearDto(OverviewCashflowYearModel m) {
+        if (m == null)
+            return null;
+        CashflowYearDto dto = new CashflowYearDto();
+        dto.setYear(m.year());
+        dto.setIncome(m.income());
+        dto.setVariableIncome(m.variableIncome());
+        dto.setSavings(m.savings());
+        dto.setCharges(m.charges());
+        dto.setOneoff(m.oneoff());
+        dto.setTransfersY(m.transfersY());
+        dto.setImpots(m.impots());
+        dto.setRegularisation(m.regularisation());
+        dto.setNet(m.net());
+        dto.setBalance(m.balance());
+        return dto;
+    }
+
+    public PatrimoineProjectionsDto toPatrimoineProjectionsDto(OverviewPatrimoineProjectionsModel m) {
+        if (m == null)
+            return null;
+        List<PatrimoinePerPlacementDto> perPlacement = m.perPlacement() != null
+                ? m.perPlacement().stream().map(this::toPatrimoinePerPlacementDto).collect(Collectors.toList())
+                : List.of();
+        List<PatrimoineYearDto> totals = m.totals() != null
+                ? m.totals().stream().map(this::toPatrimoineYearDto).collect(Collectors.toList())
+                : List.of();
+        PatrimoineProjectionsDto dto = new PatrimoineProjectionsDto();
+        dto.setPerPlacement(perPlacement);
+        dto.setTotals(totals);
+        return dto;
+    }
+
+    public PatrimoinePerPlacementDto toPatrimoinePerPlacementDto(OverviewPatrimoinePerPlacementModel m) {
+        if (m == null)
+            return null;
+        List<PatrimoineYearDto> rows = m.rows() != null
+                ? m.rows().stream().map(this::toPatrimoineYearDto).collect(Collectors.toList())
+                : List.of();
+        PatrimoinePerPlacementDto dto = new PatrimoinePerPlacementDto();
+        dto.setLabel(m.label());
+        dto.setRows(rows);
+        return dto;
+    }
+
+    public PatrimoineYearDto toPatrimoineYearDto(OverviewPatrimoineYearModel m) {
+        if (m == null)
+            return null;
+
+        PatrimoineYearDto dto = new PatrimoineYearDto();
+        dto.setYear(m.year());
+        dto.setPess(m.pess());
+        dto.setCorr(m.corr());
+        dto.setOpti(m.opti());
+        return dto;
+    }
+
+    public TripleAmountDto toTripleAmountDto(OverviewTripleAmountModel m) {
+        if (m == null)
+            return null;
+        TripleAmountDto dto = new TripleAmountDto();
+        dto.setPess(m.pess());
+        dto.setCorr(m.corr());
+        dto.setOpti(m.opti());
         return dto;
     }
 

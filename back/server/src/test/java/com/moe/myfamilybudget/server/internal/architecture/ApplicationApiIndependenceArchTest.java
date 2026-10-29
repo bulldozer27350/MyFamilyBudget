@@ -13,9 +13,10 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 /**
- * Garde-fou SILO-300 (voir doc/architecture/21-plan-silotage.md), etendu par R-80, R-81 puis R-84 : l'API
+ * Garde-fou SILO-300 (voir doc/architecture/21-plan-silotage.md), etendu par R-80, R-81, R-84 puis R-85 : l'API
  * applicative ({@code application-api}, packages {@code com.moe.myfamilybudget.application.port},
  * {@code com.moe.myfamilybudget.application.usecase.analysis},
+ * {@code com.moe.myfamilybudget.application.usecase.overview},
  * {@code com.moe.myfamilybudget.application.usecase.retirement},
  * {@code com.moe.myfamilybudget.application.usecase.tax} et
  * {@code com.moe.myfamilybudget.application.usecase.wealth}) ne connait ni Spring, ni JPA, ni le contrat
@@ -31,6 +32,7 @@ class ApplicationApiIndependenceArchTest {
     static final ArchRule APPLICATION_API_IS_SELF_CONTAINED = noClasses()
             .that().resideInAnyPackage("com.moe.myfamilybudget.application.port..",
                     "com.moe.myfamilybudget.application.usecase.analysis..",
+                    "com.moe.myfamilybudget.application.usecase.overview..",
                     "com.moe.myfamilybudget.application.usecase.retirement..",
                     "com.moe.myfamilybudget.application.usecase.tax..",
                     "com.moe.myfamilybudget.application.usecase.wealth..")
@@ -56,18 +58,22 @@ class ApplicationApiIndependenceArchTest {
     void coversThePortsAndUseCasesOfTheApplicationApi() {
         JavaClasses classes = new ClassFileImporter().withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("com.moe.myfamilybudget.application.port",
+                        "com.moe.myfamilybudget.application.usecase.analysis",
+                        "com.moe.myfamilybudget.application.usecase.overview",
                         "com.moe.myfamilybudget.application.usecase.retirement",
                         "com.moe.myfamilybudget.application.usecase.tax",
                         "com.moe.myfamilybudget.application.usecase.wealth");
         assertThat(classes.stream().map(c -> c.getSimpleName()))
                 .contains("TransactionRunner", "SiloMutationLock", "MutationSilo",
+                        "AnalysisUseCase", "AnalyseResultModel",
+                        "OverviewUseCase", "OverviewResultModel",
                         "RetirementUseCase", "RetraiteResultModel", "RetraitePersonWithProjectionModel",
                         "TaxUseCase", "TaxResultModel", "TaxConfigSaveCommand",
                         "WealthUseCase", "WealthResultModel", "PlacementEvolutionModel");
     }
 
     /**
-     * Les cas d'usage Retraite, Fiscalite et Patrimoine sont implementes dans {@code application}, pas
+     * Les cas d'usage Retraite, Fiscalite, Patrimoine et Overview sont implementes dans {@code application}, pas
      * dans {@code application-api}.
      */
     @Test
@@ -76,6 +82,6 @@ class ApplicationApiIndependenceArchTest {
                 .importPackages("com.moe.myfamilybudget.application.usecase");
         assertThat(classes.stream().filter(c -> c.getPackageName().equals("com.moe.myfamilybudget.application.usecase"))
                 .map(c -> c.getSimpleName()))
-                .contains("DefaultRetirementUseCase", "DefaultTaxUseCase", "DefaultWealthUseCase");
+                .contains("DefaultRetirementUseCase", "DefaultTaxUseCase", "DefaultWealthUseCase", "DefaultAnalysisUseCase", "DefaultOverviewUseCase");
     }
 }
