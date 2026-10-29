@@ -11,12 +11,18 @@ import java.time.YearMonth;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.moe.myfamilybudget.application.usecase.DefaultLoanMarketUseCase;
+import com.moe.myfamilybudget.application.usecase.DefaultLoanMarketUseCase.ResolvedMarketRate;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
-import com.moe.myfamilybudget.server.internal.impl.AnalysePretsServiceImpl.ResolvedMarketRate;
 import com.moe.myfamilybudget.domain.market.model.MarketRatesView;
 import com.moe.myfamilybudget.domain.market.model.MortgageRateQuote;
 import com.moe.myfamilybudget.domain.market.model.RegulatedRateFreshness.Status;
 
+/**
+ * Tests de la logique de résolution du taux de marché, désormais dans
+ * {@link DefaultLoanMarketUseCase#resolveMarketRate} (R-86, SILO-317 — la méthode était
+ * auparavant dans {@code AnalysePretsServiceImpl}).
+ */
 class AnalysePretsServiceImplTest {
 
     private static BigDecimal bd(String v) {
@@ -35,7 +41,7 @@ class AnalysePretsServiceImplTest {
     void requestParameterWins() {
         LoanAdviceParameters saved = LoanAdviceParameters.defaults(bd("0.035"));
 
-        ResolvedMarketRate resolved = AnalysePretsServiceImpl.resolveMarketRate(bd("0.03"), saved, market(BDF, Status.FRESH));
+        ResolvedMarketRate resolved = DefaultLoanMarketUseCase.resolveMarketRate(bd("0.03"), saved, market(BDF, Status.FRESH));
 
         assertEquals(0, bd("0.03").compareTo(resolved.rate()));
         assertEquals("Paramètre de requête", resolved.source());
@@ -46,7 +52,7 @@ class AnalysePretsServiceImplTest {
     void manualRateBeatsBdf() {
         LoanAdviceParameters saved = LoanAdviceParameters.defaults(bd("0.035"));
 
-        ResolvedMarketRate resolved = AnalysePretsServiceImpl.resolveMarketRate(null, saved, market(BDF, Status.FRESH));
+        ResolvedMarketRate resolved = DefaultLoanMarketUseCase.resolveMarketRate(null, saved, market(BDF, Status.FRESH));
 
         assertEquals(0, bd("0.035").compareTo(resolved.rate()));
         assertEquals("Saisie manuelle", resolved.source());
@@ -55,7 +61,7 @@ class AnalysePretsServiceImplTest {
     @Test
     @DisplayName("Sans saisie, le taux de la Banque de France est utilisé et son mois est indiqué")
     void fallsBackToBdf() {
-        ResolvedMarketRate resolved = AnalysePretsServiceImpl.resolveMarketRate(
+        ResolvedMarketRate resolved = DefaultLoanMarketUseCase.resolveMarketRate(
                 null, LoanAdviceParameters.defaults(null), market(BDF, Status.FRESH));
 
         assertEquals(0, bd("0.0321").compareTo(resolved.rate()));
@@ -65,7 +71,7 @@ class AnalysePretsServiceImplTest {
     @Test
     @DisplayName("Un taux Banque de France ancien est signalé comme tel")
     void staleBdfIsFlagged() {
-        ResolvedMarketRate resolved = AnalysePretsServiceImpl.resolveMarketRate(
+        ResolvedMarketRate resolved = DefaultLoanMarketUseCase.resolveMarketRate(
                 null, LoanAdviceParameters.defaults(null), market(BDF, Status.STALE));
 
         assertTrue(resolved.source().endsWith("donnée ancienne"));
@@ -74,7 +80,7 @@ class AnalysePretsServiceImplTest {
     @Test
     @DisplayName("Aucune source de taux : ni taux ni origine")
     void nothingAvailable() {
-        ResolvedMarketRate resolved = AnalysePretsServiceImpl.resolveMarketRate(
+        ResolvedMarketRate resolved = DefaultLoanMarketUseCase.resolveMarketRate(
                 null, LoanAdviceParameters.defaults(null), market(null, Status.UNAVAILABLE));
 
         assertNull(resolved.rate());

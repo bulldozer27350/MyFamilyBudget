@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.application.rate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,6 +11,10 @@ import com.moe.myfamilybudget.domain.market.model.MarketRatesView;
 /**
  * Contrat d'entrée du moteur de suggestions de taux (RF-802, voir
  * doc/architecture/10-domaine-prets-suggestions.md).
+ *
+ * <p>Déplacé de {@code server.internal.calculation} vers {@code application.rate} par R-86
+ * (SILO-317) : décision du 14/10/2026, ce cas d'usage transverse Patrimoine+Marché est rattaché à
+ * {@code application}.
  *
  * <p>Le moteur ne connaît ni {@code PlacementModel} ni {@code AssetCategoryModel} : la résolution
  * du bucket d'actif de chaque placement est faite par l'appelant ({@code

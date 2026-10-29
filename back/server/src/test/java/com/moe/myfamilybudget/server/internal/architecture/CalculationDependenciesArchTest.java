@@ -10,7 +10,7 @@ import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationSer
 import com.moe.myfamilybudget.application.overview.OverviewCalculationService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PatrimoineProjectionService;
 import com.moe.myfamilybudget.domain.wealth.calculation.PlacementEvolutionService;
-import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionService;
+import com.moe.myfamilybudget.application.rate.PlacementRateSuggestionService;
 import com.moe.myfamilybudget.domain.treasury.calculation.TresorerieCalculationService;
 import com.moe.myfamilybudget.application.factory.AssetBucketResolver;
 import com.moe.myfamilybudget.domain.analysis.calculation.AnalyseCalculationService;
@@ -245,6 +245,7 @@ class CalculationDependenciesArchTest {
             .or().resideInAPackage("com.moe.myfamilybudget.transition.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.application.model..")
             .or().resideInAPackage("com.moe.myfamilybudget.application.overview..")
+            .or().resideInAPackage("com.moe.myfamilybudget.application.rate..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.retirement..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.tax..")
             .or().resideInAPackage("com.moe.myfamilybudget.domain.wealth..")

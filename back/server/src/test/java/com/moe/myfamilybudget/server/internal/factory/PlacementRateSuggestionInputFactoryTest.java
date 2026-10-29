@@ -9,8 +9,9 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput;
-import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput.PlacementRateInput;
+import com.moe.myfamilybudget.application.factory.PlacementRateSuggestionInputFactory;
+import com.moe.myfamilybudget.application.rate.PlacementRateSuggestionInput;
+import com.moe.myfamilybudget.application.rate.PlacementRateSuggestionInput.PlacementRateInput;
 import com.moe.myfamilybudget.domain.wealth.model.AssetCategoryModel;
 import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
 

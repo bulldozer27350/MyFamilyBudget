@@ -15,7 +15,9 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput.PlacementRateInput;
+import com.moe.myfamilybudget.application.rate.PlacementRateSuggestionInput;
+import com.moe.myfamilybudget.application.rate.PlacementRateSuggestionInput.PlacementRateInput;
+import com.moe.myfamilybudget.application.rate.PlacementRateSuggestionService;
 import com.moe.myfamilybudget.domain.market.model.MarketRatesView;
 import com.moe.myfamilybudget.domain.market.model.RegulatedRateFreshness.Status;
 import com.moe.myfamilybudget.domain.market.model.RegulatedRatesQuote;

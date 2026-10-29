@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.application.rate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -12,18 +12,22 @@ import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 
-import com.moe.myfamilybudget.server.internal.calculation.PlacementRateSuggestionInput.PlacementRateInput;
+import com.moe.myfamilybudget.application.rate.PlacementRateSuggestionInput.PlacementRateInput;
+import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel;
+import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel.Item;
+import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel.Kind;
 import com.moe.myfamilybudget.domain.market.model.MarketRatesView;
 import com.moe.myfamilybudget.domain.market.model.RegulatedRateFreshness;
 import com.moe.myfamilybudget.domain.market.model.RegulatedRatesQuote;
 import com.moe.myfamilybudget.domain.market.model.YieldCurveQuote;
-import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel;
-import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel.Item;
-import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel.Kind;
 
 /**
  * Suggestions de taux pessimiste / correct / optimiste pour les placements, à partir de données
  * publiques. Service sans état : les données de marché arrivent en paramètre.
+ *
+ * <p>Déplacé de {@code server.internal.calculation} vers {@code application.rate} par R-86
+ * (SILO-317) : décision du 14/10/2026, ce cas d'usage transverse Patrimoine+Marché est rattaché à
+ * {@code application}.
  *
  * Périmètre volontairement étroit, limité à ce qui a une source défendable :
  * <ul>
@@ -52,12 +56,12 @@ public class PlacementRateSuggestionService {
     private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.FRENCH);
     private static final DateTimeFormatter DAY_FORMAT = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH);
 
-    enum Regulated {
+    public enum Regulated {
         LIVRET_A("Livret A"),
         LDDS("LDDS"),
         LEP("LEP");
 
-        final String label;
+        public final String label;
 
         Regulated(String label) {
             this.label = label;
@@ -148,7 +152,7 @@ public class PlacementRateSuggestionService {
     }
 
     /** Reconnaît un livret réglementé à son libellé ou à celui de sa catégorie (accents et casse ignorés). */
-    static Regulated detectRegulated(String label, String category) {
+    public static Regulated detectRegulated(String label, String category) {
         for (String text : new String[] {label, category}) {
             String n = normalize(text);
             if (LEP.matcher(n).find()) {
