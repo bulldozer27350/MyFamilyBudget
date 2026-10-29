@@ -76,6 +76,11 @@
             <groupId>com.moe.myfamilybudget</groupId>
             <artifactId>notifications-api</artifactId>
         </dependency>
+        <dependency>
+            <!-- market-api : données de marché pour PlacementRateSuggestionService (R-86, SILO-317) -->
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>market-api</artifactId>
+        </dependency>
 
         <!-- Contrat REST généré : DTO et interfaces *Api implémentées par application.service (MAVEN-102) -->
         <dependency>
