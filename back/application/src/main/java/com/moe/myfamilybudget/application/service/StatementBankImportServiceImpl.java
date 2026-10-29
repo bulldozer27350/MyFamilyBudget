@@ -2,8 +2,8 @@ package com.moe.myfamilybudget.application.service;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,22 +22,27 @@ import com.moe.myfamilybudget.api.model.ImportBankTransactionsRequestDto;
 import com.moe.myfamilybudget.api.model.SetBankTransactionCategoryRequestDto;
 import com.moe.myfamilybudget.api.model.UpdateBankImportLigneRequestDto;
 import com.moe.myfamilybudget.application.error.DataParsingException;
-import com.moe.myfamilybudget.application.mapper.StatementBankImportMapper;
-import com.moe.myfamilybudget.domain.bankpointage.calculation.BankImportCalculationService;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
-import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
-import com.moe.myfamilybudget.domain.bankpointage.port.BankImportChange;
-import com.moe.myfamilybudget.application.command.BankImportCommandService;
-import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
+import com.moe.myfamilybudget.application.usecase.bankpointage.BankLigneNotFoundException;
+import com.moe.myfamilybudget.application.usecase.bankpointage.BankPointageUseCase;
 
 import jakarta.validation.Valid;
 
 /**
- * Service et Contrôleur REST implémentant le contrat OpenAPI ImportBancaireApi (Tag: Import Bancaire).
+ * Contrôleur REST implémentant le contrat OpenAPI ImportBancaireApi (Tag: Import Bancaire).
+ *
+ * <p>R-83 (même gabarit que {@code TresorerieServiceImpl}, R-82, SILO-314) : ce contrôleur ne garde que la
+ * conversion vers le monde HTTP ({@link ResponseEntity}, DTO) et la décision d'appeler ou non (corps de requête
+ * absent). La composition de la réponse (lectures des fragments, appel du moteur d'import, catégorisation,
+ * traduction des types du silo) est portée par le cas d'usage {@link BankPointageUseCase}
+ * ({@code application-api}), implémenté par {@code DefaultBankPointageUseCase}. Les anciens 404/400 construits
+ * directement dans ce contrôleur (ligne introuvable, liste inconnue) sont désormais des exceptions levées par le
+ * cas d'usage ({@link BankLigneNotFoundException}, {@link IllegalArgumentException}), traduites ici.
+ *
+ * <p>{@code convertExcelToCsv} reste ici : utilitaire de conversion de format pur, qui ne lit ni n'écrit le silo
+ * Banque/Pointage (pas de cas d'usage impliqué).
  *
  * <p>RF-B01 (voir doc/architecture/13-persistance.md) : plus d'appel direct à
- * {@code PersistenceManager}. Lecture via {@link BankReader}, écriture via
- * {@link BankImportCommandService} (déjà en place depuis RF-A00).
+ * {@code PersistenceManager}.
  */
 @Service
 @RestController
@@ -45,22 +50,13 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
     private static final Logger LOG = LoggerFactory.getLogger(StatementBankImportServiceImpl.class);
 
-    private final BankReader bankReader;
-    private final BankImportCommandService bankImportCommandService;
-    private final StatementBankImportMapper mapper;
+    private final BankPointageUseCase bankPointageUseCase;
     private final ExcelToCsvService excelToCsvService;
-    private final BankImportCalculationService bankImportCalculationService;
 
-    public StatementBankImportServiceImpl(BankReader bankReader,
-                                          BankImportCommandService bankImportCommandService,
-                                          StatementBankImportMapper mapper,
-                                          ExcelToCsvService excelToCsvService,
-                                          BankImportCalculationService bankImportCalculationService) {
-        this.bankReader = bankReader;
-        this.bankImportCommandService = bankImportCommandService;
-        this.mapper = mapper;
+    public StatementBankImportServiceImpl(BankPointageUseCase bankPointageUseCase,
+                                          ExcelToCsvService excelToCsvService) {
+        this.bankPointageUseCase = bankPointageUseCase;
         this.excelToCsvService = excelToCsvService;
-        this.bankImportCalculationService = bankImportCalculationService;
     }
 
     // ---------------------------------------------------------------------------
@@ -69,25 +65,12 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
     @Override
     public ResponseEntity<Object> getBankImport() {
-        BankImportModel internalModel = bankReader.getBankImport();
-        Map<String, Object> responseMap = mapper.toBankImportResponseMap(internalModel);
-        return ResponseEntity.ok(responseMap);
+        return ResponseEntity.ok(bankPointageUseCase.getBankImport());
     }
 
     @Override
     public ResponseEntity<Void> updateBankImportMapping(Object body) {
-        Map<String, Object> mappingMap = toMap(body);
-        BankImportModel.BankColumnMappingModel newMapping = mapper.toColumnMappingModel(mappingMap);
-
-        // SILO-213 (lot B, etape b2) : lecture, modification et ecriture sous le verrou du silo Banque.
-        bankImportCommandService.modifyBankImport(current -> BankImportChange.write(new BankImportModel(
-                newMapping,
-                current.categories(),
-                current.rules(),
-                current.transactions(),
-                current.pendingOperations(),
-                current.matchings()
-        ), null));
+        bankPointageUseCase.updateBankImportMapping(toMap(body));
         return ResponseEntity.ok().build();
     }
 
@@ -109,38 +92,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
                         "Impossible de lire le fichier CSV envoyé : " + e.getMessage(), e);
             }
         }
-        final String csv = csvText;
-
-        // SILO-213 (lot B, etape b2) : lecture, calcul et ecriture sous le verrou du silo Banque.
-        bankImportCommandService.modifyBankImport(current -> {
-            BankImportModel.BankColumnMappingModel mappingModel = current.columnMapping();
-
-            List<String> colRoles = new ArrayList<>();
-            if (mappingModel.dateCol() != null) colRoles.add("date");
-            if (mappingModel.labelCol() != null) colRoles.add("label");
-            if (mappingModel.amountCol() != null) colRoles.add("amount");
-
-            List<List<String>> rawRows = bankImportCalculationService.parseCSVText(csv, mappingModel.delimiter());
-            if (mappingModel.hasHeader() && !rawRows.isEmpty()) {
-                rawRows = rawRows.subList(1, rawRows.size());
-            }
-
-            BankImportSummaryModel summary = bankImportCalculationService.importTransactions(
-                    rawRows, colRoles, mappingModel, current.transactions(), current.rules()
-            );
-
-            List<BankImportModel.BankTransactionModel> allTransactions = new ArrayList<>(current.transactions());
-            allTransactions.addAll(summary.newTransactions());
-
-            return BankImportChange.write(new BankImportModel(
-                    summary.updatedMapping(),
-                    current.categories(),
-                    current.rules(),
-                    allTransactions,
-                    current.pendingOperations(),
-                    current.matchings()
-            ), null);
-        });
+        bankPointageUseCase.importBankCSV(csvText);
         return ResponseEntity.ok().build();
     }
 
@@ -151,40 +103,11 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
             return ResponseEntity.badRequest().body(Map.of("error", "Données d'import manquantes."));
         }
 
-        // La conversion du mapping demande ne depend pas de l'import courant : elle reste hors verrou et hors
-        // du bloc qui traduit une IllegalArgumentException du calcul en 400.
-        BankImportModel.BankColumnMappingModel requestedMapping = request.getMapping() != null
-                ? mapper.toColumnMappingModel(toMap(request.getMapping()))
-                : null;
-
         try {
-            // SILO-213 (lot B, etape b2) : lecture, calcul et ecriture sous le verrou du silo Banque.
-            return bankImportCommandService.<ResponseEntity<Object>>modifyBankImport(current -> {
-                BankImportModel.BankColumnMappingModel mappingModel =
-                        requestedMapping != null ? requestedMapping : current.columnMapping();
-
-                BankImportSummaryModel summary = bankImportCalculationService.importTransactions(
-                        request.getRawRows(),
-                        request.getColRoles(),
-                        mappingModel,
-                        current.transactions(),
-                        current.rules()
-                );
-
-                List<BankImportModel.BankTransactionModel> allTransactions = new ArrayList<>(
-                        current.transactions() != null ? current.transactions() : Collections.emptyList()
-                );
-                allTransactions.addAll(summary.newTransactions());
-
-                return BankImportChange.write(new BankImportModel(
-                        summary.updatedMapping(),
-                        current.categories(),
-                        current.rules(),
-                        allTransactions,
-                        current.pendingOperations(),
-                        current.matchings()
-                ), ResponseEntity.ok(mapper.toImportSummaryMap(summary)));
-            });
+            Map<String, Object> mapping = request.getMapping() != null ? toMap(request.getMapping()) : null;
+            Map<String, Object> summary = bankPointageUseCase.importBankTransactions(
+                    request.getRawRows(), request.getColRoles(), mapping);
+            return ResponseEntity.ok(summary);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -195,80 +118,26 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         if (body == null) {
             return ResponseEntity.badRequest().build();
         }
-        Map<String, Object> txMap = toMap(body);
-        BankImportModel.BankTransactionModel tx = mapper.toTransactionModel(txMap);
-
-        // SILO-213 (lot B, etape b2) : lecture, calcul et ecriture sous le verrou du silo Banque.
-        return bankImportCommandService.<ResponseEntity<Object>>modifyBankImport(current -> {
-            List<BankImportModel.BankImportRuleModel> rules = current.rules() != null ? current.rules() : Collections.emptyList();
-
-            List<BankImportModel.BankTransactionModel> categorized = bankImportCalculationService.applyRulesToTransactions(List.of(tx), rules);
-            BankImportModel.BankTransactionModel finalTx = (!categorized.isEmpty()) ? categorized.get(0) : tx;
-
-            List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>(
-                    current.transactions() != null ? current.transactions() : Collections.emptyList()
-            );
-            updatedTxs.add(finalTx);
-
-            return BankImportChange.write(new BankImportModel(
-                    current.columnMapping(),
-                    current.categories(),
-                    current.rules(),
-                    updatedTxs,
-                    current.pendingOperations(),
-                    current.matchings()
-            ), ResponseEntity.ok(mapper.toTransactionMap(finalTx)));
-        });
+        Map<String, Object> created = bankPointageUseCase.forceImportBankTransaction(toMap(body));
+        return ResponseEntity.ok(created);
     }
 
     @Override
     public ResponseEntity<Void> updateBankTransactionSplits(String txId,
             @Valid List<@Valid BankTransactionSplitDto> bankTransactionSplitDto) {
-        // SILO-213 (lot B, etape b2) : lecture, controle et ecriture sous le verrou du silo Banque.
-        return bankImportCommandService.<ResponseEntity<Void>>modifyBankImport(current -> {
-            List<BankImportModel.BankTransactionModel> currentTxs = current.transactions();
-
-            int txIndex = -1;
-            for (int i = 0; i < currentTxs.size(); i++) {
-                if (currentTxs.get(i).id().equals(txId)) {
-                    txIndex = i;
-                    break;
-                }
-            }
-            if (txIndex == -1) {
-                return BankImportChange.unchanged(ResponseEntity.notFound().build());
-            }
-
-            List<BankImportModel.BankTransactionSplitModel> splits = mapper.toSplitList(bankTransactionSplitDto);
-            BankImportModel.BankTransactionModel existingTx = currentTxs.get(txIndex);
-            BankImportModel.BankTransactionModel updatedTx = new BankImportModel.BankTransactionModel(
-                    existingTx.id(),
-                    existingTx.date(),
-                    existingTx.label(),
-                    existingTx.type(),
-                    existingTx.amount(),
-                    existingTx.categoryId(),
-                    splits
-            );
-
-            try {
-                updatedTx.validateSplits();
-            } catch (IllegalArgumentException e) {
-                return BankImportChange.unchanged(ResponseEntity.badRequest().build());
-            }
-
-            List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>(currentTxs);
-            updatedTxs.set(txIndex, updatedTx);
-
-            return BankImportChange.write(new BankImportModel(
-                    current.columnMapping(),
-                    current.categories(),
-                    current.rules(),
-                    updatedTxs,
-                    current.pendingOperations(),
-                    current.matchings()
-            ), ResponseEntity.ok().build());
-        });
+        List<Map<String, Object>> splits = bankTransactionSplitDto == null
+                ? Collections.emptyList()
+                : bankTransactionSplitDto.stream()
+                        .map(StatementBankImportServiceImpl::toSplitMap)
+                        .collect(Collectors.toList());
+        try {
+            bankPointageUseCase.updateBankTransactionSplits(txId, splits);
+        } catch (BankLigneNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok().build();
     }
 
     // ---------------------------------------------------------------------------
@@ -277,109 +146,35 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
 
     @Override
     public ResponseEntity<Object> addBankImportLigne(String listKey, Object body) {
-        Map<String, Object> bodyMap = toMap(body);
-
-        // SILO-213 (lot B, etape b2) : lecture, modification et ecriture sous le verrou du silo Banque.
-        return bankImportCommandService.<ResponseEntity<Object>>modifyBankImport(current -> {
-            if ("categories".equals(listKey)) {
-                BankImportModel.CategoryModel newCat = mapper.toCategoryModel(bodyMap);
-                List<BankImportModel.CategoryModel> cats = new ArrayList<>(current.categories());
-                cats.add(newCat);
-                return BankImportChange.write(new BankImportModel(
-                        current.columnMapping(), cats, current.rules(),
-                        current.transactions(), current.pendingOperations(), current.matchings()),
-                        ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
-                                .body(mapper.toCategoryMap(newCat)));
-            } else if ("rules".equals(listKey)) {
-                BankImportModel.BankImportRuleModel newRule = mapper.toRuleModel(bodyMap);
-                List<BankImportModel.BankImportRuleModel> rules = new ArrayList<>(current.rules());
-                rules.add(newRule);
-                return BankImportChange.write(new BankImportModel(
-                        current.columnMapping(), current.categories(), rules,
-                        current.transactions(), current.pendingOperations(), current.matchings()),
-                        ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
-                                .body(mapper.toRuleMap(newRule)));
-            }
-            return BankImportChange.unchanged(ResponseEntity.badRequest().build());
-        });
+        try {
+            Map<String, Object> created = bankPointageUseCase.addBankImportLigne(listKey, toMap(body));
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(created);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @Override
-    public ResponseEntity<Void> updateBankImportLigne(String listKey, String id,
-            UpdateBankImportLigneRequestDto body) {
+    public ResponseEntity<Void> updateBankImportLigne(String listKey, String id, UpdateBankImportLigneRequestDto body) {
         if (body == null) return ResponseEntity.badRequest().build();
-        String field = body.getField();
-        Object value = body.getValue();
-
-        // SILO-213 (lot B, etape b2) : lecture, modification et ecriture sous le verrou du silo Banque.
-        return bankImportCommandService.<ResponseEntity<Void>>modifyBankImport(current -> {
-            if ("categories".equals(listKey)) {
-                List<BankImportModel.CategoryModel> cats = current.categories();
-                int idx = -1;
-                for (int i = 0; i < cats.size(); i++) {
-                    if (cats.get(i).id().equals(id)) { idx = i; break; }
-                }
-                if (idx == -1) return BankImportChange.unchanged(ResponseEntity.notFound().build());
-
-                BankImportModel.CategoryModel existing = cats.get(idx);
-                String label = "label".equals(field) ? String.valueOf(value) : existing.label();
-                String kind = "kind".equals(field) ? String.valueOf(value) : existing.kind();
-                String compressible = "compressible".equals(field) ? String.valueOf(value) : existing.compressible();
-
-                List<BankImportModel.CategoryModel> updated = new ArrayList<>(cats);
-                updated.set(idx, new BankImportModel.CategoryModel(existing.id(), label, kind, compressible));
-                return BankImportChange.write(new BankImportModel(
-                        current.columnMapping(), updated, current.rules(),
-                        current.transactions(), current.pendingOperations(), current.matchings()),
-                        ResponseEntity.ok().build());
-
-            } else if ("rules".equals(listKey)) {
-                List<BankImportModel.BankImportRuleModel> rules = current.rules();
-                int idx = -1;
-                for (int i = 0; i < rules.size(); i++) {
-                    if (rules.get(i).id().equals(id)) { idx = i; break; }
-                }
-                if (idx == -1) return BankImportChange.unchanged(ResponseEntity.notFound().build());
-
-                BankImportModel.BankImportRuleModel existing = rules.get(idx);
-                String matchText = "matchText".equals(field) ? String.valueOf(value) : existing.matchText();
-                String categoryId = "categoryId".equals(field) ? String.valueOf(value) : existing.categoryId();
-
-                List<BankImportModel.BankImportRuleModel> updated = new ArrayList<>(rules);
-                updated.set(idx, new BankImportModel.BankImportRuleModel(existing.id(), matchText, categoryId));
-                return BankImportChange.write(new BankImportModel(
-                        current.columnMapping(), current.categories(), updated,
-                        current.transactions(), current.pendingOperations(), current.matchings()),
-                        ResponseEntity.ok().build());
-            }
-            return BankImportChange.unchanged(ResponseEntity.badRequest().build());
-        });
+        try {
+            bankPointageUseCase.updateBankImportLigne(listKey, id, body.getField(), body.getValue());
+        } catch (BankLigneNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<Void> removeBankImportLigne(String listKey, String id) {
-        // SILO-213 (lot B, etape b2) : lecture, modification et ecriture sous le verrou du silo Banque.
-        return bankImportCommandService.<ResponseEntity<Void>>modifyBankImport(current -> {
-            if ("categories".equals(listKey)) {
-                List<BankImportModel.CategoryModel> cats = current.categories().stream()
-                        .filter(c -> !c.id().equals(id))
-                        .collect(Collectors.toList());
-                return BankImportChange.write(new BankImportModel(
-                        current.columnMapping(), cats, current.rules(),
-                        current.transactions(), current.pendingOperations(), current.matchings()),
-                        ResponseEntity.noContent().build());
-
-            } else if ("rules".equals(listKey)) {
-                List<BankImportModel.BankImportRuleModel> rules = current.rules().stream()
-                        .filter(r -> !r.id().equals(id))
-                        .collect(Collectors.toList());
-                return BankImportChange.write(new BankImportModel(
-                        current.columnMapping(), current.categories(), rules,
-                        current.transactions(), current.pendingOperations(), current.matchings()),
-                        ResponseEntity.noContent().build());
-            }
-            return BankImportChange.unchanged(ResponseEntity.badRequest().build());
-        });
+        try {
+            bankPointageUseCase.removeBankImportLigne(listKey, id);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.noContent().build();
     }
 
     // ---------------------------------------------------------------------------
@@ -392,83 +187,21 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         if (body == null || body.getCategoryId() == null) {
             return ResponseEntity.badRequest().build();
         }
-        String categoryId = body.getCategoryId();
-        String ruleKeyword = body.getRuleKeyword();
-
-        // SILO-213 (lot B, etape b2) : lecture, calcul et ecriture sous le verrou du silo Banque.
-        bankImportCommandService.modifyBankImport(current -> {
-            List<BankImportModel.BankImportRuleModel> currentRules = current.rules() != null ? current.rules() : Collections.emptyList();
-            List<BankImportModel.BankImportRuleModel> newRules = new ArrayList<>(currentRules);
-
-            if (ruleKeyword != null && !ruleKeyword.trim().isEmpty()) {
-                String key = ruleKeyword.trim().toUpperCase();
-                boolean found = false;
-                for (int i = 0; i < newRules.size(); i++) {
-                    BankImportModel.BankImportRuleModel r = newRules.get(i);
-                    if (r.matchText() != null && r.matchText().trim().toUpperCase().equals(key)) {
-                        newRules.set(i, new BankImportModel.BankImportRuleModel(r.id(), r.matchText(), categoryId));
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    newRules.add(new BankImportModel.BankImportRuleModel(null, ruleKeyword.trim(), categoryId));
-                }
-            }
-
-            List<BankImportModel.BankTransactionModel> currentTxs = current.transactions() != null ? current.transactions() : Collections.emptyList();
-            List<BankImportModel.BankTransactionModel> updatedTxs = new ArrayList<>();
-            for (BankImportModel.BankTransactionModel t : currentTxs) {
-                if (t.id() != null && t.id().equals(txId)) {
-                    updatedTxs.add(new BankImportModel.BankTransactionModel(
-                            t.id(), t.date(), t.label(), t.type(), t.amount(), categoryId, t.splits()
-                    ));
-                } else {
-                    updatedTxs.add(t);
-                }
-            }
-
-            List<BankImportModel.BankTransactionModel> finalTxs = bankImportCalculationService.applyRulesToTransactions(updatedTxs, newRules);
-
-            return BankImportChange.write(new BankImportModel(
-                    current.columnMapping(),
-                    current.categories(),
-                    newRules,
-                    finalTxs,
-                    current.pendingOperations(),
-                    current.matchings()
-            ), null);
-        });
+        bankPointageUseCase.setBankImportTransactionCategory(txId, body.getCategoryId(), body.getRuleKeyword());
         return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<Void> recalculateBankImportRules() {
-        // SILO-213 (lot B, etape b2) : lecture, calcul et ecriture sous le verrou du silo Banque.
-        bankImportCommandService.modifyBankImport(current -> {
-            List<BankImportModel.BankTransactionModel> currentTxs = current.transactions() != null ? current.transactions() : Collections.emptyList();
-            List<BankImportModel.BankImportRuleModel> currentRules = current.rules() != null ? current.rules() : Collections.emptyList();
-
-            List<BankImportModel.BankTransactionModel> recalculated = bankImportCalculationService.applyRulesToTransactions(currentTxs, currentRules);
-
-            return BankImportChange.write(new BankImportModel(
-                    current.columnMapping(),
-                    current.categories(),
-                    currentRules,
-                    recalculated,
-                    current.pendingOperations(),
-                    current.matchings()
-            ), null);
-        });
+        bankPointageUseCase.recalculateBankImportRules();
         return ResponseEntity.ok().build();
     }
 
     // --- Utility ---
 
     /**
-     * Convertit un fichier Excel (.xls ou .xlsx) en texte CSV.
-     * Retourne le CSV en text/plain pour que le front-end puisse ensuite
-     * le traiter exactement comme un fichier CSV normal.
+     * Conversion de format pure (Excel → CSV) : ne lit ni n'écrit aucun silo, pas de cas d'usage impliqué
+     * (cf. javadoc de la classe).
      */
     @Override
     public ResponseEntity<String> convertExcelToCsv(MultipartFile file) {
@@ -495,6 +228,17 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
             return (Map<String, Object>) map;
         }
         return Collections.emptyMap();
+    }
+
+    private static Map<String, Object> toSplitMap(BankTransactionSplitDto s) {
+        Map<String, Object> m = new HashMap<>();
+        if (s != null) {
+            m.put("id", s.getId());
+            m.put("categoryId", s.getCategoryId());
+            m.put("amount", s.getAmount());
+            m.put("label", s.getLabel());
+        }
+        return m;
     }
 
 }

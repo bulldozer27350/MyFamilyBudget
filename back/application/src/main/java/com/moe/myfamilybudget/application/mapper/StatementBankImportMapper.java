@@ -150,6 +150,25 @@ public class StatementBankImportMapper {
                     .collect(Collectors.toList());
     }
 
+    /**
+     * R-83 (SILO-314) : variante de {@link #toSplitModel(BankTransactionSplitDto)} à partir d'une
+     * {@code Map}, pour le cas d'usage {@code BankPointageUseCase} (sans dépendance au DTO OpenAPI).
+     */
+    public BankImportModel.BankTransactionSplitModel toSplitModel(Map<String, Object> map) {
+        if (map == null) return new BankImportModel.BankTransactionSplitModel(null, "", BigDecimal.ZERO, "");
+        String id = (String) map.get("id");
+        String categoryId = (String) map.getOrDefault("categoryId", "");
+        BigDecimal amount = toBigDecimal(map.get("amount"));
+        String label = (String) map.getOrDefault("label", "");
+        return new BankImportModel.BankTransactionSplitModel(id, categoryId, amount, label);
+    }
+
+    /** R-83 (SILO-314) : variante {@code Map} de {@link #toSplitList(List)}. */
+    public List<BankImportModel.BankTransactionSplitModel> toSplitModelList(List<Map<String, Object>> maps) {
+        if (maps == null) return Collections.emptyList();
+        return maps.stream().map(this::toSplitModel).collect(Collectors.toList());
+    }
+
     public BankImportModel.BankTransactionModel toTransactionModel(Map<String, Object> map) {
         if (map == null) return new BankImportModel.BankTransactionModel(null, "", "", "", BigDecimal.ZERO, "");
         String id = (String) map.get("id");
