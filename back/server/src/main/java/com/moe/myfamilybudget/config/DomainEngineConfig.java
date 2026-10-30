@@ -20,7 +20,10 @@ import com.moe.myfamilybudget.domain.bankpointage.core.enablebanking.EnableBanki
 import com.moe.myfamilybudget.domain.bankpointage.core.enablebanking.EnableBankingConfig;
 import com.moe.myfamilybudget.domain.bankpointage.port.EnableBankingSyncStateStore;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceSettingsService;
 import com.moe.myfamilybudget.domain.credit.core.DefaultLoanAdviceCalculationService;
+import com.moe.myfamilybudget.domain.credit.core.DefaultLoanAdviceSettingsService;
+import com.moe.myfamilybudget.domain.credit.port.LoanAdviceSettingsStore;
 import com.moe.myfamilybudget.domain.market.calculation.MarketDataService;
 import com.moe.myfamilybudget.domain.market.core.BdfMortgageRateClient;
 import com.moe.myfamilybudget.domain.market.core.CdcRegulatedRatesClient;
@@ -116,6 +119,11 @@ public class DomainEngineConfig {
     @Bean
     public LoanAdviceCalculationService loanAdviceCalculationService() {
         return new DefaultLoanAdviceCalculationService();
+    }
+
+    @Bean
+    public LoanAdviceSettingsService loanAdviceSettingsService(LoanAdviceSettingsStore store) {
+        return new DefaultLoanAdviceSettingsService(store);
     }
 
     @Bean

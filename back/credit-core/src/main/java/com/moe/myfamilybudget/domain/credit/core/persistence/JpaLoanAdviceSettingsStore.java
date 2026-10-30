@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.credit.core.persistence;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -8,9 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.moe.myfamilybudget.domain.credit.core.persistence.LoanAdviceSettingsEntity;
-import com.moe.myfamilybudget.domain.credit.core.persistence.LoanAdviceSettingsRepository;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.port.LoanAdviceSettingsStore;
 
 /**
  * Implémentation JPA de {@link LoanAdviceSettingsStore} : une seule ligne, remplacée à chaque

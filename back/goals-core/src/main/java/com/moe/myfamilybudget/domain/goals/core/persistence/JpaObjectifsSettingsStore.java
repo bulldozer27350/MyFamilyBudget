@@ -1,14 +1,12 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.goals.core.persistence;
 
-import com.moe.myfamilybudget.application.settings.ObjectifsSettingsStore;
 import java.time.Instant;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 
-import com.moe.myfamilybudget.domain.goals.core.persistence.ObjectifsSettingsEntity;
-import com.moe.myfamilybudget.domain.goals.core.persistence.ObjectifsSettingsRepository;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
+import com.moe.myfamilybudget.domain.goals.port.ObjectifsSettingsStore;
 
 /**
  * Implémentation JPA de {@link ObjectifsSettingsStore} : une seule ligne, remplacée à chaque

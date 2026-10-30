@@ -1,6 +1,5 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.application.settings;
 
-import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
@@ -9,8 +8,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryObjectifsSettingsStore;
 
 class ObjectifsSettingsServiceTest {
 

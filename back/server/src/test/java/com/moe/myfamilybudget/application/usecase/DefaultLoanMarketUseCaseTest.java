@@ -16,13 +16,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.moe.myfamilybudget.application.rate.PlacementRateSuggestionService;
-import com.moe.myfamilybudget.application.settings.LoanAdviceSettingsPort;
 import com.moe.myfamilybudget.application.usecase.loanmarket.LoanAdviceParametersModel;
 import com.moe.myfamilybudget.application.usecase.loanmarket.LoanAdviceParametersSaveCommand;
 import com.moe.myfamilybudget.application.usecase.loanmarket.LoanAdviceResultModel;
 import com.moe.myfamilybudget.application.usecase.loanmarket.LoanMarketUseCase;
 import com.moe.myfamilybudget.application.usecase.loanmarket.RateSuggestionsModel;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceSettingsService;
 import com.moe.myfamilybudget.domain.credit.core.DefaultLoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.credit.model.LoanModel;
 import com.moe.myfamilybudget.domain.market.calculation.MarketDataService;
@@ -43,21 +43,27 @@ class DefaultLoanMarketUseCaseTest {
 
     private InMemoryLoanStore loanStore;
     private InMemoryWealthStore wealthStore;
-    private InMemoryLoanAdviceSettingsPort settingsPort;
+    private InMemoryLoanAdviceSettingsService settingsService;
     private StubMarketDataService marketDataService;
     private LoanMarketUseCase useCase;
 
-    private static final class InMemoryLoanAdviceSettingsPort implements LoanAdviceSettingsPort {
+    private static final class InMemoryLoanAdviceSettingsService implements LoanAdviceSettingsService {
         LoanAdviceParameters content;
 
         @Override
-        public Optional<LoanAdviceParameters> load() {
-            return Optional.ofNullable(content);
+        public LoanAdviceParameters current() {
+            return content != null ? content : defaults();
         }
 
         @Override
-        public void save(LoanAdviceParameters parameters) {
+        public LoanAdviceParameters defaults() {
+            return LoanAdviceParameters.defaults(null);
+        }
+
+        @Override
+        public LoanAdviceParameters save(LoanAdviceParameters parameters) {
             content = parameters;
+            return parameters;
         }
     }
 
@@ -83,7 +89,7 @@ class DefaultLoanMarketUseCaseTest {
     void setUp() {
         loanStore = new InMemoryLoanStore();
         wealthStore = new InMemoryWealthStore();
-        settingsPort = new InMemoryLoanAdviceSettingsPort();
+        settingsService = new InMemoryLoanAdviceSettingsService();
 
         MortgageRateQuote mortgage = new MortgageRateQuote(YearMonth.of(2026, 5), new BigDecimal("0.0321"), "MIR1.X");
         RegulatedRatesQuote regulated = new RegulatedRatesQuote(YearMonth.of(2026, 8), new BigDecimal("0.017"),
@@ -97,7 +103,7 @@ class DefaultLoanMarketUseCaseTest {
 
         useCase = new DefaultLoanMarketUseCase(
                 new DefaultLoanAdviceCalculationService(),
-                settingsPort,
+                settingsService,
                 marketDataService,
                 loanStore,
                 wealthStore,

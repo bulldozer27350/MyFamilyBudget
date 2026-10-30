@@ -1,35 +1,37 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.credit.core;
 
 import java.math.BigDecimal;
 
-import org.springframework.stereotype.Service;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceSettingsService;
+import com.moe.myfamilybudget.domain.credit.port.LoanAdviceSettingsStore;
 
 /**
  * Hypothèses de l'analyse des prêts modifiables depuis l'application. Sans enregistrement, les
  * valeurs par défaut de {@link LoanAdviceParameters#defaults(BigDecimal)} s'appliquent.
  *
- * Le taux de marché saisi ici est celui utilisé tant qu'aucune source automatique n'est branchée ;
+ * <p>Le taux de marché saisi ici est celui utilisé tant qu'aucune source automatique n'est branchée ;
  * un paramètre de requête peut toujours le remplacer ponctuellement (simulation).
  */
-@Service
-public class LoanAdviceSettingsService {
+public class DefaultLoanAdviceSettingsService implements LoanAdviceSettingsService {
 
     private static final BigDecimal MAX_MARGIN_RATE = new BigDecimal("0.05");
     private static final BigDecimal MAX_AMOUNT = new BigDecimal("10000000");
 
     private final LoanAdviceSettingsStore store;
 
-    public LoanAdviceSettingsService(LoanAdviceSettingsStore store) {
+    public DefaultLoanAdviceSettingsService(LoanAdviceSettingsStore store) {
         this.store = store;
     }
 
     /** Hypothèses en vigueur : enregistrées si elles existent, sinon celles par défaut. */
+    @Override
     public LoanAdviceParameters current() {
         return store.load().orElseGet(this::defaults);
     }
 
     /** Valeurs par défaut (sans taux de marché). */
+    @Override
     public LoanAdviceParameters defaults() {
         return LoanAdviceParameters.defaults(null);
     }
@@ -39,13 +41,14 @@ public class LoanAdviceSettingsService {
      *
      * @throws IllegalArgumentException si une valeur est absente ou hors plage (traduit en 400)
      */
+    @Override
     public LoanAdviceParameters save(LoanAdviceParameters parameters) {
         validate(parameters);
         store.save(parameters);
         return parameters;
     }
 
-    static void validate(LoanAdviceParameters p) {
+    public static void validate(LoanAdviceParameters p) {
         BigDecimal market = p.marketRate();
         if (market != null && (market.signum() <= 0 || market.compareTo(LoanAdviceParameters.MAX_PLAUSIBLE_MARKET_RATE) > 0)) {
             throw new IllegalArgumentException("Le taux de marché doit être supérieur à 0 % et ne pas dépasser 30 %.");

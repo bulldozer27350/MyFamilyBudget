@@ -31,10 +31,9 @@ class GoalsNotificationsFragmentInputsArchTest {
                     + "|server\\.internal\\.impl\\.NotificationsServiceImpl"
                     + "|application\\.mapper\\.NotificationsMapper"
                     + "|application\\.usecase\\.(DefaultNotificationsUseCase|notifications\\..*)"
-                    + "|server\\.internal\\.calculation\\.JpaObjectifsSettingsStore"
                     + "|application\\.factory\\.NotificationInputFactory"
                     + "|application\\.command\\.Goal(CommandService|AllocationRule)"
-                    + "|application\\.settings\\.ObjectifsSettings(Service|Store)"
+                    + "|application\\.settings\\.ObjectifsSettingsService"
                     + ")(\\$.*)?";
 
     private static final String GLOBAL_TRANSITION_TYPES =

@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.application.settings;
+package com.moe.myfamilybudget.domain.goals.port;
 
 import java.util.Optional;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;

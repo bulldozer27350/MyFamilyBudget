@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.credit.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -10,9 +10,11 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
 
-class LoanAdviceSettingsServiceTest {
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.port.LoanAdviceSettingsStore;
+
+class DefaultLoanAdviceSettingsServiceTest {
 
     /** Store en mémoire qui compte les enregistrements. */
     private static final class InMemoryStore implements LoanAdviceSettingsStore {
@@ -44,7 +46,7 @@ class LoanAdviceSettingsServiceTest {
     @Test
     @DisplayName("Sans enregistrement, les valeurs par défaut validées avec l'utilisateur s'appliquent")
     void defaultsWhenNothingSaved() {
-        LoanAdviceParameters p = new LoanAdviceSettingsService(new InMemoryStore()).current();
+        LoanAdviceParameters p = new DefaultLoanAdviceSettingsService(new InMemoryStore()).current();
 
         assertNull(p.marketRate());
         assertEquals(0, bd("0.005").compareTo(p.repayMarginRate()));
@@ -59,7 +61,7 @@ class LoanAdviceSettingsServiceTest {
     @DisplayName("Les hypothèses enregistrées remplacent les valeurs par défaut, qui restent disponibles")
     void savedValuesOverrideDefaults() {
         InMemoryStore store = new InMemoryStore();
-        LoanAdviceSettingsService service = new LoanAdviceSettingsService(store);
+        DefaultLoanAdviceSettingsService service = new DefaultLoanAdviceSettingsService(store);
         LoanAdviceParameters mine = custom("0.032", "0.01", "0.01", "50000", 60, "2000", "0.172");
 
         service.save(mine);
@@ -74,7 +76,7 @@ class LoanAdviceSettingsServiceTest {
     @DisplayName("Le taux de marché est facultatif et les bornes de chaque plage sont acceptées")
     void boundariesAreAccepted() {
         InMemoryStore store = new InMemoryStore();
-        LoanAdviceSettingsService service = new LoanAdviceSettingsService(store);
+        DefaultLoanAdviceSettingsService service = new DefaultLoanAdviceSettingsService(store);
 
         service.save(custom(null, "0", "0", "0", 0, "0", "0"));
         service.save(custom("0.30", "0.05", "0.05", "10000000", 600, "10000000", "1"));
@@ -86,7 +88,7 @@ class LoanAdviceSettingsServiceTest {
     @DisplayName("Une valeur hors plage est refusée avec un message explicite et rien n'est enregistré")
     void invalidValuesAreRejected() {
         InMemoryStore store = new InMemoryStore();
-        LoanAdviceSettingsService service = new LoanAdviceSettingsService(store);
+        DefaultLoanAdviceSettingsService service = new DefaultLoanAdviceSettingsService(store);
 
         LoanAdviceParameters[] invalid = {
                 custom("0", "0.005", "0.007", "70000", 84, "1500", "0.3"),

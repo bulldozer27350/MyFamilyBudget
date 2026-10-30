@@ -13,7 +13,6 @@ import com.moe.myfamilybudget.application.factory.PlacementRateSuggestionInputFa
 import com.moe.myfamilybudget.application.model.PlacementRateSuggestionsModel;
 import com.moe.myfamilybudget.application.rate.PlacementRateSuggestionInput;
 import com.moe.myfamilybudget.application.rate.PlacementRateSuggestionService;
-import com.moe.myfamilybudget.application.settings.LoanAdviceSettingsPort;
 import com.moe.myfamilybudget.application.usecase.loanmarket.LoanAdviceParametersModel;
 import com.moe.myfamilybudget.application.usecase.loanmarket.LoanAdviceParametersSaveCommand;
 import com.moe.myfamilybudget.application.usecase.loanmarket.LoanAdviceParametersValuesModel;
@@ -30,6 +29,7 @@ import com.moe.myfamilybudget.application.usecase.loanmarket.RateSuggestionKind;
 import com.moe.myfamilybudget.application.usecase.loanmarket.RateSuggestionsModel;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceCalculationService;
 import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
+import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceSettingsService;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.LoanItem;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RenegotiationAdvice;
 import com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel.RepaymentAdvice;
@@ -53,9 +53,8 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
  * Banque de France) est portée par ce cas d'usage ; elle était auparavant dans
  * {@code AnalysePretsServiceImpl}.
  *
- * <p>L'accès aux hypothèses de l'analyse passe par {@link LoanAdviceSettingsPort}, port de
- * {@code application.settings} implémenté dans {@code server} jusqu'à R-02 (sortie des stores
- * de paramètres Crédit vers {@code credit-api}/{@code credit-core}, DA-13).
+ * <p>L'accès aux hypothèses de l'analyse passe par {@link LoanAdviceSettingsService}, service
+ * du silo Crédit ({@code credit-api}/{@code credit-core}, R-02).
  */
 @Service
 public class DefaultLoanMarketUseCase implements LoanMarketUseCase {
@@ -63,7 +62,7 @@ public class DefaultLoanMarketUseCase implements LoanMarketUseCase {
     private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.FRENCH);
 
     private final LoanAdviceCalculationService calculationService;
-    private final LoanAdviceSettingsPort settingsPort;
+    private final LoanAdviceSettingsService settingsService;
     private final MarketDataService marketDataService;
     private final LoanReader loanReader;
     private final PatrimoineReader patrimoineReader;
@@ -71,13 +70,13 @@ public class DefaultLoanMarketUseCase implements LoanMarketUseCase {
 
     public DefaultLoanMarketUseCase(
             LoanAdviceCalculationService calculationService,
-            LoanAdviceSettingsPort settingsPort,
+            LoanAdviceSettingsService settingsService,
             MarketDataService marketDataService,
             LoanReader loanReader,
             PatrimoineReader patrimoineReader,
             PlacementRateSuggestionService suggestionService) {
         this.calculationService = calculationService;
-        this.settingsPort = settingsPort;
+        this.settingsService = settingsService;
         this.marketDataService = marketDataService;
         this.loanReader = loanReader;
         this.patrimoineReader = patrimoineReader;
@@ -86,7 +85,7 @@ public class DefaultLoanMarketUseCase implements LoanMarketUseCase {
 
     @Override
     public LoanAdviceResultModel getAnalysePrets(BigDecimal marketRate) {
-        LoanAdviceParameters saved = settingsPort.current();
+        LoanAdviceParameters saved = settingsService.current();
         ResolvedMarketRate resolved = resolveMarketRate(marketRate, saved, marketDataService.current());
         LoanAdviceParameters effective = withMarketRate(saved, resolved.rate());
         com.moe.myfamilybudget.domain.credit.model.LoanAdviceResultModel result =
@@ -103,14 +102,14 @@ public class DefaultLoanMarketUseCase implements LoanMarketUseCase {
 
     @Override
     public LoanAdviceParametersModel getAnalysePretsParametres() {
-        return toParametresModel(settingsPort.current(), settingsPort.defaults());
+        return toParametresModel(settingsService.current(), settingsService.defaults());
     }
 
     @Override
     public LoanAdviceParametersModel updateAnalysePretsParametres(LoanAdviceParametersSaveCommand command) {
         LoanAdviceParameters parameters = toParameters(command);
-        settingsPort.save(parameters);
-        return toParametresModel(parameters, settingsPort.defaults());
+        settingsService.save(parameters);
+        return toParametresModel(parameters, settingsService.defaults());
     }
 
     @Override

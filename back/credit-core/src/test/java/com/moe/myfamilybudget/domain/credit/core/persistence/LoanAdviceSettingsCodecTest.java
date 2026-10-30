@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.credit.core.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

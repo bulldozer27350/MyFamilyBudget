@@ -3,7 +3,7 @@ package com.moe.myfamilybudget.server.internal.testsupport;
 import java.util.Optional;
 
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
-import com.moe.myfamilybudget.application.settings.ObjectifsSettingsStore;
+import com.moe.myfamilybudget.domain.goals.port.ObjectifsSettingsStore;
 
 /**
  * {@link ObjectifsSettingsStore} en mémoire pour les tests unitaires, sans base de données.

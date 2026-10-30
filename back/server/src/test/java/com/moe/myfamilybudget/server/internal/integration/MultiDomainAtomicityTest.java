@@ -28,7 +28,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moe.myfamilybudget.domain.goals.calculation.ObjectifsParameters;
 import com.moe.myfamilybudget.application.settings.ObjectifsSettingsService;
-import com.moe.myfamilybudget.application.settings.ObjectifsSettingsStore;
+import com.moe.myfamilybudget.domain.goals.port.ObjectifsSettingsStore;
 
 /**
  * VT-340 -- Atomicite des mutations multi-domaines. Import, reinitialisation et sauvegarde des parametres

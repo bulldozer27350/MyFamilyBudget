@@ -1,4 +1,4 @@
-package com.moe.myfamilybudget.server.internal.calculation;
+package com.moe.myfamilybudget.domain.credit.core.persistence;
 
 import java.math.BigDecimal;
 
@@ -12,12 +12,12 @@ import com.moe.myfamilybudget.domain.credit.calculation.LoanAdviceParameters;
  * Sérialisation JSON explicite des hypothèses de l'analyse des prêts (montants et taux en
  * chaînes, sans perte de précision, indépendante de la configuration Jackson de l'application).
  */
-final class LoanAdviceSettingsCodec {
+public final class LoanAdviceSettingsCodec {
 
     private LoanAdviceSettingsCodec() {
     }
 
-    static String toJson(LoanAdviceParameters p, ObjectMapper mapper) {
+    public static String toJson(LoanAdviceParameters p, ObjectMapper mapper) {
         ObjectNode root = mapper.createObjectNode();
         if (p.marketRate() != null) {
             root.put("marketRate", p.marketRate().toPlainString());
@@ -38,7 +38,7 @@ final class LoanAdviceSettingsCodec {
     /**
      * @throws IllegalStateException si le contenu est illisible ou incomplet
      */
-    static LoanAdviceParameters fromJson(String json, ObjectMapper mapper) {
+    public static LoanAdviceParameters fromJson(String json, ObjectMapper mapper) {
         try {
             JsonNode root = mapper.readTree(json);
             return new LoanAdviceParameters(
