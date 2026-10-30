@@ -63,6 +63,7 @@
         <module>infra-jpa</module>
         <module>application-api</module>
         <module>application</module>
+        <module>web</module>
         <module>server</module>
     </modules>
 
@@ -226,6 +227,11 @@
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>application</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moe.myfamilybudget</groupId>
+                <artifactId>web</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

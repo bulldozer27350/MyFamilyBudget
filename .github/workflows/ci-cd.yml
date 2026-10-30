@@ -80,6 +80,7 @@ jobs:
             back/infra-jpa/pom.xml
             back/application-api/pom.xml
             back/application/pom.xml
+            back/web/pom.xml
             back/server/pom.xml
 
       - name: Set up Bun

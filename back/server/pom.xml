@@ -146,6 +146,12 @@
             <artifactId>application</artifactId>
         </dependency>
 
+        <!-- Couche web : contrôleurs REST, mappers DTO, gestion des erreurs, CORS (R-90, SILO-320) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>web</artifactId>
+        </dependency>
+
         <!-- Configuration JPA/Hibernate commune aux silos : stratégie de nommage, aucun type métier (SILO-200) -->
         <dependency>
             <groupId>com.moe.myfamilybudget</groupId>

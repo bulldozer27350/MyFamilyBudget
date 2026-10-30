@@ -1,0 +1,411 @@
+package com.moe.myfamilybudget.web.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculationService;
+import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
+import com.moe.myfamilybudget.domain.treasury.core.DefaultTresorerieCalculationService;
+import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionService;
+import com.moe.myfamilybudget.api.model.CashflowYearDto;
+import com.moe.myfamilybudget.api.model.OverviewResponseDto;
+import com.moe.myfamilybudget.application.mapper.OverviewMapper;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
+import com.moe.myfamilybudget.domain.treasury.model.ChargeModel;
+import com.moe.myfamilybudget.domain.treasury.model.IncomeModel;
+import com.moe.myfamilybudget.domain.credit.model.LoanModel;
+import com.moe.myfamilybudget.domain.wealth.model.PlacementModel;
+import com.moe.myfamilybudget.domain.wealth.model.RealEstateModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.RetirementPersonModel;
+import com.moe.myfamilybudget.domain.retirement.model.RetirementModel.SalaryHistoryModel;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryBankStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTreasuryStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryGoalStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryLoanStore;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryWealthStore;
+import com.moe.myfamilybudget.server.internal.adapter.PatrimoinePersistenceAdapter;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryRetirementStore;
+import com.moe.myfamilybudget.server.internal.testsupport.CacheBackedAppSettings;
+import com.moe.myfamilybudget.server.internal.testsupport.InMemoryTaxStore;
+
+class OverviewServiceImplTest {
+
+    private final InMemoryBankStore bankStore = new InMemoryBankStore();
+
+    private OverviewServiceImpl overviewService;
+    private OverviewMapper mapper;
+    private CacheBackedAppSettings appSettings;
+    private InMemoryTreasuryStore treasuryStore;
+    private InMemoryWealthStore wealthStore;
+    private InMemoryRetirementStore retirementStore;
+    private final InMemoryLoanStore loanStore = new InMemoryLoanStore();
+
+    @BeforeEach
+    void setUp() {
+        mapper = new OverviewMapper();
+        treasuryStore = new InMemoryTreasuryStore();
+        appSettings = new CacheBackedAppSettings();
+        wealthStore = new InMemoryWealthStore();
+        retirementStore = new InMemoryRetirementStore();
+        InMemoryTaxStore taxStore = new InMemoryTaxStore();
+        overviewService = new OverviewServiceImpl(
+                mapper,
+                new DefaultRetirementCalculationService(),
+                new DefaultTaxCalculationService(),
+                new DefaultPatrimoineProjectionService(),
+                new DefaultTresorerieCalculationService(),
+                retirementStore,
+                taxStore,
+                treasuryStore,
+                appSettings,
+                appSettings,
+                treasuryStore,
+                new PatrimoinePersistenceAdapter(wealthStore.getDelegate(), treasuryStore.getDelegate()),
+                retirementStore,
+                taxStore,
+                bankStore,
+                loanStore,
+                new InMemoryGoalStore());
+    }
+
+    /**
+     * R-61-16 : amorcage direct des silos (plus de {@code BudgetDataModel}/{@code SettingsModel} ni de
+     * {@code PersistenceManager} comme intermediaire, grille 3.2 cas 3). Meme repartition que l'ancien
+     * {@code setBudgetData} : treasuryStore porte les parametres Tresorerie (pivot, solde, sweep, seuils de
+     * cash) ainsi que les revenus/charges ; wealthStore porte placements et immobilier ; retirementStore porte
+     * birthYear/retireAge et le plan de retraite. oneoff/transfers/variableIncomes/variableOverrides/
+     * assetCategories restent vides dans tous les appels de ce fichier (aucun test ne les exerce).
+     */
+    private void seedBudget(TresorerieSettingsModel tresorerieSettings, List<IncomeModel> incomes,
+            List<ChargeModel> charges, List<PlacementModel> placements, List<RealEstateModel> realEstate,
+            Integer birthYear, Integer retireAge, RetirementModel retirement) {
+        this.treasuryStore.replace(tresorerieSettings, incomes, charges, List.of(), List.of(), List.of(), List.of());
+        this.wealthStore.replace(placements, realEstate, List.of(), List.of());
+        this.retirementStore.replace(new RetirementSettingsModel(birthYear, retireAge), retirement);
+    }
+
+
+    @Test
+    @DisplayName("Should calculate financial projections and retirement metrics accurately")
+    void testBuildOverview_NominalCase() {
+        // Given
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", new BigDecimal("10000"), false, null, null, null);
+
+        IncomeModel income1 = new IncomeModel("inc_1", "Salaire 1", new BigDecimal("3500"), "2026-01-01", "2048-12-31",
+                new BigDecimal("0.01"), "cat_1", null);
+
+        ChargeModel charge1 = new ChargeModel("chg_1", "Loyer", new BigDecimal("1200"), "2026-01-01", "2048-12-31",
+                new BigDecimal("0.02"), "cat_2", null);
+
+        PlacementModel placement1 = new PlacementModel("plc_1", "PEA", "Actions", new BigDecimal("20000"), "2026-01-01",
+                new BigDecimal("300"), "2026-01-01", "2048-12-31", new BigDecimal("0.03"), new BigDecimal("0.05"),
+                new BigDecimal("0.07"), false, null);
+
+        RealEstateModel realEstate1 = new RealEstateModel("re_1", "RP Paris", "Résidence Principale",
+                new BigDecimal("350000"), 2026, new BigDecimal("0.02"), null);
+
+        SalaryHistoryModel salary2023 = new SalaryHistoryModel(2023, new BigDecimal("42000"));
+        SalaryHistoryModel salary2024 = new SalaryHistoryModel(2024, new BigDecimal("44000"));
+        SalaryHistoryModel salary2025 = new SalaryHistoryModel(2025, new BigDecimal("46000"));
+
+        RetirementPersonModel person1 = new RetirementPersonModel("p_1", "Moe", 1985, "Salaire 1", 120, "2025-12-31",
+                List.of(salary2023, salary2024, salary2025), new BigDecimal("3500"), new BigDecimal("0.0051"), false);
+
+        RetirementModel retirement = new RetirementModel(List.of(person1), new BigDecimal("47100"),
+                new BigDecimal("0.015"), new BigDecimal("1.4386"), "2025-01-01", new BigDecimal("0.01"));
+
+        this.seedBudget(tresorerieSettings, List.of(income1), List.of(charge1), List.of(placement1),
+                List.of(realEstate1), 1985, 64, retirement); // Save to persistence for retrieval in service
+
+        // When
+        OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.getRetireYear()).isEqualTo(2049); // 1985 + 64
+        assertThat(response.getYears()).contains(2026, 2049, 2070); // Birth + simulateUntilAge 85 -> 2070
+        assertThat(response.getPatrimoineActuel()).isEqualByComparingTo("20000");
+
+        // Verify Cashflow Year 2026
+        CashflowYearDto cf2026 = response.getCashflow().get(0);
+        assertThat(cf2026.getYear()).isEqualTo(2026);
+        assertThat(cf2026.getIncome()).isEqualByComparingTo("42000"); // 3500 * 12
+        assertThat(cf2026.getCharges()).isEqualByComparingTo("14400"); // 1200 * 12
+        assertThat(cf2026.getSavings()).isEqualByComparingTo("3600"); // 300 * 12
+
+        // Verify Pensions & Retirement Metrics
+        assertThat(response.getTotalPensions()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(response.getRetirePatrimoine().getCorr()).isGreaterThan(response.getRetirePatrimoine().getPess());
+        assertThat(response.getRetirePatrimoine().getOpti()).isGreaterThan(response.getRetirePatrimoine().getCorr());
+        assertThat(response.getFireRente().getCorr()).isGreaterThan(BigDecimal.ZERO);
+    }
+
+    @Test
+    @DisplayName("Should apply deflator correctly in constant euros mode")
+    void testBuildOverview_ConstantEuros() {
+        // Given
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", new BigDecimal("10000"), false, null, null, null);
+
+        RealEstateModel realEstate1 = new RealEstateModel("re_1", "Appartement", "Investissement",
+                new BigDecimal("200000"), 2026, new BigDecimal("0.02"), null);
+
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(), List.of(realEstate1), 1985, 64,
+                null); // Save to persistence for retrieval in service
+        // When
+        OverviewResponseDto currentEurosResponse = this.overviewService.getOverview(false).getBody();
+        OverviewResponseDto constantEurosResponse = this.overviewService.getOverview(true).getBody();
+
+        // Then
+        assertThat(constantEurosResponse.getRetirePatrimoine().getPess())
+                .isLessThan(currentEurosResponse.getRetirePatrimoine().getPess());
+    }
+
+    @Test
+    @DisplayName("Should calculate retirement projection trimestres and pensions correctly")
+    void testRetirementProjection() {
+        // Given
+        com.moe.myfamilybudget.domain.treasury.model.IncomeModel income = new com.moe.myfamilybudget.domain.treasury.model.IncomeModel(
+                "inc_1", "Salaire Moe", new BigDecimal("4000"), "2026-01-01", "2048-12-31", new BigDecimal("0.01"),
+                "cat_1", null);
+
+        RetirementModel.RetirementPersonModel person = new RetirementModel.RetirementPersonModel("p_1", "Moe", 1985,
+                "Salaire Moe", 100, "2025-12-31",
+                List.of(new RetirementModel.SalaryHistoryModel(2025, new BigDecimal("48000"))), new BigDecimal("2000"),
+                new BigDecimal("0.0051"), false);
+
+        RetirementModel retirement = new RetirementModel(List.of(person), new BigDecimal("47100"),
+                new BigDecimal("0.015"), new BigDecimal("1.4386"), "2025-01-01", new BigDecimal("0.01"));
+
+        // When
+        com.moe.myfamilybudget.domain.retirement.model.RetirementProjectionModel projection = overviewService.computeRetirementProjection(
+                new RetirementSettingsModel(1985, 64), retirement, List.of(income), 0, person);
+
+        // Then
+        assertThat(projection.ageDepart()).isEqualTo(64);
+        assertThat(projection.trimestresValides()).isEqualTo(100);
+        // Future trimestres: 2026 to 2049 inclusive = 24 years * 4 = 96 trimestres.
+        // Total = 196 > 172
+        assertThat(projection.trimestresEstimesDepart()).isEqualTo(192);
+        assertThat(projection.tauxApplique()).isGreaterThan(new BigDecimal("0.50")); // Surcote applied
+        assertThat(projection.pensionTotaleMensuelle()).isGreaterThan(BigDecimal.ZERO);
+    }
+
+    @Test
+    @DisplayName("Should include loans (passif) in the data returned by /overview")
+    void testBuildOverview_LoansAreReturnedInDataDto() {
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", BigDecimal.ZERO, false, null, null, null);
+
+        LoanModel loan1 = new LoanModel("loan_1", "Pret RP", new BigDecimal("180000"), new BigDecimal("0.0080"),
+                new BigDecimal("950"), new BigDecimal("15"), "2020-01-01", "2045-01-01");
+
+        this.loanStore.replace(List.of(loan1));
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(), List.of(), 1985, 64,
+                null); // Save to persistence for retrieval in service
+
+        // When
+        OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
+
+        // Then : le passif doit être visible dans data.loans (utilisé par LoansSummaryCard
+        // et par l'export PDF du bilan patrimonial dans patrimoine-report.js)
+        assertThat(response).isNotNull();
+        assertThat(response.getData()).isNotNull();
+        assertThat(response.getData().getLoans()).isNotNull();
+        assertThat(response.getData().getLoans()).hasSize(1);
+        assertThat(response.getData().getLoans().get(0).getCrd()).isEqualByComparingTo("180000");
+    }
+
+    @Test
+    @DisplayName("Should suspend a paused placement's contributions once a bufferWatch placement drops below its threshold")
+    void testBuildOverview_SuspendsPausedPlacementContributions() {
+        // Given : "Test SCPI Eden" est deja sous son seuil d'alerte (3700 < 10000), ce qui
+        // doit declencher la pause (mecanisme pauseLevelFromAlerts, portage de
+        // view/js/calculations.js) et suspendre les versements de "Test Selencia"
+        // (pausePriority = 1) a partir de l'annee suivante.
+        // inflationRate a 0 (ancien SettingsModel.inflationRate), lu auparavant via le repli de
+        // CacheBackedAppSettings.of(persistenceManager) sur le budget courant ; preserve explicitement ici
+        // puisque le repli en dur de R-61-04 vaut 0.02 par defaut.
+        this.appSettings.updateInflationRate(BigDecimal.ZERO);
+
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", BigDecimal.ZERO, false, null, null, null);
+
+        PlacementModel scpiEden = new PlacementModel(
+                "plc_scpi_eden", "Test SCPI Eden", "SCPI", new BigDecimal("3700"), "2026-01-01",
+                BigDecimal.ZERO, "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, new BigDecimal("10000"), null, "cat_scpi"
+        );
+        PlacementModel selencia = new PlacementModel(
+                "plc_selencia", "Test Selencia", "Assurance Vie", new BigDecimal("14425"), "2026-01-01",
+                new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, null, 1, "cat_av"
+        );
+
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(selencia, scpiEden), List.of(), 1985, 64,
+                null);
+
+        // When
+        OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.getPatrimoine()).isNotNull();
+        var selenciaRows = response.getPatrimoine().getPerPlacement().stream()
+                .filter(p -> "Test Selencia".equals(p.getLabel()))
+                .findFirst()
+                .orElseThrow()
+                .getRows();
+
+        BigDecimal afterYear1 = selenciaRows.get(0).getCorr();
+        assertThat(afterYear1).isEqualByComparingTo("16825"); // 14425 + 200*12, taux a 0
+
+        // Des l'annee 2, le pauseLevel evalue en fin d'annee 1 suspend les versements : le
+        // solde de Selencia ne doit plus bouger.
+        assertThat(selenciaRows.get(1).getCorr()).isEqualByComparingTo(afterYear1);
+        assertThat(selenciaRows.get(2).getCorr()).isEqualByComparingTo(afterYear1);
+
+        // Non-regression : le placement declencheur, sans pausePriority, n'est jamais lui
+        // meme mis en pause et son solde ne bouge pas (pas de versement, taux a 0).
+        var scpiRows = response.getPatrimoine().getPerPlacement().stream()
+                .filter(p -> "Test SCPI Eden".equals(p.getLabel()))
+                .findFirst()
+                .orElseThrow()
+                .getRows();
+        assertThat(scpiRows.get(0).getCorr()).isEqualByComparingTo("3700");
+        assertThat(scpiRows.get(1).getCorr()).isEqualByComparingTo("3700");
+    }
+
+    @Test
+    @DisplayName("Should NOT raise the tension level when treasury drops below cashFloor if cashAlertThreshold is not configured (decoupling)")
+    void testBuildOverview_CashFloorAloneNoLongerRaisesTensionLevel() {
+        // Given : sweepEnabled=true, un compte de sweep existe, et la tresorerie de fin
+        // d'annee 1 (-2400, cf. calcul ci-dessous) est BIEN sous le seuil bas (cashFloor=0) —
+        // avec l'ancien comportement (pauseLevelFromRefill pilote par cashFloor), cela aurait
+        // suspendu "Test Pausable" des l'annee 2. cashAlertThreshold n'etant pas configure
+        // (null), ce mecanisme ne doit plus se declencher : seul un seuil d'alerte explicite
+        // doit desormais augmenter le niveau de tension.
+        this.appSettings.updateInflationRate(BigDecimal.ZERO);
+
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", BigDecimal.ZERO, true, null, BigDecimal.ZERO, null);
+
+        PlacementModel sweepAccount = new PlacementModel(
+                "plc_sweep", "Test Sweep Account", "Epargne", new BigDecimal("1000"), "2026-01-01",
+                BigDecimal.ZERO, "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, 1, null, null, null, "cat_epargne"
+        );
+        PlacementModel pausable = new PlacementModel(
+                "plc_pausable", "Test Pausable", "Assurance Vie", new BigDecimal("1000"), "2026-01-01",
+                new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, null, 1, "cat_av"
+        );
+
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), 1985,
+                64, null);
+
+        // When
+        OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
+
+        // Then
+        var pausableRows = response.getPatrimoine().getPerPlacement().stream()
+                .filter(p -> "Test Pausable".equals(p.getLabel()))
+                .findFirst()
+                .orElseThrow()
+                .getRows();
+
+        BigDecimal afterYear1 = pausableRows.get(0).getCorr();
+        assertThat(afterYear1).isEqualByComparingTo("3400"); // 1000 + 200*12, taux a 0
+
+        // Non-regression de la decorrelation : sans seuil d'alerte configure, le seuil bas
+        // seul ne doit plus suspendre les versements, meme tres depasse.
+        BigDecimal afterYear2 = pausableRows.get(1).getCorr();
+        assertThat(afterYear2).isEqualByComparingTo(afterYear1.add(new BigDecimal("2400")));
+    }
+
+    @Test
+    @DisplayName("Should raise the tension level once treasury drops below the dedicated cashAlertThreshold")
+    void testBuildOverview_CashAlertThresholdRaisesTensionLevel() {
+        // Given : memes donnees que le test precedent, mais avec un cashAlertThreshold
+        // explicite (-1000) : la tresorerie de fin d'annee 1 (-2400) passe sous ce seuil, ce
+        // qui doit suspendre "Test Pausable" a partir de l'annee 2.
+        this.appSettings.updateInflationRate(BigDecimal.ZERO);
+
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", BigDecimal.ZERO, true, null, BigDecimal.ZERO, new BigDecimal("-1000"));
+
+        PlacementModel sweepAccount = new PlacementModel(
+                "plc_sweep", "Test Sweep Account", "Epargne", new BigDecimal("1000"), "2026-01-01",
+                BigDecimal.ZERO, "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, 1, null, null, null, "cat_epargne"
+        );
+        PlacementModel pausable = new PlacementModel(
+                "plc_pausable", "Test Pausable", "Assurance Vie", new BigDecimal("1000"), "2026-01-01",
+                new BigDecimal("200"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, null, null, null, 1, "cat_av"
+        );
+
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(sweepAccount, pausable), List.of(), 1985,
+                64, null);
+
+        // When
+        OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
+
+        // Then
+        var pausableRows = response.getPatrimoine().getPerPlacement().stream()
+                .filter(p -> "Test Pausable".equals(p.getLabel()))
+                .findFirst()
+                .orElseThrow()
+                .getRows();
+
+        BigDecimal afterYear1 = pausableRows.get(0).getCorr();
+        assertThat(afterYear1).isEqualByComparingTo("3400"); // 1000 + 200*12, taux a 0
+
+        // Des l'annee 2, le seuil d'alerte declenche la pause : le solde ne doit plus bouger.
+        assertThat(pausableRows.get(1).getCorr()).isEqualByComparingTo(afterYear1);
+        assertThat(pausableRows.get(2).getCorr()).isEqualByComparingTo(afterYear1);
+    }
+
+    @Test
+    @DisplayName("Should return sweepEnabled, cashCeiling and cashFloor in Overview response data.settings")
+    void testBuildOverview_ReturnsSweepSettingsInData() {
+        this.appSettings.updateInflationRate(BigDecimal.ZERO);
+
+        TresorerieSettingsModel tresorerieSettings = new TresorerieSettingsModel(
+                "2026-01-01", "manual", new BigDecimal("1000"), true, new BigDecimal("7000"), new BigDecimal("5000"),
+                null);
+
+        PlacementModel livretA = new PlacementModel(
+                "plc_livret_a", "Livret A", "Épargne", new BigDecimal("10000"), "2026-01-01",
+                new BigDecimal("50"), "2026-01-01", null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                false, null, 1, new BigDecimal("22950"), new BigDecimal("5000"), 1, "cat_epargne"
+        );
+
+        this.seedBudget(tresorerieSettings, List.of(), List.of(), List.of(livretA), List.of(), 1985, 64, null);
+
+        OverviewResponseDto response = this.overviewService.getOverview(false).getBody();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getData()).isNotNull();
+        assertThat(response.getData().getSettings()).isNotNull();
+        assertThat(response.getData().getSettings().getSweepEnabled()).isTrue();
+        assertThat(response.getData().getSettings().getCashCeiling()).isEqualByComparingTo("7000");
+        assertThat(response.getData().getSettings().getCashFloor()).isEqualByComparingTo("5000");
+
+        assertThat(response.getData().getPlacements()).hasSize(1);
+        var p = response.getData().getPlacements().get(0);
+        assertThat(p.getSweepPriority()).isEqualTo(1);
+        assertThat(p.getSweepCap()).isEqualByComparingTo("22950");
+        assertThat(p.getPauseTriggerBalance()).isEqualByComparingTo("5000");
+        assertThat(p.getPausePriority()).isEqualTo(1);
+    }
+}

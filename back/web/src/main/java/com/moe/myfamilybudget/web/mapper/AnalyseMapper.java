@@ -1,0 +1,128 @@
+package com.moe.myfamilybudget.web.mapper;
+
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
+import com.moe.myfamilybudget.api.model.AnalyseCategorySummaryDto;
+import com.moe.myfamilybudget.api.model.AnalyseDriftRowDto;
+import com.moe.myfamilybudget.api.model.AnalyseKpiDto;
+import com.moe.myfamilybudget.api.model.AnalyseLandingRowDto;
+import com.moe.myfamilybudget.api.model.AnalyseMonthlyCompareDto;
+import com.moe.myfamilybudget.api.model.AnalyseResponseDto;
+import com.moe.myfamilybudget.application.mapper.BudgetFacadeView;
+import com.moe.myfamilybudget.application.mapper.OverviewMapper;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseCategorySummaryModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseDriftRowModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseKpiModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseLandingRowModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseMonthlyCompareModel;
+import com.moe.myfamilybudget.application.usecase.analysis.AnalyseResultModel;
+
+/**
+ * Mapper assurant la conversion entre le Modèle Interne d'Analyse et les DTOs OpenAPI (R-90, SILO-320).
+ */
+@Component
+public class AnalyseMapper {
+
+    private final OverviewMapper overviewMapper;
+
+    public AnalyseMapper() {
+        this(new OverviewMapper());
+    }
+
+    public AnalyseMapper(OverviewMapper overviewMapper) {
+        this.overviewMapper = overviewMapper;
+    }
+
+    public AnalyseResponseDto toDto(AnalyseResultModel model) {
+        return toDto(model, null);
+    }
+
+    public AnalyseResponseDto toDto(AnalyseResultModel model, BudgetFacadeView data) {
+        if (model == null) {
+            return new AnalyseResponseDto();
+        }
+
+        AnalyseResponseDto dto = new AnalyseResponseDto();
+        if (data != null && overviewMapper != null) {
+            var dataDto = overviewMapper.toBudgetDataDto(data);
+            dto.setData(dataDto);
+            dto.setBankImport(dataDto.getBankImport());
+            dto.setCharges(dataDto.getCharges());
+            dto.setIncomes(dataDto.getIncomes());
+            dto.setPlacements(dataDto.getPlacements());
+            dto.setSettings(dataDto.getSettings());
+        }
+        dto.setKpis(toKpiDto(model.kpis()));
+        dto.setLandingData(model.landingData().stream().map(this::toLandingRowDto).collect(Collectors.toList()));
+        dto.setDriftRows(model.driftRows().stream().map(this::toDriftRowDto).collect(Collectors.toList()));
+        dto.setMonthlyCompareData(model.monthlyCompareData().stream().map(this::toMonthlyCompareDto).collect(Collectors.toList()));
+        dto.setCategorySummaries(model.categorySummaries().stream().map(this::toCategorySummaryDto).collect(Collectors.toList()));
+        dto.setCurrentMonthISO(model.currentMonthISO());
+        dto.setCurrentMonthLabel(model.currentMonthLabel());
+        return dto;
+    }
+
+    private AnalyseKpiDto toKpiDto(AnalyseKpiModel model) {
+        if (model == null) return null;
+        AnalyseKpiDto dto = new AnalyseKpiDto();
+        dto.setTotalExpenses(model.totalExpenses());
+        dto.setTotalIncome(model.totalIncome());
+        dto.setNbMonths(model.nbMonths());
+        dto.setUncategorizedCount(model.uncategorizedCount());
+        dto.setCompressibleTotal(model.compressibleTotal());
+        return dto;
+    }
+
+    private AnalyseLandingRowDto toLandingRowDto(AnalyseLandingRowModel model) {
+        if (model == null) return null;
+        AnalyseLandingRowDto dto = new AnalyseLandingRowDto();
+        dto.setId(model.id());
+        dto.setLabel(model.label());
+        dto.setKind(AnalyseLandingRowDto.KindEnum.fromValue(model.kind()));
+        dto.setBudgeted(model.budgeted());
+        dto.setReel(model.reel());
+        dto.setPct(model.pct());
+        dto.setStatus(AnalyseLandingRowDto.StatusEnum.fromValue(model.status()));
+        dto.setPendingContrib(model.pendingContrib());
+        dto.setHasPendingContrib(model.hasPendingContrib());
+        return dto;
+    }
+
+    private AnalyseDriftRowDto toDriftRowDto(AnalyseDriftRowModel model) {
+        if (model == null) return null;
+        AnalyseDriftRowDto dto = new AnalyseDriftRowDto();
+        dto.setId(model.id());
+        dto.setLabel(model.label());
+        dto.setKind(AnalyseDriftRowDto.KindEnum.fromValue(model.kind()));
+        dto.setBudgeted(model.budgeted());
+        dto.setAvg3m(model.avg3m());
+        dto.setAvg12m(model.avg12m());
+        dto.setEcart(model.ecart());
+        dto.setEcartPct(model.ecartPct());
+        dto.setStatus(AnalyseDriftRowDto.StatusEnum.fromValue(model.status()));
+        dto.setMonths(model.months());
+        return dto;
+    }
+
+    private AnalyseMonthlyCompareDto toMonthlyCompareDto(AnalyseMonthlyCompareModel model) {
+        if (model == null) return null;
+        AnalyseMonthlyCompareDto dto = new AnalyseMonthlyCompareDto();
+        dto.setMonthISO(model.monthISO());
+        dto.setLabel(model.label());
+        dto.setBudgeted(model.budgeted());
+        dto.setReel(model.reel());
+        dto.setHasPointing(model.hasPointing());
+        return dto;
+    }
+
+    private AnalyseCategorySummaryDto toCategorySummaryDto(AnalyseCategorySummaryModel model) {
+        if (model == null) return null;
+        AnalyseCategorySummaryDto dto = new AnalyseCategorySummaryDto();
+        dto.setLabel(model.label());
+        dto.setAmount(model.amount());
+        dto.setColor(model.color());
+        return dto;
+    }
+}

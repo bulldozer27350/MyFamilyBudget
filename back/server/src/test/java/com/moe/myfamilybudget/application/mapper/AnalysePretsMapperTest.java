@@ -1,4 +1,5 @@
 package com.moe.myfamilybudget.application.mapper;
+import com.moe.myfamilybudget.web.mapper.AnalysePretsMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

@@ -143,12 +143,13 @@ final class DomainBoundaryRules {
             .as("les couches de domaine (calcul, modèle, notification, factory, port, command, "
                     + "persistence (module persistence, updater inclus), marketdata, enablebanking)");
 
-    /** Façade applicative REST : implémentations d'API, mappers, snapshot global, contrôleurs. */
+    /** Façade applicative REST : implémentations d'API, mappers, snapshot global, contrôleurs (y compris module web). */
     private static final DescribedPredicate<JavaClass> REST_FACADE = resideInAnyPackage(
             "..internal.impl..", "..internal.mapper..", "..internal.controller..", "com.moe.myfamilybudget.application.snapshot..",
-            "com.moe.myfamilybudget.application.service..", "com.moe.myfamilybudget.application.mapper..")
+            "com.moe.myfamilybudget.application.service..", "com.moe.myfamilybudget.application.mapper..",
+            "com.moe.myfamilybudget.web..")
             .as("la façade applicative REST (internal.impl, mapper, controller, snapshot, application.service, "
-                    + "application.mapper)");
+                    + "application.mapper, web)");
 
     private static final DescribedPredicate<JavaClass> OPENAPI_DTO = resideInAnyPackage(
             "com.moe.myfamilybudget.api..", "com.moe.myfamilybudget.server.api..")

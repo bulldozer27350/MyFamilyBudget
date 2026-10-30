@@ -31,7 +31,7 @@ import com.moe.myfamilybudget.domain.retirement.core.DefaultRetirementCalculatio
 import com.moe.myfamilybudget.domain.tax.core.DefaultTaxCalculationService;
 import com.moe.myfamilybudget.domain.treasury.core.DefaultTresorerieCalculationService;
 import com.moe.myfamilybudget.domain.wealth.core.DefaultPatrimoineProjectionService;
-import com.moe.myfamilybudget.application.service.OverviewServiceImpl;
+import com.moe.myfamilybudget.web.service.OverviewServiceImpl;
 import com.moe.myfamilybudget.application.mapper.OverviewMapper;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementSettingsModel;
 import com.moe.myfamilybudget.domain.retirement.model.RetirementModel;
