@@ -38,10 +38,11 @@ COPY back/application-api/pom.xml back/application-api/pom.xml
 COPY back/application/pom.xml back/application/pom.xml
 COPY back/web/pom.xml back/web/pom.xml
 COPY back/server/pom.xml back/server/pom.xml
+COPY back/bootstrap/pom.xml back/bootstrap/pom.xml
 
 # Telechargement des dependances en s'appuyant sur le cache persistant .m2
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -f back/pom.xml -q -pl server -am dependency:go-offline -DexcludeGroupIds=com.moe.myfamilybudget
+    mvn -f back/pom.xml -q -pl bootstrap -am dependency:go-offline -DexcludeGroupIds=com.moe.myfamilybudget
 
 # Copie du reste du projet
 COPY openapi.yaml openapi.yaml
@@ -75,10 +76,11 @@ COPY back/application-api back/application-api
 COPY back/application back/application
 COPY back/web back/web
 COPY back/server back/server
+COPY back/bootstrap back/bootstrap
 
 # Compilation du JAR executable avec réutilisation du cache .m2
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -f back/pom.xml -q -pl server -am clean package -DskipTests -Dassembly.skipAssembly=true
+    mvn -f back/pom.xml -q -pl bootstrap -am clean package -DskipTests -Dassembly.skipAssembly=true
 
 # =============================================================================
 # Etape 2 : Runtime - image finale, legere, sans outils de build
@@ -90,7 +92,7 @@ RUN addgroup -S myfamilybudget && adduser -S myfamilybudget -G myfamilybudget
 WORKDIR /app
 
 # Utilisation du pattern *.jar pour eviter de hardcoder la version (ex: 1.0.0-SNAPSHOT)
-COPY --from=build /workspace/back/server/target/*.jar /app/app.jar
+COPY --from=build /workspace/back/bootstrap/target/*.jar /app/app.jar
 
 RUN chown -R myfamilybudget:myfamilybudget /app
 USER myfamilybudget
