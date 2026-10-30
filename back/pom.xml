@@ -9,12 +9,16 @@
         du reactor multi-module du backend.
 
         Décisions :
-        - le parent est un pom racine dédié (back/pom.xml), distinct de back/server/pom.xml ;
-        - le module `server` (back/server) reste, pour l'instant, le seul module qui porte du code
-          et l'exécutable final (target/server-1.0.0-SNAPSHOT.jar) : Dockerfile, CI, lanceurs
-          .bat/.sh et gate VT-600 continuent donc de pointer sur back/server ; il deviendra le
-          composition root `server-app` à MAVEN-130 ;
-        - `mvn -f back/server/pom.xml ...` reste possible (le parent est résolu via relativePath) ;
+        - le parent est un pom racine dédié (back/pom.xml), distinct des pom.xml de chaque module ;
+        - R-91 (SILO-330) : le composition root exécutable (démarrage, câblage des implémentations,
+          DesktopLauncher) a été extrait de `server` vers un nouveau module `bootstrap`
+          (target/bootstrap-1.0.0-SNAPSHOT.jar). `server` ne porte plus de code de production ; il
+          reste le support des tests d'intégration et des garde-fous d'architecture (ArchUnit) du
+          reactor, en dépendance de test sur `bootstrap` et sur les autres modules. Écart signalé par
+          R-91 : Dockerfile, CI, lanceurs .bat/.sh et gate VT-600 pointaient sur back/server et n'ont
+          pas été repris par ce patch (hors périmètre de sa cartographie) — à faire suivre par un
+          patch dédié avant toute bascule de build/déploiement réel ;
+        - `mvn -f back/bootstrap/pom.xml ...` reste possible (le parent est résolu via relativePath) ;
           `mvn -f back/pom.xml ...` construit le reactor complet.
 
         Ce parent ne porte que des versions (properties, dependencyManagement, pluginManagement) :
@@ -65,15 +69,16 @@
         <module>application</module>
         <module>web</module>
         <module>server</module>
+        <module>bootstrap</module>
     </modules>
 
     <properties>
         <java.version>21</java.version>
         
         <!--
-            `spring-boot:run` lancé depuis le reactor (mvn -f back/pom.xml -pl server -am ...) s'exécute
-            sur chaque module sélectionné (parent pom inclus) : il est ignoré par défaut et réactivé
-            uniquement dans `server` (seul module avec une classe main).
+            `spring-boot:run` lancé depuis le reactor (mvn -f back/pom.xml -pl bootstrap -am ...)
+            s'exécute sur chaque module sélectionné (parent pom inclus) : il est ignoré par défaut et
+            réactivé uniquement dans `bootstrap` (seul module avec une classe main, depuis R-91).
         -->
         <spring-boot.run.skip>true</spring-boot.run.skip>
         
@@ -232,6 +237,13 @@
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- R-91 (SILO-330) : composition root exécutable ; utilisé en dépendance de test par `server`
+                 (ServerApplication, PatrimoinePersistenceAdapter, SiloMutationLockRegistry, etc.) -->
+            <dependency>
+                <groupId>com.moe.myfamilybudget</groupId>
+                <artifactId>bootstrap</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

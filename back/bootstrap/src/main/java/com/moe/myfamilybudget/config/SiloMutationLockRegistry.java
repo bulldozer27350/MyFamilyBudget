@@ -23,7 +23,7 @@ import com.moe.myfamilybudget.application.port.SiloMutationLock;
  * verrous de silos tant que des écritures de production passaient encore par le modèle complet
  * ({@code PersistenceManager}). Ce relais est retiré : R-20, R-30, R-40 et R-42 ont fait passer chaque silo à
  * une écriture directe dans ses tables, plus aucune écriture de production ne passe donc par ce modèle. Ce
- * composant rejoindra le module de démarrage (SILO-330).
+ * composant vit dans le module de démarrage (R-91, SILO-330).
  *
  * <p>Sans transaction en cours (tests unitaires sur adaptateurs en mémoire), ou avec un ensemble vide, l'appel
  * ne bloque rien.

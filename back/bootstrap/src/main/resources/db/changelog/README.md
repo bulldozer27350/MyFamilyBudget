@@ -2,7 +2,7 @@
 
 ## Lot A (ce patch)
 
-- Dépendance `liquibase-core` ajoutée à `server`, `spring.liquibase.enabled: false` dans les trois
+- Dépendance `liquibase-core` ajoutée à `bootstrap`, `spring.liquibase.enabled: false` dans les trois
   profils (`application.yml`, `application-docker.yml`, `application.yml` de test) : aucun changement
   de comportement, `ddl-auto` reste la seule source de schéma.
 - Un changelog maître (`db.changelog-master.xml`) qui inclut un changelog vide par silo, chacun dans
@@ -20,10 +20,10 @@ commandes ci-dessous ont été exécutées par l'exploitant, sur un poste avec M
 directement sur le H2 de dev et le PostgreSQL de prod existants (lecture seule, `generateChangeLog`
 n'écrit rien) :
 ```
-mvn -f back/server/pom.xml liquibase:generateChangeLog -Pliquibase-baseline ^
+mvn -f back/bootstrap/pom.xml liquibase:generateChangeLog -Pliquibase-baseline ^
   -Dliquibase.url=jdbc:h2:file:./data/myfamilybudget -Dliquibase.username=sa -Dliquibase.password=
 
-mvn -f back/server/pom.xml liquibase:generateChangeLog -Pliquibase-baseline ^
+mvn -f back/bootstrap/pom.xml liquibase:generateChangeLog -Pliquibase-baseline ^
   -Dliquibase.url=jdbc:postgresql://<hôte>:5432/myfamilybudget ^
   -Dliquibase.username=*** -Dliquibase.password=*** -Dliquibase.driver=org.postgresql.Driver
 ```

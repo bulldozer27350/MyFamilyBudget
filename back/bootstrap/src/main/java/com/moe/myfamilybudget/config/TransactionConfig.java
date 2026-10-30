@@ -9,7 +9,7 @@ import com.moe.myfamilybudget.application.port.TransactionRunner;
 
 /**
  * Câblage des ports {@link TransactionRunner} (SILO-205) et {@link SiloMutationLock} (SILO-206) de l'application ;
- * repris par le module bootstrap (SILO-330).
+ * vit dans le module bootstrap (R-91, SILO-330).
  */
 @Configuration(proxyBeanMethods = false)
 public class TransactionConfig {

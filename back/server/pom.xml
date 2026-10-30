@@ -14,14 +14,23 @@
 
     <artifactId>server</artifactId>
     <name>server</name>
-    <description>Serveur Spring Boot Java 21 pour l'application MyFamilyBudget</description>
-
-    <properties>
-        <!-- Seul module exécutable : réactive spring-boot:run (ignoré par défaut dans le parent) -->
-        <spring-boot.run.skip>false</spring-boot.run.skip>
-    </properties>
+    <description>
+        Tests d'intégration et garde-fous d'architecture (ArchUnit) du backend MyFamilyBudget. Ne porte
+        plus de code de production depuis R-91 (SILO-330) : le composition root exécutable (démarrage,
+        câblage des implémentations, DesktopLauncher) vit désormais dans le module `bootstrap`.
+    </description>
 
     <dependencies>
+        <!-- R-91 (SILO-330) : composition root exécutable, nécessaire en test pour les scénarios qui
+             bootent le contexte Spring complet (ex. RestartPersistenceTest, ServerApplication) ou qui
+             instancient directement des classes de câblage du composition root (ex.
+             PatrimoinePersistenceAdapter, SiloMutationLockRegistry) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>bootstrap</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Modèles du budget de base (MAVEN-010) -->
 
         <!-- Silo Retraite : API (contrats, ports, interface de service) et cœur (moteur) ; SILO-150 -->
@@ -179,16 +188,6 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!--
-            Liquibase (R-01, 24-backlog-reste-a-faire.md), lot A : mise en place du cablage, encore
-            desactive (spring.liquibase.enabled=false dans les trois profils) tant que le lot B n'a pas
-            fourni le changelog de baseline et bascule spring.jpa.hibernate.ddl-auto en validate.
-        -->
-        <dependency>
-            <groupId>org.liquibase</groupId>
-            <artifactId>liquibase-core</artifactId>
-        </dependency>
-
         <!-- H2 Database (profil par défaut : distribution portable/standalone) -->
         <dependency>
             <groupId>com.h2database</groupId>
@@ -230,79 +229,6 @@
 
     <build>
         <plugins>
-            <!-- Standard JAR Plugin with Main-Class in Manifest -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.moe.myfamilybudget.ServerApplication</mainClass>
-                            <addClasspath>true</addClasspath>
-                        </manifest>
-                    </archive>
-                </configuration>
-            </plugin>
-
-            <!-- Spring Boot Plugin (Génération du Fat-JAR exécutable autonome) -->
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>repackage</id>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                        <configuration>
-                            <mainClass>com.moe.myfamilybudget.ServerApplication</mainClass>
-                            <layout>JAR</layout>
-                        </configuration>
-                    </execution>
-                </executions>
-                <configuration>
-                    <mainClass>com.moe.myfamilybudget.ServerApplication</mainClass>
-                    <executable>true</executable>
-                </configuration>
-            </plugin>
-
-            <!-- Synchronisation & Embarquement des assets du Front dans le Back -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>embed-frontend-assets</id>
-                        <phase>generate-resources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/classes/static</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}/../../view</directory>
-                                    <includes>
-                                        <include>*.html</include>
-                                        <include>config.js</include>
-                                        <include>css/**</include>
-                                        <include>js/**</include>
-                                        <include>assets/**</include>
-                                    </includes>
-                                    <excludes>
-                                        <exclude>server.js</exclude>
-                                        <exclude>package.json</exclude>
-                                        <exclude>metadata.json</exclude>
-                                        <exclude>scratch/**</exclude>
-                                        <exclude>Manuel utilisateur.md</exclude>
-                                    </excludes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
             <!-- Compiler Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -355,70 +281,6 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <!-- Maven Assembly Plugin (Génération du livrable ZIP portable autonome) -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <configuration>
-                    <descriptors>
-                        <descriptor>src/assembly/portable-distribution.xml</descriptor>
-                    </descriptors>
-                    <finalName>MyFamilyBudget-${project.version}</finalName>
-                    <appendAssemblyId>false</appendAssemblyId>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>make-portable-zip</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <!--
-            Profil desactive par defaut (jamais touche par `mvn clean test` ni par le build normal) :
-            outillage du lot B de R-01 pour generer localement, sur une base existante (H2 dev ou
-            PostgreSQL prod), le changelog Liquibase de baseline du schema actuel. Voir le mode d'emploi
-            dans back/server/src/main/resources/db/changelog/README.md.
-
-            Exemple d'invocation (H2 dev, app arretee) :
-              mvn -f back/server/pom.xml liquibase:generateChangeLog -Pliquibase-baseline ^
-                -Dliquibase.url=jdbc:h2:file:./data/myfamilybudget ^
-                -Dliquibase.username=sa -Dliquibase.password= ^
-                -Dliquibase.outputChangeLogFile=target/baseline-h2.xml
-        -->
-        <profile>
-            <id>liquibase-baseline</id>
-            <!--
-                R-01 lot B (echange agent du 20 oct. 2026) : outputChangeLogFile etait code en dur
-                ci-dessous (valeur litterale), ce qui ignorait silencieusement tout
-                -Dliquibase.outputChangeLogFile=... passe en ligne de commande (la sortie allait
-                toujours dans target/baseline.xml). Passer par une propriete Maven avec valeur par
-                defaut restaure la surcharge en ligne de commande (comportement standard Maven : un
-                -D du meme nom prend le pas sur <properties>).
-            -->
-            <properties>
-                <liquibase.outputChangeLogFile>${project.build.directory}/baseline.xml</liquibase.outputChangeLogFile>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.liquibase</groupId>
-                        <artifactId>liquibase-maven-plugin</artifactId>
-                        <version>${liquibase.version}</version>
-                        <configuration>
-                            <propertyFileWillOverride>true</propertyFileWillOverride>
-                            <outputChangeLogFile>${liquibase.outputChangeLogFile}</outputChangeLogFile>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

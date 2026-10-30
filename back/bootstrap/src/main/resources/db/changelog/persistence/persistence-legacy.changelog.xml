@@ -18,7 +18,7 @@
         income, objectif : voir 23-registre-decisions-actives.md, DA-16).
 
         Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
-        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre). Les tables qui
+        (cf. db/changelog/README.md, module bootstrap) sur une base neuve (reset propre). Les tables qui
         migrent vers un silo (ex. future suite de R-30 vers wealth-core) quittent ce fichier pour
         celui du silo au patch qui les bascule, par un changeSet de renommage/deplacement, pas par
         copier-coller.

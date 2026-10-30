@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Parent reactor (MAVEN-000) : groupId et version (1.0.0-SNAPSHOT) hérités de back/pom.xml -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>myfamilybudget-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>bootstrap</artifactId>
+    <name>bootstrap</name>
+    <description>
+        Composition root exécutable Spring Boot Java 21 de l'application MyFamilyBudget (R-91, SILO-330) :
+        démarrage (ServerApplication, DesktopLauncher), câblage des implémentations (DomainEngineConfig,
+        TransactionConfig), planificateurs (MarketDataRefreshScheduler, EnableBankingSyncScheduler),
+        NotificationBudgetMutationListener, TransactionRunner (SpringTransactionRunner),
+        SiloMutationLockRegistry. Seul module à voir les implémentations (*-core) de tous les silos.
+    </description>
+
+    <properties>
+        <!-- Seul module exécutable : réactive spring-boot:run (ignoré par défaut dans le parent) -->
+        <spring-boot.run.skip>false</spring-boot.run.skip>
+    </properties>
+
+    <dependencies>
+        <!-- Modèles du budget de base (MAVEN-010) -->
+
+        <!-- Silo Retraite : API (contrats, ports, interface de service) et cœur (moteur) ; SILO-150 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>retirement-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>retirement-core</artifactId>
+        </dependency>
+
+        <!-- Silo Fiscalité : API (contrats, ports, interface de service) et cœur (moteur) ; SILO-151 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>tax-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>tax-core</artifactId>
+        </dependency>
+
+        <!-- Silo Patrimoine : API (contrats, ports, interfaces de service) et cœur (moteurs) ; SILO-152 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>wealth-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>wealth-core</artifactId>
+        </dependency>
+
+        <!-- Silo Banque/Pointage : API (contrats, ports, interfaces de service) et cœur (moteurs) ; SILO-154 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>bank-pointage-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>bank-pointage-core</artifactId>
+        </dependency>
+
+        <!-- Silo Trésorerie : API (contrats, ports, interfaces de service) et cœur (moteur) ; SILO-153 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>treasury-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>treasury-core</artifactId>
+        </dependency>
+
+        <!-- Silo Analyse : API (contrat d'entrée, modèles de résultat, interface de service) et cœur (moteur) ; SILO-155 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>analysis-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>analysis-core</artifactId>
+        </dependency>
+
+        <!-- Silo Crédit : API (contrats, modèles, ports, interface de service) et cœur (moteur) ; SILO-156 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>credit-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>credit-core</artifactId>
+        </dependency>
+
+        <!-- Silo Objectifs : API (paramètres, contrats, modèles, ports) et cœur (persistance JPA) ; SILO-157, SILO-212 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>goals-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>goals-core</artifactId>
+        </dependency>
+
+        <!-- Silo Paramètres (Simulation, Hypothèses économiques) : API (modèles, ports) et cœur (persistance JPA) ; SILO-220 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>settings-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>settings-core</artifactId>
+        </dependency>
+
+        <!-- Silo Notifications : API (contrats, paramètres, entrées de règles) et cœur (règles) ; SILO-158 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>notifications-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>notifications-core</artifactId>
+        </dependency>
+
+        <!-- Silo Marché : API (cotations, ports, interface de service) et cœur (clients, agrégation) ; SILO-159 -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>market-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>market-core</artifactId>
+        </dependency>
+
+        <!-- API applicative : ports transactionnels implémentés par le composition root (SILO-300) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>application-api</artifactId>
+        </dependency>
+
+        <!-- Couche applicative : commands, factories d'Input, settings Objectifs (MAVEN-100) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>application</artifactId>
+        </dependency>
+
+        <!-- Couche web : contrôleurs REST, mappers DTO, gestion des erreurs, CORS (R-90, SILO-320) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>web</artifactId>
+        </dependency>
+
+        <!-- Configuration JPA/Hibernate commune aux silos : stratégie de nommage, aucun type métier (SILO-200) -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
+        </dependency>
+
+        <!-- Contrat REST : DTO et interfaces Spring générés depuis openapi.yaml (MAVEN-110) ;
+             apporte aussi jackson-databind-nullable et swagger-annotations -->
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Starters -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!--
+            Liquibase (R-01, 24-backlog-reste-a-faire.md) : cablage du schema (changelog maitre, voir
+            src/main/resources/db/changelog), deplace de `server` vers `bootstrap` par R-91 (SILO-330).
+        -->
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
+        </dependency>
+
+        <!-- H2 Database (profil par défaut : distribution portable/standalone) -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- PostgreSQL Database (profil "docker" : conteneur + base PostgreSQL) -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- DevTools & Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Standard JAR Plugin with Main-Class in Manifest -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.moe.myfamilybudget.ServerApplication</mainClass>
+                            <addClasspath>true</addClasspath>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <!-- Spring Boot Plugin (Génération du Fat-JAR exécutable autonome) -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>repackage</id>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>com.moe.myfamilybudget.ServerApplication</mainClass>
+                            <layout>JAR</layout>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <mainClass>com.moe.myfamilybudget.ServerApplication</mainClass>
+                    <executable>true</executable>
+                </configuration>
+            </plugin>
+
+            <!-- Synchronisation & Embarquement des assets du Front dans le Back -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>embed-frontend-assets</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/classes/static</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/../../view</directory>
+                                    <includes>
+                                        <include>*.html</include>
+                                        <include>config.js</include>
+                                        <include>css/**</include>
+                                        <include>js/**</include>
+                                        <include>assets/**</include>
+                                    </includes>
+                                    <excludes>
+                                        <exclude>server.js</exclude>
+                                        <exclude>package.json</exclude>
+                                        <exclude>metadata.json</exclude>
+                                        <exclude>scratch/**</exclude>
+                                        <exclude>Manuel utilisateur.md</exclude>
+                                    </excludes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Compiler Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
+                </configuration>
+            </plugin>
+
+            <!-- Clean target classes before compilation to prevent IDE file watchers from polluting bytecode -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>clean-classes-before-compile</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <configuration>
+                            <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                            <filesets>
+                                <fileset>
+                                    <directory>${project.build.directory}/classes</directory>
+                                    <includes>
+                                        <include>**/*.class</include>
+                                    </includes>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>clean-test-classes-before-test-compile</id>
+                        <phase>process-test-resources</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <configuration>
+                            <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                            <filesets>
+                                <fileset>
+                                    <directory>${project.build.directory}/test-classes</directory>
+                                    <includes>
+                                        <include>**/*.class</include>
+                                    </includes>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Maven Assembly Plugin (Génération du livrable ZIP portable autonome) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <descriptors>
+                        <descriptor>src/assembly/portable-distribution.xml</descriptor>
+                    </descriptors>
+                    <finalName>MyFamilyBudget-${project.version}</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-portable-zip</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!--
+            Profil desactive par defaut (jamais touche par `mvn clean test` ni par le build normal) :
+            outillage du lot B de R-01 pour generer localement, sur une base existante (H2 dev ou
+            PostgreSQL prod), le changelog Liquibase de baseline du schema actuel. Voir le mode d'emploi
+            dans back/bootstrap/src/main/resources/db/changelog/README.md.
+
+            Exemple d'invocation (H2 dev, app arretee) :
+              mvn -f back/bootstrap/pom.xml liquibase:generateChangeLog -Pliquibase-baseline ^
+                -Dliquibase.url=jdbc:h2:file:./data/myfamilybudget ^
+                -Dliquibase.username=sa -Dliquibase.password= ^
+                -Dliquibase.outputChangeLogFile=target/baseline-h2.xml
+        -->
+        <profile>
+            <id>liquibase-baseline</id>
+            <!--
+                R-01 lot B (echange agent du 20 oct. 2026) : outputChangeLogFile etait code en dur
+                ci-dessous (valeur litterale), ce qui ignorait silencieusement tout
+                -Dliquibase.outputChangeLogFile=... passe en ligne de commande (la sortie allait
+                toujours dans target/baseline.xml). Passer par une propriete Maven avec valeur par
+                defaut restaure la surcharge en ligne de commande (comportement standard Maven : un
+                -D du meme nom prend le pas sur <properties>).
+            -->
+            <properties>
+                <liquibase.outputChangeLogFile>${project.build.directory}/baseline.xml</liquibase.outputChangeLogFile>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.liquibase</groupId>
+                        <artifactId>liquibase-maven-plugin</artifactId>
+                        <version>${liquibase.version}</version>
+                        <configuration>
+                            <propertyFileWillOverride>true</propertyFileWillOverride>
+                            <outputChangeLogFile>${liquibase.outputChangeLogFile}</outputChangeLogFile>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

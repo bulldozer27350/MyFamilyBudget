@@ -29,11 +29,11 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineWriter;
  *
  * <p>DA-14 : les virements relevent du silo Tresorerie, pas de Patrimoine. {@code wealth-core} ne depend
  * que de {@code wealth-api} et {@code infra-jpa} (voir le commentaire de son pom) et ne peut donc pas
- * connaitre {@link JpaTreasuryStore} ; cet adaptateur, qui vit desormais dans le module {@code server}
- * (R-61-23b ; vivait dans {@code persistence}, qui voyait tous les silos, jusqu'a ce patch), reste
- * necessaire comme seul point capable de router les virements vers le silo Tresorerie tout en delegant
- * le reste du patrimoine a {@link JpaWealthStore}. Il ne depend plus du tout
- * de {@code PersistenceManager}/{@code BudgetDataModel} (voir {@code BudgetDataModelAllowList}).
+ * connaitre {@link JpaTreasuryStore} ; cet adaptateur, qui vit desormais dans le module {@code bootstrap}
+ * (R-91, SILO-330 ; vivait dans {@code server} depuis R-61-23b, et avant cela dans {@code persistence},
+ * qui voyait tous les silos), reste necessaire comme seul point capable de router les virements vers le
+ * silo Tresorerie tout en delegant le reste du patrimoine a {@link JpaWealthStore}. Il ne depend plus
+ * du tout de {@code PersistenceManager}/{@code BudgetDataModel} (voir {@code BudgetDataModelAllowList}).
  */
 @Component
 @Primary

@@ -8,7 +8,7 @@
     <!--
         R-01 (back/server/doc/architecture/24-backlog-reste-a-faire.md). Lot A : mise en place de
         Liquibase, un fichier d'inclusion par silo dans les ressources du module *-core proprietaire
-        des tables (fichier maitre dans le composition root `server`, scripts par silo dans chaque
+        des tables (fichier maitre dans le composition root `bootstrap`, scripts par silo dans chaque
         *-core). Lot B (DA-16 de 23-registre-decisions-actives.md) : chaque fichier inclus porte
         desormais son changeSet de baseline ; spring.liquibase.enabled=true et ddl-auto=validate dans
         les profils par defaut et docker (voir README.md dans ce dossier pour la procedure de
