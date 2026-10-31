@@ -104,6 +104,14 @@
         <credit.version>0.0.1-SNAPSHOT</credit.version>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>domain-credit-packages</id>
+            <name>GitHub Packages myfamilybudget-domain-credit</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-credit</url>
+        </repository>
+    </repositories>
+
     <dependencyManagement>
         <dependencies>
             <!-- Modules internes du reactor (versions alignées sur celle du parent) -->

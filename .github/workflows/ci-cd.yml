@@ -97,6 +97,21 @@ jobs:
       - name: Install JS dependencies
         run: bun install
 
+      - name: Configuration de Maven settings.xml (lecture de credit-api/credit-core depuis myfamilybudget-domain-credit)
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>domain-credit-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_CREDIT_PACKAGES_READ_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
       - name: Backend unit tests (mvn test)
         env:
           MFB_TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/myfamilybudget
@@ -128,8 +143,10 @@ jobs:
 
   publish-bom:
     name: Publication du BOM sur GitHub Packages
-    needs: build-and-test
-    if: success()
+    # Volontairement independant de build-and-test : myfamilybudget-bom n'a besoin
+    # d'aucun module du reactor pour etre publie, et le faire dependre de build-and-test
+    # cree une dependance circulaire avec les depots silos qui consomment ce BOM pour
+    # publier les artefacts dont build-and-test a lui-meme besoin (ex. credit-api/credit-core).
     runs-on: ubuntu-latest
     permissions:
       contents: read
