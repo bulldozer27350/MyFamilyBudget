@@ -17,6 +17,11 @@
         (stéréotypes ; plus de `spring-tx` depuis SILO-205 : la transaction passe par le port `TransactionRunner`), `poi-ooxml` (lecture Excel de l'import bancaire) et `slf4j-api`.
         Aucune dépendance vers JPA, PersistenceManager, `persistence` ni vers le module `server`.
         Aucun domaine pur ne dépend de ce module.
+
+        R-92 (DA-01) : `module-info` présent (module `com.moe.myfamilybudget.application`). Seuls les
+        packages consommés par `web` sont exportés (`command`, `error`, `factory`, `mapper`, `overview`,
+        `settings`, `snapshot`, `usecase`) ; `model`, `rate` et `notification` restent internes (utilisés
+        uniquement par ce module et par `bootstrap`, non modulaire, qui ne passe pas par le module-path).
     -->
     <parent>
         <groupId>com.moe.myfamilybudget</groupId>
