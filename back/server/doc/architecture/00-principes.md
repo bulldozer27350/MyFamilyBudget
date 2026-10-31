@@ -1,6 +1,6 @@
 # 00 — Principes et contraintes
 
-Statut : 🟡 à valider
+Statut : ✅ implémenté (chantier de silotage terminé, cf. `22-etat-reel-main.md`, `23-registre-decisions-actives.md`, `24-backlog-reste-a-faire.md`)
 
 Ce fichier fait office de constitution du chantier. Toute proposition de contrat (`XxxInput`,
 `XxxResult`) ou de module doit s'y conformer.
@@ -108,9 +108,10 @@ modèles persistants ou aux services internes d'un autre domaine.
 
 Point d'attention : la flèche Patrimoine → Trésorerie doit être lue dans ce sens (Patrimoine
 produit une projection de cash-flow consommée par Trésorerie — voir
-[06-domaine-tresorerie.md](06-domaine-tresorerie.md)). Une relation retour existe potentiellement
-(mécanisme de sweep de Trésorerie → décision de contribution consommée par Patrimoine) mais n'est
-pas encore figée : voir la note dans
+[06-domaine-tresorerie.md](06-domaine-tresorerie.md)). Une relation retour (mécanisme de sweep de
+Trésorerie → décision de contribution consommée par Patrimoine) a été écartée : RF-400/RF-301
+tranchent en faveur de la projection unidirectionnelle, aucun `ContributionDecisionPlan` n'est
+introduit — voir la note dans
 [05-domaine-patrimoine.md](05-domaine-patrimoine.md#point-ouvert).
 
 ## Anti-cycles Maven

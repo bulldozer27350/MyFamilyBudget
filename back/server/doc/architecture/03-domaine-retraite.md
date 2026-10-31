@@ -1,6 +1,6 @@
 # 03 — Retraite
 
-Statut : 🟡 à valider — premier candidat de mise en œuvre
+Statut : ✅ implémenté — premier domaine silotté (SILO-150), désormais aligné avec les autres
 
 ## Constat vérifié dans le code
 

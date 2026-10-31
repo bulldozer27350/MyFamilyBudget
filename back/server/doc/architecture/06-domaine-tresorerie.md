@@ -1,6 +1,6 @@
 # 06 — Trésorerie
 
-Statut : 🟢 validé (RF-400)
+Statut : ✅ implémenté (RF-400, RF-401, puis silotage complet : SILO-153, SILO-216, R-20 à R-22)
 
 ## Constat
 
@@ -78,7 +78,7 @@ BudgetDataModel
              ↓
       TreasuryProjectionInput
              ↓
-      TreasuryCalculationService (RF-401 : branchement, pas encore fait)
+      TreasuryCalculationService (branché par RF-401)
 ```
 
 Trésorerie devient un agrégateur de **projections**, pas un agrégateur de modèles de persistance.
@@ -96,5 +96,5 @@ imbriqué), `OneOffCashflow`, `TransferProjection`, `TreasuryPlacementCashflow`,
 `computeRealAverages`, `buildCategoryOptions` et `buildTresorerieSuggestions` (moyennes réelles du
 pointage bancaire, suggestions budgétaires) ne sont pas couverts par `TreasuryProjectionInput` : ce
 sont des besoins distincts de la projection de flux, non mentionnés dans le contrat recommandé par
-ce document. À traiter explicitement en RF-401 (branchement) plutôt que supposé résolu par ce
-patch.
+ce document. Traités explicitement par RF-401 (branchement), puis repris dans le cas d'usage
+Trésorerie du silotage (R-82, `TreasuryUseCase`).

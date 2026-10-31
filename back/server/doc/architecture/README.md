@@ -37,23 +37,23 @@ implémentation (patch) sans attendre les autres. Statut affiché en tête de ch
 
 | Fichier | Contenu | Statut |
 |---|---|---|
-| [00-principes.md](00-principes.md) | Règles interdites, test de conception, graphe de dépendances, anti-cycles | 🟡 |
-| [01-sequencement.md](01-sequencement.md) | Ordre de migration retenu, garde-fous incrémentaux | 🟡 |
-| [02-domaine-budget-de-base.md](02-domaine-budget-de-base.md) | Revenus/charges/oneoff/variables/virements — sous-domaine partagé | 🟡 |
-| [03-domaine-retraite.md](03-domaine-retraite.md) | Retraite — centralisation du moteur (priorité 1) | 🟡 |
-| [04-domaine-fiscalite.md](04-domaine-fiscalite.md) | Fiscalité | 🟡 |
-| [05-domaine-patrimoine.md](05-domaine-patrimoine.md) | Patrimoine / placements / immobilier | 🟡 |
-| [06-domaine-tresorerie.md](06-domaine-tresorerie.md) | Trésorerie | 🟡 |
-| [07-domaine-banque-pointage.md](07-domaine-banque-pointage.md) | Import bancaire, opérations en cours, pointage | 🟡 |
-| [08-domaine-analyse.md](08-domaine-analyse.md) | Analyse réel vs prévisionnel | 🟡 |
-| [09-domaine-objectifs-notifications.md](09-domaine-objectifs-notifications.md) | Objectifs et notifications | 🟡 |
-| [10-domaine-prets-suggestions.md](10-domaine-prets-suggestions.md) | Crédit / suggestions de taux | 🟡 |
-| [11-domaine-overview.md](11-domaine-overview.md) | Overview — agrégateur pur | 🟡 |
-| [12-settings.md](12-settings.md) | Découpage de `SettingsModel` par propriétaire | 🟡 |
-| [13-persistance.md](13-persistance.md) | Persistance — ce qui est obligatoire vs optionnel avant Maven | 🟡 |
-| [14-checklist-maven.md](14-checklist-maven.md) | Checklist de passage aux modules Maven | 🟡 |
-| [15-backlog-patchs.md](15-backlog-patchs.md) | Liste ordonnée de patchs (avec statut et prérequis) à distribuer à des agents | 🟡 |
-| [21-plan-silotage.md](21-plan-silotage.md) | Plan de travail du silotage complet : suppression de `BudgetDataModel`, persistance par silo, séparation application/web | 🟡 |
+| [00-principes.md](00-principes.md) | Règles interdites, test de conception, graphe de dépendances, anti-cycles | ✅ |
+| [01-sequencement.md](01-sequencement.md) | Ordre de migration retenu, garde-fous incrémentaux | ✅ |
+| [02-domaine-budget-de-base.md](02-domaine-budget-de-base.md) | Revenus/charges/oneoff/variables/virements — sous-domaine partagé | ✅ |
+| [03-domaine-retraite.md](03-domaine-retraite.md) | Retraite — centralisation du moteur (priorité 1) | ✅ |
+| [04-domaine-fiscalite.md](04-domaine-fiscalite.md) | Fiscalité | ✅ |
+| [05-domaine-patrimoine.md](05-domaine-patrimoine.md) | Patrimoine / placements / immobilier | ✅ |
+| [06-domaine-tresorerie.md](06-domaine-tresorerie.md) | Trésorerie | ✅ |
+| [07-domaine-banque-pointage.md](07-domaine-banque-pointage.md) | Import bancaire, opérations en cours, pointage | ✅ |
+| [08-domaine-analyse.md](08-domaine-analyse.md) | Analyse réel vs prévisionnel | ✅ |
+| [09-domaine-objectifs-notifications.md](09-domaine-objectifs-notifications.md) | Objectifs et notifications | ✅ |
+| [10-domaine-prets-suggestions.md](10-domaine-prets-suggestions.md) | Crédit / suggestions de taux | ✅ |
+| [11-domaine-overview.md](11-domaine-overview.md) | Overview — agrégateur pur | ✅ |
+| [12-settings.md](12-settings.md) | Découpage de `SettingsModel` par propriétaire | ✅ |
+| [13-persistance.md](13-persistance.md) | Persistance — ce qui est obligatoire vs optionnel avant Maven | ✅ |
+| [14-checklist-maven.md](14-checklist-maven.md) | Checklist de passage aux modules Maven | ✅ |
+| [15-backlog-patchs.md](15-backlog-patchs.md) | Liste ordonnée de patchs (avec statut et prérequis) à distribuer à des agents | 🟡 (archivé, non révisé par ce patch) |
+| [21-plan-silotage.md](21-plan-silotage.md) | Plan de travail du silotage complet : suppression de `BudgetDataModel`, persistance par silo, séparation application/web | 🟡 (figé en archive, non révisé par ce patch — voir `22` à `24`) |
 
 ## Ce qui a changé par rapport au document source
 

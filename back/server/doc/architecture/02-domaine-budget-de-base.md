@@ -1,6 +1,6 @@
 # 02 — Budget de base (sous-domaine partagé)
 
-Statut : 🟡 à valider
+Statut : ✅ implémenté (chantier de silotage terminé, cf. `22-etat-reel-main.md`, `23-registre-decisions-actives.md`, `24-backlog-reste-a-faire.md`)
 
 ## Pourquoi un domaine à part
 

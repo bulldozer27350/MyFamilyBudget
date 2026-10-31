@@ -1,6 +1,6 @@
 # 10 — Crédit (Prêts) et Suggestions de taux
 
-Statut : 🟡 à valider
+Statut : ✅ implémenté (chantier de silotage terminé, cf. `22-etat-reel-main.md`, `23-registre-decisions-actives.md`, `24-backlog-reste-a-faire.md`)
 
 ## Prêts — le domaine le plus mûr du dépôt
 

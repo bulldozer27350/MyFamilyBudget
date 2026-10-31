@@ -1,6 +1,6 @@
 # 14 — Checklist « prêt pour les modules Maven »
 
-Statut : 🟡 à valider
+Statut : ✅ implémenté (chantier de silotage terminé, cf. `22-etat-reel-main.md`, `23-registre-decisions-actives.md`, `24-backlog-reste-a-faire.md`)
 
 Le découpage Maven ne doit démarrer que lorsque les conditions ci-dessous sont réunies. Cases à
 cocher au fur et à mesure, domaine par domaine (ne pas attendre d'avoir tout coché une seule fois
@@ -8,45 +8,45 @@ cocher au fur et à mesure, domaine par domaine (ne pas attendre d'avoir tout co
 
 ## Modèles
 
-- [ ] `BudgetDataModel` n'est plus un argument des calculateurs métier (voir l'indicateur de fin
+- [x] `BudgetDataModel` n'est plus un argument des calculateurs métier (voir l'indicateur de fin
       de chantier dans [11-domaine-overview.md](11-domaine-overview.md)).
-- [ ] Les `SettingsModel` composites ont été séparés conceptuellement (voir
+- [x] Les `SettingsModel` composites ont été séparés conceptuellement (voir
       [12-settings.md](12-settings.md)).
 - [x] Les paramètres retraite dupliqués dans Settings (`pass2026`, `passGrowthRate`) ont été
       tranchés (SET-040 : `RetirementModel` est la seule source ; `SettingsDto` les expose comme vue composite).
-- [ ] Chaque modèle persistant possède un propriétaire explicite.
+- [x] Chaque modèle persistant possède un propriétaire explicite.
 
 ## Entrées
 
-- [ ] Chaque use case dispose d'un Input dédié.
-- [ ] Aucun Input n'est un simple alias de `BudgetDataModel`.
-- [ ] Les projections inter-domaines sont définies (graphe de
+- [x] Chaque use case dispose d'un Input dédié.
+- [x] Aucun Input n'est un simple alias de `BudgetDataModel`.
+- [x] Les projections inter-domaines sont définies (graphe de
       [00-principes.md](00-principes.md)).
-- [ ] Les assemblers responsables des projections sont identifiés.
+- [x] Les assemblers responsables des projections sont identifiés.
 
 ## Sorties
 
-- [ ] Les résultats métier ne transportent plus `BudgetDataModel` (`OverviewResultModel.data`,
+- [x] Les résultats métier ne transportent plus `BudgetDataModel` (`OverviewResultModel.data`,
       `AnalyseResultModel.data`).
-- [ ] Les résultats métier ne transportent plus de modèles sources inutiles.
-- [ ] Les ViewModels API sont clairement séparés des résultats de calcul.
+- [x] Les résultats métier ne transportent plus de modèles sources inutiles.
+- [x] Les ViewModels API sont clairement séparés des résultats de calcul.
 
 ## Calculs
 
-- [ ] Un seul moteur retraite existe (plus de triplication Overview/Trésorerie/Retraite).
-- [ ] La fiscalité consomme un revenu de retraite déjà projeté.
-- [ ] Patrimoine ne possède plus de mini-moteur de trésorerie caché.
-- [ ] Trésorerie est séparée conceptuellement en plusieurs use cases (projection, moyennes
+- [x] Un seul moteur retraite existe (plus de triplication Overview/Trésorerie/Retraite).
+- [x] La fiscalité consomme un revenu de retraite déjà projeté.
+- [x] Patrimoine ne possède plus de mini-moteur de trésorerie caché.
+- [x] Trésorerie est séparée conceptuellement en plusieurs use cases (projection, moyennes
       réelles, suggestions).
-- [ ] Notifications ne dépendent plus d'un contexte budget global.
+- [x] Notifications ne dépendent plus d'un contexte budget global.
 
 ## Persistance (palier 1 uniquement — voir [13-persistance.md](13-persistance.md))
 
-- [ ] Les moteurs métier ne connaissent plus `PersistenceManager`.
-- [ ] Les ports de lecture/écriture par domaine sont identifiés (implémentation encore adossée à
+- [x] Les moteurs métier ne connaissent plus `PersistenceManager`.
+- [x] Les ports de lecture/écriture par domaine sont identifiés (implémentation encore adossée à
       `PersistenceManager` acceptée à ce stade).
-- [ ] `PersistenceManager` est clairement identifié comme façade de transition.
-- [ ] Les mutations génériques (`listKey`/`field`/`value`) sont progressivement remplacées par des
+- [x] `PersistenceManager` est clairement identifié comme façade de transition.
+- [x] Les mutations génériques (`listKey`/`field`/`value`) sont progressivement remplacées par des
       commandes métier.
 
 *Le palier 2 (entités JPA séparées par domaine) n'est délibérément pas une condition de cette
@@ -54,20 +54,20 @@ checklist — voir [13-persistance.md](13-persistance.md).*
 
 ## API
 
-- [ ] Les tags OpenAPI correspondent aux capabilities définies.
-- [ ] Les contrats composites hérités ont été identifiés.
-- [ ] Le split OpenAPI est planifié.
-- [ ] Les futurs modules peuvent posséder leurs contrats sans dépendre d'un contrat monolithique.
+- [x] Les tags OpenAPI correspondent aux capabilities définies.
+- [x] Les contrats composites hérités ont été identifiés.
+- [x] Le split OpenAPI est planifié.
+- [x] Les futurs modules peuvent posséder leurs contrats sans dépendre d'un contrat monolithique.
 
 ## Tests et garde-fous
 
-- [ ] Les calculs critiques disposent de tests unitaires indépendants de la persistance.
-- [ ] Les tests de mapping sont séparés des tests métier.
-- [ ] Les tests d'intégration couvrent les assemblers/orchestration.
-- [ ] Les scénarios de référence (fiscal, retraite, trésorerie, patrimoine, prêts) de l'étape 0
+- [x] Les calculs critiques disposent de tests unitaires indépendants de la persistance.
+- [x] Les tests de mapping sont séparés des tests métier.
+- [x] Les tests d'intégration couvrent les assemblers/orchestration.
+- [x] Les scénarios de référence (fiscal, retraite, trésorerie, patrimoine, prêts) de l'étape 0
       sont conservés et toujours verts.
-- [ ] Les règles de notification ont des tests unitaires indépendants.
-- [ ] Une règle ArchUnit existe et passe pour chaque domaine migré (pas seulement en fin de
+- [x] Les règles de notification ont des tests unitaires indépendants.
+- [x] Une règle ArchUnit existe et passe pour chaque domaine migré (pas seulement en fin de
       chantier — voir [01-sequencement.md](01-sequencement.md)).
 
 ## Gate de validation des tests avant Maven (VT-600)
@@ -75,7 +75,9 @@ checklist — voir [13-persistance.md](13-persistance.md).*
 Le découpage Maven ne démarre que si **toutes** les commandes ci-dessous passent sur la même révision, en CI
 (`.github/workflows/ci-cd.yml`, job `build-and-test`) puis en local. Les cases se cochent après une exécution
 verte de ces commandes ; elles reflètent des patchs livrés dans [17-backlog-tests-patchs.md](17-backlog-tests-patchs.md),
-dont plusieurs restent « à confirmer en CI » (compilation non vérifiée à leur rédaction).
+tous désormais confirmés en CI. Le découpage Maven lui-même est allé à son terme (silotage complet, R-01 à
+R-94, Porte C vérifiée) : cette checklist est conservée comme preuve des conditions réunies au démarrage du
+chantier, plus comme condition de blocage.
 
 ### Commandes exactes
 
@@ -132,15 +134,15 @@ La porte est franchie quand ces cinq lignes sont vertes sur la même révision d
 
 ### Critères (un identifiant VT par ligne)
 
-- [ ] VT-000 socle commun et dataset de référence ; VT-100 caractérisation backend ; VT-110 et VT-120 scénarios backend transversaux.
-- [ ] VT-200, VT-210, VT-220, VT-230, VT-240 : scénarios frontend sans fallback JS, contexte vierge, relus après reload.
-- [ ] VT-300 tests de mapping isolés ; VT-310 adaptateurs de persistance.
-- [ ] VT-320 persistance après redémarrage Spring, **variante PostgreSQL exécutée**.
-- [ ] VT-330 échec d'écriture sans modification de la mémoire ; VT-340 atomicité multi-domaines ; VT-350 concurrence
+- [x] VT-000 socle commun et dataset de référence ; VT-100 caractérisation backend ; VT-110 et VT-120 scénarios backend transversaux.
+- [x] VT-200, VT-210, VT-220, VT-230, VT-240 : scénarios frontend sans fallback JS, contexte vierge, relus après reload.
+- [x] VT-300 tests de mapping isolés ; VT-310 adaptateurs de persistance.
+- [x] VT-320 persistance après redémarrage Spring, **variante PostgreSQL exécutée**.
+- [x] VT-330 échec d'écriture sans modification de la mémoire ; VT-340 atomicité multi-domaines ; VT-350 concurrence
       (patchs livrés ; défauts résiduels corrigés par FIX-010 et FIX-020 ; case à cocher par GATE-010).
-- [ ] VT-400 ArchUnit : aucun `BudgetDataModel`, `PersistenceManager` ni DTO OpenAPI dans les couches pures.
-- [ ] VT-500 suite E2E de référence F1 à F6, sans donnée locale.
-- [ ] VT-600 gate : `node tests/gate/check-gate.js all` vert en CI, aucun test obligatoire ignoré ou désactivé.
+- [x] VT-400 ArchUnit : aucun `BudgetDataModel`, `PersistenceManager` ni DTO OpenAPI dans les couches pures.
+- [x] VT-500 suite E2E de référence F1 à F6, sans donnée locale.
+- [x] VT-600 gate : `node tests/gate/check-gate.js all` vert en CI, aucun test obligatoire ignoré ou désactivé.
 
 ## Séparation physique des bases (hors périmètre de cette checklist)
 

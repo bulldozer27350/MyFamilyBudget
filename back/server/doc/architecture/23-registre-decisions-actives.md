@@ -1,7 +1,7 @@
 # 23 — Registre des décisions actives
 
-Statut : 🟡 premier jet, à valider décision par décision (établi le 6 octobre 2026 à partir de `21-plan-silotage.md` et de
-`22-etat-reel-main.md`)
+Statut : ✅ toutes les décisions actives sont tranchées, appliquées et vérifiées en production (établi le
+6 octobre 2026 à partir de `21-plan-silotage.md` et de `22-etat-reel-main.md`, clos le 31 octobre 2026)
 
 ## 1. Rôle et critère de tri
 
@@ -34,7 +34,6 @@ Colonne « Source » : référence dans le document 21. Colonne « Confirmation 
 | DA-10 | **Intégrité inter-silos, phase 1 (retenue)** : le serveur reste tolérant (aucun contrôle ajouté, voir DA-11) ; la vérification « supprimer ce placement modifiera les objectifs O1, O2… », la confirmation de l'opérateur et le retrait de la référence dans chaque objectif concerné sont portés par le **front**. La dette est tracée (DT-01). **Phase 2 (chantier isolé, plus tard)** : portage côté serveur, règle étendue aux autres thèmes fonctionnels. En migration de données, une référence vers un placement supprimé est simplement vidée | trois trous d'intégrité tolérés aujourd'hui (allocation orpheline, `categoryId` orphelin, virement orphelin) ; évite un changement de contrat REST dans la phase de séparation | SILO-240 lot B2 devient « pas de code serveur » en phase 1 ; un patch front est à ajouter au backlog ; aucune règle serveur ne doit supposer l'absence d'orphelins | SILO-240 « Décision retenue », aménagée le 6 oct. 2026 | décidée |
 | DA-11 | La seule règle d'intégrité inter-silos aujourd'hui appliquée est la sur-allocation Objectifs → Patrimoine (message et HTTP 400 inchangés) ; les références budget → placements sont **tolérantes en lecture** et doivent le rester (`budgetLineId` inconnu retombe sur `charge`) | comportement historique à conserver | périmètre de DA-10 : ne pas rendre ces lectures strictes par accident | SILO-240 lot A | décidée |
 | DA-13 | Méthode de patch : additif, bascule, suppression ; patch petit, mergeable seul, **sans changement de contrat REST** ; un patch qui rencontre un arbitrage non tranché devient « bloqué » et s'arrête ; la CI arbitre (Maven indisponible côté agent) ; patchs livrés en LF | héritée de `18` et du fonctionnement avec les agents | tous les patchs restants | § 8 d'ouverture, risque 6 | décidée |
-| DA-14 | **Les virements appartiennent à Trésorerie** (table `cashflow_transfer`) ; Patrimoine ne les lit ni ne les écrit directement : l'application les lui fournit | aujourd'hui `PatrimoinePersistenceAdapter` lit `CashflowTransferRepository` (cœur de Trésorerie) et son `replace` réécrit les virements ; deux silos écrivent la même table | lots B de Trésorerie et de Patrimoine ; retrait de `TransferEntity` du hub | note DB-1061 du code, SILO-131 | décidée (6 oct. 2026) |
 | DA-15 | **Le PASS (`pass2026`, `passGrowthRate`) appartient à Retraite** et reste dans `pension_plan` (`pass_2026`, `pass_growth_rate`), où il est déjà lu et écrit par `RetirementModel` ; les deux colonnes homonymes de `SettingsEntity` sont des reliquats : aucune donnée n'y est ajoutée, elles disparaissent avec `SettingsEntity` (lot B2 de SILO-220). Elles ne vont **pas** dans `pension_settings` (doublon) | `SettingsModel` ne les porte plus depuis SET-040 ; seul `OverviewMapper.withLegacyPassFallback` relit un ancien import JSON | script Liquibase (DA-03) : copier la valeur de `settings` vers `pension_plan` là où celle-ci est vide, puis supprimer les colonnes ; le repli de l'import JSON reste côté DTO, à retirer quand les anciens exports ne servent plus | SET-040, `22` § 2 | décidée (6 oct. 2026) |
 | DA-16 | **R-01 lot B, « reset propre »** : la baseline Liquibase n'est pas du reverse-engineering de l'existant (H2 dev et PostgreSQL de prod ont divergé : 4 tables orphelines propres à H2 — `retirement`, `retirement_people`, `retirement_person`, `salary_history` —, 2 propres à PostgreSQL — `objectif`, `objectif_allocation` —, et 14 communes aux deux, anciens noms pré-renommage de silo : `asset_category`, `bank_import`, `charge`, `income`, `loan`, `one_off_expense`, `real_estate`, `tax_actual_override`, `tax_bracket`, `tax_child`, `tax_rate_override`, `transfer`, `variable_income`, `variable_override`). La baseline ne retient que les tables ayant encore une entité JPA aujourd'hui (36 tables, correspondance 1:1 avec les 11 silos, zéro FK inter-silo). Déploiement : export JSON (`/budget`) + `pg_dump` de sauvegarde, base PostgreSQL de prod vidée, redémarrage (Liquibase recrée le schéma propre depuis la baseline), réimport JSON — l'import passe déjà par les writers par silo (SILO-119 lot B2), aucune dépendance aux tables orphelines. `LegacySchemaCleanup` est retiré dans le même patch que la bascule : un schéma neuf n'a plus de FK obsolète à nettoyer | H2 et PostgreSQL ont des historiques de migration différents ; générer depuis l'existant aurait figé cette dette dans la baseline au lieu de la purger ; `LegacySchemaCleanup` dépend du métamodèle JPA (`EntityManagerFactory`), indisponible au moment où Liquibase s'exécute — un portage littéral en `CustomTaskChange` n'aurait pas pu reproduire son comportement dynamique | toute table encore legacy mais pas encore migrée vers un silo (aucune actuellement : `persistence-legacy.changelog.xml` ne porte plus que `budget_data`/`settings`/`placement`/`placement_history_entry`, toutes avec entité JPA) reste listée explicitement, jamais déduite d'un dump ; un futur reset du même type doit repartir de la liste des `@Table` du code, pas d'un `generateChangeLog` brut | 24-backlog-reste-a-faire.md (R-01), 25-cartographie-modules-patchs.md, échange agent du 20 oct. 2026 | décidée |
 
@@ -61,6 +60,7 @@ Colonne « Source » : référence dans le document 21. Colonne « Confirmation 
 | DA-05 : chaque lot B de silo emporte ses paramètres (`pension_settings`, `fiscal_settings`, `cashflow_settings`, `app_settings`) | lots B Retraite, Fiscalité, Trésorerie puis SILO-220 B2 (R-51, R-52) | `SettingsEntity` et `syncSettings` supprimés avec le hub (R-61) : plus aucun code ne peut les référencer |
 | DA-06 : `simulateUntilAge`/`inflationRate` dans le silo Paramètres (`settings-api`/`settings-core`, `app_settings`) | `JpaAppSettingsStore` en production | `SettingsPersistenceAdapter` (implémentation sur le cache du hub) supprimé avec le hub (R-61) ; `JpaAppSettingsStoreTest`, `PersistenceAdaptersJpaRoundTripTest` |
 | DA-07 : sortie du cache global sans big bang, lot B de SILO-206 en dernier | `GlobalCacheLockRelay` et `BudgetCacheStore.mutationLock` retirés (R-60) | classes supprimées (R-60) ; module `persistence`, qui portait `BudgetCacheStore`, supprimé en bloc (R-61-24) |
+| DA-14 : les virements appartiennent à Trésorerie (table `cashflow_transfer`), Patrimoine ne les lit ni ne les écrit directement | retrait de `TransferEntity` du hub (R-61) ; `PatrimoinePersistenceAdapter` (déplacé en `server` par R-61-23b) continue de router les virements vers Trésorerie sans que Patrimoine y écrive | lots B de Trésorerie (R-20) et de Patrimoine (R-30) livrés ; `SiloPersistenceIsolationArchTest` |
 
 ## 4 bis. Dettes tracées
 
@@ -70,8 +70,15 @@ Colonne « Source » : référence dans le document 21. Colonne « Confirmation 
 
 ## 5. Points encore ouverts
 
-1. **DA-14** : confirmer que les virements appartiennent à Trésorerie (le code et DA-07 en dépendent).
-2. **Propriétaire des suggestions de taux** (`PlacementRateSuggestion*`, restées dans `server`) : Marché, Crédit ou Patrimoine ; aucune décision ne le dit (voir `24`, § 4).
+Aucun. Les deux derniers points du premier jet sont résolus :
+
+- **DA-14** : confirmé — les virements appartiennent à Trésorerie (table `cashflow_transfer`) ; appliqué par
+  R-20 (lot B1, Trésorerie) et par le déplacement de `PatrimoinePersistenceAdapter` vers `server`
+  (R-61-23b) qui continue de router les virements sans que Patrimoine les lise ou les écrive directement.
+  Déplacé en section 4 (archivables).
+- **Propriétaire des suggestions de taux** (`PlacementRateSuggestion*`) : tranché sur la ligne R-86 de
+  `24-backlog-reste-a-faire.md` — déplacé de `server` vers `application.rate`/`application.factory`, avec
+  dépendance `market-api` et port `LoanAdviceSettingsPort` dans `application.settings`. Livré.
 
 Point résolu (R-71, Porte B) : **DA-03, forme de Liquibase** — fichier maître dans le composition root (`server`,
 `db.changelog-master.xml`) qui inclut un changelog par silo dans chaque `*-core` ; `ddl-auto: validate` actif depuis

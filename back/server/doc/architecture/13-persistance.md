@@ -1,6 +1,6 @@
 # 13 — Séparation de la persistance par domaine
 
-Statut : 🟡 à valider
+Statut : ✅ implémenté (chantier de silotage terminé, cf. `22-etat-reel-main.md`, `23-registre-decisions-actives.md`, `24-backlog-reste-a-faire.md`)
 
 > **Mise à jour du 4 octobre 2026** : l'objectif a évolué (suppression totale de `BudgetDataModel`, persistance par silo, application ≠ web). O3, R3 et C1 ont été révisés par SILO-001 (versions d'origine remplacées ci-dessous) ; voir [`21-plan-silotage.md`](21-plan-silotage.md).
 

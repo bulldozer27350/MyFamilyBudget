@@ -1,6 +1,6 @@
 # 12 — Settings : façade REST unique, propriété métier distribuée
 
-Statut : 🟡 à valider
+Statut : ✅ implémenté (chantier de silotage terminé, cf. `22-etat-reel-main.md`, `23-registre-decisions-actives.md`, `24-backlog-reste-a-faire.md`)
 
 > **Révision du 4 octobre 2026 (SILO-001)** : `SettingsModel` et `SettingsReader` disparaissent (SILO-100) et `SettingsEntity` est dissoute chez les propriétaires des champs (SILO-220). La façade REST composite et la propriété métier distribuée décrites ici restent valables.
 
@@ -134,4 +134,6 @@ l'état avant ce patch.
   branchée ; `SET-040` tranche la double écriture `pass2026` / `passGrowthRate` en faveur de Retraite.
 - Tant qu'un owner n'a pas de port d'écriture dédié (Retraite par champ, Trésorerie, Simulation,
   Hypothèses économiques), `SET-020` introduit la commande minimale nécessaire, sans créer de modèle
-  global de paramètres.
+  global de paramètres. **Tous les owners disposent désormais d'un port d'écriture dédié** (lots B du
+  silotage : R-20/R-21 Trésorerie, R-40 Retraite, R-42 Fiscalité, lot A2/B1 de SILO-220 pour
+  Simulation et Hypothèses économiques) ; `SettingsEntity` et `syncSettings` ont été retirés par R-51.

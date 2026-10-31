@@ -1,6 +1,8 @@
 # 19 — Inventaire des usages de `BudgetDataModel` (CLEAN-010)
 
-Statut : 🟢 livré avec `CLEAN-010`, mis à jour par `CLEAN-020`
+Statut : ✅ `BudgetDataModel` entièrement supprimé (SILO-230, sous-patch R-61-24) ; document conservé à titre
+historique (liste de départ de SILO-002 et SILO-120, cf. `21-plan-silotage.md` §10), aucune des classes
+listées ci-dessous n'existe plus sur `main`
 
 Référence : `b91877c` (SET-040). Périmètre : `back/server/src/main/java` (production). Les tests ne sont pas
 classés ici.
@@ -67,9 +69,12 @@ SILO-002 : `BudgetDataModelUsageArchTest` n'autorise plus de règle par package.
 chaque entrée indique le patch `SILO-xxx` qui la supprime. La liste ne peut que décroître. Cette page reste la référence
 de classification (`SNAPSHOT-GLOBAL`, `ASSEMBLY-TEMP`).
 
-## Dette restante (hors `CLEAN-010`)
+## Dette restante (hors `CLEAN-010`) — soldée
 
-- `composeBudgetData()` dupliqué dans sept services (et assemblé en ligne dans `RetraiteServiceImpl`) : à supprimer lorsque les factories consommeront des fragments
-  (reprise des `DB-xxx`) ;
-- opérations `/budget`, `/budget/import`, `/budget/reset` : isolées dans `internal.snapshot` par `CLEAN-020`
-  (`GlobalBudgetSnapshotServiceTest`, `GlobalSnapshotBoundaryArchTest`).
+- `composeBudgetData()` : supprimé des sept services avec le hub (R-61) ; les factories consomment
+  désormais des fragments par silo.
+- Opérations `/budget`, `/budget/import`, `/budget/reset` : portées par `GlobalBudgetSnapshotService`
+  (`application.snapshot`) sans `BudgetDataModel`, le port de transition ayant disparu avec `DB-1180`/R-61.
+
+Plus aucune dette ouverte sur ce périmètre : `BudgetDataModelAllowList` elle-même est supprimée
+(R-61-25), le module `transition-snapshot` n'existe plus.
