@@ -98,7 +98,12 @@
         <repository>
             <id>github</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/bulldozer27350/MyFamilyBudget</url>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-credit</url>
         </repository>
+        <snapshotRepository>
+            <id>github</id>
+            <name>GitHub Packages Snapshots</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-credit</url>
+        </snapshotRepository>
     </distributionManagement>
 </project>
