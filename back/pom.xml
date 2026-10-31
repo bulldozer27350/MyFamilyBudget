@@ -41,6 +41,7 @@
     <description>Parent Maven (reactor) du backend MyFamilyBudget</description>
 
     <modules>
+        <module>myfamilybudget-bom</module>
         <module>retirement-api</module>
         <module>retirement-core</module>
         <module>tax-api</module>
@@ -245,6 +246,12 @@
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>bootstrap</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moe.myfamilybudget</groupId>
+                <artifactId>myfamilybudget-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
             </dependency>
             <dependency>
                 <groupId>org.openapitools</groupId>

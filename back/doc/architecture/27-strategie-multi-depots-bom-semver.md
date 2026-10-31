@@ -91,17 +91,21 @@ Le module `server` ne contenait plus aucun code de production (`src/main` était
 
 ---
 
-### Étape 3 — Système de BOM (`myfamilybudget-bom`)
+### Étape 3 — Système de BOM (`myfamilybudget-bom`) (✅ Fait !)
 
-Pour qu'un module de silo puisse être extrait dans son propre dépôt Git, il ne doit plus avoir de balise `<parent>` pointant vers `../pom.xml` (chemin relatif inexistant dans un repo isolé).
+Pour qu'un module de silo puisse être extrait dans son propre dépôt Git, il ne doit plus être contraint par une balise `<parent>` pointant vers un `../pom.xml` relatif inexistant dans un repo isolé.
 
-#### Architecture cible :
-1. Création d'un module indépendant `myfamilybudget-bom` (packaging `pom`).
-2. Ce BOM définit dans `<dependencyManagement>` :
-   - L'import de `spring-boot-dependencies`.
-   - Les versions des dépendances tierces partagées (Jackson, Jakarta, POI, OpenAPI Generator, Mockito, ArchUnit...).
-   - Les versions des modules internes (`credit-api`, `credit-core`, etc.).
-3. Chaque projet de silo autonome importe le BOM :
+#### Implémentation réalisée :
+1. **Création du module autonome `myfamilybudget-bom`** :
+   - Fichier [`back/myfamilybudget-bom/pom.xml`](file:///D:/Depots/MyFamilyBudget/back/myfamilybudget-bom/pom.xml) avec packaging `pom` sans parent requis.
+   - Importe `spring-boot-dependencies:3.4.2` en `<scope>import</scope>`.
+   - Centralise les dépendances tierces partagées (Jackson Databind Nullable, Swagger Annotations, ArchUnit, POI OOXML, Web Push, BouncyCastle, HttpClient).
+   - Centralise l'ensemble des modules applicatifs et de silos internes (`com.moe.myfamilybudget:*`).
+2. **Intégration au reactor et garde-fous** :
+   - Module `myfamilybudget-bom` enregistré en tête de `<modules>` dans [`back/pom.xml`](file:///D:/Depots/MyFamilyBudget/back/pom.xml) et déclaré dans son `<dependencyManagement>`.
+   - Ajout du POM du BOM dans `POMS` de [`tests/gate/check-gate.js`](file:///D:/Depots/MyFamilyBudget/tests/gate/check-gate.js).
+3. **Usage dans un dépôt autonome** :
+   Chaque projet de silo autonome importe désormais le BOM dans son propre `<dependencyManagement>` :
    ```xml
    <dependencyManagement>
        <dependencies>
@@ -115,7 +119,10 @@ Pour qu'un module de silo puisse être extrait dans son propre dépôt Git, il n
        </dependencies>
    </dependencyManagement>
    ```
-4. Résultat : chaque silo possède son propre cycle de vie de build, sa CI autonome et publie ses artefacts sur un repository d'artefacts (local `.m2` en dev, GitHub Packages ou Nexus/Artifactory en environnement partagé).
+4. **Validation** :
+   - Validation autonome du BOM : `mvn -f back/myfamilybudget-bom/pom.xml validate` (SUCCESS).
+   - Validation reactor complet : `mvn -f back/pom.xml test -pl bootstrap -am` (795 tests exécutés, 0 échec).
+   - Garde-fou d'architecture et de qualité : `node tests/gate/check-gate.js all` (OK).
 
 ---
 

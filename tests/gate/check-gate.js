@@ -29,6 +29,7 @@ const E2E_DIR = path.join(ROOT, 'tests', 'e2e');
 const WORKFLOW = path.join(ROOT, '.github', 'workflows', 'ci-cd.yml');
 const POMS = [
   path.join(ROOT, 'back', 'pom.xml'),
+  path.join(ROOT, 'back', 'myfamilybudget-bom', 'pom.xml'),
   path.join(ROOT, 'back', 'retirement-api', 'pom.xml'),
   path.join(ROOT, 'back', 'retirement-core', 'pom.xml'),
   path.join(ROOT, 'back', 'tax-api', 'pom.xml'),
