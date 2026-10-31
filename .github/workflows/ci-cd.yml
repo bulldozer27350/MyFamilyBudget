@@ -54,6 +54,7 @@ jobs:
           cache: maven
           cache-dependency-path: |
             back/pom.xml
+            back/myfamilybudget-bom/pom.xml
             back/retirement-api/pom.xml
             back/retirement-core/pom.xml
             back/tax-api/pom.xml
@@ -66,8 +67,6 @@ jobs:
             back/treasury-core/pom.xml
             back/analysis-api/pom.xml
             back/analysis-core/pom.xml
-            back/credit-api/pom.xml
-            back/credit-core/pom.xml
             back/goals-api/pom.xml
             back/goals-core/pom.xml
             back/settings-api/pom.xml
@@ -81,7 +80,7 @@ jobs:
             back/application-api/pom.xml
             back/application/pom.xml
             back/web/pom.xml
-            back/server/pom.xml
+            back/bootstrap/pom.xml
 
       # Voir ci.yml : le problem matcher "java" de setup-java scrute toute la sortie du job et
       # peut matcher par coincidence un chemin de fichier dans les logs de generation du contrat
@@ -103,7 +102,7 @@ jobs:
           MFB_TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/myfamilybudget
           MFB_TEST_POSTGRES_USER: myfamilybudget
           MFB_TEST_POSTGRES_PASSWORD: myfamilybudget
-        run: mvn -f back/pom.xml -B -pl server -am test
+        run: mvn -f back/pom.xml -B -pl bootstrap -am test
 
       # VT-600 : aucun test obligatoire ne doit etre ignore ou desactive (la variante PostgreSQL
       # de RestartPersistenceTest doit s'etre executee, le service postgres ci-dessus etant present).
@@ -126,6 +125,32 @@ jobs:
           name: playwright-report
           path: tests/e2e/report
           retention-days: 7
+
+  publish-bom:
+    name: Publication du BOM sur GitHub Packages
+    needs: build-and-test
+    if: success()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: back/myfamilybudget-bom/pom.xml
+          server-id: github
+
+      - name: Publication de myfamilybudget-bom
+        run: mvn -f back/myfamilybudget-bom/pom.xml -B deploy -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-push:
     name: Build & push image Docker
