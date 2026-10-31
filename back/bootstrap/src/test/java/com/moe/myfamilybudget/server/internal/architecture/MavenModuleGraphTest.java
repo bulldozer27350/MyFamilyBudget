@@ -170,8 +170,8 @@ class MavenModuleGraphTest {
                 current.resolve("back"));
         for (Path candidate : candidates) {
             Path pom = candidate.resolve("pom.xml");
-            if (Files.isRegularFile(pom) && Files.isDirectory(candidate.resolve("server"))
-                    && Files.isRegularFile(candidate.resolve("server").resolve("pom.xml"))) {
+            if (Files.isRegularFile(pom) && Files.isDirectory(candidate.resolve("bootstrap"))
+                    && Files.isRegularFile(candidate.resolve("bootstrap").resolve("pom.xml"))) {
                 return candidate;
             }
         }

@@ -36,7 +36,7 @@ final class MavenModuleGraphRules {
     record Edge(String from, String to) {}
 
     private static final Set<String> NOT_ALLOWED_FOR_SILOS =
-            Set.of("persistence", "server", "transition-snapshot", "api");
+            Set.of("persistence", "server", "bootstrap", "transition-snapshot", "api");
 
     private MavenModuleGraphRules() {}
 
@@ -82,7 +82,8 @@ final class MavenModuleGraphRules {
                     }
                 } else if (isApplicationSide(from)) {
                     boolean siloOtherThanApi = isSilo(to) && !to.endsWith("-api");
-                    if (siloOtherThanApi || to.equals("infra-jpa") || to.equals("persistence") || to.equals("server")) {
+                    if (siloOtherThanApi || to.equals("infra-jpa") || to.equals("persistence")
+                            || to.equals("server") || to.equals("bootstrap")) {
                         result.put(edge, "C : application et web ne dépendent que des API des silos");
                     }
                 }

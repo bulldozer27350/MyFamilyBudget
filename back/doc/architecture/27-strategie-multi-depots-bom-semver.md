@@ -59,34 +59,35 @@ Toutes les décisions prises doivent préserver la capacité future d'extraire n
 
 ## 3. Détail des étapes
 
-### Étape 1 — Correction des lanceurs et scripts de démarrage
+### Étape 1 — Correction des lanceurs et scripts de démarrage (✅ Fait !)
 
 Depuis le patch **R-91**, le composition root exécutable Spring Boot est porté par le module `bootstrap` (`bootstrap-1.0.0-SNAPSHOT.jar`). `server` ne génère plus de jar exécutable.
 
-**Actions requises** :
+**Actions réalisées** :
 1. `MyFamilyBudget.bat` :
-   - Remplacer le chemin de fallback vers `back\bootstrap\target\bootstrap-1.0.0-SNAPSHOT.jar`.
-   - Remplacer la commande d'aide à la compilation par `mvn clean package -DskipTests -pl bootstrap -am`.
+   - Chemin de fallback pointant vers `back\bootstrap\target\bootstrap-1.0.0-SNAPSHOT.jar`.
+   - Commande d'aide à la compilation : `mvn clean package -DskipTests -pl bootstrap -am`.
 2. `MyFamilyBudget.sh` :
-   - Remplacer le chemin vers `back/bootstrap/target/bootstrap-1.0.0-SNAPSHOT.jar`.
-   - Remplacer la commande d'aide par `-pl bootstrap -am`.
+   - Chemin pointant vers `back/bootstrap/target/bootstrap-1.0.0-SNAPSHOT.jar`.
+   - Commande d'aide : `-pl bootstrap -am`.
 3. `tests/e2e/setup.js` :
-   - Faire pointer le lancement du backend sur le module `bootstrap` au lieu de `server`.
+   - Lancement du backend pointant sur le module `bootstrap` au lieu de `server`.
 
 ---
 
-### Étape 2 — Traitement et élimination du module `server`
+### Étape 2 — Traitement et élimination du module `server` (✅ Fait !)
 
-Le module `server` ne contient plus aucun code de production (`src/main` est 100 % vide). Il n'embarque que des tests d'intégration, les garde-fous ArchUnit et la documentation.
+Le module `server` ne contenait plus aucun code de production (`src/main` était 100 % vide). Il n'embarquait que des tests d'intégration, les garde-fous ArchUnit et la documentation.
 
-**Actions requises** :
-1. Déplacer `back/server/src/test` vers `back/bootstrap/src/test` :
-   - `bootstrap` possède déjà toutes les dépendances de production nécessaires sur le classpath (`web`, `application`, l'ensemble des silos `*-api` et `*-core`, `infra-jpa`).
-   - Les tests d'architecture ArchUnit et les tests d'intégration (`@SpringBootTest(classes = ServerApplication.class)`) y tourneront à l'identique.
-2. Déplacer le dossier `back/server/doc` vers `back/doc` (ou `doc` à la racine du dépôt).
-3. Supprimer le dossier `back/server`.
-4. Retirer `<module>server</module>` de `back/pom.xml`.
-5. Adapter les références dans `tests/gate/check-gate.js` (qui vérifie les rapports surefire de `server` par défaut, à basculer sur `bootstrap`).
+**Actions réalisées** :
+1. Déplacement de `back/server/src/test` vers `back/bootstrap/src/test` :
+   - `bootstrap` possède toutes les dépendances de production nécessaires sur le classpath (`web`, `application`, l'ensemble des silos `*-api` et `*-core`, `infra-jpa`).
+   - Dépendance `archunit-junit5` ajoutée à `bootstrap/pom.xml`.
+   - `locateBackRoot()` adapté dans `MavenModuleGraphTest` et `ModuleInfoVisibilityArchTest` pour cibler `bootstrap`.
+   - Les tests d'architecture ArchUnit et les tests d'intégration (795 tests) s'exécutent avec succès dans `bootstrap`.
+2. Déplacement du dossier `back/server/doc` vers `back/doc`.
+3. Retrait du module `server` de `back/pom.xml`.
+4. Adaptation des gardes-fous dans `tests/gate/check-gate.js` (ciblage de `bootstrap` pour Surefire et rapports Postgres) et `tests/gate/select-modules.js` (exclusion de `back/doc`).
 
 ---
 

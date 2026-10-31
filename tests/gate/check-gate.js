@@ -7,7 +7,7 @@
 //   node tests/gate/check-gate.js reports   Analyse des rapports Surefire apres `mvn test`
 //   node tests/gate/check-gate.js all       static puis reports
 //
-// R-93 (CI selective par sous-graphe) : `reports` ne verifie par defaut que `back/server/target/
+// R-93 (CI selective par sous-graphe) : `reports` ne verifie par defaut que `back/bootstrap/target/
 // surefire-reports` (comportement inchange). La variable d'environnement MFB_GATE_MODULES (liste de
 // modules separes par des virgules, ex. "wealth-core,treasury-core") restreint/elargit la verification
 // aux modules effectivement construits et testes dans ce run selectif ; voir tests/gate/select-modules.js.
@@ -19,13 +19,12 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const BACKEND_TESTS = path.join(ROOT, 'back', 'server', 'src', 'test');
+const BACKEND_TESTS = path.join(ROOT, 'back', 'bootstrap', 'src', 'test');
 // Tests unitaires des modules de domaine extraits du reactor (MAVEN-020 : domain-retirement devenu retirement-core (SILO-150), MAVEN-030 : domain-tax devenu tax-core (SILO-151), MAVEN-040 : domain-wealth devenu wealth-core (SILO-152), MAVEN-060 : domain-bank-pointage devenu bank-pointage-core (SILO-154), MAVEN-050 : domain-treasury devenu treasury-core (SILO-153), MAVEN-070 : domain-analysis devenu analysis-core (SILO-155), MAVEN-080 : domain-credit devenu credit-core (SILO-156), domain-goals devenu goals-api (SILO-157), MAVEN-090 : domain-notifications devenu notifications-core (SILO-158), silo Marché : market-core (SILO-159))
 const MODULE_TESTS = ['retirement-core', 'tax-core', 'wealth-core', 'bank-pointage-core', 'treasury-core', 'analysis-core', 'credit-core', 'goals-api', 'goals-core', 'notifications-core', 'market-core', 'infra-jpa'].map(m => path.join(ROOT, 'back', m, 'src', 'test'));
-// R-93 : par defaut seul `server` est verifie (comportement d'avant R-93, suite complete). En mode
-// selectif, `.github/workflows/ci.yml` transmet via MFB_GATE_MODULES la liste des modules reellement
-// construits et testes pour ce push (voir tests/gate/select-modules.js), et seuls ceux-la sont verifies.
-const REPORT_MODULES = (process.env.MFB_GATE_MODULES || 'server').split(',').map(m => m.trim()).filter(Boolean);
+// Par defaut seul `bootstrap` est verifie (suite complete). En mode selectif, `.github/workflows/ci.yml`
+// transmet via MFB_GATE_MODULES la liste des modules reellement construits et testes pour ce push.
+const REPORT_MODULES = (process.env.MFB_GATE_MODULES || 'bootstrap').split(',').map(m => m.trim()).filter(Boolean);
 const E2E_DIR = path.join(ROOT, 'tests', 'e2e');
 const WORKFLOW = path.join(ROOT, '.github', 'workflows', 'ci-cd.yml');
 const POMS = [
@@ -57,8 +56,6 @@ const POMS = [
   path.join(ROOT, 'back', 'application-api', 'pom.xml'),
   path.join(ROOT, 'back', 'application', 'pom.xml'),
   path.join(ROOT, 'back', 'web', 'pom.xml'),
-  path.join(ROOT, 'back', 'server', 'pom.xml'),
-  // R-91 (SILO-330) avait ajoute ce module sans reprendre cette liste : ecart corrige par R-93.
   path.join(ROOT, 'back', 'bootstrap', 'pom.xml'),
 ];
 
@@ -199,7 +196,7 @@ function checkReports() {
       const xml = fs.readFileSync(path.join(surefireDir, name), 'utf8');
       const cases = xml.match(/<testcase\b[\s\S]*?(?:\/>|<\/testcase>)/g) || [];
       total += cases.length;
-      const isPostgresReport = moduleName === 'server' && name === POSTGRES_REPORT;
+      const isPostgresReport = moduleName === 'bootstrap' && name === POSTGRES_REPORT;
       if (isPostgresReport) postgresReportSeen = true;
       for (const testCase of cases) {
         if (!/<skipped\b/.test(testCase)) continue;

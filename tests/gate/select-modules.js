@@ -70,6 +70,7 @@ function main() {
     if (!file.startsWith('back/')) continue; // view/, tests/e2e, documentation racine... : hors backend
 
     const segments = file.slice('back/'.length).split('/');
+    if (segments[0] === 'doc') continue; // documentation globale back/doc : ne déclenche aucun test
     const moduleName = segments[0];
     if (!moduleName || !knownModules.includes(moduleName)) { full = true; continue; }
     if (segments[1] === 'doc') continue; // documentation d'architecture du module : ne déclenche rien

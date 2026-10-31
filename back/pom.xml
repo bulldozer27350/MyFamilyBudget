@@ -68,7 +68,6 @@
         <module>application-api</module>
         <module>application</module>
         <module>web</module>
-        <module>server</module>
         <module>bootstrap</module>
     </modules>
 
