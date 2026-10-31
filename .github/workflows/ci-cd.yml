@@ -169,6 +169,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  publish-infra-jpa:
+    name: Publication de infra-jpa sur GitHub Packages
+    # Meme raisonnement que publish-bom : infra-jpa ne depend d'aucun autre module
+    # du reactor (uniquement de dependances tierces Spring Data JPA/Hibernate), donc
+    # aucune raison de le faire dependre de build-and-test. Necessaire car credit-core
+    # (et tout futur silo persistant) en depend directement.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: back/infra-jpa/pom.xml
+          server-id: github
+
+      - name: Publication de infra-jpa
+        run: mvn -f back/infra-jpa/pom.xml -B deploy -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-and-push:
     name: Build & push image Docker
     needs: build-and-test
