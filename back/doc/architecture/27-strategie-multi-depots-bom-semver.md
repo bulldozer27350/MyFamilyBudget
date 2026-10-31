@@ -126,7 +126,7 @@ Pour qu'un module de silo puisse être extrait dans son propre dépôt Git, il n
 
 ---
 
-### Étape 4 — Gestion SemVer, plages de versions dynamiques et Release Notes
+### Étape 4 — Gestion SemVer, plages de versions dynamiques et Release Notes (✅ Fait !)
 
 #### 4.1 Politique SemVer stricte (Majeur.Mineur.Patch)
 Chaque silo publie ses versions selon la spécification SemVer 2.0.0 :
@@ -157,6 +157,8 @@ Dans l'application intégratrice (`bootstrap` / `application`), afin de ne pas d
 **Règle non négociable pour tout agent ou développeur** :  
 Toute publication d'une nouvelle version d'un module/silo (qu'elle soit MAJEURE, MINEURE ou PATCH) **DOIT obligatoirement** s'accompagner de la mise à jour (ou création) d'un fichier `release-note.md` à la racine du dépôt concerné.
 
+Le fichier initial [`release-note.md`](file:///D:/Depots/MyFamilyBudget/release-note.md) est initialisé à la racine du dépôt.
+
 Chaque entrée de `release-note.md` doit contenir :
 1. **En-tête** : Version exacte (`X.Y.Z`), date de publication, type de release (Majeur, Mineur, Patch).
 2. **Résumé succinct** : Objectif de l'évolution en 1 ou 2 phrases.
@@ -166,10 +168,14 @@ Chaque entrée de `release-note.md` doit contenir :
    - Persistance / Données : Impacts éventuels sur les tables SQL, changelogs Liquibase.
 4. **Impact de rétro-compatibilité** : Mention explicite attestant du respect de la compatibilité binaire (ou décrivant la rupture si version majeure).
 
-#### 4.4 Garde-fou d'intégrité de contrat en CI (compatibilité binaire automatique)
-Chaque dépôt de silo doit intégrer un contrôle automatisé en CI (ex: `revapi-maven-plugin` ou `japicmp-maven-plugin`) :
-- La CI compare le JAR `*-api` produit avec la dernière version publiée sur le repository.
-- Si une incompatibilité binaire (breaking change) est détectée alors que le bump de version n'est pas un incrément MAJEUR, le build CI échoue immédiatement.
+#### 4.4 Garde-fous automatisés et outillage de compatibilité binaire en CI
+1. **Garde-fou `check-gate.js` (`checkSemVerAndReleaseNotes`)** :
+   - Présence obligatoire de `release-note.md` avec en-têtes SemVer valides (`## [X.Y.Z]`) et sections obligatoires (Type de release, Résumé, Rétro-compatibilité).
+   - Validation stricte des versions des POMs (`\d+\.\d+\.\d+(-SNAPSHOT)?`).
+   - Contrôle du format des plages de versions dynamiques (`[X.0.0, (X+1).0.0)`).
+2. **Outillage de compatibilité binaire (`japicmp-maven-plugin`)** :
+   - `japicmp-maven-plugin` (version 0.23.1) configuré dans `<pluginManagement>` de [`back/pom.xml`](file:///D:/Depots/MyFamilyBudget/back/pom.xml).
+   - Bloque le build (`<breakBuildOnBinaryIncompatibleModifications>true</breakBuildOnBinaryIncompatibleModifications>`) en cas de modification cassante de signature dans les APIs.
 
 ---
 

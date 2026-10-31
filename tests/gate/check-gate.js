@@ -138,6 +138,7 @@ function checkStatic() {
   POMS.forEach(pom => { if (fs.existsSync(pom)) scan(pom, POM_FORBIDDEN, 'xml'); });
 
   checkPorteA();
+  checkSemVerAndReleaseNotes();
 
   const config = path.join(ROOT, 'playwright.config.js');
   if (fs.existsSync(config)) {
@@ -146,6 +147,59 @@ function checkStatic() {
       violations.push(rel(config) + ' -> retries=' + retries[1] + ' : un test instable serait toleré au lieu d etre corrige');
     }
   }
+}
+
+/**
+ * Garde-fou SemVer 2.0.0 et release-note.md obligatoire sur chaque publication.
+ */
+function checkSemVerAndReleaseNotes() {
+  const rnPath = path.join(ROOT, 'release-note.md');
+  if (!fs.existsSync(rnPath)) {
+    violations.push('release-note.md absent à la racine du dépôt : obligatoire sur chaque version selon SemVer');
+    return;
+  }
+  const content = fs.readFileSync(rnPath, 'utf8');
+  const semverHeader = /##\s*\[(\d+\.\d+\.\d+)\]/i;
+  if (!semverHeader.test(content)) {
+    violations.push('release-note.md ne contient aucun en-tête de version SemVer valide (ex. ## [1.0.0])');
+  }
+  if (!/Type de release/i.test(content) && !/Release Type/i.test(content)) {
+    violations.push('release-note.md doit préciser le type de release (Majeur, Mineur ou Patch)');
+  }
+  if (!/R[ée]sum[ée]|Summary/i.test(content)) {
+    violations.push('release-note.md doit comporter une section Résumé pour chaque release');
+  }
+  if (!/R[ée]tro-compatibilit[ée]|Compatibilit[ée]/i.test(content)) {
+    violations.push('release-note.md doit comporter une mention explicite sur la rétro-compatibilité binaire');
+  }
+
+  // Vérification de la conformité SemVer des POMs
+  const semverRegex = /^\d+\.\d+\.\d+(-SNAPSHOT)?$/;
+  const rangeRegex = /^\[\d+\.\d+\.\d+,\s*\d+\.\d+\.\d+\)$/;
+  POMS.forEach(pom => {
+    if (!fs.existsSync(pom)) return;
+    const pomContent = fs.readFileSync(pom, 'utf8');
+    const vMatch = /<artifactId>[^<]+<\/artifactId>\s*<version>([^<]+)<\/version>/.exec(pomContent)
+      || /<parent>[\s\S]*?<version>([^<]+)<\/version>/.exec(pomContent);
+    if (vMatch) {
+      const v = vMatch[1].trim();
+      if (!semverRegex.test(v)) {
+        violations.push(rel(pom) + ' -> version invalide "' + v + '" (doit respecter SemVer: X.Y.Z[-SNAPSHOT])');
+      }
+    }
+
+    // Vérifier les dépendances qui définissent une plage de versions pour les modules internes
+    const internalDepRangeRe = /<groupId>\s*com\.moe\.myfamilybudget\s*<\/groupId>\s*<artifactId>[^<]+<\/artifactId>\s*<version>([^<]+)<\/version>/g;
+    let m;
+    while ((m = internalDepRangeRe.exec(pomContent)) !== null) {
+      const depVersion = m[1].trim();
+      if (depVersion.startsWith('[') || depVersion.startsWith('(')) {
+        if (!rangeRegex.test(depVersion)) {
+          violations.push(rel(pom) + ' -> plage de version dynamique invalide "' + depVersion + '" (format attendu: [X.0.0, (X+1).0.0))');
+        }
+      }
+    }
+  });
 }
 
 /**
@@ -173,11 +227,11 @@ function checkPorteA() {
 }
 
 function checkReports() {
-  // La variante PostgreSQL (VT-320) vit uniquement dans `server` : ne l'exiger que si ce module fait
-  // partie du sous-graphe verifie pour ce run (sinon un run selectif qui ne touche pas `server` serait
+  // La variante PostgreSQL (VT-320) vit dans `bootstrap` : ne l'exiger que si ce module fait
+  // partie du sous-graphe verifie pour ce run (sinon un run selectif qui ne touche pas `bootstrap` serait
   // a tort signale comme ayant "saute" un test qu'il n'avait pas a executer).
   const mustRunPostgres = (Boolean(process.env.CI) || process.env.MFB_REQUIRE_POSTGRES === 'true')
-    && REPORT_MODULES.includes('server');
+    && REPORT_MODULES.includes('bootstrap');
   let total = 0;
   let postgresReportSeen = false;
 

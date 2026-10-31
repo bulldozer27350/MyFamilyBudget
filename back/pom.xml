@@ -91,6 +91,7 @@
         <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
         <node.version>v22.23.3</node.version>
         <moditect-maven-plugin.version>1.0.0.Final</moditect-maven-plugin.version>
+        <japicmp-maven-plugin.version>0.23.1</japicmp-maven-plugin.version>
 
         <!-- Versions des dépendances non gérées par le BOM Spring Boot -->
         <jackson-nullable.version>0.2.6</jackson-nullable.version>
@@ -328,6 +329,19 @@
                     <groupId>org.moditect</groupId>
                     <artifactId>moditect-maven-plugin</artifactId>
                     <version>${moditect-maven-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.siom79.japicmp</groupId>
+                    <artifactId>japicmp-maven-plugin</artifactId>
+                    <version>${japicmp-maven-plugin.version}</version>
+                    <configuration>
+                        <parameter>
+                            <onlyModified>true</onlyModified>
+                            <breakBuildOnBinaryIncompatibleModifications>true</breakBuildOnBinaryIncompatibleModifications>
+                            <breakBuildOnSourceIncompatibleModifications>false</breakBuildOnSourceIncompatibleModifications>
+                            <ignoreMissingClasses>true</ignoreMissingClasses>
+                        </parameter>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
