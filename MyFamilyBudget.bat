@@ -13,7 +13,7 @@ set "APP_JAR=%APP_DIR%MyFamilyBudget.jar"
 set "SPLASH_HTML=%APP_DIR%splashscreen.html"
 
 REM Fallback si execute depuis la racine du code source Maven
-if not exist "%APP_JAR%" set "APP_JAR=%APP_DIR%back\server\target\server-1.0.0-SNAPSHOT.jar"
+if not exist "%APP_JAR%" set "APP_JAR=%APP_DIR%back\bootstrap\target\bootstrap-1.0.0-SNAPSHOT.jar"
 
 echo ==================================================================
 echo             Lancement de MyFamilyBudget en cours...
@@ -87,7 +87,7 @@ echo [ERREUR] Impossible de trouver le fichier JAR de l'application :
 echo "%APP_JAR%"
 echo.
 echo Si vous travaillez sur le code source, veuillez d'abord compiler avec :
-echo   cd back ^&^& mvn clean package -DskipTests -pl server -am
+echo   cd back ^&^& mvn clean package -DskipTests -pl bootstrap -am
 echo ==================================================================
 echo.
 pause

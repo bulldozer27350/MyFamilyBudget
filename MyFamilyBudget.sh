@@ -12,7 +12,7 @@ APP_JAR="$APP_DIR/MyFamilyBudget.jar"
 SPLASH_HTML="$APP_DIR/splashscreen.html"
 
 if [ ! -f "$APP_JAR" ]; then
-    APP_JAR="$APP_DIR/back/server/target/server-1.0.0-SNAPSHOT.jar"
+    APP_JAR="$APP_DIR/back/bootstrap/target/bootstrap-1.0.0-SNAPSHOT.jar"
 fi
 
 echo "=================================================================="
@@ -58,7 +58,7 @@ echo "------------------------------------------------------------------"
 
 if [ ! -f "$APP_JAR" ]; then
     echo "[ERREUR] Impossible de trouver le fichier JAR : $APP_JAR"
-    echo "Veuillez compiler l'application : cd back && mvn clean package -DskipTests -pl server -am"
+    echo "Veuillez compiler l'application : cd back && mvn clean package -DskipTests -pl bootstrap -am"
     exit 1
 fi
 

@@ -5,7 +5,7 @@ const path      = require('path');
 const http      = require('http');
 
 const ROOT      = path.resolve(__dirname, '..', '..');
-const BACK_DIR  = path.join(ROOT, 'back', 'server');
+const BACK_DIR  = path.join(ROOT, 'back', 'bootstrap');
 const VIEW_DIR  = path.join(ROOT, 'view');
 
 function log(tag, msg) {
@@ -97,7 +97,7 @@ function kill(proc) {
     // MAVEN-010 : le serveur dépend désormais du module domain-budget -> lancement depuis le reactor (back/)
     backendProc = spawnProc(
       mvnCmd,
-      ['-pl', 'server', '-am', '-q', 'compile', 'org.springframework.boot:spring-boot-maven-plugin:run'],
+      ['-pl', 'bootstrap', '-am', '-q', 'compile', 'org.springframework.boot:spring-boot-maven-plugin:run'],
       path.join(ROOT, 'back'),
       'backend'
     );
