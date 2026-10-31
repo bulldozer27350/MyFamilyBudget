@@ -21,6 +21,18 @@
         Jackson, annotations Swagger). Aucune dépendance vers un module de domaine, `application`,
         `transition-snapshot` ni `server` : le contrat est pur (api ne dépend d'aucun domaine, et aucun domaine
         ne dépend d'api).
+
+        Hotfix R-92 (DA-01) : `application` et `web` font `requires api;` dans leur `module-info.java`, mais
+        ce module génère tout son code à la génération (aucun `src/main/java` écrit à la main) et est résolu,
+        au sein du même build réacteur, via son répertoire de classes plutôt que via un jar nommé sur le
+        disque — la dérivation automatique du nom de module à partir du nom de fichier jar (JEP 261) ne
+        s'applique donc pas, d'où l'échec CI « module not found: api ». Plutôt qu'un `module-info.java` écrit à
+        la main (qui obligerait à deviner les imports exacts du code généré par openapi-generator, invisible
+        ici), le descripteur est ajouté après coup sur le jar packagé via `moditect-maven-plugin`
+        (`add-module-info`, phase `package`) : la compilation du code généré reste sur le classpath classique,
+        donc indépendante de ce descripteur ; seuls le nom du module et ses `exports` comptent pour que
+        `application`/`web` résolvent `requires api;`, les `requires` ci-dessous étant une documentation
+        best-effort du code généré (noms de module automatiques ordinaires, non revérifiés par le tissage).
     -->
     <parent>
         <groupId>com.moe.myfamilybudget</groupId>
@@ -158,6 +170,38 @@
                             <sources>
                                 <source>${project.build.directory}/generated-sources/openapi/src/main/java</source>
                             </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Hotfix R-92 (DA-01) : module-info tisse apres coup sur le jar package, voir le commentaire
+                 en tete de fichier (code genere, pas de module-info.java ecrit a la main) -->
+            <plugin>
+                <groupId>org.moditect</groupId>
+                <artifactId>moditect-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-module-info</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>add-module-info</goal>
+                        </goals>
+                        <configuration>
+                            <module>
+                                <moduleInfoSource>
+                                    module api {
+                                        requires spring.web;
+                                        requires spring.context;
+                                        requires jakarta.validation;
+                                        requires jakarta.annotation;
+                                        requires com.fasterxml.jackson.annotation;
+                                        requires io.swagger.v3.oas.annotations;
+
+                                        exports com.moe.myfamilybudget.api.model;
+                                        exports com.moe.myfamilybudget.api.controller;
+                                    }
+                                </moduleInfoSource>
+                            </module>
                         </configuration>
                     </execution>
                 </executions>

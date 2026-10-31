@@ -49,6 +49,17 @@ jobs:
           # Glob : plus besoin de lister chaque module Maven a la main.
           cache-dependency-path: back/**/pom.xml
 
+      # setup-java enregistre un problem matcher ("java") qui scrute TOUTE la sortie du job a la
+      # recherche d'un motif compilateur javac (fichier:ligne: error:), pas seulement celle de
+      # mvn compile. La generation du contrat (npm/redocly puis openapi-generator, module api)
+      # produit des chemins de fichiers dans ses logs qui peuvent matcher ce motif par coincidence,
+      # creant une annotation GitHub trompeuse ; en cas d'echec reel ailleurs, GitHub pointe en
+      # priorite vers cette fausse annotation plutot que vers l'erreur reelle. On le retire : les
+      # echecs restent visibles (sortie [ERROR] de Maven, step en echec), seules les annotations
+      # au mauvais endroit disparaissent.
+      - name: Desactiver le problem matcher Java (annotations trompeuses sur la generation du contrat)
+        run: echo "::remove-matcher owner=java::"
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:

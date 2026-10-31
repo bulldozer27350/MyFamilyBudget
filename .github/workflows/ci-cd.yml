@@ -83,6 +83,13 @@ jobs:
             back/web/pom.xml
             back/server/pom.xml
 
+      # Voir ci.yml : le problem matcher "java" de setup-java scrute toute la sortie du job et
+      # peut matcher par coincidence un chemin de fichier dans les logs de generation du contrat
+      # (npm/redocly, openapi-generator, module api), produisant une annotation GitHub trompeuse
+      # qui prend le pas sur l'erreur reelle en cas d'echec ailleurs. On le retire.
+      - name: Desactiver le problem matcher Java (annotations trompeuses sur la generation du contrat)
+        run: echo "::remove-matcher owner=java::"
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
