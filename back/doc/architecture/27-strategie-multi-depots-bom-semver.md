@@ -187,3 +187,39 @@ Chaque entrée de `release-note.md` doit contenir :
 4. **Toujours valider les modifications via** :
    - `mvn -f back/pom.xml test` (ou sur le sous-graphe concerné).
    - `node tests/gate/check-gate.js all`.
+
+---
+
+## 5. Silo Pilote `credit` (POC multi-dépôts) (✅ Opérationnel !)
+
+Le silo Crédit a été isolé avec succès dans la structure candidate `silos/credit/` pour valider la faisabilité technique de l'extraction multi-dépôts avec historique Git :
+
+### Structure du dépôt autonome `silos/credit/`
+```
+silos/credit/
+├── .github/
+│   └── workflows/
+│       └── ci.yml             # Pipeline autonome de build, test et déploiement GitHub Packages
+├── credit-api/                # Contrats & modèles DTO (version 0.0.1-SNAPSHOT)
+│   └── pom.xml
+├── credit-core/               # Moteur de calcul & persistance JPA (version 0.0.1-SNAPSHOT)
+│   └── pom.xml
+├── pom.xml                    # Parent autonome domain-credit (import du myfamilybudget-bom)
+└── release-note.md            # Release notes propre au silo
+```
+
+### Commandes de vérification
+1. **Compilation et installation du silo autonome dans `.m2`** :
+   ```bash
+   mvn -f silos/credit/pom.xml clean install
+   ```
+2. **Construction et tests de l'application intégratrice** (qui consomme `credit-api` et `credit-core` depuis `.m2`) :
+   ```bash
+   mvn -f back/pom.xml test -pl bootstrap -am
+   ```
+3. **Extraction de l'historique vers un nouveau dépôt Git distant** :
+   ```bash
+   git subtree split -P silos/credit -b extract-credit
+   git push https://github.com/bulldozer27350/myfamilybudget-domain-credit.git extract-credit:main
+   ```
+

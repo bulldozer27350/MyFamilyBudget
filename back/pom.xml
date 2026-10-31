@@ -54,8 +54,6 @@
         <module>treasury-core</module>
         <module>analysis-api</module>
         <module>analysis-core</module>
-        <module>credit-api</module>
-        <module>credit-core</module>
         <module>goals-api</module>
         <module>goals-core</module>
         <module>settings-api</module>
@@ -101,6 +99,9 @@
         <web-push.version>5.1.1</web-push.version>
         <bouncycastle.version>1.78</bouncycastle.version>
         <httpclient4.version>4.5.14</httpclient4.version>
+
+        <!-- Silos autonomes externalisés -->
+        <credit.version>0.0.1-SNAPSHOT</credit.version>
     </properties>
 
     <dependencyManagement>
@@ -169,12 +170,12 @@
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>credit-api</artifactId>
-                <version>${project.version}</version>
+                <version>${credit.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>credit-core</artifactId>
-                <version>${project.version}</version>
+                <version>${credit.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
