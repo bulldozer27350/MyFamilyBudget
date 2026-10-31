@@ -39,6 +39,22 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Historique complet requis pour calculer le merge-base avec origin/main ci-dessous
+          # (CI selective par sous-graphe, R-93).
+          fetch-depth: 0
+
+      - name: Determiner le sous-graphe de modules backend impacte (CI selective, R-93)
+        id: subgraph
+        run: |
+          git fetch origin main --quiet || true
+          if base_sha="$(git merge-base origin/main HEAD 2>/dev/null)"; then
+            git diff --name-only "$base_sha" HEAD | node tests/gate/select-modules.js >> "$GITHUB_OUTPUT"
+          else
+            echo "Pas de base commune avec origin/main : repli sur la suite complete." >&2
+            { echo "full=true"; echo "modules="; echo "any=true"; } >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
 
       - name: Set up JDK 21 (Temurin)
         uses: actions/setup-java@v4
@@ -68,15 +84,36 @@ jobs:
       - name: Install JS dependencies
         run: bun install
 
-      - name: Backend unit tests (mvn test)
+      - name: Backend unit tests (mvn test) - suite complete
+        if: steps.subgraph.outputs.full == 'true'
         env:
           MFB_TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/myfamilybudget
           MFB_TEST_POSTGRES_USER: myfamilybudget
           MFB_TEST_POSTGRES_PASSWORD: myfamilybudget
         run: mvn -f back/pom.xml -B -pl server -am test
 
-      - name: Gate VT-600 (aucun test ignore ou desactive)
-        run: node tests/gate/check-gate.js all
+      # R-93 : seuls les modules dont du code a change (et les dependances/dependants que Maven resout
+      # lui-meme via -am/-amd, serveur/bootstrap compris des que l'un d'eux en depend meme en portee
+      # test) sont construits et testes. Repli sur la variante complete ci-dessus des qu'un fichier
+      # touche le build/la CI elle-meme ou un chemin sous back/ hors de tout module connu (voir
+      # tests/gate/select-modules.js).
+      - name: Backend unit tests (mvn test) - sous-graphe selectif
+        if: steps.subgraph.outputs.full != 'true' && steps.subgraph.outputs.any == 'true'
+        env:
+          MFB_TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/myfamilybudget
+          MFB_TEST_POSTGRES_USER: myfamilybudget
+          MFB_TEST_POSTGRES_PASSWORD: myfamilybudget
+        run: mvn -f back/pom.xml -B -pl ${{ steps.subgraph.outputs.modules }} -amd -am test
+
+      - name: Gate VT-600 (controles statiques)
+        run: node tests/gate/check-gate.js static
+
+      # Les rapports Surefire n'existent que si une des deux etapes mvn test ci-dessus a tourne.
+      - name: Gate VT-600 (rapports de tests, aucun test ignore ou desactive)
+        if: steps.subgraph.outputs.any == 'true'
+        env:
+          MFB_GATE_MODULES: ${{ steps.subgraph.outputs.full == 'true' && '' || steps.subgraph.outputs.modules }}
+        run: node tests/gate/check-gate.js reports
 
       - name: JS smoke test (test-all-apis.js)
         run: bun run test

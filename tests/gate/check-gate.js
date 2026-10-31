@@ -7,6 +7,11 @@
 //   node tests/gate/check-gate.js reports   Analyse des rapports Surefire apres `mvn test`
 //   node tests/gate/check-gate.js all       static puis reports
 //
+// R-93 (CI selective par sous-graphe) : `reports` ne verifie par defaut que `back/server/target/
+// surefire-reports` (comportement inchange). La variable d'environnement MFB_GATE_MODULES (liste de
+// modules separes par des virgules, ex. "wealth-core,treasury-core") restreint/elargit la verification
+// aux modules effectivement construits et testes dans ce run selectif ; voir tests/gate/select-modules.js.
+//
 // Code de sortie 0 = gate respecte, 1 = au moins une violation (listee sur stderr).
 // Aucun contrat metier n est touche : le script ne fait que lire des fichiers.
 
@@ -17,7 +22,10 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const BACKEND_TESTS = path.join(ROOT, 'back', 'server', 'src', 'test');
 // Tests unitaires des modules de domaine extraits du reactor (MAVEN-020 : domain-retirement devenu retirement-core (SILO-150), MAVEN-030 : domain-tax devenu tax-core (SILO-151), MAVEN-040 : domain-wealth devenu wealth-core (SILO-152), MAVEN-060 : domain-bank-pointage devenu bank-pointage-core (SILO-154), MAVEN-050 : domain-treasury devenu treasury-core (SILO-153), MAVEN-070 : domain-analysis devenu analysis-core (SILO-155), MAVEN-080 : domain-credit devenu credit-core (SILO-156), domain-goals devenu goals-api (SILO-157), MAVEN-090 : domain-notifications devenu notifications-core (SILO-158), silo Marché : market-core (SILO-159))
 const MODULE_TESTS = ['retirement-core', 'tax-core', 'wealth-core', 'bank-pointage-core', 'treasury-core', 'analysis-core', 'credit-core', 'goals-api', 'goals-core', 'notifications-core', 'market-core', 'infra-jpa'].map(m => path.join(ROOT, 'back', m, 'src', 'test'));
-const SUREFIRE_DIR = path.join(ROOT, 'back', 'server', 'target', 'surefire-reports');
+// R-93 : par defaut seul `server` est verifie (comportement d'avant R-93, suite complete). En mode
+// selectif, `.github/workflows/ci.yml` transmet via MFB_GATE_MODULES la liste des modules reellement
+// construits et testes pour ce push (voir tests/gate/select-modules.js), et seuls ceux-la sont verifies.
+const REPORT_MODULES = (process.env.MFB_GATE_MODULES || 'server').split(',').map(m => m.trim()).filter(Boolean);
 const E2E_DIR = path.join(ROOT, 'tests', 'e2e');
 const WORKFLOW = path.join(ROOT, '.github', 'workflows', 'ci-cd.yml');
 const POMS = [
@@ -50,6 +58,8 @@ const POMS = [
   path.join(ROOT, 'back', 'application', 'pom.xml'),
   path.join(ROOT, 'back', 'web', 'pom.xml'),
   path.join(ROOT, 'back', 'server', 'pom.xml'),
+  // R-91 (SILO-330) avait ajoute ce module sans reprendre cette liste : ecart corrige par R-93.
+  path.join(ROOT, 'back', 'bootstrap', 'pom.xml'),
 ];
 
 // Seule exception admise : la variante PostgreSQL de VT-320, activee par variable d environnement.
@@ -165,34 +175,48 @@ function checkPorteA() {
 }
 
 function checkReports() {
-  if (!fs.existsSync(SUREFIRE_DIR)) {
-    violations.push(rel(SUREFIRE_DIR) + ' absent : lancer `mvn -f back/pom.xml -B -pl server -am test` avant `reports`');
-    return;
-  }
-  const reports = fs.readdirSync(SUREFIRE_DIR).filter(n => /^TEST-.*\.xml$/.test(n));
-  if (reports.length === 0) {
-    violations.push(rel(SUREFIRE_DIR) + ' ne contient aucun rapport TEST-*.xml');
-    return;
-  }
-
-  const mustRunPostgres = Boolean(process.env.CI) || process.env.MFB_REQUIRE_POSTGRES === 'true';
+  // La variante PostgreSQL (VT-320) vit uniquement dans `server` : ne l'exiger que si ce module fait
+  // partie du sous-graphe verifie pour ce run (sinon un run selectif qui ne touche pas `server` serait
+  // a tort signale comme ayant "saute" un test qu'il n'avait pas a executer).
+  const mustRunPostgres = (Boolean(process.env.CI) || process.env.MFB_REQUIRE_POSTGRES === 'true')
+    && REPORT_MODULES.includes('server');
   let total = 0;
-  for (const name of reports) {
-    const xml = fs.readFileSync(path.join(SUREFIRE_DIR, name), 'utf8');
-    const cases = xml.match(/<testcase\b[\s\S]*?(?:\/>|<\/testcase>)/g) || [];
-    total += cases.length;
-    for (const testCase of cases) {
-      if (!/<skipped\b/.test(testCase)) continue;
-      const caseName = /name="([^"]+)"/.exec(testCase);
-      const isPostgres = name === POSTGRES_REPORT && caseName && caseName[1].startsWith(POSTGRES_TEST_NAME);
-      if (isPostgres && !mustRunPostgres) continue; // poste local sans PostgreSQL : tolere hors CI
-      violations.push(name + ' : test ignore -> ' + (caseName ? caseName[1] : '?')
-        + (isPostgres ? ' (la variante PostgreSQL doit s executer : definir MFB_TEST_POSTGRES_URL)' : ''));
+  let postgresReportSeen = false;
+
+  for (const moduleName of REPORT_MODULES) {
+    const surefireDir = path.join(ROOT, 'back', moduleName, 'target', 'surefire-reports');
+    if (!fs.existsSync(surefireDir)) {
+      violations.push(rel(surefireDir) + ' absent : lancer `mvn -f back/pom.xml -B -pl '
+        + REPORT_MODULES.join(',') + ' -amd -am test` avant `reports`');
+      continue;
+    }
+    const reports = fs.readdirSync(surefireDir).filter(n => /^TEST-.*\.xml$/.test(n));
+    if (reports.length === 0) {
+      violations.push(rel(surefireDir) + ' ne contient aucun rapport TEST-*.xml');
+      continue;
+    }
+    for (const name of reports) {
+      const xml = fs.readFileSync(path.join(surefireDir, name), 'utf8');
+      const cases = xml.match(/<testcase\b[\s\S]*?(?:\/>|<\/testcase>)/g) || [];
+      total += cases.length;
+      const isPostgresReport = moduleName === 'server' && name === POSTGRES_REPORT;
+      if (isPostgresReport) postgresReportSeen = true;
+      for (const testCase of cases) {
+        if (!/<skipped\b/.test(testCase)) continue;
+        const caseName = /name="([^"]+)"/.exec(testCase);
+        const isPostgres = isPostgresReport && caseName && caseName[1].startsWith(POSTGRES_TEST_NAME);
+        if (isPostgres && !mustRunPostgres) continue; // poste local sans PostgreSQL : tolere hors CI
+        violations.push('back/' + moduleName + '/target/surefire-reports/' + name + ' : test ignore -> '
+          + (caseName ? caseName[1] : '?')
+          + (isPostgres ? ' (la variante PostgreSQL doit s executer : definir MFB_TEST_POSTGRES_URL)' : ''));
+      }
     }
   }
-  if (total === 0) violations.push('aucun test execute dans ' + rel(SUREFIRE_DIR));
+  if (total === 0) {
+    violations.push('aucun test execute dans ' + REPORT_MODULES.map(m => 'back/' + m + '/target/surefire-reports').join(', '));
+  }
 
-  if (mustRunPostgres && !reports.includes(POSTGRES_REPORT)) {
+  if (mustRunPostgres && !postgresReportSeen) {
     violations.push(POSTGRES_REPORT + ' absent : RestartPersistenceTest n a pas ete execute');
   }
 }
