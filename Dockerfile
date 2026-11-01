@@ -37,7 +37,6 @@ COPY back/infra-jpa/pom.xml back/infra-jpa/pom.xml
 COPY back/application-api/pom.xml back/application-api/pom.xml
 COPY back/application/pom.xml back/application/pom.xml
 COPY back/web/pom.xml back/web/pom.xml
-COPY back/server/pom.xml back/server/pom.xml
 COPY back/bootstrap/pom.xml back/bootstrap/pom.xml
 
 # Telechargement des dependances en s'appuyant sur le cache persistant .m2
@@ -75,7 +74,6 @@ COPY back/infra-jpa back/infra-jpa
 COPY back/application-api back/application-api
 COPY back/application back/application
 COPY back/web back/web
-COPY back/server back/server
 COPY back/bootstrap back/bootstrap
 
 # Compilation du JAR executable avec réutilisation du cache .m2

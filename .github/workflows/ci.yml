@@ -90,7 +90,7 @@ jobs:
           MFB_TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/myfamilybudget
           MFB_TEST_POSTGRES_USER: myfamilybudget
           MFB_TEST_POSTGRES_PASSWORD: myfamilybudget
-        run: mvn -f back/pom.xml -B -pl server -am test
+        run: mvn -f back/pom.xml -B -pl bootstrap -am test
 
       # R-93 : seuls les modules dont du code a change (et les dependances/dependants que Maven resout
       # lui-meme via -am/-amd, serveur/bootstrap compris des que l'un d'eux en depend meme en portee
