@@ -165,7 +165,7 @@ jobs:
           server-id: github
 
       - name: Publication de myfamilybudget-bom
-        run: mvn -f back/myfamilybudget-bom/pom.xml -B deploy -DskipTests
+        run: mvn -f back/myfamilybudget-bom/pom.xml -B deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -193,7 +193,7 @@ jobs:
           server-id: github
 
       - name: Publication de infra-jpa
-        run: mvn -f back/infra-jpa/pom.xml -B deploy -DskipTests
+        run: mvn -f back/infra-jpa/pom.xml -B deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
