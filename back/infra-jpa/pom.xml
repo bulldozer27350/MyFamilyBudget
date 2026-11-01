@@ -31,6 +31,15 @@
 
     <properties>
         <java.version>21</java.version>
+
+        <!--
+            spring-boot.run.skip : herite auparavant de myfamilybudget-parent (true par defaut pour
+            tous les modules sauf bootstrap). infra-jpa n'ayant plus ce parent (cf. patch precedent,
+            module autonome sur spring-boot-starter-parent), la propriete doit etre redeclaree ici :
+            sans elle, `mvn -pl bootstrap -am ... spring-boot-maven-plugin:run` (tests/e2e/setup.js)
+            tente de lancer infra-jpa comme une application (pas de mainClass -> echec).
+        -->
+        <spring-boot.run.skip>true</spring-boot.run.skip>
     </properties>
 
     <dependencies>
