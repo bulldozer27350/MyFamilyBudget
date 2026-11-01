@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Modele de settings.xml pour la compilation du Dockerfile racine.
+
+    Le Dockerfile ne copie plus les sources de credit-api/credit-core (silo extrait vers
+    github.com/bulldozer27350/myfamilybudget-domain-credit) : ils sont resolus comme de simples
+    dependances Maven depuis le depot GitHub Packages "domain-credit-packages" declare dans
+    back/pom.xml. Ce depot exige une authentification meme en lecture seule.
+
+    Usage local (build manuel de l'image avant publication) :
+      1) Copier ce fichier en dehors du depot, par ex. :
+           copy docker\maven-settings.xml.example %TEMP%\maven-settings.xml
+      2) Remplacer YOUR_GITHUB_USERNAME et YOUR_GITHUB_PAT ci-dessous (PAT avec le scope
+         read:packages, le meme que DOMAIN_CREDIT_PACKAGES_READ_TOKEN cote CI).
+      3) Construire l'image en fournissant ce fichier comme secret BuildKit (jamais copie dans une
+         couche de l'image, uniquement monte pendant le RUN qui en a besoin) :
+           docker build --secret id=maven_settings,src=%TEMP%\maven-settings.xml -t myfamilybudget .
+
+    Ne jamais committer de copie de ce fichier contenant un vrai token.
+-->
+<settings>
+    <servers>
+        <server>
+            <id>domain-credit-packages</id>
+            <username>YOUR_GITHUB_USERNAME</username>
+            <password>YOUR_GITHUB_PAT</password>
+        </server>
+    </servers>
+</settings>

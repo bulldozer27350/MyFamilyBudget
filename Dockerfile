@@ -22,8 +22,6 @@ COPY back/treasury-api/pom.xml back/treasury-api/pom.xml
 COPY back/treasury-core/pom.xml back/treasury-core/pom.xml
 COPY back/analysis-api/pom.xml back/analysis-api/pom.xml
 COPY back/analysis-core/pom.xml back/analysis-core/pom.xml
-COPY back/credit-api/pom.xml back/credit-api/pom.xml
-COPY back/credit-core/pom.xml back/credit-core/pom.xml
 COPY back/goals-api/pom.xml back/goals-api/pom.xml
 COPY back/goals-core/pom.xml back/goals-core/pom.xml
 COPY back/settings-api/pom.xml back/settings-api/pom.xml
@@ -40,10 +38,16 @@ COPY back/web/pom.xml back/web/pom.xml
 COPY back/bootstrap/pom.xml back/bootstrap/pom.xml
 
 # Telechargement des dependances en s'appuyant sur le cache persistant .m2
+# -DexcludeGroupIds=com.moe.myfamilybudget ecarte aussi credit-api/credit-core (meme groupId bien
+# qu'externes depuis l'extraction du silo Credit) : cette etape n'a donc pas besoin de credentials
+# GitHub Packages, contrairement a l'etape de compilation ci-dessous.
 RUN --mount=type=cache,target=/root/.m2 \
     mvn -f back/pom.xml -q -pl bootstrap -am dependency:go-offline -DexcludeGroupIds=com.moe.myfamilybudget
 
 # Copie du reste du projet
+# credit-api/credit-core ne sont plus dans ce depot (silo extrait vers
+# github.com/bulldozer27350/myfamilybudget-domain-credit) : ils sont desormais resolus comme
+# dependances Maven depuis GitHub Packages a l'etape de compilation, et non plus copies en source.
 COPY openapi.yaml openapi.yaml
 COPY openapi openapi
 COPY view view
@@ -59,8 +63,6 @@ COPY back/treasury-api back/treasury-api
 COPY back/treasury-core back/treasury-core
 COPY back/analysis-api back/analysis-api
 COPY back/analysis-core back/analysis-core
-COPY back/credit-api back/credit-api
-COPY back/credit-core back/credit-core
 COPY back/goals-api back/goals-api
 COPY back/goals-core back/goals-core
 COPY back/settings-api back/settings-api
@@ -76,8 +78,14 @@ COPY back/application back/application
 COPY back/web back/web
 COPY back/bootstrap back/bootstrap
 
-# Compilation du JAR executable avec réutilisation du cache .m2
+# Compilation du JAR executable avec réutilisation du cache .m2.
+# Le reactor resout ici credit-api/credit-core (groupId com.moe.myfamilybudget, mais depot
+# GitHub Packages "domain-credit-packages" declare dans back/pom.xml) : ce depot exige une
+# authentification meme en lecture. Le settings.xml porteur du token est monte via un secret
+# BuildKit (jamais copie dans une couche de l'image) ; voir docker/maven-settings.xml.example et
+# le job build-and-push de .github/workflows/ci-cd.yml pour sa fourniture en CI/local.
 RUN --mount=type=cache,target=/root/.m2 \
+    --mount=type=secret,id=maven_settings,target=/root/.m2/settings.xml,required=true \
     mvn -f back/pom.xml -q -pl bootstrap -am clean package -DskipTests -Dassembly.skipAssembly=true
 
 # =============================================================================

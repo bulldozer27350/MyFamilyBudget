@@ -230,6 +230,25 @@ jobs:
           EOF
           cat view/assets/build-info.json
 
+      # Le Dockerfile resout credit-api/credit-core depuis GitHub Packages (domain-credit-packages,
+      # cf. back/pom.xml) au lieu de les copier en source : ce depot exige une authentification
+      # meme en lecture. Le settings.xml porteur du token n'est jamais copie dans le contexte ni
+      # dans une couche de l'image, uniquement fourni via secret BuildKit (secret-files ci-dessous).
+      - name: Generation du settings.xml Maven (secret Docker build, lecture de credit-api/credit-core)
+        run: |
+          mkdir -p "$RUNNER_TEMP/maven"
+          cat > "$RUNNER_TEMP/maven/settings.xml" <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>domain-credit-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_CREDIT_PACKAGES_READ_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -241,3 +260,5 @@ jobs:
             moetourneau/myfamilybudget:sha-${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          secret-files: |
+            maven_settings=${{ runner.temp }}/maven/settings.xml
