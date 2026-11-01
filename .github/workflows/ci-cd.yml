@@ -55,26 +55,6 @@ jobs:
           cache-dependency-path: |
             back/pom.xml
             back/myfamilybudget-bom/pom.xml
-            back/retirement-api/pom.xml
-            back/retirement-core/pom.xml
-            back/tax-api/pom.xml
-            back/tax-core/pom.xml
-            back/wealth-api/pom.xml
-            back/wealth-core/pom.xml
-            back/bank-pointage-api/pom.xml
-            back/bank-pointage-core/pom.xml
-            back/treasury-api/pom.xml
-            back/treasury-core/pom.xml
-            back/analysis-api/pom.xml
-            back/analysis-core/pom.xml
-            back/goals-api/pom.xml
-            back/goals-core/pom.xml
-            back/settings-api/pom.xml
-            back/settings-core/pom.xml
-            back/notifications-api/pom.xml
-            back/notifications-core/pom.xml
-            back/market-api/pom.xml
-            back/market-core/pom.xml
             back/api/pom.xml
             back/infra-jpa/pom.xml
             back/application-api/pom.xml
@@ -97,7 +77,7 @@ jobs:
       - name: Install JS dependencies
         run: bun install
 
-      - name: Configuration de Maven settings.xml (lecture de credit-api/credit-core depuis myfamilybudget-domain-credit)
+      - name: Configuration de Maven settings.xml (lecture des *-api/*-core des silos extraits)
         run: |
           mkdir -p ~/.m2
           cat > ~/.m2/settings.xml <<EOF
@@ -107,6 +87,56 @@ jobs:
                 <id>domain-credit-packages</id>
                 <username>${{ github.actor }}</username>
                 <password>${{ secrets.DOMAIN_CREDIT_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-retirement-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_RETIREMENT_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-tax-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_TAX_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-wealth-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_WEALTH_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-bank-pointage-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_BANK_POINTAGE_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-treasury-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_TREASURY_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-analysis-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_ANALYSIS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-goals-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_GOALS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-settings-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_SETTINGS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-notifications-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_NOTIFICATIONS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-market-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_MARKET_PACKAGES_READ_TOKEN }}</password>
               </server>
             </servers>
           </settings>
@@ -230,11 +260,12 @@ jobs:
           EOF
           cat view/assets/build-info.json
 
-      # Le Dockerfile resout credit-api/credit-core depuis GitHub Packages (domain-credit-packages,
-      # cf. back/pom.xml) au lieu de les copier en source : ce depot exige une authentification
-      # meme en lecture. Le settings.xml porteur du token n'est jamais copie dans le contexte ni
-      # dans une couche de l'image, uniquement fourni via secret BuildKit (secret-files ci-dessous).
-      - name: Generation du settings.xml Maven (secret Docker build, lecture de credit-api/credit-core)
+      # Le Dockerfile resout les *-api/*-core des silos extraits depuis GitHub Packages (un
+      # <repository> par silo dans back/pom.xml) au lieu de les copier en source : ces depots
+      # exigent une authentification meme en lecture. Le settings.xml porteur des tokens n'est
+      # jamais copie dans le contexte ni dans une couche de l'image, uniquement fourni via secret
+      # BuildKit (secret-files ci-dessous).
+      - name: Generation du settings.xml Maven (secret Docker build, lecture des silos externes)
         run: |
           mkdir -p "$RUNNER_TEMP/maven"
           cat > "$RUNNER_TEMP/maven/settings.xml" <<EOF
@@ -244,6 +275,56 @@ jobs:
                 <id>domain-credit-packages</id>
                 <username>${{ github.actor }}</username>
                 <password>${{ secrets.DOMAIN_CREDIT_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-retirement-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_RETIREMENT_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-tax-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_TAX_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-wealth-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_WEALTH_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-bank-pointage-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_BANK_POINTAGE_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-treasury-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_TREASURY_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-analysis-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_ANALYSIS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-goals-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_GOALS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-settings-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_SETTINGS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-notifications-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_NOTIFICATIONS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-market-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_MARKET_PACKAGES_READ_TOKEN }}</password>
               </server>
             </servers>
           </settings>

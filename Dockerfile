@@ -11,26 +11,6 @@ WORKDIR /workspace
 # (back/pom.xml = parent Maven du reactor, requis pour résoudre les modules back/*/pom.xml)
 COPY back/pom.xml back/pom.xml
 COPY back/myfamilybudget-bom/pom.xml back/myfamilybudget-bom/pom.xml
-COPY back/retirement-api/pom.xml back/retirement-api/pom.xml
-COPY back/retirement-core/pom.xml back/retirement-core/pom.xml
-COPY back/tax-api/pom.xml back/tax-api/pom.xml
-COPY back/tax-core/pom.xml back/tax-core/pom.xml
-COPY back/wealth-api/pom.xml back/wealth-api/pom.xml
-COPY back/wealth-core/pom.xml back/wealth-core/pom.xml
-COPY back/bank-pointage-api/pom.xml back/bank-pointage-api/pom.xml
-COPY back/bank-pointage-core/pom.xml back/bank-pointage-core/pom.xml
-COPY back/treasury-api/pom.xml back/treasury-api/pom.xml
-COPY back/treasury-core/pom.xml back/treasury-core/pom.xml
-COPY back/analysis-api/pom.xml back/analysis-api/pom.xml
-COPY back/analysis-core/pom.xml back/analysis-core/pom.xml
-COPY back/goals-api/pom.xml back/goals-api/pom.xml
-COPY back/goals-core/pom.xml back/goals-core/pom.xml
-COPY back/settings-api/pom.xml back/settings-api/pom.xml
-COPY back/settings-core/pom.xml back/settings-core/pom.xml
-COPY back/notifications-api/pom.xml back/notifications-api/pom.xml
-COPY back/notifications-core/pom.xml back/notifications-core/pom.xml
-COPY back/market-api/pom.xml back/market-api/pom.xml
-COPY back/market-core/pom.xml back/market-core/pom.xml
 COPY back/api/pom.xml back/api/pom.xml
 COPY back/infra-jpa/pom.xml back/infra-jpa/pom.xml
 COPY back/application-api/pom.xml back/application-api/pom.xml
@@ -40,42 +20,23 @@ COPY back/bootstrap/pom.xml back/bootstrap/pom.xml
 
 # Telechargement des dependances en s'appuyant sur le cache persistant .m2
 # -DexcludeGroupIds=com.moe.myfamilybudget ne filtre que le telechargement des jars portant ce
-# groupId (dont credit-api/credit-core, memes groupId bien qu'externes depuis l'extraction du silo
-# Credit) : la lecture du descripteur POM de chaque dependance declaree (necessaire pour construire
-# l'arbre de dependances) a lieu AVANT ce filtre et s'applique donc aussi a credit-api/credit-core.
-# Cette etape necessite donc elle aussi une authentification sur domain-credit-packages.
+# groupId (dont les *-api/*-core de tous les silos extraits, memes groupId bien qu'externes) :
+# la lecture du descripteur POM de chaque dependance declaree (necessaire pour construire
+# l'arbre de dependances) a lieu AVANT ce filtre et s'applique donc aussi a ces silos.
+# Cette etape necessite donc elle aussi une authentification sur chaque domain-<nom>-packages.
 RUN --mount=type=cache,target=/root/.m2 \
     --mount=type=secret,id=maven_settings,target=/root/.m2/settings.xml,required=true \
     mvn -f back/pom.xml -q -pl bootstrap -am dependency:go-offline -DexcludeGroupIds=com.moe.myfamilybudget
 
 # Copie du reste du projet
-# credit-api/credit-core ne sont plus dans ce depot (silo extrait vers
-# github.com/bulldozer27350/myfamilybudget-domain-credit) : ils sont desormais resolus comme
-# dependances Maven depuis GitHub Packages a l'etape de compilation, et non plus copies en source.
+# Les *-api/*-core des 10 silos extraits (credit, retirement, tax, wealth, bank-pointage, treasury,
+# analysis, goals, settings, notifications, market) ne sont plus dans ce depot : ils sont desormais
+# resolus comme dependances Maven depuis GitHub Packages a l'etape de compilation, et non plus
+# copies en source.
 COPY openapi.yaml openapi.yaml
 COPY openapi openapi
 COPY view view
 COPY back/myfamilybudget-bom back/myfamilybudget-bom
-COPY back/retirement-api back/retirement-api
-COPY back/retirement-core back/retirement-core
-COPY back/tax-api back/tax-api
-COPY back/tax-core back/tax-core
-COPY back/wealth-api back/wealth-api
-COPY back/wealth-core back/wealth-core
-COPY back/bank-pointage-api back/bank-pointage-api
-COPY back/bank-pointage-core back/bank-pointage-core
-COPY back/treasury-api back/treasury-api
-COPY back/treasury-core back/treasury-core
-COPY back/analysis-api back/analysis-api
-COPY back/analysis-core back/analysis-core
-COPY back/goals-api back/goals-api
-COPY back/goals-core back/goals-core
-COPY back/settings-api back/settings-api
-COPY back/settings-core back/settings-core
-COPY back/notifications-api back/notifications-api
-COPY back/notifications-core back/notifications-core
-COPY back/market-api back/market-api
-COPY back/market-core back/market-core
 COPY back/api back/api
 COPY back/infra-jpa back/infra-jpa
 COPY back/application-api back/application-api
@@ -84,11 +45,12 @@ COPY back/web back/web
 COPY back/bootstrap back/bootstrap
 
 # Compilation du JAR executable avec réutilisation du cache .m2.
-# Le reactor resout ici credit-api/credit-core (groupId com.moe.myfamilybudget, mais depot
-# GitHub Packages "domain-credit-packages" declare dans back/pom.xml) : ce depot exige une
-# authentification meme en lecture. Le settings.xml porteur du token est monte via un secret
-# BuildKit (jamais copie dans une couche de l'image) ; voir docker/maven-settings.xml.example et
-# le job build-and-push de .github/workflows/ci-cd.yml pour sa fourniture en CI/local.
+# Le reactor resout ici les *-api/*-core des 10 silos extraits (groupId com.moe.myfamilybudget,
+# mais un depot GitHub Packages "domain-<nom>-packages" par silo, declare dans back/pom.xml) :
+# chacun exige une authentification meme en lecture. Le settings.xml porteur des tokens est monte
+# via un secret BuildKit (jamais copie dans une couche de l'image) ; voir
+# docker/maven-settings.xml.example et le job build-and-push de .github/workflows/ci-cd.yml pour
+# sa fourniture en CI/local.
 RUN --mount=type=cache,target=/root/.m2 \
     --mount=type=secret,id=maven_settings,target=/root/.m2/settings.xml,required=true \
     mvn -f back/pom.xml -q -pl bootstrap -am clean package -DskipTests -Dassembly.skipAssembly=true

@@ -42,26 +42,6 @@
 
     <modules>
         <module>myfamilybudget-bom</module>
-        <module>retirement-api</module>
-        <module>retirement-core</module>
-        <module>tax-api</module>
-        <module>tax-core</module>
-        <module>wealth-api</module>
-        <module>wealth-core</module>
-        <module>bank-pointage-api</module>
-        <module>bank-pointage-core</module>
-        <module>treasury-api</module>
-        <module>treasury-core</module>
-        <module>analysis-api</module>
-        <module>analysis-core</module>
-        <module>goals-api</module>
-        <module>goals-core</module>
-        <module>settings-api</module>
-        <module>settings-core</module>
-        <module>notifications-api</module>
-        <module>notifications-core</module>
-        <module>market-api</module>
-        <module>market-core</module>
         <module>api</module>
         <module>infra-jpa</module>
         <module>application-api</module>
@@ -102,6 +82,16 @@
 
         <!-- Silos autonomes externalisés -->
         <credit.version>0.0.1-SNAPSHOT</credit.version>
+        <retirement.version>0.0.1-SNAPSHOT</retirement.version>
+        <tax.version>0.0.1-SNAPSHOT</tax.version>
+        <wealth.version>0.0.1-SNAPSHOT</wealth.version>
+        <bank-pointage.version>0.0.1-SNAPSHOT</bank-pointage.version>
+        <treasury.version>0.0.1-SNAPSHOT</treasury.version>
+        <analysis.version>0.0.1-SNAPSHOT</analysis.version>
+        <goals.version>0.0.1-SNAPSHOT</goals.version>
+        <settings.version>0.0.1-SNAPSHOT</settings.version>
+        <notifications.version>0.0.1-SNAPSHOT</notifications.version>
+        <market.version>0.0.1-SNAPSHOT</market.version>
     </properties>
 
     <repositories>
@@ -109,6 +99,56 @@
             <id>domain-credit-packages</id>
             <name>GitHub Packages myfamilybudget-domain-credit</name>
             <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-credit</url>
+        </repository>
+        <repository>
+            <id>domain-retirement-packages</id>
+            <name>GitHub Packages myfamilybudget-domain-retirement</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-retirement</url>
+        </repository>
+        <repository>
+            <id>domain-tax-packages</id>
+            <name>GitHub Packages myfamilybudget-domain-tax</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-tax</url>
+        </repository>
+        <repository>
+            <id>domain-wealth-packages</id>
+            <name>GitHub Packages myfamilybudget-domain-wealth</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-wealth</url>
+        </repository>
+        <repository>
+            <id>domain-bank-pointage-packages</id>
+            <name>GitHub Packages myfamilybudget-domain-bank-pointage</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-bank-pointage</url>
+        </repository>
+        <repository>
+            <id>domain-treasury-packages</id>
+            <name>GitHub Packages myfamilybudget-domain-treasury</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-treasury</url>
+        </repository>
+        <repository>
+            <id>domain-analysis-packages</id>
+            <name>GitHub Packages myfamilybudget-domain-analysis</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-analysis</url>
+        </repository>
+        <repository>
+            <id>domain-goals-packages</id>
+            <name>GitHub Packages myfamilybudget-domain-goals</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-goals</url>
+        </repository>
+        <repository>
+            <id>domain-settings-packages</id>
+            <name>GitHub Packages myfamilybudget-domain-settings</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-settings</url>
+        </repository>
+        <repository>
+            <id>domain-notifications-packages</id>
+            <name>GitHub Packages myfamilybudget-domain-notifications</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-notifications</url>
+        </repository>
+        <repository>
+            <id>domain-market-packages</id>
+            <name>GitHub Packages myfamilybudget-domain-market</name>
+            <url>https://maven.pkg.github.com/bulldozer27350/myfamilybudget-domain-market</url>
         </repository>
     </repositories>
 
@@ -118,62 +158,62 @@
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>retirement-api</artifactId>
-                <version>${project.version}</version>
+                <version>${retirement.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>retirement-core</artifactId>
-                <version>${project.version}</version>
+                <version>${retirement.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>tax-api</artifactId>
-                <version>${project.version}</version>
+                <version>${tax.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>tax-core</artifactId>
-                <version>${project.version}</version>
+                <version>${tax.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>wealth-api</artifactId>
-                <version>${project.version}</version>
+                <version>${wealth.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>wealth-core</artifactId>
-                <version>${project.version}</version>
+                <version>${wealth.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>bank-pointage-api</artifactId>
-                <version>${project.version}</version>
+                <version>${bank-pointage.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>bank-pointage-core</artifactId>
-                <version>${project.version}</version>
+                <version>${bank-pointage.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>treasury-api</artifactId>
-                <version>${project.version}</version>
+                <version>${treasury.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>treasury-core</artifactId>
-                <version>${project.version}</version>
+                <version>${treasury.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>analysis-api</artifactId>
-                <version>${project.version}</version>
+                <version>${analysis.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>analysis-core</artifactId>
-                <version>${project.version}</version>
+                <version>${analysis.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
@@ -188,42 +228,42 @@
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>goals-api</artifactId>
-                <version>${project.version}</version>
+                <version>${goals.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>goals-core</artifactId>
-                <version>${project.version}</version>
+                <version>${goals.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>settings-api</artifactId>
-                <version>${project.version}</version>
+                <version>${settings.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>settings-core</artifactId>
-                <version>${project.version}</version>
+                <version>${settings.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>notifications-api</artifactId>
-                <version>${project.version}</version>
+                <version>${notifications.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>notifications-core</artifactId>
-                <version>${project.version}</version>
+                <version>${notifications.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>market-api</artifactId>
-                <version>${project.version}</version>
+                <version>${market.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
                 <artifactId>market-core</artifactId>
-                <version>${project.version}</version>
+                <version>${market.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moe.myfamilybudget</groupId>
