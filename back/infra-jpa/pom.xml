@@ -16,16 +16,22 @@
         c'est de la configuration d'exécution, pas du code.
     -->
     <parent>
-        <groupId>com.moe.myfamilybudget</groupId>
-        <artifactId>myfamilybudget-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.4.2</version>
+        <relativePath/>
     </parent>
 
+    <groupId>com.moe.myfamilybudget</groupId>
     <artifactId>infra-jpa</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>infra-jpa</name>
     <description>Configuration JPA/Hibernate commune aux silos MyFamilyBudget (aucun type métier)</description>
+
+    <properties>
+        <java.version>21</java.version>
+    </properties>
 
     <dependencies>
         <!-- JPA/Hibernate, Spring Data JPA, auto-configuration Spring Boot -->
