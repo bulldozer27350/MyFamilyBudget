@@ -39,10 +39,13 @@ COPY back/web/pom.xml back/web/pom.xml
 COPY back/bootstrap/pom.xml back/bootstrap/pom.xml
 
 # Telechargement des dependances en s'appuyant sur le cache persistant .m2
-# -DexcludeGroupIds=com.moe.myfamilybudget ecarte aussi credit-api/credit-core (meme groupId bien
-# qu'externes depuis l'extraction du silo Credit) : cette etape n'a donc pas besoin de credentials
-# GitHub Packages, contrairement a l'etape de compilation ci-dessous.
+# -DexcludeGroupIds=com.moe.myfamilybudget ne filtre que le telechargement des jars portant ce
+# groupId (dont credit-api/credit-core, memes groupId bien qu'externes depuis l'extraction du silo
+# Credit) : la lecture du descripteur POM de chaque dependance declaree (necessaire pour construire
+# l'arbre de dependances) a lieu AVANT ce filtre et s'applique donc aussi a credit-api/credit-core.
+# Cette etape necessite donc elle aussi une authentification sur domain-credit-packages.
 RUN --mount=type=cache,target=/root/.m2 \
+    --mount=type=secret,id=maven_settings,target=/root/.m2/settings.xml,required=true \
     mvn -f back/pom.xml -q -pl bootstrap -am dependency:go-offline -DexcludeGroupIds=com.moe.myfamilybudget
 
 # Copie du reste du projet
