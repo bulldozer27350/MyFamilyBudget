@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        SILO-153 (doc/architecture/21-plan-silotage.md) : cœur du silo Trésorerie (moteur de calcul
+        `DefaultTresorerieCalculationService`, implémentation de l'interface de `treasury-api`).
+
+        SILO-216 : il porte aussi la persistance JPA autonome du silo (package `domain.treasury.core.persistence` :
+        entités `Cashflow*` (revenus, charges, ponctuels, virements, revenus variables, surcharges), repositories
+        Spring Data et mapper), découverte par le scan par défaut de Spring Boot (racine
+        `com.moe.myfamilybudget`). Le moteur reste sans Spring ni JPA.
+
+        Règle : ce module ne dépend que de `treasury-api` et de `infra-jpa` (configuration JPA commune, qui apporte
+        Spring Data JPA et Hibernate). Pas de `module-info` (décision D3) : visibilité tenue par le graphe Maven
+        (règle C de `MavenModuleGraphTest`) et ArchUnit. Seul le composition root (server) le référence ;
+        `application` ne dépend que de `treasury-api`. Le moteur n'est pas un @Component : son bean est déclaré par
+        `DomainEngineConfig`.
+    -->
+    <parent>
+        <groupId>com.moe.myfamilybudget</groupId>
+        <artifactId>domain-treasury</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>treasury-core</artifactId>
+    <packaging>jar</packaging>
+    <name>treasury-core</name>
+    <description>Cœur du silo Trésorerie MyFamilyBudget (moteur de calcul pur, et persistance JPA des revenus, charges, ponctuels, virements et variables)</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>treasury-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moe.myfamilybudget</groupId>
+            <artifactId>infra-jpa</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+
+    <!--
+        Silo Marche (market-core) : changelog Liquibase du silo (R-01, 24-backlog-reste-a-faire.md).
+        Tables actuelles : market_snapshot.
+
+        Lot B (R-01) : changeSet de baseline ci-dessous, genere via `mvn liquibase:generateChangeLog`
+        (cf. db/changelog/README.md, module server) sur une base neuve (reset propre, pas de
+        reverse-engineering de l'existant : voir 23-registre-decisions-actives.md, DA-16). Tables
+        legacy orphelines (anciens noms pre-renommage de silo, cf. LegacySchemaCleanup) exclues.
+    -->
+
+    <changeSet author="R-01-lot-b" id="r01-market-core-1">
+        <createTable tableName="market_snapshot">
+            <column name="id" type="VARCHAR(64)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="market_snapshot_pkey"/>
+            </column>
+            <column name="fetched_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="payload_json" type="TEXT"/>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
