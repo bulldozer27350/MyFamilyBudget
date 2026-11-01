@@ -40,7 +40,6 @@ const GLOBAL_TRIGGERS = [
   'Dockerfile',
   'docker-compose.yml',
   'docker-compose.prod.yml',
-  'silos/',
 ];
 
 function readKnownModules() {
