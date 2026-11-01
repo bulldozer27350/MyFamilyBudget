@@ -3,6 +3,11 @@
 > **But de ce document** : donner à un humain (toi, dans 2 ans) ou à un agent IA de quoi comprendre en quelques minutes comment le code est organisé, pourquoi il est organisé ainsi, où chercher pour corriger un bug ou ajouter une fonctionnalité, et quels pièges connus éviter. Ce n'est pas un manuel utilisateur (celui-ci existe déjà : `view/Manuel utilisateur.md`) — c'est un document de conception.
 >
 > Dernière mise à jour : reflète l'état du dépôt après le correctif du bug de duplication `budget_data` (voir §7.2).
+>
+> ⚠️ **Document non à jour** : la section 4 (« Backend (`back/server/`) ») décrit l'architecture antérieure aux
+> refactorings R-61 (suppression du hub `PersistenceManager`/`BudgetDataModel`) et R-91/R-92/R-93 (éclatement en
+> modules `bootstrap`/`application`/`web`/silos, cf. `back/doc/architecture/`). À prendre avec précaution en
+> l'état ; mise à jour de cette section laissée à un patch ultérieur.
 
 ---
 

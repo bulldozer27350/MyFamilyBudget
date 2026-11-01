@@ -23,7 +23,7 @@ window.API_BASE_URL = window.location.pathname.indexOf("/myfamilybudget") === 0
 // alors bloques sur "Chargement...".
 window.DISABLE_JS_FALLBACK = false;
 
-// Override reserve aux tests (VT-200, cf. back/server/doc/architecture/16-tests.md, O4) :
+// Override reserve aux tests (VT-200, cf. back/doc/architecture/16-tests.md, O4) :
 // un contexte Playwright pose sessionStorage["mfb.test.disableJsFallback"] = "true" AVANT le
 // chargement des scripts (page.addInitScript) pour forcer DISABLE_JS_FALLBACK a true, sans
 // jamais modifier la valeur ci-dessus. Sans cette cle, le comportement reste celui de la

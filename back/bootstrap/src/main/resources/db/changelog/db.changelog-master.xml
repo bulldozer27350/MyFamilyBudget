@@ -6,7 +6,7 @@
             http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
 
     <!--
-        R-01 (back/server/doc/architecture/24-backlog-reste-a-faire.md). Lot A : mise en place de
+        R-01 (back/doc/architecture/24-backlog-reste-a-faire.md). Lot A : mise en place de
         Liquibase, un fichier d'inclusion par silo dans les ressources du module *-core proprietaire
         des tables (fichier maitre dans le composition root `bootstrap`, scripts par silo dans chaque
         *-core). Lot B (DA-16 de 23-registre-decisions-actives.md) : chaque fichier inclus porte

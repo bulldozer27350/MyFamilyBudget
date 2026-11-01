@@ -1,7 +1,7 @@
 # Tests E2E Playwright — socle commun (VT-000)
 
 Ce dossier contient les scénarios Playwright. La stratégie est décrite dans
-`back/server/doc/architecture/16-tests.md` et le backlog dans `17-backlog-tests-patchs.md`.
+`back/doc/architecture/16-tests.md` et le backlog dans `17-backlog-tests-patchs.md`.
 
 ## Lancer les tests
 
