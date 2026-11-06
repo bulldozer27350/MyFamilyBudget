@@ -13,6 +13,17 @@ name: Release
 # Si les deux passent, resolution du SHA de tag Git de chacun des 11
 # satellites via l'API GitHub, puis generation d'un manifeste de
 # tracabilite (release-manifest.yaml) attache a la GitHub Release.
+#
+# Lot 3 : une fois le figeage ci-dessus passe, le job build-portable-zip
+# construit le jar executable (assembly deja en place, back/bootstrap),
+# lui embarque une JRE Temurin 21 Windows x64 telechargee depuis l'API
+# Adoptium (pas de dependance a un acteur tiers non officiel), et ajoute
+# le zip resultant (MyFamilyBudget-X.Y.Z-windows-x64.zip) a la meme
+# GitHub Release. Portee assumee : seule la variante Windows x64 est
+# produite ici (public cible de l'application) ; MyFamilyBudget.sh reste
+# present dans le zip (capable de trouver une JRE systeme sur
+# Linux/macOS) mais aucune JRE embarquee n'est encore fournie pour ces
+# plateformes - a reprendre dans un patch dedie si besoin.
 
 on:
   push:
@@ -148,4 +159,133 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ runner.temp }}/release-manifest.yaml
+
+  build-portable-zip:
+    name: Zip portable Windows x64 (JRE embarquee) + ajout a la Release
+    needs: freeze-and-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout des sources
+        uses: actions/checkout@v4
+
+      - name: Configuration de Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+          cache-dependency-path: back/pom.xml
+
+      # Memes tokens de lecture que ci-cd.yml : le reactor (bootstrap -am) a besoin
+      # de resoudre les *-api/*-core des 11 silos extraits depuis GitHub Packages.
+      - name: Configuration de Maven settings.xml (lecture des *-api/*-core des silos extraits)
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>domain-credit-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_CREDIT_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-retirement-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_RETIREMENT_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-tax-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_TAX_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-wealth-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_WEALTH_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-bank-pointage-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_BANK_POINTAGE_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-treasury-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_TREASURY_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-analysis-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_ANALYSIS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-goals-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_GOALS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-settings-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_SETTINGS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-notifications-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_NOTIFICATIONS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-market-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_MARKET_PACKAGES_READ_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      # Tests deja executes par ci-cd.yml sur le commit de main que ce tag designe
+      # (garde-fou 1 de freeze-and-release l'exige implicitement : la version de
+      # back/pom.xml n'est bumpee/taggee qu'une fois l'integration validee). On ne
+      # rejoue donc pas ici la suite complete (Postgres + Playwright) : seul le
+      # packaging (jar executable + zip portable sans JRE, assembly deja en place
+      # dans back/bootstrap) est necessaire.
+      - name: Construction du jar executable et du zip portable (sans JRE)
+        run: mvn -f back/pom.xml -B -pl bootstrap -am package -DskipTests
+
+      - name: Preparation du dossier de distribution
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/dist"
+          unzip -q "back/bootstrap/target/MyFamilyBudget-${VERSION}.zip" -d "$RUNNER_TEMP/dist"
+
+      # API Adoptium (projet officiel Eclipse Temurin) : URL stable, pas d'authentification
+      # necessaire. image_type=jre (pas jdk) pour limiter la taille embarquee au strict
+      # necessaire a l'execution. Voir MyFamilyBudget.bat / MyFamilyBudget.sh : les deux
+      # lanceurs cherchent deja une JRE embarquee dans /jre en priorite.
+      - name: Telechargement de la JRE Temurin 21 (Windows x64)
+        run: |
+          set -euo pipefail
+          API_URL="https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jre/hotspot/normal/eclipse"
+          curl -sSfL -o "$RUNNER_TEMP/temurin-jre-windows-x64.zip" "$API_URL"
+          mkdir -p "$RUNNER_TEMP/jre-windows-x64"
+          unzip -q "$RUNNER_TEMP/temurin-jre-windows-x64.zip" -d "$RUNNER_TEMP/jre-windows-x64"
+          # L'archive Adoptium contient un seul dossier racine (ex. jdk-21.x.y+z-jre) :
+          # on en reprend le contenu directement sous MyFamilyBudget/jre.
+          JRE_ROOT="$(find "$RUNNER_TEMP/jre-windows-x64" -mindepth 1 -maxdepth 1 -type d)"
+          mkdir -p "$RUNNER_TEMP/dist/MyFamilyBudget/jre"
+          cp -r "$JRE_ROOT"/. "$RUNNER_TEMP/dist/MyFamilyBudget/jre/"
+
+      - name: Reconstruction du zip portable Windows x64 avec JRE embarquee
+        run: |
+          set -euo pipefail
+          ZIP_NAME="MyFamilyBudget-${VERSION}-windows-x64.zip"
+          ( cd "$RUNNER_TEMP/dist" && zip -qr -X "$RUNNER_TEMP/${ZIP_NAME}" MyFamilyBudget )
+          echo "PORTABLE_ZIP_PATH=$RUNNER_TEMP/${ZIP_NAME}" >> "$GITHUB_ENV"
+
+      - name: Ajout du zip portable a la GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.PORTABLE_ZIP_PATH }}
           generate_release_notes: true

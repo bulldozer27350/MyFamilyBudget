@@ -4,8 +4,14 @@ name: CI/CD
 #   1) build-and-test  : compile le backend, lance les tests unitaires Java,
 #                         le smoke test JS et la suite e2e Playwright.
 #   2) build-and-push   : uniquement si build-and-test est vert, construit
-#                         l'image Docker et la publie sur Docker Hub
-#                         (moetourneau/myfamilybudget:latest + :sha-xxxxxxx).
+#                         l'image Docker et la publie sur Docker Hub.
+#                         - push sur main      -> :latest + :sha-xxxxxxx (inchange)
+#                         - tag vX.Y.Z (Lot 3) -> :vX.Y.Z uniquement (:latest et
+#                           :sha-xxxxxxx ne sont pas touches par un tag de release)
+#
+# publish-bom et publish-infra-jpa restent reserves au push sur main (Lot 3) :
+# un tag de release pointe sur un commit deja present sur main, republier le
+# meme artefact a la meme version echouerait (GitHub Packages refuse l'ecrasement).
 #
 # La recuperation de la nouvelle image sur le mini-PC (Watchtower) est geree
 # separement, cote serveur : ce workflow n'a pas besoin d'atteindre le
@@ -14,6 +20,7 @@ name: CI/CD
 on:
   push:
     branches: [main]
+    tags: [ 'v*' ]
   workflow_dispatch: {}
 
 concurrency:
@@ -177,6 +184,8 @@ jobs:
     # d'aucun module du reactor pour etre publie, et le faire dependre de build-and-test
     # cree une dependance circulaire avec les depots silos qui consomment ce BOM pour
     # publier les artefacts dont build-and-test a lui-meme besoin (ex. credit-api/credit-core).
+    # Reserve au push sur main (Lot 3) : voir le commentaire d'en-tete du fichier.
+    if: github.ref_type == 'branch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -205,6 +214,8 @@ jobs:
     # du reactor (uniquement de dependances tierces Spring Data JPA/Hibernate), donc
     # aucune raison de le faire dependre de build-and-test. Necessaire car credit-core
     # (et tout futur silo persistant) en depend directement.
+    # Reserve au push sur main (Lot 3) : voir le commentaire d'en-tete du fichier.
+    if: github.ref_type == 'branch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -249,12 +260,25 @@ jobs:
         id: vars
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
+      # Lot 3 : sur un push main, comportement inchange (sha-xxxxxxx). Sur un tag de
+      # release vX.Y.Z, le build-info embarque exceptionnellement la version figee
+      # plutot que le SHA court, pour que l'image et le zip portable (release.yml)
+      # affichent la meme version applicative.
+      - name: Compute build version
+        id: build_version
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "value=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=sha-${{ steps.vars.outputs.sha_short }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Generate build-info.json
         run: |
           mkdir -p view/assets
           cat > view/assets/build-info.json <<EOF
           {
-            "version": "sha-${{ steps.vars.outputs.sha_short }}",
+            "version": "${{ steps.build_version.outputs.value }}",
             "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
@@ -330,15 +354,34 @@ jobs:
           </settings>
           EOF
 
+      # Lot 3 : sur un tag de release vX.Y.Z, seul le tag d'image moetourneau/myfamilybudget:vX.Y.Z
+      # est pousse (:latest et :sha-xxxxxxx restent le reflet du dernier push sur main et ne sont
+      # pas touches par une release). Sur un push main, comportement inchange.
+      - name: Compute Docker image tags
+        id: docker_tags
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            {
+              echo "value<<EOF"
+              echo "moetourneau/myfamilybudget:${{ github.ref_name }}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "value<<EOF"
+              echo "moetourneau/myfamilybudget:latest"
+              echo "moetourneau/myfamilybudget:sha-${{ steps.vars.outputs.sha_short }}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: |
-            moetourneau/myfamilybudget:latest
-            moetourneau/myfamilybudget:sha-${{ steps.vars.outputs.sha_short }}
+          tags: ${{ steps.docker_tags.outputs.value }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           secret-files: |
