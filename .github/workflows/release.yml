@@ -1,0 +1,151 @@
+name: Release
+
+# Declenche uniquement par la pose d'un tag vX.Y.Z sur l'application.
+# Ne remplace pas ci-cd.yml (qui continue de gerer le build/test/Docker
+# sur push main) : ce workflow fige la tracabilite d'une livraison.
+#
+# Deux garde-fous avant tout figeage :
+#   1) back/pom.xml (version de l'application) n'est pas en SNAPSHOT et
+#      correspond exactement au tag pose.
+#   2) Aucune des 11 properties satellites du BOM (back/pom.xml) ne
+#      reference un SNAPSHOT.
+#
+# Si les deux passent, resolution du SHA de tag Git de chacun des 11
+# satellites via l'API GitHub, puis generation d'un manifeste de
+# tracabilite (release-manifest.yaml) attache a la GitHub Release.
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  freeze-and-release:
+    name: Garde-fou BOM + figeage de tracabilite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout des sources
+        uses: actions/checkout@v4
+
+      - name: Configuration de Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+          cache-dependency-path: back/pom.xml
+
+      - name: Garde-fou 1 - version de l'application stable et coherente avec le tag
+        run: |
+          set -euo pipefail
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          POM_VERSION="$(mvn -f back/pom.xml -N -q -Dexpression=project.version -DforceStdout help:evaluate)"
+          echo "Version du tag            : $TAG_VERSION"
+          echo "Version de back/pom.xml   : $POM_VERSION"
+          if [[ "$POM_VERSION" == *-SNAPSHOT ]]; then
+            echo "::error::back/pom.xml est encore en SNAPSHOT ($POM_VERSION). Impossible de figer une release depuis une version non stable." >&2
+            exit 1
+          fi
+          if [[ "$POM_VERSION" != "$TAG_VERSION" ]]; then
+            echo "::error::Le tag ($TAG_VERSION) ne correspond pas a la version de back/pom.xml ($POM_VERSION)." >&2
+            exit 1
+          fi
+
+      - name: Garde-fou 2 - aucun satellite du BOM ne doit etre en SNAPSHOT
+        run: |
+          set -euo pipefail
+          declare -A SATELLITES=(
+            [credit]=myfamilybudget-domain-credit
+            [retirement]=myfamilybudget-domain-retirement
+            [tax]=myfamilybudget-domain-tax
+            [wealth]=myfamilybudget-domain-wealth
+            [bank-pointage]=myfamilybudget-domain-bank-pointage
+            [treasury]=myfamilybudget-domain-treasury
+            [analysis]=myfamilybudget-domain-analysis
+            [goals]=myfamilybudget-domain-goals
+            [settings]=myfamilybudget-domain-settings
+            [notifications]=myfamilybudget-domain-notifications
+            [market]=myfamilybudget-domain-market
+          )
+          FAIL=0
+          echo "name,version,repo" > "$RUNNER_TEMP/satellites.csv"
+          for name in "${!SATELLITES[@]}"; do
+            repo="${SATELLITES[$name]}"
+            version="$(mvn -f back/pom.xml -N -q -Dexpression=${name}.version -DforceStdout help:evaluate)"
+            echo "${name}.version -> ${version}"
+            if [[ "$version" == *-SNAPSHOT ]]; then
+              echo "::error::La property ${name}.version reference encore un SNAPSHOT (${version}). Impossible de figer la release." >&2
+              FAIL=1
+            fi
+            echo "${name},${version},${repo}" >> "$RUNNER_TEMP/satellites.csv"
+          done
+          if [[ "$FAIL" == "1" ]]; then
+            exit 1
+          fi
+
+      - name: Resolution des SHA de tag de chaque satellite (tracabilite)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "name,version,repo,sha,tag_url" > "$RUNNER_TEMP/satellites-resolved.csv"
+          while IFS=, read -r name version repo; do
+            tag="v${version}"
+            api_url="https://api.github.com/repos/bulldozer27350/${repo}/git/ref/tags/${tag}"
+            response="$(curl -sf -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$api_url")" || {
+              echo "::error::Impossible de joindre l'API GitHub pour le tag ${tag} sur bulldozer27350/${repo} (satellite ${name})." >&2
+              exit 1
+            }
+            sha="$(python3 -c "import sys,json; print(json.loads(sys.argv[1]).get('object',{}).get('sha',''))" "$response")"
+            if [[ -z "$sha" ]]; then
+              echo "::error::Le tag ${tag} est introuvable sur bulldozer27350/${repo} (satellite ${name}). A-t-il bien ete release ?" >&2
+              exit 1
+            fi
+            tag_url="https://github.com/bulldozer27350/${repo}/releases/tag/${tag}"
+            echo "${name},${version},${repo},${sha},${tag_url}" >> "$RUNNER_TEMP/satellites-resolved.csv"
+          done < <(tail -n +2 "$RUNNER_TEMP/satellites.csv")
+          cat "$RUNNER_TEMP/satellites-resolved.csv"
+
+      - name: Generation du manifeste de tracabilite (release-manifest.yaml)
+        run: |
+          set -euo pipefail
+          python3 - "$GITHUB_REF_NAME" "$GITHUB_SHA" "$RUNNER_TEMP/satellites-resolved.csv" "$RUNNER_TEMP/release-manifest.yaml" <<'PY'
+          import csv
+          import datetime
+          import sys
+
+          tag, app_sha, csv_path, out_path = sys.argv[1:5]
+          app_version = tag[1:] if tag.startswith("v") else tag
+
+          with open(csv_path, newline="", encoding="utf-8") as f:
+              rows = list(csv.DictReader(f))
+
+          generated_at = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+          with open(out_path, "w", encoding="utf-8", newline="\n") as f:
+              f.write("# Manifeste de tracabilite - genere automatiquement par .github/workflows/release.yml\n")
+              f.write("# Ne pas modifier a la main : une livraison est immuable une fois publiee.\n")
+              f.write("application:\n")
+              f.write("  repository: bulldozer27350/MyFamilyBudget\n")
+              f.write(f"  version: \"{app_version}\"\n")
+              f.write(f"  tag: \"{tag}\"\n")
+              f.write(f"  sha: \"{app_sha}\"\n")
+              f.write(f"  generated_at: \"{generated_at}\"\n")
+              f.write("satellites:\n")
+              for row in rows:
+                  f.write(f"  - name: \"{row['name']}\"\n")
+                  f.write(f"    repository: \"bulldozer27350/{row['repo']}\"\n")
+                  f.write(f"    version: \"{row['version']}\"\n")
+                  f.write(f"    tag: \"v{row['version']}\"\n")
+                  f.write(f"    sha: \"{row['sha']}\"\n")
+                  f.write(f"    tag_url: \"{row['tag_url']}\"\n")
+          PY
+          cat "$RUNNER_TEMP/release-manifest.yaml"
+
+      - name: Creation de la GitHub Release (manifeste de tracabilite attache)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ runner.temp }}/release-manifest.yaml
+          generate_release_notes: true
