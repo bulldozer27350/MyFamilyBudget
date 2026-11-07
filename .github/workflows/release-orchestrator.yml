@@ -342,7 +342,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add back/pom.xml VERSIONS.md
+          git add $(find back -name pom.xml) VERSIONS.md
           if git diff --cached --quiet; then
             echo "Aucun changement a committer."
             echo "committed=false" >> "$GITHUB_OUTPUT"
