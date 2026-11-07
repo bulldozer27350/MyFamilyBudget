@@ -29,6 +29,15 @@ name: Release Orchestrator
 # par defaut. Si une regle de protection de branche sur main exige des
 # revues de PR, ce push echouera - il faudra alors autoriser ce workflow en
 # bypass de cette regle, ou passer ce job en flux par Pull Request.
+#
+# Pre-requis (secret) : un push effectue avec le GITHUB_TOKEN par defaut ne
+# redeclenche JAMAIS d'autre workflow (comportement GitHub documente,
+# anti-boucle infinie) - le tag vX.Y.Z pousse par ce job ne ferait donc rien
+# demarrer sur release.yml/ci-cd.yml. Ce job utilise donc un Personal Access
+# Token stocke dans le secret ORCHESTRATOR_PAT (fine-grained, scope sur ce
+# seul depot MyFamilyBudget, permission Contents: Read and write) a la place
+# du GITHUB_TOKEN par defaut, pour que le commit sur main et le tag de
+# release redeclenchent bien les workflows concernes.
 
 on:
   workflow_dispatch:
@@ -95,6 +104,11 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          # PAT plutot que le GITHUB_TOKEN par defaut : voir le commentaire
+          # d'en-tete du fichier (un push via GITHUB_TOKEN ne redeclenche
+          # jamais d'autre workflow). Ce token configure est repris
+          # automatiquement par les "git push" des etapes suivantes.
+          token: ${{ secrets.ORCHESTRATOR_PAT }}
 
       - name: Configuration de Java 21 (requis pour versions:set)
         uses: actions/setup-java@v4
