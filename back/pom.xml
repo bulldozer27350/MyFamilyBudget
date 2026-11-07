@@ -35,7 +35,7 @@
 
     <groupId>com.moe.myfamilybudget</groupId>
     <artifactId>myfamilybudget-parent</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.0.1</version>
     <packaging>pom</packaging>
     <name>myfamilybudget-parent</name>
     <description>Parent Maven (reactor) du backend MyFamilyBudget</description>
@@ -81,17 +81,17 @@
         <httpclient4.version>4.5.14</httpclient4.version>
 
         <!-- Silos autonomes externalisés -->
-        <credit.version>0.0.1-SNAPSHOT</credit.version>
-        <retirement.version>0.0.1-SNAPSHOT</retirement.version>
-        <tax.version>0.0.1-SNAPSHOT</tax.version>
-        <wealth.version>0.0.1-SNAPSHOT</wealth.version>
-        <bank-pointage.version>0.0.1-SNAPSHOT</bank-pointage.version>
-        <treasury.version>0.0.1-SNAPSHOT</treasury.version>
-        <analysis.version>0.0.1-SNAPSHOT</analysis.version>
-        <goals.version>0.0.1-SNAPSHOT</goals.version>
-        <settings.version>0.0.1-SNAPSHOT</settings.version>
-        <notifications.version>0.0.1-SNAPSHOT</notifications.version>
-        <market.version>0.0.1-SNAPSHOT</market.version>
+        <credit.version>0.0.1</credit.version>
+        <retirement.version>0.0.1</retirement.version>
+        <tax.version>0.0.1</tax.version>
+        <wealth.version>0.0.1</wealth.version>
+        <bank-pointage.version>0.0.1</bank-pointage.version>
+        <treasury.version>0.0.1</treasury.version>
+        <analysis.version>0.0.1</analysis.version>
+        <goals.version>0.0.1</goals.version>
+        <settings.version>0.0.1</settings.version>
+        <notifications.version>0.0.1</notifications.version>
+        <market.version>0.0.1</market.version>
     </properties>
 
     <repositories>
