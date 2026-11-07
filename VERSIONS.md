@@ -4,7 +4,7 @@ Fichier genere automatiquement par `release-orchestrator.yml` (workflow_dispatch
 
 ## Resolution du BOM
 
-_Genere le 2026-11-07 10:59 UTC par release-orchestrator.yml_
+_Genere le 2026-11-07 11:32 UTC par release-orchestrator.yml_
 
 | Satellite | Version resolue | Changee ce run ? |
 |---|---|---|
