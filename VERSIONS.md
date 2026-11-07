@@ -4,21 +4,21 @@ Fichier genere automatiquement par `release-orchestrator.yml` (workflow_dispatch
 
 ## Resolution du BOM
 
-_Genere le 2026-11-07 09:05 UTC par release-orchestrator.yml_
+_Genere le 2026-11-07 10:59 UTC par release-orchestrator.yml_
 
 | Satellite | Version resolue | Changee ce run ? |
 |---|---|---|
-| credit | `0.0.1` | oui (etait `0.0.1-SNAPSHOT`) |
-| market | `0.0.1` | oui (etait `0.0.1-SNAPSHOT`) |
-| notifications | `0.0.1` | oui (etait `0.0.1-SNAPSHOT`) |
-| treasury | `0.0.1` | oui (etait `0.0.1-SNAPSHOT`) |
-| bank-pointage | `0.0.1` | oui (etait `0.0.1-SNAPSHOT`) |
-| wealth | `0.0.1` | oui (etait `0.0.1-SNAPSHOT`) |
-| tax | `0.0.1` | oui (etait `0.0.1-SNAPSHOT`) |
-| retirement | `0.0.1` | oui (etait `0.0.1-SNAPSHOT`) |
-| analysis | `0.0.1` | oui (etait `0.0.1-SNAPSHOT`) |
-| goals | `0.0.1` | oui (etait `0.0.1-SNAPSHOT`) |
-| settings | `0.0.1` | oui (etait `0.0.1-SNAPSHOT`) |
+| credit | `0.0.1` | non |
+| market | `0.0.1` | non |
+| notifications | `0.0.1` | non |
+| treasury | `0.0.1` | non |
+| bank-pointage | `0.0.1` | non |
+| wealth | `0.0.1` | non |
+| tax | `0.0.1` | non |
+| retirement | `0.0.1` | non |
+| analysis | `0.0.1` | non |
+| goals | `0.0.1` | non |
+| settings | `0.0.1` | non |
 
 | Application | Version resolue | Changee ce run ? |
 |---|---|---|
