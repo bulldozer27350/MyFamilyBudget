@@ -1,0 +1,354 @@
+name: Release Orchestrator
+
+# Automatise les etapes 2, 3 et 4 du README (mise a jour du BOM dans
+# back/pom.xml, bump de la version de l'application elle-meme, tag de
+# release) en un seul declenchement manuel explicite, avec un resume clair
+# de ce qui a ete resolu.
+#
+# Perimetre volontairement limite a ce depot : les 11 satellites continuent
+# a etre release individuellement en suivant leur propre README (version,
+# release-note.md redige a la main, tag) - ce job ne pousse rien sur les 11
+# autres depots. Aucun secret cross-depot necessaire : le GITHUB_TOKEN par
+# defaut de ce workflow suffit, tout reste sur GitHub.
+#
+# Un champ satellite laisse vide = la version deja referencee dans
+# back/pom.xml est conservee telle quelle (pas de changement). Lancer le
+# job avec les 12 champs vides est donc un mode "etat des lieux" : rien
+# n'est modifie ni commite, seul le resume de fin de job (onglet Summary du
+# run, visible directement sans telecharger quoi que ce soit) affiche les
+# versions actuellement resolues - utile pour verifier l'etat du BOM avant
+# de decider quoi remplir, y compris depuis un telephone.
+#
+# Quand au moins un champ differe de la valeur actuelle : back/pom.xml et
+# VERSIONS.md (vue lisible du meme etat, a la racine du depot) sont commites
+# et pousses sur main en un seul commit. Si app_version est renseigne, ce
+# meme commit est ensuite tagge vX.Y.Z, ce qui declenche release.yml et le
+# tag d'image Docker de ci-cd.yml.
+#
+# Pre-requis : ce workflow pousse directement sur main avec le GITHUB_TOKEN
+# par defaut. Si une regle de protection de branche sur main exige des
+# revues de PR, ce push echouera - il faudra alors autoriser ce workflow en
+# bypass de cette regle, ou passer ce job en flux par Pull Request.
+
+on:
+  workflow_dispatch:
+    inputs:
+      credit_version:
+        description: "myfamilybudget-domain-credit (vide = inchange)"
+        type: string
+        default: ''
+      market_version:
+        description: "myfamilybudget-domain-market (vide = inchange)"
+        type: string
+        default: ''
+      notifications_version:
+        description: "myfamilybudget-domain-notifications (vide = inchange)"
+        type: string
+        default: ''
+      treasury_version:
+        description: "myfamilybudget-domain-treasury (vide = inchange)"
+        type: string
+        default: ''
+      bank_pointage_version:
+        description: "myfamilybudget-domain-bank-pointage (vide = inchange)"
+        type: string
+        default: ''
+      wealth_version:
+        description: "myfamilybudget-domain-wealth (vide = inchange)"
+        type: string
+        default: ''
+      tax_version:
+        description: "myfamilybudget-domain-tax (vide = inchange)"
+        type: string
+        default: ''
+      retirement_version:
+        description: "myfamilybudget-domain-retirement (vide = inchange)"
+        type: string
+        default: ''
+      analysis_version:
+        description: "myfamilybudget-domain-analysis (vide = inchange)"
+        type: string
+        default: ''
+      goals_version:
+        description: "myfamilybudget-domain-goals (vide = inchange)"
+        type: string
+        default: ''
+      settings_version:
+        description: "myfamilybudget-domain-settings (vide = inchange)"
+        type: string
+        default: ''
+      app_version:
+        description: "MyFamilyBudget lui-meme (vide = pas de bump ni de tag pose)"
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  orchestrate:
+    name: Resolution du BOM + bump + tag de release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configuration de Java 21 (requis pour versions:set)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+          cache-dependency-path: back/pom.xml
+
+      # Memes tokens de lecture que ci-cd.yml / release.yml : versions:set
+      # lit l'integralite du reactor (modules + leur parent), et bien que la
+      # resolution des artefacts des satellites ne soit normalement pas
+      # necessaire pour cette seule operation, on configure les credentials
+      # par precaution (coherence avec les autres workflows).
+      - name: Configuration de Maven settings.xml
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>domain-credit-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_CREDIT_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-retirement-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_RETIREMENT_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-tax-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_TAX_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-wealth-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_WEALTH_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-bank-pointage-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_BANK_POINTAGE_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-treasury-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_TREASURY_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-analysis-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_ANALYSIS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-goals-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_GOALS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-settings-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_SETTINGS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-notifications-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_NOTIFICATIONS_PACKAGES_READ_TOKEN }}</password>
+              </server>
+              <server>
+                <id>domain-market-packages</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.DOMAIN_MARKET_PACKAGES_READ_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      - name: Resolution des versions satellites et mise a jour du BOM
+        id: bom
+        env:
+          IN_credit: ${{ inputs.credit_version }}
+          IN_market: ${{ inputs.market_version }}
+          IN_notifications: ${{ inputs.notifications_version }}
+          IN_treasury: ${{ inputs.treasury_version }}
+          IN_bank_pointage: ${{ inputs.bank_pointage_version }}
+          IN_wealth: ${{ inputs.wealth_version }}
+          IN_tax: ${{ inputs.tax_version }}
+          IN_retirement: ${{ inputs.retirement_version }}
+          IN_analysis: ${{ inputs.analysis_version }}
+          IN_goals: ${{ inputs.goals_version }}
+          IN_settings: ${{ inputs.settings_version }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYEOF'
+          import json
+          import os
+          import re
+
+          POM = "back/pom.xml"
+          with open(POM, encoding="utf-8") as f:
+              content = f.read()
+
+          # property -> variable d'environnement portant la valeur saisie (vide si non renseignee)
+          satellites = [
+              ("credit", "IN_credit"),
+              ("market", "IN_market"),
+              ("notifications", "IN_notifications"),
+              ("treasury", "IN_treasury"),
+              ("bank-pointage", "IN_bank_pointage"),
+              ("wealth", "IN_wealth"),
+              ("tax", "IN_tax"),
+              ("retirement", "IN_retirement"),
+              ("analysis", "IN_analysis"),
+              ("goals", "IN_goals"),
+              ("settings", "IN_settings"),
+          ]
+
+          rows = []
+          bom_changed = False
+
+          for name, env_key in satellites:
+              prop = f"{name}.version"
+              pattern = re.compile(rf"(<{re.escape(prop)}>)([^<]*)(</{re.escape(prop)}>)")
+              match = pattern.search(content)
+              if not match:
+                  print(f"::error::Property <{prop}> introuvable dans {POM}")
+                  raise SystemExit(1)
+              current = match.group(2).strip()
+
+              requested = os.environ.get(env_key, "").strip()
+              if requested and requested != current:
+                  content = pattern.sub(
+                      lambda m, r=requested: f"{m.group(1)}{r}{m.group(3)}",
+                      content,
+                      count=1,
+                  )
+                  rows.append({"name": name, "before": current, "after": requested, "changed": True})
+                  bom_changed = True
+              else:
+                  rows.append({"name": name, "before": current, "after": current, "changed": False})
+
+          with open(POM, "w", encoding="utf-8") as f:
+              f.write(content)
+
+          with open("/tmp/bom-rows.json", "w", encoding="utf-8") as f:
+              json.dump(rows, f)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"bom_changed={'true' if bom_changed else 'false'}\n")
+          PYEOF
+
+      - name: Bump de la version de l'application (versions:set)
+        id: app_bump
+        if: ${{ inputs.app_version != '' }}
+        run: |
+          set -euo pipefail
+          mvn -f back/pom.xml -B versions:set \
+            -DnewVersion="${{ inputs.app_version }}" \
+            -DprocessAllModules=true \
+            -DgenerateBackupPoms=false
+          echo "app_changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Lecture de la version applicative finale
+        id: app_version_final
+        run: |
+          set -euo pipefail
+          VERSION="$(grep -A1 '<artifactId>myfamilybudget-parent</artifactId>' back/pom.xml \
+            | sed -n 's#.*<version>\(.*\)</version>.*#\1#p' | head -1)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Generation du resume (Summary du run + VERSIONS.md)
+        env:
+          APP_VERSION: ${{ steps.app_version_final.outputs.version }}
+          APP_CHANGED: ${{ steps.app_bump.outputs.app_changed == 'true' }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYEOF'
+          import json
+          import os
+          from datetime import datetime, timezone
+
+          with open("/tmp/bom-rows.json", encoding="utf-8") as f:
+              rows = json.load(f)
+
+          app_version = os.environ["APP_VERSION"]
+          app_changed = os.environ["APP_CHANGED"] == "true"
+          now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+          lines = []
+          lines.append("## Resolution du BOM")
+          lines.append("")
+          lines.append(f"_Genere le {now} par release-orchestrator.yml_")
+          lines.append("")
+          lines.append("| Satellite | Version resolue | Changee ce run ? |")
+          lines.append("|---|---|---|")
+          for r in rows:
+              marker = f"oui (etait `{r['before']}`)" if r["changed"] else "non"
+              lines.append(f"| {r['name']} | `{r['after']}` | {marker} |")
+          lines.append("")
+          lines.append("| Application | Version resolue | Changee ce run ? |")
+          lines.append("|---|---|---|")
+          app_marker = "oui" if app_changed else "non"
+          lines.append(f"| MyFamilyBudget | `{app_version}` | {app_marker} |")
+          lines.append("")
+
+          body = "\n".join(lines)
+
+          # Summary du run (visible directement sur la page du run, sans rien telecharger)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write(body)
+              f.write("\n")
+
+          # VERSIONS.md : meme contenu, mais commite a la racine du depot pour
+          # rester consultable sans passer par l'historique des runs Actions.
+          versions_md = (
+              "# Versions courantes des satellites\n\n"
+              "Fichier genere automatiquement par `release-orchestrator.yml` "
+              "(workflow_dispatch) : ne pas editer a la main, les changements "
+              "seraient ecrases au prochain run.\n\n"
+              + body
+          )
+          with open("VERSIONS.md", "w", encoding="utf-8") as f:
+              f.write(versions_md)
+          PYEOF
+
+      - name: Commit et push sur main (si changement)
+        id: commit
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add back/pom.xml VERSIONS.md
+          if git diff --cached --quiet; then
+            echo "Aucun changement a committer."
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "Orchestration release : mise a jour du BOM / version applicative"
+            git push origin main
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pose et push du tag de release applicative
+        if: ${{ inputs.app_version != '' }}
+        env:
+          APP_VERSION: ${{ inputs.app_version }}
+        run: |
+          set -euo pipefail
+          TAG="v${APP_VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null 2>&1; then
+            echo "::warning::Le tag ${TAG} existe deja sur origin, il n'est pas repousse (tags v* proteges)."
+          else
+            git tag "${TAG}"
+            git push origin "${TAG}"
+            echo "Tag ${TAG} pousse : release.yml et ci-cd.yml vont se declencher."
+          fi
