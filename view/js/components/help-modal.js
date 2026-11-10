@@ -95,6 +95,9 @@
     };
     const filteredSections = searchQuery.trim() === "" ? currentTabContent.sections || [] : (currentTabContent.sections || []).filter(s => (s.title || "").toLowerCase().includes(searchQuery.toLowerCase()) || (s.content || "").toLowerCase().includes(searchQuery.toLowerCase()));
     const TABS = [{
+      key: "demarrage",
+      label: "🚀 Démarrer"
+    }, {
       key: "overview",
       label: "Vue d'ensemble"
     }, {

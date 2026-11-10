@@ -5,6 +5,75 @@
   'use strict';
 
   const HELP_CONTENT = {
+    demarrage: {
+      title: "🚀 Premiers Pas — Bien démarrer avec MyFamilyBudget",
+      summary: "Mini-formation en 4 étapes pour prendre en main l'outil rapidement : importer vos relevés, catégoriser, retrouver une transaction, puis pointer votre budget — sans entrer dans le détail des moteurs de calcul.",
+      sections: [{
+        id: "parcours",
+        title: "Le parcours en 4 étapes",
+        content: `
+            Si c'est votre première visite, suivez cet ordre — chaque étape s'appuie sur la précédente :
+            1. **Importer** vos relevés bancaires (onglet *Import*).
+            2. **Catégoriser** vos transactions (onglet *Import*, dictionnaire des catégories).
+            3. **Rechercher & vérifier** vos transactions dans les tableaux (onglets *Import*, *Opérations en cours*, *Vue d'ensemble*).
+            4. **Pointer** votre budget prévisionnel face au réel (onglet *Pointage*).
+
+            💡 Chaque étape est détaillée ci-dessous avec le « pourquoi » et le « comment », sans entrer dans les formules de calcul — pour ça, consultez les onglets d'aide dédiés (Trésorerie, Vue d'ensemble...) ou le Manuel utilisateur complet.
+          `
+      }, {
+        id: "etape1_import",
+        title: "Étape 1 — Importer vos relevés bancaires (CSV / Excel)",
+        badgeId: "demarrage_import",
+        content: `
+            Rendez-vous dans l'onglet **Import**. C'est le point d'entrée de toutes vos données réelles.
+            - Téléchargez d'abord l'export de vos transactions depuis le site ou l'application de votre banque, au format **CSV** ou **Excel (XLS/XLSX)** — selon ce que propose votre banque.
+            - Chargez ce fichier dans l'outil : il vous demandera une seule fois comment reconnaître les colonnes de votre banque (date, libellé, montant...) — ce réglage est mémorisé pour vos prochains imports.
+            - Vérifiez l'aperçu des premières lignes avant de valider : c'est le moment de corriger un éventuel décalage de colonne.
+            - Pas de panique si vous réimportez une période déjà chargée : l'outil ignore automatiquement les doublons.
+
+            🎯 **Objectif de cette étape** : avoir vos mouvements bancaires réels dans l'outil, pour pouvoir ensuite les comparer à votre budget prévisionnel.
+          `
+      }, {
+        id: "etape2_categories",
+        title: "Étape 2 — Utiliser les catégories",
+        badgeId: "demarrage_categories",
+        content: `
+            Une fois vos transactions importées, elles arrivent « non catégorisées ». Les catégories sont le fil qui relie tout le reste de l'outil :
+            - **Pourquoi catégoriser ?** C'est ce qui permet au *Pointage* de proposer des rapprochements automatiques, et à l'*Analyse* de calculer vos moyennes par poste de dépense.
+            - **Comment ça va vite** : classez une transaction une fois avec un mot-clé (ex. « ASF » pour un péage) ; toutes les transactions contenant ce mot-clé, passées et futures, seront classées automatiquement.
+            - **Le flag « Poste réductible »** : à cocher sur vos catégories non indispensables (loisirs, sorties...). Il sert uniquement à vous aider à repérer votre marge de manœuvre dans l'onglet *Analyse* — il ne change rien d'autre.
+
+            🎯 **Objectif de cette étape** : qu'un maximum de vos transactions importées aient une catégorie, pour que les étapes suivantes (recherche, pointage, analyse) soient fiables.
+          `
+      }, {
+        id: "etape3_recherche",
+        title: "Étape 3 — Rechercher & trier vos transactions",
+        badgeId: "demarrage_recherche",
+        content: `
+            Tous les grands tableaux de l'outil (transactions importées, journal des mouvements, opérations en cours...) partagent le même réflexe :
+            - **Trier** : cliquez sur l'en-tête d'une colonne pour trier dessus (date, montant, libellé...).
+            - **Filtrer** : tapez un mot-clé directement sous l'en-tête d'une colonne — le tableau se réduit instantanément aux lignes qui correspondent. Les filtres sont cumulables sur plusieurs colonnes à la fois.
+            - Pour la colonne *Catégorie*, un menu déroulant remplace souvent la saisie libre.
+            - Le compteur au-dessus du tableau indique combien de lignes correspondent à vos filtres, sur le total ; un bouton permet de tout réinitialiser en un clic.
+
+            🎯 **Objectif de cette étape** : savoir retrouver en quelques secondes une transaction précise (ex. « tous les retraits au distributeur en mars »), sans faire défiler des centaines de lignes.
+          `
+      }, {
+        id: "etape4_pointage",
+        title: "Étape 4 — Le pointage (comparer prévu et réel)",
+        badgeId: "demarrage_pointage",
+        content: `
+            Le **Pointage** est l'étape qui boucle la boucle : il associe chaque transaction bancaire réelle (importée à l'étape 1) à une ligne de votre budget prévisionnel (revenu, charge, versement d'épargne).
+            - Commencez par le bouton **⚡ Rapprochement automatique** : il associe en un clic tout ce qui partage la même catégorie entre budget et banque.
+            - Pour le reste, utilisez **🔗 Pointer** ligne par ligne : l'outil vous suggère en priorité les correspondances de montant exact.
+            - Un code couleur (🔵 conforme, 🟢 économie, 🔴 dépassement, 🟡 en attente) vous dit en un coup d'œil où se trouvent les écarts à regarder.
+
+            🎯 **Objectif de cette étape** : savoir, mois après mois, si votre réalité colle à vos prévisions — c'est la base de tous les indicateurs de l'onglet *Analyse*.
+
+            👉 Pour le détail complet du pointage (statuts, tolérance, gestion des catégories différentes), consultez l'onglet **Pointage** de cette aide.
+          `
+      }]
+    },
     overview: {
       title: "Onglet « Vue d'ensemble »",
       summary: "Tableau de bord général agrégeant votre trésorerie, vos placements, vos crédits et vos jauges d'indépendance financière.",
