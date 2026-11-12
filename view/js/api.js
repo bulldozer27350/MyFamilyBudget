@@ -1792,10 +1792,15 @@
 
     /**
      * Exporte l'intégralité du modèle de données (Sauvegarde).
+     *
+     * Interroge le back-end (GET /budget), seule source qui agrège aussi les domaines
+     * gérés hors de BudgetStore (Banque/Pointage, Opérations en cours...). Replie sur
+     * l'état local (BudgetStore) uniquement si le serveur est injoignable (mode hors
+     * ligne) : l'export est alors potentiellement incomplet pour ces domaines.
      * @returns {Promise<Object>}
      */
     async getBudgetFull() {
-      return Promise.resolve(app().BudgetStore.getData());
+      return fetchJsonOrFallback('/budget', () => app().BudgetStore.getData());
     },
 
     /**

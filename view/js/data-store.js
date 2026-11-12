@@ -152,8 +152,15 @@
         this.updatePath(path, list => (list || []).filter(r => r.id !== id));
       };
     },
-    exportJSON() {
-      const data = this.getData();
+    async exportJSON() {
+      const api = exports.BudgetApi || (typeof window !== "undefined" && window.BudgetApp && window.BudgetApp.BudgetApi);
+      let data;
+      try {
+        data = api && typeof api.getBudgetFull === "function" ? await api.getBudgetFull() : this.getData();
+      } catch (err) {
+        console.error("Erreur de récupération des données serveur pour l'export, repli sur les données locales :", err);
+        data = this.getData();
+      }
       const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: "application/json"
       });
