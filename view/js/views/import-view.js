@@ -742,8 +742,11 @@
       setRawRows(dataRows);
       const nCols = dataRows[0] ? dataRows[0].length : 0;
       const roles = [];
+      const extraLabelCols = mapping.extraLabelCols || [];
+      const creditCols = mapping.creditCols || [];
+      const debitCols = mapping.debitCols || [];
       for (let i = 0; i < nCols; i++) {
-        if (i === mapping.dateCol) roles.push("date");else if (i === mapping.labelCol) roles.push("label");else if (i === mapping.typeCol) roles.push("type");else if (i === mapping.amountCol) roles.push("amount");else roles.push("ignore");
+        if (i === mapping.dateCol) roles.push("date");else if (i === mapping.labelCol || extraLabelCols.includes(i)) roles.push("label");else if (i === mapping.typeCol) roles.push("type");else if (i === mapping.amountCol) roles.push("amount");else if (creditCols.includes(i)) roles.push("credit");else if (debitCols.includes(i)) roles.push("debit");else roles.push("ignore");
       }
       if (!roles.includes("date") && !roles.includes("label") && !roles.includes("amount")) {
         if (nCols > 0) roles[0] = "date";
@@ -778,10 +781,14 @@
         reader.readAsText(file, "UTF-8");
       }
     };
+    const EXCLUSIVE_ROLES = new Set(["date", "type", "amount"]);
     const setRole = (colIdx, role) => {
       setColRoles(prev => prev.map((r, i) => {
         if (i === colIdx) return role;
-        return role !== "ignore" && r === role ? "ignore" : r;
+        // Date/Type/Montant restent limités à une seule colonne ; Libellé, Crédit et Débit
+        // peuvent être répartis sur plusieurs colonnes (ex. banques avec deux colonnes de
+        // libellé, ou des colonnes Crédit/Débit séparées) et ne sont donc pas réinitialisés ici.
+        return role !== "ignore" && EXCLUSIVE_ROLES.has(role) && r === role ? "ignore" : r;
       }));
     };
     const doImport = async () => {
@@ -852,7 +859,9 @@
       date: "Date",
       label: "Libellé",
       type: "Type",
-      amount: "Montant",
+      amount: "Montant (Crédit/Débit mutualisé)",
+      credit: "Crédit seul",
+      debit: "Débit seul",
       ignore: "Ignorer"
     };
     const recalculateRules = async () => {
