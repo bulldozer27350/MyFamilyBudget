@@ -69,10 +69,12 @@
     defaultSort = {
       key: null,
       dir: "desc"
-    }
+    },
+    pageSize = 150
   }) {
     const [sortConfig, setSortConfig] = useState(defaultSort);
     const [filters, setFilters] = useState({});
+    const [visibleCount, setVisibleCount] = useState(pageSize);
     const activeFilterCount = Object.values(filters).filter(v => v && String(v).trim() !== "").length;
     const filteredSorted = useMemo(() => {
       let result = rows || [];
@@ -108,6 +110,21 @@
       key,
       dir: "asc"
     });
+
+    // Un changement de filtre ou de tri repart du haut de la liste : au-delà de
+    // quelques centaines de transactions, construire une <tr> par ligne pour la
+    // totalité du résultat filtré ralentit le rendu (et le ralentira d'autant plus que
+    // le nombre total de transactions augmentera au fil des années) pour un bénéfice nul,
+    // l'utilisateur ne regardant de toute façon qu'une poignée de lignes à la fois. On ne
+    // réinitialise volontairement pas sur un simple changement de `rows` (ex. : une
+    // catégorisation qui met à jour une ligne) afin de ne pas faire "sauter" l'affichage
+    // pendant une série de catégorisations.
+    useEffect(() => {
+      setVisibleCount(pageSize);
+    }, [filters, sortConfig, pageSize]);
+    const visibleRows = filteredSorted.slice(0, visibleCount);
+    const hasMore = filteredSorted.length > visibleRows.length;
+
     return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
@@ -122,7 +139,7 @@
       style: {
         color: C?.ink || "#232A2E"
       }
-    }, filteredSorted.length), activeFilterCount > 0 ? ` sur ${(rows || []).length}` : ""), activeFilterCount > 0 && /*#__PURE__*/React.createElement("button", {
+    }, hasMore ? `${visibleRows.length} / ${filteredSorted.length}` : filteredSorted.length), activeFilterCount > 0 ? ` sur ${(rows || []).length}` : ""), activeFilterCount > 0 && /*#__PURE__*/React.createElement("button", {
       onClick: () => setFilters({}),
       style: btnSmStyle
     }, "✕ Réinitialiser les filtres")), (rows || []).length === 0 ? /*#__PURE__*/React.createElement("div", {
@@ -218,7 +235,14 @@
         textAlign: "center",
         color: C?.inkSoft || "#6B7278"
       }
-    }, "Aucune ligne ne correspond aux filtres.")) : filteredSorted.map(r => renderRow(r))))));
+    }, "Aucune ligne ne correspond aux filtres.")) : visibleRows.map(r => renderRow(r))))), hasMore && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => setVisibleCount(c => c + pageSize),
+      style: {
+        ...btnSmStyle,
+        marginTop: 10
+      }
+    }, `Afficher ${Math.min(pageSize, filteredSorted.length - visibleRows.length)} ligne(s) de plus (${filteredSorted.length - visibleRows.length} restante(s))`));
   }
 
   /**
@@ -694,22 +718,35 @@
     
     // Charger les données d'import bancaire via l'API asynchrone
     useEffect(() => {
+      let cancelled = false;
       const loadBankImportData = async () => {
         try {
           const result = await BudgetApi.getBankImport();
-          setBankImportData(result);
+          if (!cancelled) setBankImportData(result);
         } catch (error) {
           console.error("Erreur lors du chargement des données d'import:", error);
         }
       };
       loadBankImportData();
-      
-      // S'abonner aux changements
+
+      // S'abonner aux changements. Chaque catégorisation ligne par ligne déclenche en
+      // interne une notification (miroir local + synchro multi-onglets), déjà reflétée
+      // immédiatement dans l'affichage par une mise à jour optimiste (cf.
+      // setTransactionCategory) : il n'y a donc pas besoin de recharger l'intégralité des
+      // transactions importées (pouvant dépasser le millier) à chaque clic. Les rechargements
+      // sont regroupés avec un court différé afin qu'une série de catégorisations rapprochées
+      // ne provoque qu'un seul rechargement complet en arrière-plan plutôt qu'un par ligne.
+      let reloadTimer = null;
       const unsubscribe = BudgetApi.onBankImportChanged(() => {
-        loadBankImportData();
+        if (reloadTimer) clearTimeout(reloadTimer);
+        reloadTimer = setTimeout(loadBankImportData, 500);
       });
-      
-      return unsubscribe;
+
+      return () => {
+        cancelled = true;
+        if (reloadTimer) clearTimeout(reloadTimer);
+        unsubscribe();
+      };
     }, []);
 
     const mapping = bankImportData?.columnMapping || {};
@@ -874,12 +911,33 @@
       }
     };
     const setTransactionCategory = async (txId, categoryId, ruleKeyword) => {
+      // Mise à jour optimiste de la seule ligne concernée : on évite de recharger
+      // l'intégralité des transactions importées (et de reconstruire tout le tableau) pour
+      // un simple changement de catégorie sur une transaction.
+      setBankImportData(prev => prev ? {
+        ...prev,
+        transactions: (prev.transactions || []).map(t => t.id === txId ? { ...t, categoryId } : t)
+      } : prev);
       try {
         await BudgetApi.setBankImportTransactionCategory(txId, categoryId, ruleKeyword);
-        const updatedData = await BudgetApi.getBankImport();
-        setBankImportData(updatedData);
+        if (ruleKeyword) {
+          // Une nouvelle règle de catégorisation automatique a potentiellement été créée
+          // ou modifiée côté serveur : son affichage dans la liste des règles, ainsi que
+          // son application rétroactive à d'autres transactions, nécessitent de recharger
+          // les données. Ce cas reste rare au regard du nombre de clics de catégorisation.
+          const updatedData = await BudgetApi.getBankImport();
+          setBankImportData(updatedData);
+        }
       } catch (error) {
         console.error("Erreur lors de la mise à jour de la catégorie:", error);
+        // En cas d'échec de la mise à jour serveur, on resynchronise l'affichage pour ne
+        // pas laisser la mise à jour optimiste divergente de l'état réel.
+        try {
+          const updatedData = await BudgetApi.getBankImport();
+          setBankImportData(updatedData);
+        } catch (reloadError) {
+          console.error("Erreur lors de la resynchronisation après échec:", reloadError);
+        }
       }
     };
     const uncategorizedCount = transactions.filter(t => !t.categoryId).length;
