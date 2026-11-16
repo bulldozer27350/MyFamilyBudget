@@ -39,7 +39,9 @@ import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
 
 /**
  * SILO-213 (lot B2) -- Ecritures concurrentes sur le silo Banque/Pointage, de bout en bout (HTTP, Spring, H2).
- * L'import bancaire s'ecrit directement dans {@code bank_import_document} ({@code JpaBankStore}) et chaque
+ * L'import bancaire s'ecrit directement dans ses tables dediees ({@code JpaBankStore}, etape 3/5 de la
+ * migration relationnelle depuis le document JSON unique {@code bank_import_document} -- voir
+ * areas/bank-pointage-relational-migration.md cote projet) et chaque
  * ecriture lit l'import <em>sous le verrou</em> du silo ({@code BankImportCommandService#modifyBankImport},
  * decision du plan 21) : chaque test relit la base sans passer par un cache.
  *

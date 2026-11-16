@@ -37,7 +37,6 @@ import com.moe.myfamilybudget.domain.treasury.model.TresorerieSettingsModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableIncomeModel;
 import com.moe.myfamilybudget.domain.treasury.model.VariableOverrideModel;
 
-import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankImportDocumentRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowChargeRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowIncomeRepository;
 import com.moe.myfamilybudget.domain.treasury.core.persistence.CashflowOneOffRepository;
@@ -97,7 +96,8 @@ class PersistenceAdaptersJpaRoundTripTest {
     void startFromBlankDatabase() {
         // SILO-212 (lot B1) : les objectifs ne sont plus portes par le modele global, resetData() ne les vide plus.
         goalStore().reset();
-        // SILO-213 (lot B) : idem pour l'import bancaire (table autonome, ecrite par JpaBankStore).
+        // Etape 3/5 de la migration relationnelle (idem pour l'import bancaire, ecrit par JpaBankStore
+        // dans ses tables dediees ; voir areas/bank-pointage-relational-migration.md cote projet).
         bankStore().reset();
         treasuryStore().reset();
         // R-42 : idem pour la configuration fiscale (table fiscal_*, ecrite par JpaTaxStore).
@@ -563,15 +563,14 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     // =========================================================================
-    // DB-1031 -- Import bancaire lu depuis la table autonome
+    // Etape 3/5 -- Import bancaire lu depuis le schema relationnel
     // =========================================================================
 
     @Test
-    @DisplayName("DB-1031 -- import -> l'import bancaire est ecrit dans la table autonome et relu par JPA")
+    @DisplayName("import -> l'import bancaire est ecrit dans ses tables dediees et relu par JPA")
     void importedBankImportIsReadFromDocumentTable() {
         bankStore().replace(BANK_IMPORT);
 
-        assertThat(context.getBean(BankImportDocumentRepository.class).count()).isEqualTo(1);
         BankImportModel bank = bankStore().getBankImport();
         assertSameContent(bank.categories(), BANK_IMPORT.categories());
         assertSameContent(bank.transactions(), BANK_IMPORT.transactions());
@@ -579,7 +578,7 @@ class PersistenceAdaptersJpaRoundTripTest {
     }
 
     @Test
-    @DisplayName("DB-1031 -- updateBankImport remplace le document (une seule ligne) et est visible via la lecture JPA")
+    @DisplayName("updateBankImport remplace integralement l'import precedent et est visible via la lecture JPA")
     void bankWritesAreVisibleThroughJpaReader() {
         bankStore().replace(BANK_IMPORT);
         JpaBankStore adapter = bankStore();
@@ -594,7 +593,6 @@ class PersistenceAdaptersJpaRoundTripTest {
 
         adapter.updateBankImport(updated);
 
-        assertThat(context.getBean(BankImportDocumentRepository.class).count()).isEqualTo(1);
         assertThat(adapter.getBankImport().transactions()).extracting(BankImportModel.BankTransactionModel::id)
                 .containsExactly("tx_2");
         BankImportModel reread = bankStore().getBankImport();
@@ -635,17 +633,9 @@ class PersistenceAdaptersJpaRoundTripTest {
         assertThat(bank.categories()).isEmpty();
     }
 
-    @Test
-    @DisplayName("DB-1031 -- table autonome sans document -> un import vide est restitue")
-    void missingDocumentIsReadAsEmptyImport() {
-        bankStore().replace(BANK_IMPORT);
-        context.getBean(BankImportDocumentRepository.class).deleteAll();
-
-        BankImportModel bank = bankStore().getBankImport();
-
-        assertThat(bank).isNotNull();
-        assertThat(bank.transactions()).isEmpty();
-    }
+    // Etape 3/5 : l'ancien test "table autonome sans document -> import vide" (suppression directe de
+    // l'unique ligne de bank_import_document) n'a plus d'equivalent pertinent a schema eclate en plusieurs
+    // tables : resetRestoresEmptyBankImportThroughJpa couvre deja le cas "tables vides -> import vide".
 
     // =========================================================================
     // DB-1051 / R-30 -- Patrimoine ecrit et lu directement sur les tables autonomes (silo)

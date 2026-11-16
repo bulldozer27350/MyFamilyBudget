@@ -21,7 +21,9 @@ import com.moe.myfamilybudget.domain.bankpointage.port.BankWriter;
  * Unique point d'ecriture des transactions bancaires et rapprochements : valide la commande puis delegue
  * au port {@link BankWriter}. N'a plus de dependance directe vers {@code PersistenceManager}.
  *
- * <p>SILO-213 (lot B) : l'import bancaire s'ecrit directement dans sa table ({@code JpaBankStore}), sans passer
+ * <p>SILO-213 (lot B) : l'import bancaire s'ecrit directement dans ses tables ({@code JpaBankStore}, etape 3/5
+ * de la migration relationnelle depuis le document JSON unique -- voir
+ * areas/bank-pointage-relational-migration.md cote projet), sans passer
  * par le modele global. L'ecriture n'a donc plus d'autre garantie de serialisation et d'atomicite que celles
  * prises ici : elle s'execute dans une transaction du {@link TransactionRunner}, apres la prise du verrou du
  * silo Banque/Pointage ({@link SiloMutationLock}). La synchronisation Enable Banking ecrit par ce meme service
