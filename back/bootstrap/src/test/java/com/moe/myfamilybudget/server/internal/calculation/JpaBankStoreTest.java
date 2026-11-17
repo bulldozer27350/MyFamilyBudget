@@ -23,6 +23,7 @@ import com.moe.myfamilybudget.domain.bankpointage.core.persistence.BankTransacti
 import com.moe.myfamilybudget.domain.bankpointage.core.persistence.JpaBankStore;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportMutatedEvent;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankTransactionPage;
 
 /**
  * Étape 3/5 de la migration relationnelle de l'import bancaire (areas/bank-pointage-relational-migration.md,
@@ -166,6 +167,29 @@ class JpaBankStoreTest {
         assertThat(transactionRepository().count()).isZero();
         assertThat(bankStore().getBankImport().transactions()).isEmpty();
         assertThat(mutatedEventCount()).isGreaterThan(eventsBefore);
+    }
+
+    @Test
+    @DisplayName("étape 4 -- findTransactions filtre par categorisation, pagine et inclut les repartitions")
+    void findTransactionsFiltersAndPaginatesWithSplits() {
+        bankStore().updateBankImport(BANK_IMPORT);
+
+        BankTransactionPage uncategorized = bankStore().findTransactions(false, 0, 10);
+        assertThat(uncategorized.transactions()).extracting(BankImportModel.BankTransactionModel::id)
+                .containsExactly("tx_2");
+        assertThat(uncategorized.transactions().get(0).splits())
+                .extracting(BankImportModel.BankTransactionSplitModel::id)
+                .containsExactly("split_1");
+        assertThat(uncategorized.totalElements()).isEqualTo(1);
+
+        BankTransactionPage categorized = bankStore().findTransactions(true, 0, 10);
+        assertThat(categorized.transactions()).extracting(BankImportModel.BankTransactionModel::id)
+                .containsExactly("tx_1");
+
+        BankTransactionPage firstOfOne = bankStore().findTransactions(null, 0, 1);
+        assertThat(firstOfOne.transactions()).hasSize(1);
+        assertThat(firstOfOne.totalElements()).isEqualTo(2);
+        assertThat(firstOfOne.totalPages()).isEqualTo(2);
     }
 
     private JpaBankStore bankStore() {

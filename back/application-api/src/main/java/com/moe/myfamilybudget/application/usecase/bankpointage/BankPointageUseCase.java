@@ -28,6 +28,20 @@ public interface BankPointageUseCase {
     /** Compose la réponse Import Bancaire : mapping de colonnes, catégories, règles, transactions. */
     Map<String, Object> getBankImport();
 
+    /**
+     * Étape 4 de la migration relationnelle de l'import bancaire (doc/architecture/07-domaine-banque-pointage.md) :
+     * page de transactions filtrée par état de catégorisation, pour l'écran de catégorisation (évite de
+     * charger l'intégralité des transactions importées, contrairement à {@link #getBankImport()}).
+     *
+     * @param categorized {@code true} : transactions déjà catégorisées uniquement ; {@code false} : non
+     *                    catégorisées uniquement ; {@code null} : toutes, sans filtre.
+     * @param page        numéro de page, 0-based.
+     * @param size        taille de page (nombre de transactions par page).
+     * @return une réponse avec les clés {@code transactions}, {@code page}, {@code size},
+     *         {@code totalElements}, {@code totalPages}
+     */
+    Map<String, Object> findBankTransactions(Boolean categorized, int page, int size);
+
     /** Remplace le mapping de colonnes de l'import bancaire. */
     void updateBankImportMapping(Map<String, Object> mapping);
 

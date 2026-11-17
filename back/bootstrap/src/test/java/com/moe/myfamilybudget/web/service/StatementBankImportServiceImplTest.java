@@ -49,7 +49,7 @@ class StatementBankImportServiceImplTest {
         CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         BankPointageUseCase bankPointageUseCase = new DefaultBankPointageUseCase(
-                bankStore, treasuryStore,
+                bankStore, bankStore, treasuryStore,
                 new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), treasuryStore.getDelegate()),
                 new InMemoryRetirementStore(), new InMemoryTaxStore(), treasuryStore, appSettings, appSettings,
                 new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()),
@@ -69,6 +69,30 @@ class StatementBankImportServiceImplTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> body = (Map<String, Object>) response.getBody();
         assertThat(body).containsKeys("columnMapping", "categories", "rules", "transactions", "pendingOperations");
+    }
+
+    @Test
+    @DisplayName("findBankTransactions (étape 4) filtre par état de catégorisation et pagine")
+    void testFindBankTransactionsFiltersAndPaginates() {
+        BankImportModel current = bankStore.getBankImport();
+        BankImportModel.BankTransactionModel categorisee = new BankImportModel.BankTransactionModel(
+                "tx_cat", "2026-02-01", "Loyer", "", new java.math.BigDecimal("-800.00"), "cat_loyer");
+        BankImportModel.BankTransactionModel nonCategorisee = new BankImportModel.BankTransactionModel(
+                "tx_non_cat", "2026-02-02", "Virement recu", "", new java.math.BigDecimal("150.00"), null);
+        bankStore.updateBankImport(new BankImportModel(
+                current.columnMapping(), current.categories(), current.rules(),
+                java.util.List.of(categorisee, nonCategorisee), current.pendingOperations(), current.matchings()));
+
+        ResponseEntity<Object> response = service.findBankTransactions(false, 0, 10);
+
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBody();
+        assertThat(body).containsKeys("transactions", "page", "size", "totalElements", "totalPages");
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> transactions = (java.util.List<Map<String, Object>>) body.get("transactions");
+        assertThat(transactions).extracting(t -> t.get("id")).containsExactly("tx_non_cat");
+        assertThat(body.get("totalElements")).isEqualTo(1L);
     }
 
     @Test

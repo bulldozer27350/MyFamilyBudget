@@ -43,7 +43,7 @@ class PointageServiceImplTest {
         CacheBackedAppSettings appSettings = new CacheBackedAppSettings();
         InMemoryTreasuryStore treasuryStore = new InMemoryTreasuryStore();
         BankPointageUseCase bankPointageUseCase = new DefaultBankPointageUseCase(
-                bankStore, treasuryStore,
+                bankStore, bankStore, treasuryStore,
                 new PatrimoinePersistenceAdapter(new InMemoryWealthStore().getDelegate(), treasuryStore.getDelegate()),
                 new InMemoryRetirementStore(), new InMemoryTaxStore(), treasuryStore, appSettings, appSettings,
                 new BankImportCommandService(bankStore, bankStore, silos -> { }, RecordingTransactionRunner.direct()),

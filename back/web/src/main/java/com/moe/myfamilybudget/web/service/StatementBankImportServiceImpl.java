@@ -68,6 +68,20 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
         return ResponseEntity.ok(bankPointageUseCase.getBankImport());
     }
 
+    /**
+     * Étape 4 de la migration relationnelle de l'import bancaire (doc/architecture/07-domaine-banque-pointage.md) :
+     * page de transactions filtrée par état de catégorisation, pour l'écran de catégorisation.
+     *
+     * <p>{@code page}/{@code size} sont déclarés {@code required: true} dans la spec OpenAPI (sans valeur par
+     * défaut), mais défendus ici quand même par prudence au cas où l'appel les omettrait malgré tout.
+     */
+    @Override
+    public ResponseEntity<Object> findBankTransactions(Boolean categorized, Integer page, Integer size) {
+        int safePage = page != null ? page : 0;
+        int safeSize = size != null ? size : 100;
+        return ResponseEntity.ok(bankPointageUseCase.findBankTransactions(categorized, safePage, safeSize));
+    }
+
     @Override
     public ResponseEntity<Void> updateBankImportMapping(Object body) {
         bankPointageUseCase.updateBankImportMapping(toMap(body));

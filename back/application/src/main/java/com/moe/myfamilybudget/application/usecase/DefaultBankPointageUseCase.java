@@ -22,8 +22,10 @@ import com.moe.myfamilybudget.domain.bankpointage.model.AutoMatchResultModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.BankImportSummaryModel;
 import com.moe.myfamilybudget.domain.bankpointage.model.PendingImportSummaryModel;
+import com.moe.myfamilybudget.domain.bankpointage.model.BankTransactionPage;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankImportChange;
 import com.moe.myfamilybudget.domain.bankpointage.port.BankReader;
+import com.moe.myfamilybudget.domain.bankpointage.port.BankTransactionPageReader;
 import com.moe.myfamilybudget.domain.retirement.port.RetirementSettingsReader;
 import com.moe.myfamilybudget.domain.settings.port.EconomicAssumptionsReader;
 import com.moe.myfamilybudget.domain.settings.port.SimulationSettingsReader;
@@ -59,6 +61,7 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineReader;
 public class DefaultBankPointageUseCase implements BankPointageUseCase {
 
     private final BankReader bankReader;
+    private final BankTransactionPageReader bankTransactionPageReader;
     private final BudgetReader budgetReader;
     private final PatrimoineReader patrimoineReader;
     private final RetirementSettingsReader retirementSettingsReader;
@@ -74,6 +77,7 @@ public class DefaultBankPointageUseCase implements BankPointageUseCase {
 
     public DefaultBankPointageUseCase(
             BankReader bankReader,
+            BankTransactionPageReader bankTransactionPageReader,
             BudgetReader budgetReader,
             PatrimoineReader patrimoineReader,
             RetirementSettingsReader retirementSettingsReader,
@@ -87,6 +91,7 @@ public class DefaultBankPointageUseCase implements BankPointageUseCase {
             StatementBankImportMapper bankImportMapper,
             PointageMapper pointageMapper) {
         this.bankReader = bankReader;
+        this.bankTransactionPageReader = bankTransactionPageReader;
         this.budgetReader = budgetReader;
         this.patrimoineReader = patrimoineReader;
         this.retirementSettingsReader = retirementSettingsReader;
@@ -108,6 +113,21 @@ public class DefaultBankPointageUseCase implements BankPointageUseCase {
     @Override
     public Map<String, Object> getBankImport() {
         return bankImportMapper.toBankImportResponseMap(bankReader.getBankImport());
+    }
+
+    /** Étape 4 de la migration relationnelle de l'import bancaire : page filtrée, pour la catégorisation. */
+    @Override
+    public Map<String, Object> findBankTransactions(Boolean categorized, int page, int size) {
+        BankTransactionPage result = bankTransactionPageReader.findTransactions(categorized, page, size);
+        Map<String, Object> response = new HashMap<>();
+        response.put("transactions", result.transactions().stream()
+                .map(bankImportMapper::toTransactionMap)
+                .collect(Collectors.toList()));
+        response.put("page", result.page());
+        response.put("size", result.size());
+        response.put("totalElements", result.totalElements());
+        response.put("totalPages", result.totalPages());
+        return response;
     }
 
     @Override

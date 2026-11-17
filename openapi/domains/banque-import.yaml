@@ -27,6 +27,49 @@ paths:
                 type: object
 
 
+  /bank-import/transactions:
+    get:
+      summary: >
+        Liste paginee des transactions bancaires, filtree par etat de categorisation (etape 4 de la
+        migration relationnelle de l'import bancaire, voir
+        doc/architecture/07-domaine-banque-pointage.md). Destine a l'ecran de categorisation, pour eviter
+        de charger l'integralite des transactions importees.
+      operationId: findBankTransactions
+      tags:
+        - Import Bancaire
+      parameters:
+        - name: categorized
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: >
+            true : transactions deja categorisees uniquement ; false : non categorisees uniquement ;
+            absent : toutes, sans filtre.
+        - name: page
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+          description: Numero de page, 0-based.
+        - name: size
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+          description: Taille de page (nombre de transactions par page), 500 au maximum.
+      responses:
+        '200':
+          description: Page de transactions
+          content:
+            application/json:
+              schema:
+                type: object
+
+
   /bank-import/mapping:
     put:
       summary: Met à jour la correspondance des colonnes CSV
