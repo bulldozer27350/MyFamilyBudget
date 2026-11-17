@@ -73,7 +73,7 @@ public class BankImportRelationalMigration implements CustomTaskChange {
             migrateRules(connection, model);
             migrateTransactions(connection, model);
             migratePendingOperations(connection, model);
-            migrateMatchings(connection, model, database);
+            migrateMatchings(connection, model);
 
             checkCount(connection, "bank_category", model.categories().size());
             checkCount(connection, "bank_rule", model.rules().size());
@@ -239,11 +239,9 @@ public class BankImportRelationalMigration implements CustomTaskChange {
         }
     }
 
-    private void migrateMatchings(Connection connection, BankImportModel model, Database database) throws SQLException {
-        String monthCol = database.escapeColumnName(null, null, "bank_matching", "month");
-        String linkMonthCol = database.escapeColumnName(null, null, "bank_matching_link", "month");
-        String monthSql = "INSERT INTO bank_matching (" + monthCol + ") VALUES (?)";
-        String linkSql = "INSERT INTO bank_matching_link (" + linkMonthCol + ", budget_line_id) VALUES (?, ?)";
+    private void migrateMatchings(Connection connection, BankImportModel model) throws SQLException {
+        String monthSql = "INSERT INTO bank_matching (matching_month) VALUES (?)";
+        String linkSql = "INSERT INTO bank_matching_link (matching_month, budget_line_id) VALUES (?, ?)";
         String linkTxSql = "INSERT INTO bank_matching_link_tx (matching_link_id, tx_id) VALUES (?, ?)";
         try (PreparedStatement monthPs = connection.prepareStatement(monthSql);
              PreparedStatement linkPs = connection.prepareStatement(linkSql, Statement.RETURN_GENERATED_KEYS);
