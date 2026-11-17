@@ -83,7 +83,7 @@ class StatementBankImportServiceImplTest {
                 current.columnMapping(), current.categories(), current.rules(),
                 java.util.List.of(categorisee, nonCategorisee), current.pendingOperations(), current.matchings()));
 
-        ResponseEntity<Object> response = service.findBankTransactions(false, 0, 10);
+        ResponseEntity<Object> response = service.findBankTransactions(0, 10, false);
 
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
         @SuppressWarnings("unchecked")

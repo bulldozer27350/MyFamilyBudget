@@ -73,7 +73,7 @@ public class BankImportRelationalMigration implements CustomTaskChange {
             migrateRules(connection, model);
             migrateTransactions(connection, model);
             migratePendingOperations(connection, model);
-            migrateMatchings(connection, model);
+            migrateMatchings(connection, model, database);
 
             checkCount(connection, "bank_category", model.categories().size());
             checkCount(connection, "bank_rule", model.rules().size());
@@ -96,8 +96,8 @@ public class BankImportRelationalMigration implements CustomTaskChange {
                     model.pendingOperations().size(), model.matchings().size());
         } catch (SQLException e) {
             throw new CustomChangeException(
-                    "Migration de l'import bancaire vers le schema relationnel impossible : aucune donnee "
-                            + "n'a ete perdue (bank_import_document n'est pas modifiee par cette etape), "
+                    "Migration de l'import bancaire vers le schema relationnel impossible (" + e.getMessage()
+                            + ") : aucune donnee n'a ete perdue (bank_import_document n'est pas modifiee par cette etape), "
                             + "mais la migration doit etre rejouee apres correction.", e);
         }
     }
@@ -239,9 +239,11 @@ public class BankImportRelationalMigration implements CustomTaskChange {
         }
     }
 
-    private void migrateMatchings(Connection connection, BankImportModel model) throws SQLException {
-        String monthSql = "INSERT INTO bank_matching (month) VALUES (?)";
-        String linkSql = "INSERT INTO bank_matching_link (month, budget_line_id) VALUES (?, ?)";
+    private void migrateMatchings(Connection connection, BankImportModel model, Database database) throws SQLException {
+        String monthCol = database.escapeColumnName(null, null, "bank_matching", "month");
+        String linkMonthCol = database.escapeColumnName(null, null, "bank_matching_link", "month");
+        String monthSql = "INSERT INTO bank_matching (" + monthCol + ") VALUES (?)";
+        String linkSql = "INSERT INTO bank_matching_link (" + linkMonthCol + ", budget_line_id) VALUES (?, ?)";
         String linkTxSql = "INSERT INTO bank_matching_link_tx (matching_link_id, tx_id) VALUES (?, ?)";
         try (PreparedStatement monthPs = connection.prepareStatement(monthSql);
              PreparedStatement linkPs = connection.prepareStatement(linkSql, Statement.RETURN_GENERATED_KEYS);

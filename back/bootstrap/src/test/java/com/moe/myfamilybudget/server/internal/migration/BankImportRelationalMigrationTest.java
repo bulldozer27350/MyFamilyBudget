@@ -125,7 +125,7 @@ class BankImportRelationalMigrationTest {
             insertSeedDocument(connection, BankImportDocumentMapper.toEntity(representativeModel()).getJsonData());
 
             assertThatThrownBy(() -> runChangeLogChangeSets(connection, -1))
-                    .hasMessageContaining("plusieurs lignes");
+                    .hasStackTraceContaining("plusieurs lignes");
 
             // Aucune table relationnelle ne doit avoir ete partiellement peuplee (changeSet transactionnel).
             assertThat(countRows(connection, "bank_category")).isZero();
@@ -183,7 +183,7 @@ class BankImportRelationalMigrationTest {
         if (changesToApply < 0) {
             liquibase.update(new Contexts());
         } else {
-            liquibase.update(changesToApply, new Contexts());
+            liquibase.update(changesToApply, (String) null);
         }
     }
 
@@ -196,7 +196,10 @@ class BankImportRelationalMigrationTest {
     }
 
     private String readSeedDocument(Connection connection) throws Exception {
-        return (String) scalar(connection, "SELECT json_data FROM bank_import_document");
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT json_data FROM bank_import_document")) {
+            return rs.next() ? rs.getString(1) : null;
+        }
     }
 
     private int countRows(Connection connection, String tableOrQuery) throws Exception {
