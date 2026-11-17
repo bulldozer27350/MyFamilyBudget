@@ -715,8 +715,15 @@
     const [importSummary, setImportSummary] = useState(null);
     const [showIgnoredModal, setShowIgnoredModal] = useState(false);
     const [splitModalTx, setSplitModalTx] = useState(null);
-    
-    // Charger les données d'import bancaire via l'API asynchrone
+
+    // --- Étape 4 : pagination serveur des transactions ---
+    const TX_PAGE_SIZE = 100;
+    const [txPage, setTxPage] = useState(0);
+    const [txCategorizedFilter, setTxCategorizedFilter] = useState(null); // null=toutes, true=catégorisées, false=non catégorisées
+    const [txPageData, setTxPageData] = useState(null); // { transactions, page, size, totalElements, totalPages }
+    const [txLoading, setTxLoading] = useState(false);
+
+    // Charger les métadonnées (mapping, catégories, règles) via getBankImport — sans les transactions
     useEffect(() => {
       let cancelled = false;
       const loadBankImportData = async () => {
@@ -749,10 +756,34 @@
       };
     }, []);
 
+    // Charger la page de transactions côté serveur (étape 4)
+    useEffect(() => {
+      let cancelled = false;
+      const loadTxPage = async () => {
+        setTxLoading(true);
+        try {
+          const result = await BudgetApi.findBankTransactions(txCategorizedFilter, txPage, TX_PAGE_SIZE);
+          if (!cancelled) setTxPageData(result);
+        } catch (error) {
+          console.error("Erreur lors du chargement des transactions paginées:", error);
+        } finally {
+          if (!cancelled) setTxLoading(false);
+        }
+      };
+      loadTxPage();
+      return () => { cancelled = true; };
+    }, [txPage, txCategorizedFilter]);
+
     const mapping = bankImportData?.columnMapping || {};
     const categories = bankImportData?.categories || [];
     const rules = bankImportData?.rules || [];
-    const transactions = bankImportData?.transactions || [];
+    // transactions = page courante serveur (pas le tableau complet de bankImportData)
+    const transactions = txPageData?.transactions || [];
+    const txTotalElements = txPageData?.totalElements ?? 0;
+    const txTotalPages = txPageData?.totalPages ?? 1;
+    const uncategorizedCount = txCategorizedFilter === false
+      ? txTotalElements
+      : (txCategorizedFilter === true ? 0 : (bankImportData?.uncategorizedCount ?? null));
     
     const updateMapping = fn => {
       const newMapping = fn(mapping);
@@ -837,9 +868,11 @@
           setRawRows(null);
           setColRoles(null);
           setFileName("");
-          // Recharger les données après l'import
+          // Recharger les métadonnées et revenir à la page 0
           const updatedData = await BudgetApi.getBankImport();
           setBankImportData(updatedData);
+          setTxPage(0);
+          // La page de transactions se rechargera automatiquement via useEffect([txPage, txCategorizedFilter])
         }
       } catch (error) {
         console.error("Erreur lors de l'import:", error);
@@ -867,6 +900,7 @@
         }
         const updatedData = await BudgetApi.getBankImport();
         setBankImportData(updatedData);
+        setTxPage(0); // Revenir page 0 après synchro (nouvelles transactions)
       } catch (error) {
         console.error("Erreur lors de la synchronisation Enable Banking:", error);
         setSyncMessage({
@@ -906,15 +940,16 @@
         await BudgetApi.recalculateBankImportRules();
         const updatedData = await BudgetApi.getBankImport();
         setBankImportData(updatedData);
+        setTxPage(0); // Revenir page 0 : les règles ont pu reclasser des transactions
       } catch (error) {
         console.error("Erreur lors du recalcul des règles:", error);
       }
     };
     const setTransactionCategory = async (txId, categoryId, ruleKeyword) => {
-      // Mise à jour optimiste de la seule ligne concernée : on évite de recharger
+      // Mise à jour optimiste de la seule ligne concernée dans la page courante : on évite de recharger
       // l'intégralité des transactions importées (et de reconstruire tout le tableau) pour
       // un simple changement de catégorie sur une transaction.
-      setBankImportData(prev => prev ? {
+      setTxPageData(prev => prev ? {
         ...prev,
         transactions: (prev.transactions || []).map(t => t.id === txId ? { ...t, categoryId } : t)
       } : prev);
@@ -927,20 +962,19 @@
           // les données. Ce cas reste rare au regard du nombre de clics de catégorisation.
           const updatedData = await BudgetApi.getBankImport();
           setBankImportData(updatedData);
+          setTxPage(0); // Recalcul global → revenir page 0
         }
       } catch (error) {
         console.error("Erreur lors de la mise à jour de la catégorie:", error);
-        // En cas d'échec de la mise à jour serveur, on resynchronise l'affichage pour ne
-        // pas laisser la mise à jour optimiste divergente de l'état réel.
+        // En cas d'échec de la mise à jour serveur, on resynchronise la page courante.
         try {
-          const updatedData = await BudgetApi.getBankImport();
-          setBankImportData(updatedData);
+          const result = await BudgetApi.findBankTransactions(txCategorizedFilter, txPage, TX_PAGE_SIZE);
+          setTxPageData(result);
         } catch (reloadError) {
           console.error("Erreur lors de la resynchronisation après échec:", reloadError);
         }
       }
     };
-    const uncategorizedCount = transactions.filter(t => !t.categoryId).length;
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
@@ -1508,14 +1542,41 @@
       }
     })), /*#__PURE__*/React.createElement(SectionCard, {
       title: "Transactions",
-      subtitle: `${transactions.length} transaction(s) importée(s)${uncategorizedCount ? ` — ${uncategorizedCount} non catégorisée(s)` : ""}.`
-    }, /*#__PURE__*/React.createElement(SortFilterTable, {
+      subtitle: txTotalElements > 0
+        ? `${txTotalElements} transaction(s) importée(s)${uncategorizedCount ? ` — ${uncategorizedCount} non catégorisée(s)` : ""}.`
+        : "Aucune transaction importée pour l'instant — utilisez le formulaire ci-dessus."
+    },
+    /*#__PURE__*/React.createElement("div", {
+      style: { display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }
+    },
+      /*#__PURE__*/React.createElement("span", { style: { fontSize: 12, color: C?.inkSoft || "#6B7278" } }, "Filtrer :"),
+      [
+        { value: null, label: "Toutes" },
+        { value: false, label: "⚠ Non catégorisées" },
+        { value: true,  label: "✓ Catégorisées" }
+      ].map(opt => /*#__PURE__*/React.createElement("button", {
+        key: String(opt.value),
+        type: "button",
+        onClick: () => { setTxCategorizedFilter(opt.value); setTxPage(0); },
+        style: {
+          fontSize: 12, padding: "4px 10px", borderRadius: 5, cursor: "pointer",
+          border: `1px solid ${txCategorizedFilter === opt.value ? (C?.pine || "#2F5D50") : (C?.line || "#DED6C4")}`,
+          background: txCategorizedFilter === opt.value ? (C?.pineSoft || "#E3ECE8") : (C?.panel || "#fff"),
+          fontWeight: txCategorizedFilter === opt.value ? 700 : 400,
+          color: C?.ink || "#232A2E"
+        }
+      }, opt.label)),
+      txLoading && /*#__PURE__*/React.createElement("span", {
+        style: { fontSize: 12, color: C?.inkSoft || "#6B7278", marginLeft: 8 }
+      }, "⏳ Chargement…")
+    ),
+    /*#__PURE__*/React.createElement(SortFilterTable, {
       rows: transactions,
       defaultSort: {
         key: "date",
         dir: "desc"
       },
-      emptyLabel: "Aucune transaction importée pour l'instant — utilisez le formulaire ci-dessus.",
+      emptyLabel: txLoading ? "Chargement en cours…" : "Aucune transaction pour ce filtre.",
       columns: [{
         key: "date",
         label: "Date",
@@ -1671,14 +1732,42 @@
           }
         }, hasSplits ? "✏ Modifier ventilation" : "✂ Ventiler"))));
       }
-    })), splitModalTx && /*#__PURE__*/React.createElement(SplitModal, {
+    }),
+    /*#__PURE__*/React.createElement("div", {
+      style: { display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 12 }
+    },
+      /*#__PURE__*/React.createElement("button", {
+        type: "button",
+        disabled: txPage <= 0 || txLoading,
+        onClick: () => setTxPage(p => Math.max(0, p - 1)),
+        style: {
+          fontSize: 12, padding: "4px 12px", borderRadius: 5, cursor: txPage <= 0 ? "not-allowed" : "pointer",
+          border: `1px solid ${C?.line || "#DED6C4"}`, background: C?.panel || "#fff",
+          opacity: txPage <= 0 ? 0.5 : 1, color: C?.ink || "#232A2E"
+        }
+      }, "← Précédent"),
+      /*#__PURE__*/React.createElement("span", {
+        style: { fontSize: 12, color: C?.inkSoft || "#6B7278" }
+      }, `Page ${txPage + 1} / ${txTotalPages}${txTotalElements > 0 ? ` (${txTotalElements} au total)` : ""}`),
+      /*#__PURE__*/React.createElement("button", {
+        type: "button",
+        disabled: txPage >= txTotalPages - 1 || txLoading,
+        onClick: () => setTxPage(p => Math.min(txTotalPages - 1, p + 1)),
+        style: {
+          fontSize: 12, padding: "4px 12px", borderRadius: 5,
+          cursor: txPage >= txTotalPages - 1 ? "not-allowed" : "pointer",
+          border: `1px solid ${C?.line || "#DED6C4"}`, background: C?.panel || "#fff",
+          opacity: txPage >= txTotalPages - 1 ? 0.5 : 1, color: C?.ink || "#232A2E"
+        }
+      }, "Suivant →")
+    )), splitModalTx && /*#__PURE__*/React.createElement(SplitModal, {
       transaction: splitModalTx,
       categories: sortedCategories,
       onSave: async (txId, splits) => {
         await BudgetApi.updateBankTransactionSplits(txId, splits);
         setSplitModalTx(null);
-        const updated = await BudgetApi.getBankImport();
-        setBankImportData(updated);
+        const result = await BudgetApi.findBankTransactions(txCategorizedFilter, txPage, TX_PAGE_SIZE);
+        setTxPageData(result);
       },
       onClose: () => setSplitModalTx(null)
     }));

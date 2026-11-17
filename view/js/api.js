@@ -916,6 +916,47 @@
     },
 
     /**
+     * Étape 4 — Liste paginée des transactions bancaires, filtrée par état de catégorisation.
+     * Appelle GET /bank-import/transactions?page=&size=&categorized= (endpoint relationnel).
+     * En mode hors-ligne (pas de fetch disponible) ou si le backend est indisponible,
+     * retourne une page synthétisée depuis le modèle local complet.
+     *
+     * @param {boolean|null} categorized  true : catégorisées seulement ; false : non catégorisées ; null/undefined : toutes.
+     * @param {number}       page         Numéro de page, 0-based (défaut 0).
+     * @param {number}       size         Taille de page (défaut 100, max 500).
+     * @returns {Promise<{transactions: Array, page: number, size: number, totalElements: number, totalPages: number}>}
+     */
+    async findBankTransactions(categorized, page = 0, size = 100) {
+      if (typeof fetch !== 'undefined') {
+        const params = new URLSearchParams({ page: String(page), size: String(size) });
+        if (categorized !== null && categorized !== undefined) {
+          params.set('categorized', String(categorized));
+        }
+        try {
+          const res = await safeFetch(API_BASE_URL + '/bank-import/transactions?' + params.toString());
+          if (res && res.ok) return res.json();
+        } catch (e) {
+          console.warn('findBankTransactions: appel backend échoué, fallback local', e);
+        }
+      }
+      // Fallback local : pagination simulée depuis le modèle complet
+      const full = await app().BankImportService.buildBankImport();
+      let txs = full.transactions || [];
+      if (categorized === true)       txs = txs.filter(t => !!(t.categoryId || (t.splits && t.splits.length > 0)));
+      else if (categorized === false) txs = txs.filter(t => !t.categoryId && !(t.splits && t.splits.length > 0));
+      const totalElements = txs.length;
+      const totalPages = Math.max(1, Math.ceil(totalElements / size));
+      const safePage = Math.min(page, totalPages - 1);
+      return {
+        transactions: txs.slice(safePage * size, safePage * size + size),
+        page: safePage,
+        size,
+        totalElements,
+        totalPages
+      };
+    },
+
+    /**
      * Met à jour le mapping de colonnes pour l'import bancaire.
      * @returns {Promise<void>}
      */

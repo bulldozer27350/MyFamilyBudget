@@ -167,6 +167,9 @@ paths:
   /bank-import/{listKey}/{id}:
     $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1{listKey}~1{id}'
 
+  /bank-import/transactions:
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1transactions'
+
   /bank-import/transactions/{txId}/category:
     $ref: './openapi/domains/banque-import.yaml#/paths/~1bank-import~1transactions~1{txId}~1category'
 

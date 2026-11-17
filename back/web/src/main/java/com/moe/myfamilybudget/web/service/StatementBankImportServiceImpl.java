@@ -76,7 +76,7 @@ public class StatementBankImportServiceImpl implements ImportBancaireApi {
      * défaut), mais défendus ici quand même par prudence au cas où l'appel les omettrait malgré tout.
      */
     @Override
-    public ResponseEntity<Object> findBankTransactions(Boolean categorized, Integer page, Integer size) {
+    public ResponseEntity<Object> findBankTransactions(Integer page, Integer size, Boolean categorized) {
         int safePage = page != null ? page : 0;
         int safeSize = size != null ? size : 100;
         return ResponseEntity.ok(bankPointageUseCase.findBankTransactions(categorized, safePage, safeSize));
