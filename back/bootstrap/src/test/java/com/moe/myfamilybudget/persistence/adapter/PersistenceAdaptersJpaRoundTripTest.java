@@ -85,7 +85,7 @@ import com.moe.myfamilybudget.domain.wealth.port.PatrimoineList;
  *
  * <p>Base H2 dediee, pour ne pas partager d'etat avec les autres contextes de test.
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:db010;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE")
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:db010;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;NON_KEYWORDS=MONTH")
 @DisplayName("DB-010 -- Round-trip des adaptateurs contre une base reelle")
 class PersistenceAdaptersJpaRoundTripTest {
 

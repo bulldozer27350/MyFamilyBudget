@@ -36,7 +36,7 @@ import com.moe.myfamilybudget.domain.bankpointage.model.BankTransactionPage;
  * étrangère entre tables, identifiants générés pour les liens de rapprochement). Utilise donc une vraie base
  * H2, comme {@code PersistenceAdaptersJpaRoundTripTest} pour les autres silos.
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:jpabankstoretest;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE")
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:jpabankstoretest;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;NON_KEYWORDS=MONTH")
 @RecordApplicationEvents
 @DisplayName("Étape 3 -- JpaBankStore (schéma relationnel)")
 class JpaBankStoreTest {
