@@ -13,6 +13,7 @@
     C
   } = exports.C ? exports : window.BudgetApp || {};
   const HELP_CONTENT = exports.HELP_CONTENT || window.BudgetApp && window.BudgetApp.HELP_CONTENT || {};
+  const HELP_VIDEOS = exports.HELP_VIDEOS || window.BudgetApp && window.BudgetApp.HELP_VIDEOS || { chapters: [], items: [] };
 
   /**
    * Badge / Bouton d'Aide Contextuelle (❓)
@@ -62,6 +63,364 @@
     }, "?");
   }
 
+  /* ───────────────────────────────────────────────────
+   *  Couleurs par chapitre (badges, bordures…)
+   * ─────────────────────────────────────────────────── */
+  const CHAPTER_COLORS = {
+    ch0: { bg: "#E8F4FD", border: "#5BAEE0", text: "#1A5C87" },
+    ch1: { bg: "#FFF3E0", border: "#F5A623", text: "#7A4B00" },
+    ch2: { bg: "#E9F5EC", border: "#4CAF77", text: "#1A5C33" },
+    ch3: { bg: "#F3E8FD", border: "#9B59B6", text: "#5A1A87" }
+  };
+
+  /* ───────────────────────────────────────────────────
+   *  Composant VideoLibrary
+   * ─────────────────────────────────────────────────── */
+  function VideoLibrary() {
+    const chapters = (HELP_VIDEOS && HELP_VIDEOS.chapters) || [];
+    const allItems = (HELP_VIDEOS && HELP_VIDEOS.items) || [];
+
+    const [selectedChapter, setSelectedChapter] = useState(null);
+    const [currentVideo, setCurrentVideo] = useState(null);
+    const [searchQuery, setSearchQuery] = useState("");
+    const videoRef = useRef(null);
+
+    // Fermer le player avec Échap
+    useEffect(() => {
+      if (!currentVideo) return;
+      function onKey(e) {
+        if (e.key === "Escape") setCurrentVideo(null);
+      }
+      document.addEventListener("keydown", onKey);
+      return () => document.removeEventListener("keydown", onKey);
+    }, [currentVideo]);
+
+    // Remettre la vidéo au début lors d'un changement
+    useEffect(() => {
+      if (videoRef.current) {
+        videoRef.current.load();
+      }
+    }, [currentVideo]);
+
+    // ─── Filtrage ───────────────────────────────────────
+    const q = searchQuery.trim().toLowerCase();
+    const filtered = allItems.filter(item => {
+      const chapterOk = !selectedChapter || item.chapterId === selectedChapter;
+      if (!chapterOk) return false;
+      if (!q) return true;
+      return (
+        item.title.toLowerCase().includes(q) ||
+        item.need.toLowerCase().includes(q) ||
+        (item.highlights || []).some(h => h.toLowerCase().includes(q)) ||
+        (item.keywords || []).some(k => k.toLowerCase().includes(q)) ||
+        (item.badge || "").toLowerCase().includes(q)
+      );
+    });
+
+    // ─── Navigation Précédent / Suivant ─────────────────
+    const currentIndex = currentVideo ? filtered.findIndex(v => v.id === currentVideo.id) : -1;
+    const hasPrev = currentIndex > 0;
+    const hasNext = currentIndex >= 0 && currentIndex < filtered.length - 1;
+    const goPrev = () => hasPrev && setCurrentVideo(filtered[currentIndex - 1]);
+    const goNext = () => hasNext && setCurrentVideo(filtered[currentIndex + 1]);
+
+    // ─── Comptage par chapitre pour les badges ───────────
+    function countForChapter(chId) {
+      if (!q) return allItems.filter(i => i.chapterId === chId).length;
+      return allItems.filter(i => {
+        if (i.chapterId !== chId) return false;
+        return (
+          i.title.toLowerCase().includes(q) ||
+          i.need.toLowerCase().includes(q) ||
+          (i.highlights || []).some(h => h.toLowerCase().includes(q)) ||
+          (i.keywords || []).some(k => k.toLowerCase().includes(q)) ||
+          (i.badge || "").toLowerCase().includes(q)
+        );
+      }).length;
+    }
+
+    // ─── Styles ─────────────────────────────────────────
+    const panelBg = C?.panel || "#FFFFFF";
+    const panelAlt = C?.panelAlt || "#EFEAE0";
+    const ink = C?.ink || "#232A2E";
+    const inkSoft = C?.inkSoft || "#6B7278";
+    const pine = C?.pine || "#2F5D50";
+    const navy = C?.navy || "#28394A";
+    const lineBorder = C?.line || "#DED6C4";
+
+    // ─── Carte vidéo ────────────────────────────────────
+    function VideoCard({ item }) {
+      const col = CHAPTER_COLORS[item.chapterId] || CHAPTER_COLORS.ch0;
+      const isPlaying = currentVideo && currentVideo.id === item.id;
+      return React.createElement("div", {
+        onClick: () => setCurrentVideo(item),
+        style: {
+          background: panelBg,
+          border: `2px solid ${isPlaying ? pine : lineBorder}`,
+          borderRadius: 10,
+          padding: "14px 16px",
+          cursor: "pointer",
+          transition: "all 0.15s ease",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          boxShadow: isPlaying ? `0 0 0 3px ${pine}30` : "0 2px 6px rgba(0,0,0,0.04)"
+        },
+        onMouseEnter: e => { if (!isPlaying) e.currentTarget.style.borderColor = pine; },
+        onMouseLeave: e => { if (!isPlaying) e.currentTarget.style.borderColor = lineBorder; }
+      },
+        // Ligne supérieure : badge chapitre + durée
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+          React.createElement("span", {
+            style: {
+              fontSize: 11, fontWeight: 700, padding: "2px 8px",
+              borderRadius: 20, background: col.bg, color: col.text,
+              border: `1px solid ${col.border}`, whiteSpace: "nowrap"
+            }
+          }, item.badge || ""),
+          React.createElement("span", { style: { fontSize: 11, color: inkSoft, whiteSpace: "nowrap" } },
+            "⏱ ", item.duration)
+        ),
+        // Titre
+        React.createElement("div", {
+          style: { fontWeight: 700, fontSize: 13.5, color: navy, lineHeight: 1.3 }
+        }, item.id, " — ", item.title),
+        // Besoin
+        React.createElement("div", {
+          style: {
+            fontSize: 12, color: inkSoft, lineHeight: 1.4,
+            overflow: "hidden", display: "-webkit-box",
+            WebkitLineClamp: 2, WebkitBoxOrient: "vertical"
+          }
+        }, item.need),
+        // Highlights
+        React.createElement("ul", { style: { margin: 0, paddingLeft: 16, fontSize: 11.5, color: ink, lineHeight: 1.5 } },
+          (item.highlights || []).map((h, i) =>
+            React.createElement("li", { key: i, style: { marginBottom: 2 } }, h)
+          )
+        ),
+        // Bouton lecture
+        React.createElement("button", {
+          onClick: e => { e.stopPropagation(); setCurrentVideo(item); },
+          style: {
+            alignSelf: "flex-start", marginTop: 4,
+            padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+            background: isPlaying ? pine : panelAlt,
+            color: isPlaying ? "#fff" : pine,
+            border: `1px solid ${pine}`,
+            cursor: "pointer"
+          }
+        }, isPlaying ? "▶ En lecture" : "▶ Regarder")
+      );
+    }
+
+    // ─── Lecteur vidéo (overlay) ─────────────────────────
+    function VideoPlayer() {
+      if (!currentVideo) return null;
+      const col = CHAPTER_COLORS[currentVideo.chapterId] || CHAPTER_COLORS.ch0;
+      const chapter = chapters.find(c => c.id === currentVideo.chapterId);
+      return React.createElement("div", {
+        style: {
+          position: "absolute", inset: 0, zIndex: 10,
+          background: "rgba(30, 38, 44, 0.97)",
+          display: "flex", flexDirection: "column",
+          borderRadius: 12, overflow: "hidden"
+        }
+      },
+        // Header du player
+        React.createElement("div", {
+          style: {
+            padding: "12px 20px", display: "flex", justifyContent: "space-between",
+            alignItems: "center", background: "rgba(0,0,0,0.3)", flexShrink: 0
+          }
+        },
+          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+            React.createElement("span", {
+              style: {
+                fontSize: 11, fontWeight: 700, padding: "2px 10px",
+                borderRadius: 20, background: col.bg, color: col.text,
+                border: `1px solid ${col.border}`
+              }
+            }, chapter ? (chapter.icon ? chapter.icon + " " + chapter.title : chapter.title) : ""),
+            React.createElement("span", { style: { color: "#fff", fontWeight: 700, fontSize: 14 } },
+              currentVideo.id, " — ", currentVideo.title)
+          ),
+          React.createElement("button", {
+            onClick: () => setCurrentVideo(null),
+            style: {
+              background: "rgba(255,255,255,0.1)", border: "none", color: "#fff",
+              fontSize: 20, cursor: "pointer", borderRadius: 6, padding: "2px 10px"
+            }
+          }, "✕")
+        ),
+        // Vidéo
+        React.createElement("video", {
+          ref: videoRef,
+          controls: true,
+          autoPlay: true,
+          style: { width: "100%", maxHeight: "55vh", background: "#000", flexShrink: 0 },
+          src: `videos/${currentVideo.file}`
+        }),
+        // Infos + Navigation
+        React.createElement("div", {
+          style: {
+            flex: 1, overflowY: "auto", padding: "14px 20px",
+            display: "flex", flexDirection: "column", gap: 10
+          }
+        },
+          React.createElement("div", { style: { fontSize: 12.5, color: "#D0D8DF", lineHeight: 1.5 } },
+            currentVideo.need),
+          React.createElement("ul", { style: { margin: 0, paddingLeft: 18, color: "#A8C0CC", fontSize: 12 } },
+            (currentVideo.highlights || []).map((h, i) =>
+              React.createElement("li", { key: i, style: { marginBottom: 4 } }, h)
+            )
+          ),
+          // Navigation Préc/Suiv
+          React.createElement("div", {
+            style: {
+              display: "flex", gap: 10, justifyContent: "space-between",
+              marginTop: "auto", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.1)"
+            }
+          },
+            React.createElement("button", {
+              onClick: goPrev, disabled: !hasPrev,
+              style: {
+                padding: "7px 18px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                border: "1px solid rgba(255,255,255,0.25)",
+                background: hasPrev ? "rgba(255,255,255,0.1)" : "transparent",
+                color: hasPrev ? "#fff" : "rgba(255,255,255,0.3)",
+                cursor: hasPrev ? "pointer" : "default"
+              }
+            }, "◀ Précédente"),
+            React.createElement("span", {
+              style: { alignSelf: "center", fontSize: 12, color: "rgba(255,255,255,0.4)" }
+            }, `${currentIndex + 1} / ${filtered.length}`),
+            React.createElement("button", {
+              onClick: goNext, disabled: !hasNext,
+              style: {
+                padding: "7px 18px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                border: "1px solid rgba(255,255,255,0.25)",
+                background: hasNext ? "rgba(255,255,255,0.1)" : "transparent",
+                color: hasNext ? "#fff" : "rgba(255,255,255,0.3)",
+                cursor: hasNext ? "pointer" : "default"
+              }
+            }, "Suivante ▶")
+          )
+        )
+      );
+    }
+
+    // ─── Rendu principal ────────────────────────────────
+    return React.createElement("div", { style: { display: "flex", flex: 1, minHeight: 0, height: "100%", position: "relative", overflow: "hidden" } },
+      // Lecteur superposé
+      React.createElement(VideoPlayer, null),
+
+      // ─── Sidebar filtres ───────────────────────────────
+      React.createElement("div", {
+        style: {
+          width: 220, flexShrink: 0, borderRight: `1px solid ${lineBorder}`,
+          display: "flex", flexDirection: "column", gap: 6,
+          padding: "14px 12px", overflowY: "auto"
+        }
+      },
+        React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: inkSoft, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 } }, "Chapitres"),
+        // Bouton Tous
+        React.createElement("button", {
+          onClick: () => setSelectedChapter(null),
+          style: {
+            textAlign: "left", padding: "8px 10px", borderRadius: 8, fontSize: 12,
+            fontWeight: !selectedChapter ? 700 : 500,
+            background: !selectedChapter ? pine : panelAlt,
+            color: !selectedChapter ? "#fff" : ink,
+            border: `1px solid ${!selectedChapter ? pine : lineBorder}`,
+            cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8
+          }
+        },
+          React.createElement("span", { style: { flex: 1 } }, "🎬 Toutes"),
+          React.createElement("span", {
+            style: {
+              fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 10,
+              background: !selectedChapter ? "rgba(255,255,255,0.2)" : panelBg,
+              color: !selectedChapter ? "#fff" : inkSoft,
+              flexShrink: 0
+            }
+          }, allItems.length)
+        ),
+        // Boutons par chapitre
+        chapters.map(ch => {
+          const col = CHAPTER_COLORS[ch.id] || CHAPTER_COLORS.ch0;
+          const isActive = selectedChapter === ch.id;
+          const count = countForChapter(ch.id);
+          return React.createElement("button", {
+            key: ch.id,
+            onClick: () => setSelectedChapter(isActive ? null : ch.id),
+            style: {
+              textAlign: "left", padding: "8px 10px", borderRadius: 8, fontSize: 12,
+              fontWeight: isActive ? 700 : 500,
+              background: isActive ? col.bg : panelAlt,
+              color: isActive ? col.text : ink,
+              border: `1px solid ${isActive ? col.border : lineBorder}`,
+              cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8
+            }
+          },
+            React.createElement("span", { style: { flex: 1, lineHeight: 1.35 } }, ch.icon ? `${ch.icon} ${ch.title}` : ch.title),
+            React.createElement("span", {
+              style: {
+                fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 10,
+                background: isActive ? col.border : panelBg,
+                color: isActive ? "#fff" : inkSoft,
+                flexShrink: 0
+              }
+            }, count)
+          );
+        }),
+        // Champ de recherche
+        React.createElement("div", { style: { marginTop: 10 } },
+          React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: inkSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 } }, "Recherche"),
+          React.createElement("input", {
+            type: "text",
+            placeholder: "🔍 Chercher...",
+            value: searchQuery,
+            onChange: e => setSearchQuery(e.target.value),
+            style: {
+              width: "100%", boxSizing: "border-box",
+              padding: "7px 10px", borderRadius: 8, fontSize: 12,
+              border: `1px solid ${lineBorder}`, background: panelBg, color: ink
+            }
+          }),
+          searchQuery && React.createElement("button", {
+            onClick: () => setSearchQuery(""),
+            style: {
+              marginTop: 4, fontSize: 11, color: inkSoft,
+              background: "none", border: "none", cursor: "pointer", padding: 0
+            }
+          }, "✕ Effacer")
+        )
+      ),
+
+      // ─── Grille des cartes ──────────────────────────────
+      React.createElement("div", {
+        style: { flex: 1, overflowY: "auto", padding: "14px 16px" }
+      },
+        filtered.length === 0
+          ? React.createElement("div", {
+              style: { textAlign: "center", padding: "40px 0", color: inkSoft, fontSize: 14 }
+            }, "Aucune vidéo ne correspond à votre recherche.")
+          : React.createElement("div", {
+              style: {
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                gap: 14
+              }
+            },
+              filtered.map(item =>
+                React.createElement(VideoCard, { key: item.id, item })
+              )
+            )
+      )
+    );
+  }
+
   /**
    * Modale d'Aide Complète et Interactive
    */
@@ -97,6 +456,9 @@
     const TABS = [{
       key: "demarrage",
       label: "🚀 Démarrer"
+    }, {
+      key: "videos",
+      label: "🎬 Vidéos"
     }, {
       key: "overview",
       label: "Vue d'ensemble"
@@ -149,7 +511,7 @@
         background: C?.paper || "#F6F3EC",
         borderRadius: 12,
         width: "100%",
-        maxWidth: 880,
+        maxWidth: activeTab === "videos" ? 1100 : 880,
         maxHeight: "88vh",
         display: "flex",
         flexDirection: "column",
@@ -205,7 +567,7 @@
         borderBottom: `1px solid ${C?.line || "#DED6C4"}`,
         padding: "12px 24px"
       }
-    }, /*#__PURE__*/React.createElement("div", {
+    }, activeTab !== "videos" && /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         gap: 12,
@@ -259,7 +621,13 @@
         whiteSpace: "nowrap",
         transition: "all 0.15s ease"
       }
-    }, tab.label)))), /*#__PURE__*/React.createElement("div", {
+    }, tab.label)))),
+    /* ── Zone de contenu : VideoLibrary ou sections textuelles ── */
+    activeTab === "videos"
+      ? /*#__PURE__*/React.createElement("div", {
+          style: { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }
+        }, /*#__PURE__*/React.createElement(VideoLibrary, null))
+      : /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
         overflowY: "auto",

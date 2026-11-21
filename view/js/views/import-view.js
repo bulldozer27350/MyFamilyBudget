@@ -7,7 +7,8 @@
   const {
     useState,
     useMemo,
-    useEffect
+    useEffect,
+    useCallback
   } = React;
   const {
     C,
@@ -722,6 +723,8 @@
     const [txCategorizedFilter, setTxCategorizedFilter] = useState(null); // null=toutes, true=catégorisées, false=non catégorisées
     const [txPageData, setTxPageData] = useState(null); // { transactions, page, size, totalElements, totalPages }
     const [txLoading, setTxLoading] = useState(false);
+    const [txRefreshToken, setTxRefreshToken] = useState(0);
+    const refreshTxPage = useCallback(() => setTxRefreshToken(t => t + 1), []);
 
     // Charger les métadonnées (mapping, catégories, règles) via getBankImport — sans les transactions
     useEffect(() => {
@@ -746,7 +749,10 @@
       let reloadTimer = null;
       const unsubscribe = BudgetApi.onBankImportChanged(() => {
         if (reloadTimer) clearTimeout(reloadTimer);
-        reloadTimer = setTimeout(loadBankImportData, 500);
+        reloadTimer = setTimeout(() => {
+          loadBankImportData();
+          refreshTxPage();
+        }, 500);
       });
 
       return () => {
@@ -754,7 +760,7 @@
         if (reloadTimer) clearTimeout(reloadTimer);
         unsubscribe();
       };
-    }, []);
+    }, [refreshTxPage]);
 
     // Charger la page de transactions côté serveur (étape 4)
     useEffect(() => {
@@ -772,7 +778,7 @@
       };
       loadTxPage();
       return () => { cancelled = true; };
-    }, [txPage, txCategorizedFilter]);
+    }, [txPage, txCategorizedFilter, txRefreshToken]);
 
     const mapping = bankImportData?.columnMapping || {};
     const categories = bankImportData?.categories || [];
@@ -872,7 +878,7 @@
           const updatedData = await BudgetApi.getBankImport();
           setBankImportData(updatedData);
           setTxPage(0);
-          // La page de transactions se rechargera automatiquement via useEffect([txPage, txCategorizedFilter])
+          refreshTxPage();
         }
       } catch (error) {
         console.error("Erreur lors de l'import:", error);
@@ -901,6 +907,7 @@
         const updatedData = await BudgetApi.getBankImport();
         setBankImportData(updatedData);
         setTxPage(0); // Revenir page 0 après synchro (nouvelles transactions)
+        refreshTxPage();
       } catch (error) {
         console.error("Erreur lors de la synchronisation Enable Banking:", error);
         setSyncMessage({
@@ -941,6 +948,7 @@
         const updatedData = await BudgetApi.getBankImport();
         setBankImportData(updatedData);
         setTxPage(0); // Revenir page 0 : les règles ont pu reclasser des transactions
+        refreshTxPage();
       } catch (error) {
         console.error("Erreur lors du recalcul des règles:", error);
       }
@@ -963,6 +971,7 @@
           const updatedData = await BudgetApi.getBankImport();
           setBankImportData(updatedData);
           setTxPage(0); // Recalcul global → revenir page 0
+          refreshTxPage();
         }
       } catch (error) {
         console.error("Erreur lors de la mise à jour de la catégorie:", error);

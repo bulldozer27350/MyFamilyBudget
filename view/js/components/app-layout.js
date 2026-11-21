@@ -206,6 +206,9 @@
       badgeId: null
     });
     const [syncReviewOpen, setSyncReviewOpen] = useState(false);
+    const [showVideoWelcome, setShowVideoWelcome] = useState(() => {
+      try { return !localStorage.getItem('mfb.videos.welcomed'); } catch (e) { return false; }
+    });
     const [collapsed, setCollapsed] = useState(() => {
       try {
         return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
@@ -287,6 +290,10 @@
         section: sectionKey,
         badgeId
       });
+    };
+    const dismissVideoWelcome = () => {
+      try { localStorage.setItem('mfb.videos.welcomed', '1'); } catch (e) {}
+      setShowVideoWelcome(false);
     };
     const closeHelp = () => {
       setHelpState(prev => ({
@@ -525,6 +532,38 @@
       className: "app-main"
     },
     React.createElement(SyncStatusBanner, { onOpenReview: () => setSyncReviewOpen(true) }),
+    /* ── Bannière première ouverture : vidéos disponibles ── */
+    showVideoWelcome && React.createElement("div", {
+      style: {
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 12, flexWrap: "wrap",
+        background: "#2F5D50", color: "#fff",
+        padding: "10px 20px", fontSize: 13, lineHeight: 1.4,
+        borderBottom: "2px solid #1E4038"
+      }
+    },
+      React.createElement("span", null, "🎬 ",
+        React.createElement("strong", null, "Bienvenue !"),
+        " Des vidéos tutoriels sont disponibles dans Aide en Ligne pour vous guider pas à pas."
+      ),
+      React.createElement("div", { style: { display: "flex", gap: 8, flexShrink: 0 } },
+        React.createElement("button", {
+          onClick: () => { dismissVideoWelcome(); openHelp("videos"); },
+          style: {
+            padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+            background: "#fff", color: "#2F5D50", border: "none", cursor: "pointer"
+          }
+        }, "▶ Voir les vidéos"),
+        React.createElement("button", {
+          onClick: dismissVideoWelcome,
+          style: {
+            padding: "5px 10px", borderRadius: 20, fontSize: 12,
+            background: "rgba(255,255,255,0.15)", color: "#fff",
+            border: "1px solid rgba(255,255,255,0.3)", cursor: "pointer"
+          }
+        }, "✕")
+      )
+    ),
     typeof children === "function" ? children({
       openHelp
     }) : children), 

@@ -456,5 +456,426 @@
       }]
     }
   };
+
+  const HELP_VIDEOS = {
+    chapters: [
+      {
+        id: "ch0",
+        number: "0",
+        title: "Découverte & Vue globale",
+        icon: "🌟",
+        description: "Comprendre la philosophie de MyFamilyBudget et naviguer sur le tableau de bord de synthèse."
+      },
+      {
+        id: "ch1",
+        number: "1",
+        title: "Configuration initiale & Paramètres",
+        icon: "⚙️",
+        description: "Définir vos hypothèses d'inflation, monnaie constante, trésorerie de départ, seuils d'épargne et sauvegardes."
+      },
+      {
+        id: "ch2",
+        number: "2",
+        title: "Gestion du réel, Banques & Pointage",
+        icon: "💳",
+        description: "Importer vos relevés bancaires, catégoriser vos opérations, gérer le différé et pointer le réel face au prévisionnel."
+      },
+      {
+        id: "ch3",
+        number: "3",
+        title: "Prévisions, Trésorerie & Planification patrimoniale",
+        icon: "📈",
+        description: "Modéliser vos revenus, charges, crédits, placements, retraite, fiscalité et activer la Date Pivot."
+      }
+    ],
+    items: [
+      // ── Chapitre 0 ──────────────────────────────────────────
+      {
+        id: "0",
+        chapterId: "ch0",
+        file: "video-00-presentation.webm",
+        title: "Présentation générale de MyFamilyBudget",
+        duration: "1 min 05",
+        badge: "Fondations",
+        need: "Vous découvrez l'application et souhaitez comprendre sa philosophie : concilier gestion du quotidien (analyse du réel) et projections financières à long terme (patrimoine, retraite).",
+        highlights: [
+          "Double approche : analyse du réel bancaire vs prévisions pluriannuelles",
+          "Présentation des 7 modules clés de la barre latérale",
+          "Respect total de la confidentialité : calculs et données 100% locaux dans votre navigateur"
+        ],
+        keywords: ["présentation", "introduction", "découverte", "modules", "navigation", "confidentialité"]
+      },
+      {
+        id: "2.8",
+        chapterId: "ch0",
+        file: "video-28-overview.webm",
+        title: "Vue d'ensemble : tableau de bord global",
+        duration: "1 min 25",
+        badge: "Synthèse",
+        need: "Vous souhaitez avoir une vision claire et synthétique de votre santé financière : trésorerie disponible, patrimoine net, alertes et jauges d'indépendance.",
+        highlights: [
+          "Les 4 indicateurs clés (KPIs) en haut de page",
+          "Graphique de trésorerie disponible cumulée et patrimoine net",
+          "Journal des mouvements bancaires prévus",
+          "Camembert de répartition d'actifs et diversification du foyer"
+        ],
+        keywords: ["tableau de bord", "overview", "kpis", "synthèse", "camembert", "actifs", "journal"]
+      },
+
+      // ── Chapitre 1 ──────────────────────────────────────────
+      {
+        id: "1.1",
+        chapterId: "ch1",
+        file: "video-11-parametres.webm",
+        title: "Paramètres généraux du foyer",
+        duration: "1 min 05",
+        badge: "Paramétrage",
+        need: "Vous configurez votre foyer pour la première fois : hypothèses d'inflation, monnaie constante, alertes de solde et notifications.",
+        highlights: [
+          "Taux d'inflation annuelle prévisionnel (2 % par défaut)",
+          "Bascule monnaie constante vs euros courants (pouvoir d'achat futur)",
+          "Seuil de confort et notifications de sécurité"
+        ],
+        keywords: ["paramètres", "inflation", "monnaie constante", "notifications", "confort", "réglages"]
+      },
+      {
+        id: "1.2",
+        chapterId: "ch1",
+        file: "video-12-tresorerie-depart.webm",
+        title: "Trésorerie de départ & Date Pivot initiale",
+        duration: "0 min 50",
+        badge: "Paramétrage",
+        need: "Vous démarrez sans historique bancaire importé et souhaitez fixer le montant de départ de votre compte courant pour initialiser les courbes.",
+        highlights: [
+          "Saisie du solde initial du compte courant",
+          "Rôle de la date de départ avant le premier import bancaire",
+          "Point de départ de la courbe d'accumulation de trésorerie"
+        ],
+        keywords: ["trésorerie de départ", "solde initial", "compte courant", "date de départ"]
+      },
+      {
+        id: "1.3",
+        chapterId: "ch1",
+        file: "video-13-sweep.webm",
+        title: "Virement automatique & Seuils (Sweep)",
+        duration: "1 min 00",
+        badge: "Automatisation",
+        need: "Vous souhaitez automatiser l'écrêtement des surplus de votre compte courant vers votre épargne (et inversement en cas de coup dur sous le seuil d'alerte).",
+        highlights: [
+          "Seuil de trésorerie haute (écrêtement vers l'épargne, ex: 6 000 €)",
+          "Seuil d'alerte / pause épargne (suspension des versements en cas de tension)",
+          "Activation du moteur de virement automatique"
+        ],
+        keywords: ["sweep", "virement automatique", "seuil haut", "seuil bas", "pause épargne", "sécurité"]
+      },
+      {
+        id: "1.4",
+        chapterId: "ch1",
+        file: "video-14-categories-actifs.webm",
+        title: "Catégories d'actifs patrimoniaux",
+        duration: "0 min 50",
+        badge: "Patrimoine",
+        need: "Vous souhaitez personnaliser vos classes d'actifs (Livrets sécurisés, Actions / PEA, Immobilier, Retraite) avec leurs couleurs et icônes.",
+        highlights: [
+          "Gestion des classes d'actifs patrimoniales",
+          "Personnalisation des couleurs, icônes et intitulés",
+          "Impact direct sur le camembert de diversification de la Vue d'ensemble"
+        ],
+        keywords: ["actifs", "classes d'actifs", "catégories", "livrets", "actions", "immobilier", "couleurs"]
+      },
+      {
+        id: "1.5",
+        chapterId: "ch1",
+        file: "video-15-sauvegarde.webm",
+        title: "Sauvegarde, export & restauration",
+        duration: "0 min 45",
+        badge: "Sécurité",
+        need: "Vous voulez sauvegarder vos données sur votre ordinateur, changer de machine, ou réinitialiser l'application avec les données de démonstration.",
+        highlights: [
+          "Exportation JSON complète en un clic (fichier de sauvegarde)",
+          "Importation et restauration instantanée sur tout navigateur",
+          "Réinitialisation sécurisée des données avec confirmation"
+        ],
+        keywords: ["sauvegarde", "export", "import", "json", "restauration", "réinitialiser", "backup"]
+      },
+
+      // ── Chapitre 2 ──────────────────────────────────────────
+      {
+        id: "2.1",
+        chapterId: "ch2",
+        file: "video-21-import-csv.webm",
+        title: "Importer un relevé bancaire (CSV / Excel)",
+        duration: "0 min 50",
+        badge: "Banques",
+        need: "Vous avez téléchargé un fichier de transactions depuis votre banque et souhaitez charger vos opérations réelles dans l'outil.",
+        highlights: [
+          "Glisser-déposer de votre fichier CSV ou Excel bancaire",
+          "Mappage intuitif des colonnes (Date, Montant, Libellé)",
+          "Détection et élimination automatique des opérations en doublon"
+        ],
+        keywords: ["import", "csv", "excel", "relevé", "banque", "transactions", "colonnes", "doublons"]
+      },
+      {
+        id: "2.2",
+        chapterId: "ch2",
+        file: "video-22-categories-depenses.webm",
+        title: "Créer des catégories de dépenses",
+        duration: "0 min 55",
+        badge: "Catégories",
+        need: "Vous souhaitez structurer vos postes de budget (Alimentation, Logement, Transports) et marquer vos postes réductibles pour vos arbitrages.",
+        highlights: [
+          "Création d'une catégorie de dépense avec couleur et icône",
+          "Rôle du drapeau « Poste réductible » (dépenses non indispensables)",
+          "Identification immédiate de votre marge de manœuvre budgétaire"
+        ],
+        keywords: ["catégories", "dépenses", "poste réductible", "arbitrage", "budget", "alimentation", "loisirs"]
+      },
+      {
+        id: "2.3",
+        chapterId: "ch2",
+        file: "video-23-categorisation.webm",
+        title: "Catégoriser les transactions importées",
+        duration: "1 min 15",
+        badge: "Automatisation",
+        need: "Vous venez d'importer vos transactions et souhaitez les classer rapidement grâce aux règles de mots-clés automatiques.",
+        highlights: [
+          "Attribution d'une catégorie à une opération bancaire",
+          "Règles automatiques par mots-clés (rétroactives et pour les futurs imports)",
+          "Jauge de progression du taux de catégorisation"
+        ],
+        keywords: ["catégorisation", "mots-clés", "règles automatiques", "classement", "gain de temps"]
+      },
+      {
+        id: "2.4",
+        chapterId: "ch2",
+        file: "video-24-recherche-tri.webm",
+        title: "Trier et rechercher dans les transactions",
+        duration: "0 min 45",
+        badge: "Productivité",
+        need: "Vous recherchez une opération précise ou souhaitez analyser vos dépenses sur une période, un montant ou une catégorie donnée.",
+        highlights: [
+          "Tri instantané sur n'importe quel en-tête de colonne (Date, Montant, Libellé)",
+          "Filtres textuels cumulatifs directement sous les en-têtes",
+          "Compteur de résultats et bouton de réinitialisation des filtres"
+        ],
+        keywords: ["recherche", "tri", "filtres", "transactions", "retrouver", "dépenses"]
+      },
+      {
+        id: "2.5",
+        chapterId: "ch2",
+        file: "video-25-operations-en-cours.webm",
+        title: "Opérations en cours & solde disponible",
+        duration: "1 min 00",
+        badge: "Trésorerie réelle",
+        need: "Vous utilisez des cartes bancaires à débit différé, des chèques non débités ou des dépenses engagées pour connaître votre solde réellement disponible.",
+        highlights: [
+          "Distinction clé entre solde bancaire brut et solde réel disponible",
+          "Saisie des opérations engagées (cartes à débit différé, chèques émis)",
+          "Anticipation du débit groupé en fin de mois sans mauvaise surprise"
+        ],
+        keywords: ["opérations en cours", "débit différé", "solde disponible", "chèques", "cb différée"]
+      },
+      {
+        id: "2.6",
+        chapterId: "ch2",
+        file: "video-26-pointage.webm",
+        title: "Le Pointage mensuel (Réel vs Prévu)",
+        duration: "1 min 30",
+        badge: "Pointage",
+        need: "Vous arrivez en fin de mois et souhaitez rapprocher vos opérations bancaires réelles de vos lignes de budget prévisionnel.",
+        highlights: [
+          "Comprendre l'origine des données (alimentées depuis l'onglet Trésorerie)",
+          "Rapprochement automatique en un clic par catégorie partagée",
+          "Pointage manuel ligne par ligne avec suggestions de montants",
+          "Codes couleurs : conforme (bleu), économie (vert), dépassement (rouge)"
+        ],
+        keywords: ["pointage", "rapprochement", "réel vs prévu", "écarts", "budget mensuel", "clôture"]
+      },
+      {
+        id: "2.7",
+        chapterId: "ch2",
+        file: "video-27-analyse.webm",
+        title: "Analyse : comprendre ses dépenses",
+        duration: "0 min 50",
+        badge: "Analyse",
+        need: "Vous voulez faire le bilan de vos dépenses, analyser vos moyennes mensuelles réelles et identifier vos leviers d'économies.",
+        highlights: [
+          "Moyennes mensuelles réelles constatées par poste",
+          "Répartition des dépenses réelles en camembert interactif",
+          "Filtre exclusif sur les postes réductibles pour arbitrer votre budget"
+        ],
+        keywords: ["analyse", "moyennes", "dépenses réelles", "postes réductibles", "économies", "bilan"]
+      },
+
+      // ── Chapitre 3 ──────────────────────────────────────────
+      {
+        id: "3.1",
+        chapterId: "ch3",
+        file: "video-31-revenus-recurrents.webm",
+        title: "Saisir ses revenus récurrents (Trésorerie)",
+        duration: "0 min 50",
+        badge: "Trésorerie",
+        need: "Vous configurez les salaires et rentes de votre foyer avec leur rythme de revalorisation annuelle prévisionnelle.",
+        highlights: [
+          "Saisie des salaires nets mensuels de chaque conjoint",
+          "Augmentation annuelle prévisionnelle (taux %)",
+          "Mise à jour en temps réel de la courbe de trésorerie"
+        ],
+        keywords: ["revenus", "salaires", "augmentation", "trésorerie", "salaire net", "revalorisation"]
+      },
+      {
+        id: "3.2",
+        chapterId: "ch3",
+        file: "video-32-charges-recurrentes.webm",
+        title: "Saisir ses charges récurrentes",
+        duration: "1 min 00",
+        badge: "Trésorerie",
+        need: "Vous listez vos loyers, assurances, abonnements et courses avec la règle de gestion de l'inflation.",
+        highlights: [
+          "Règle d'or de l'inflation : laisser le taux vide indexe la charge sur l'inflation",
+          "Geler un montant fixe : saisir explicitement 0 % (ex : loyer fixe)",
+          "Recensement complet de vos charges mensuelles"
+        ],
+        keywords: ["charges", "loyer", "courses", "inflation", "charges récurrentes", "dépenses fixes"]
+      },
+      {
+        id: "3.3",
+        chapterId: "ch3",
+        file: "video-33-credits-tresorerie.webm",
+        title: "Remboursements de crédits en trésorerie",
+        duration: "1 min 00",
+        badge: "Crédits",
+        need: "Vous remboursez des prêts et souhaitez que leurs mensualités s'arrêtent automatiquement à leur échéance pour libérer de la trésorerie.",
+        highlights: [
+          "Saisie d'une mensualité avec date de début et date de fin",
+          "Arrêt automatique de la charge dès la fin de l'échéance",
+          "Accélération visible de l'accumulation d'épargne après remboursement"
+        ],
+        keywords: ["crédits", "mensualité", "fin de prêt", "échéance", "remboursement", "prêt immobilier"]
+      },
+      {
+        id: "3.4",
+        chapterId: "ch3",
+        file: "video-34-placements-patrimoine.webm",
+        title: "Placements & Comptes d'épargne",
+        duration: "1 min 20",
+        badge: "Épargne",
+        need: "Vous voulez configurer vos livrets, assurance-vie ou PEA, définir leurs 3 rendements et renseigner leur solde de référence.",
+        highlights: [
+          "Création d'un placement via le tiroir latéral dédié",
+          "Hypothèses de rendement : pessimiste, correct et optimiste",
+          "Fenêtre 📈 Historique : saisie du solde de départ des projections"
+        ],
+        keywords: ["placements", "livret a", "pea", "assurance-vie", "rendement", "historique", "épargne"]
+      },
+      {
+        id: "3.5",
+        chapterId: "ch3",
+        file: "video-35-credits-patrimoine.webm",
+        title: "Crédits immobiliers & Passif (Patrimoine)",
+        duration: "0 min 50",
+        badge: "Passif",
+        need: "Vous configurez le Capital Restant Dû (CRD) de vos emprunts pour calculer votre passif et votre patrimoine net réel.",
+        highlights: [
+          "Saisie des caractéristiques du prêt (capital emprunté, taux, mensualité)",
+          "Renseignement du CRD au dernier relevé bancaire",
+          "Amortissement automatique et soustraction du passif pour le patrimoine net"
+        ],
+        keywords: ["passif", "crd", "emprunt", "crédit immobilier", "patrimoine net", "amortissement"]
+      },
+      {
+        id: "3.6",
+        chapterId: "ch3",
+        file: "video-36-sweep-placements.webm",
+        title: "Virement automatique Sweep vers les placements",
+        duration: "0 min 50",
+        badge: "Stratégie",
+        need: "Vous organisez l'affectation automatique de vos excédents de compte courant vers vos différents placements avec des priorités.",
+        highlights: [
+          "Attribution d'une priorité de Sweep (ex: Priorité 1 pour le Livret A)",
+          "Définition d'un plafond (ex: 22 950 €) pour basculer vers la priorité suivante",
+          "Priorité de pause d'épargne en cas de baisse de trésorerie sous le seuil d'alerte"
+        ],
+        keywords: ["sweep", "priorité", "plafond", "virement automatique", "stratégie d'épargne", "livret a"]
+      },
+      {
+        id: "3.7",
+        chapterId: "ch3",
+        file: "video-37-depenses-ponctuelles.webm",
+        title: "Dépenses ponctuelles, travaux & primes",
+        duration: "1 min 00",
+        badge: "Flux variables",
+        need: "Vous prévoyez des dépenses non mensuelles (vacances, gros travaux) ou percevez des primes variables indexées sur votre salaire.",
+        highlights: [
+          "Saisie d'une dépense ponctuelle à date précise (déduite une seule fois)",
+          "Configuration de primes et intéressement indexés en % du salaire",
+          "Ajustement dynamique de la prime si le salaire de référence progresse"
+        ],
+        keywords: ["dépenses ponctuelles", "vacances", "travaux", "primes", "intéressement", "salaire de référence"]
+      },
+      {
+        id: "3.8",
+        chapterId: "ch3",
+        file: "video-38-jauges-fire.webm",
+        title: "Jauges FIRE & Indépendance financière",
+        duration: "0 min 55",
+        badge: "Indépendance",
+        need: "Vous souhaitez évaluer si vos placements et vos futures pensions suffiront à couvrir votre niveau de vie à la retraite.",
+        highlights: [
+          "Jauge 1 : Règle des 4 % avec liquidation totale (placements + immobilier)",
+          "Jauge 2 : Couverture réaliste du niveau de vie (placements financiers + pensions seules)",
+          "Comparaison directe des 3 scénarios (pessimiste, correct, optimiste)"
+        ],
+        keywords: ["fire", "indépendance financière", "règle des 4%", "couverture réaliste", "rente", "retraite"]
+      },
+      {
+        id: "3.9",
+        chapterId: "ch3",
+        file: "video-39-retraite.webm",
+        title: "Retraite : estimation des pensions",
+        duration: "0 min 55",
+        badge: "Retraite",
+        need: "Vous estimez vos futures pensions du Régime Général et de l'Agirc-Arrco directement à partir de votre carrière et vos trimestres.",
+        highlights: [
+          "Liaison de chaque conjoint à son salaire de trésorerie",
+          "Saisie des trimestres validés à partir du relevé info-retraite.fr",
+          "Calcul automatique des pensions brutes et intégration directe en trésorerie"
+        ],
+        keywords: ["retraite", "pension", "trimestres", "agirc-arrco", "taux plein", "décote", "info-retraite"]
+      },
+      {
+        id: "3.10",
+        chapterId: "ch3",
+        file: "video-310-impots.webm",
+        title: "Impôts & Prélèvement à la Source",
+        duration: "0 min 50",
+        badge: "Fiscalité",
+        need: "Vous configurez votre foyer fiscal (parts, enfants) et simulez votre Prélèvement à la Source (PAS) mensualisé.",
+        highlights: [
+          "Configuration du quotient familial (parts adultes et demi-parts enfants)",
+          "Simulation automatique du taux de PAS mensualisé dans le budget",
+          "Ajustement avec l'impôt réel constaté sur avis d'imposition"
+        ],
+        keywords: ["impôts", "pas", "prélèvement à la source", "parts fiscales", "avis d'imposition", "quotient"]
+      },
+      {
+        id: "3.11",
+        chapterId: "ch3",
+        file: "video-311-date-pivot.webm",
+        title: "Date Pivot : bascule Réel → Prévisionnel",
+        duration: "0 min 45",
+        badge: "Date Pivot",
+        need: "Vous activez la Date Pivot pour que vos projections partent automatiquement de votre solde réel bancaire le plus récent.",
+        highlights: [
+          "Bouton ⚡ Caler sur le dernier import bancaire",
+          "Bascule en mode automatique basé sur les opérations réelles",
+          "Frontière nette : le réel à gauche de la date, les prévisions à droite"
+        ],
+        keywords: ["date pivot", "caler", "point de bascule", "solde réel constaté", "automatique", "transition"]
+      }
+    ]
+  };
+
   exports.HELP_CONTENT = HELP_CONTENT;
+  exports.HELP_VIDEOS = HELP_VIDEOS;
 })(typeof window !== 'undefined' ? window.BudgetApp = window.BudgetApp || {} : module.exports);

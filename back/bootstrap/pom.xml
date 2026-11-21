@@ -286,6 +286,7 @@
                                         <include>config.js</include>
                                         <include>css/**</include>
                                         <include>js/**</include>
+                                        <include>videos/**</include>
                                         <include>assets/**</include>
                                     </includes>
                                     <excludes>

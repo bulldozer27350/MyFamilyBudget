@@ -217,6 +217,7 @@
       }
     }, "Trimestres validés à ce jour"), /*#__PURE__*/React.createElement("input", {
       type: "number",
+      id: "trimestres",
       value: person.trimestresValides,
       onChange: e => updatePerson(p => ({
         ...p,

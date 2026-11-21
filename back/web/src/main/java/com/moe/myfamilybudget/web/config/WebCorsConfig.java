@@ -22,9 +22,20 @@ public class WebCorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Déclare les ressources statiques embarquées (HTML, CSS, JS)
+        // Déclare les ressources statiques embarquées (HTML, CSS, JS) ainsi que les vidéos tutoriels
         registry.addResourceHandler("/**")
-                .addResourceLocations("classpath:/static/");
+                .addResourceLocations(
+                        "classpath:/static/",
+                        "file:view/",
+                        "file:scripts/videos/output/",
+                        "file:view/videos/"
+                );
+        registry.addResourceHandler("/videos/**")
+                .addResourceLocations(
+                        "file:scripts/videos/output/",
+                        "file:view/videos/",
+                        "classpath:/static/videos/"
+                );
     }
 
     @Override

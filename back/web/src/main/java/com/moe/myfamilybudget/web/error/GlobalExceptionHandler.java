@@ -68,6 +68,22 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Ressource statique ou endpoint non trouvé : 404 Not Found plutôt que 500 Internal Error.
+     */
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException e,
+                                                                   HttpServletRequest request) {
+        LOG.debug("Ressource introuvable sur {} : {}", request.getRequestURI(), e.getMessage());
+        ApiErrorResponse body = ApiErrorResponse.of(
+                HttpStatus.NOT_FOUND.value(),
+                "NOT_FOUND",
+                "Ressource introuvable : " + request.getRequestURI(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    /**
      * Filet de sécurité générique : toute exception non gérée plus spécifiquement finit ici.
      */
     @ExceptionHandler(Exception.class)
