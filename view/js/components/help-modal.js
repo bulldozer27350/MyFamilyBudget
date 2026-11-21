@@ -76,7 +76,7 @@
   /* ───────────────────────────────────────────────────
    *  Composant VideoLibrary
    * ─────────────────────────────────────────────────── */
-  function VideoLibrary() {
+  function VideoLibrary({ onVideoActiveChange }) {
     const chapters = (HELP_VIDEOS && HELP_VIDEOS.chapters) || [];
     const allItems = (HELP_VIDEOS && HELP_VIDEOS.items) || [];
 
@@ -84,6 +84,14 @@
     const [currentVideo, setCurrentVideo] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
     const videoRef = useRef(null);
+    const playerContainerRef = useRef(null);
+
+    // Notifier le parent (HelpModal) si une vidéo est active ou non
+    useEffect(() => {
+      if (onVideoActiveChange) {
+        onVideoActiveChange(!!currentVideo);
+      }
+    }, [currentVideo, onVideoActiveChange]);
 
     // Fermer le player avec Échap
     useEffect(() => {
@@ -219,19 +227,93 @@
       if (!currentVideo) return null;
       const col = CHAPTER_COLORS[currentVideo.chapterId] || CHAPTER_COLORS.ch0;
       const chapter = chapters.find(c => c.id === currentVideo.chapterId);
+
+      const [isPlaying, setIsPlaying] = useState(true);
+      const [currentTime, setCurrentTime] = useState(0);
+      const [duration, setDuration] = useState(0);
+
+      // Gestion play/pause & reset lors du changement de vidéo
+      useEffect(() => {
+        setIsPlaying(true);
+        setCurrentTime(0);
+        setDuration(0);
+      }, [currentVideo]);
+
+      const togglePlay = () => {
+        if (!videoRef.current) return;
+        if (videoRef.current.paused) {
+          videoRef.current.play();
+          setIsPlaying(true);
+        } else {
+          videoRef.current.pause();
+          setIsPlaying(false);
+        }
+      };
+
+      const handleTimeUpdate = () => {
+        if (videoRef.current) {
+          setCurrentTime(videoRef.current.currentTime);
+        }
+      };
+
+      const handleLoadedMetadata = () => {
+        if (videoRef.current) {
+          setDuration(videoRef.current.duration || 0);
+        }
+      };
+
+      const handleSeek = (e) => {
+        const val = parseFloat(e.target.value);
+        if (videoRef.current) {
+          videoRef.current.currentTime = val;
+          setCurrentTime(val);
+        }
+      };
+
+      const [isFullscreen, setIsFullscreen] = useState(false);
+
+      useEffect(() => {
+        const onFsChange = () => {
+          setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener("fullscreenchange", onFsChange);
+        return () => document.removeEventListener("fullscreenchange", onFsChange);
+      }, []);
+
+      const toggleFullscreen = () => {
+        if (!playerContainerRef.current) return;
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else if (playerContainerRef.current.requestFullscreen) {
+          playerContainerRef.current.requestFullscreen();
+        }
+      };
+
+      const formatTime = (sec) => {
+        if (!sec || isNaN(sec)) return "0:00";
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
+      };
+
       return React.createElement("div", {
+        ref: playerContainerRef,
         style: {
-          position: "absolute", inset: 0, zIndex: 10,
-          background: "rgba(30, 38, 44, 0.97)",
+          position: isFullscreen ? "fixed" : "absolute",
+          inset: 0,
+          zIndex: isFullscreen ? 999999 : 10,
+          background: "rgba(22, 28, 33, 0.99)",
           display: "flex", flexDirection: "column",
-          borderRadius: 12, overflow: "hidden"
+          borderRadius: isFullscreen ? 0 : 12,
+          overflowY: "auto"
         }
       },
         // Header du player
         React.createElement("div", {
           style: {
-            padding: "12px 20px", display: "flex", justifyContent: "space-between",
-            alignItems: "center", background: "rgba(0,0,0,0.3)", flexShrink: 0
+            padding: isFullscreen ? "14px 24px" : "10px 18px",
+            display: "flex", justifyContent: "space-between",
+            alignItems: "center", background: "rgba(0,0,0,0.4)", flexShrink: 0
           }
         },
           React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
@@ -242,50 +324,150 @@
                 border: `1px solid ${col.border}`
               }
             }, chapter ? (chapter.icon ? chapter.icon + " " + chapter.title : chapter.title) : ""),
-            React.createElement("span", { style: { color: "#fff", fontWeight: 700, fontSize: 14 } },
+            React.createElement("span", { style: { color: "#fff", fontWeight: 700, fontSize: isFullscreen ? 16 : 14 } },
               currentVideo.id, " — ", currentVideo.title)
           ),
-          React.createElement("button", {
-            onClick: () => setCurrentVideo(null),
-            style: {
-              background: "rgba(255,255,255,0.1)", border: "none", color: "#fff",
-              fontSize: 20, cursor: "pointer", borderRadius: 6, padding: "2px 10px"
-            }
-          }, "✕")
+          React.createElement("div", { style: { display: "flex", gap: 8 } },
+            React.createElement("button", {
+              onClick: toggleFullscreen,
+              title: isFullscreen ? "Quitter le plein écran" : "Plein écran",
+              style: {
+                background: "rgba(255,255,255,0.12)", border: "none", color: "#fff",
+                fontSize: 13, cursor: "pointer", borderRadius: 6, padding: "3px 10px"
+              }
+            }, isFullscreen ? "✕ Réduire" : "⛶ Plein écran"),
+            React.createElement("button", {
+              onClick: () => {
+                if (isFullscreen && document.exitFullscreen) document.exitFullscreen();
+                setCurrentVideo(null);
+              },
+              title: "Fermer la vidéo",
+              style: {
+                background: "rgba(255,255,255,0.12)", border: "none", color: "#fff",
+                fontSize: 18, cursor: "pointer", borderRadius: 6, padding: "3px 10px"
+              }
+            }, "✕")
+          )
         ),
-        // Vidéo
-        React.createElement("video", {
-          ref: videoRef,
-          controls: true,
-          autoPlay: true,
-          style: { width: "100%", maxHeight: "55vh", background: "#000", flexShrink: 0 },
-          src: `videos/${currentVideo.file}`
-        }),
+
+        // Vidéo SANS contrôles natifs (aucun ombrage sur l'image)
+        React.createElement("div", {
+          style: {
+            position: "relative",
+            width: "100%",
+            flex: isFullscreen ? "1 1 0" : "1 1 auto",
+            minHeight: isFullscreen ? "60vh" : "48vh",
+            maxHeight: isFullscreen ? "78vh" : "58vh",
+            background: "#000",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            cursor: "pointer",
+            flexShrink: 0
+          },
+          onClick: togglePlay
+        },
+          React.createElement("video", {
+            ref: videoRef,
+            controls: false,
+            autoPlay: true,
+            onTimeUpdate: handleTimeUpdate,
+            onLoadedMetadata: handleLoadedMetadata,
+            onPlay: () => setIsPlaying(true),
+            onPause: () => setIsPlaying(false),
+            onEnded: () => setIsPlaying(false),
+            style: {
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              display: "block"
+            },
+            src: `videos/${currentVideo.file}`
+          })
+        ),
+
+        // Barre de contrôle personnalisée placée EN DESSOUS de la vidéo
+        React.createElement("div", {
+          style: {
+            display: "flex", alignItems: "center", gap: 12,
+            padding: "8px 18px", background: "rgba(18, 25, 30, 0.96)",
+            borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0
+          }
+        },
+          // Bouton Play / Pause
+          React.createElement("button", {
+            onClick: togglePlay,
+            title: isPlaying ? "Pause (Espace)" : "Lecture (Espace)",
+            style: {
+              background: pine, border: "none", color: "#fff",
+              borderRadius: "50%", width: 32, height: 32,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", fontSize: 13, flexShrink: 0
+            }
+          }, isPlaying ? "⏸" : "▶"),
+
+          // Horodatage actuel
+          React.createElement("span", {
+            style: { color: "#C5D0D8", fontSize: 11.5, minWidth: 36, textAlign: "right", fontFamily: "monospace" }
+          }, formatTime(currentTime)),
+
+          // Barre de progression (slider)
+          React.createElement("input", {
+            type: "range",
+            min: 0,
+            max: duration || 100,
+            step: 0.1,
+            value: currentTime,
+            onChange: handleSeek,
+            style: {
+              flex: 1, cursor: "pointer", accentColor: pine,
+              height: 4, borderRadius: 2
+            }
+          }),
+
+          // Durée totale
+          React.createElement("span", {
+            style: { color: "#8E9DA8", fontSize: 11.5, minWidth: 36, fontFamily: "monospace" }
+          }, formatTime(duration)),
+
+          // Bouton Plein écran
+          React.createElement("button", {
+            onClick: toggleFullscreen,
+            title: isFullscreen ? "Quitter le plein écran" : "Plein écran",
+            style: {
+              background: "transparent", border: "1px solid rgba(255,255,255,0.2)",
+              color: "#C5D0D8", borderRadius: 4, padding: "3px 8px",
+              cursor: "pointer", fontSize: 11, flexShrink: 0
+            }
+          }, isFullscreen ? "✕ Réduire" : "⛶")
+        ),
+
         // Infos + Navigation
         React.createElement("div", {
           style: {
-            flex: 1, overflowY: "auto", padding: "14px 20px",
-            display: "flex", flexDirection: "column", gap: 10
+            padding: "10px 18px",
+            display: "flex", flexDirection: "column", gap: 8,
+            flexShrink: 0
           }
         },
-          React.createElement("div", { style: { fontSize: 12.5, color: "#D0D8DF", lineHeight: 1.5 } },
+          React.createElement("div", { style: { fontSize: 12.5, color: "#D0D8DF", lineHeight: 1.4 } },
             currentVideo.need),
-          React.createElement("ul", { style: { margin: 0, paddingLeft: 18, color: "#A8C0CC", fontSize: 12 } },
+          React.createElement("ul", { style: { margin: 0, paddingLeft: 18, color: "#A8C0CC", fontSize: 11.5 } },
             (currentVideo.highlights || []).map((h, i) =>
-              React.createElement("li", { key: i, style: { marginBottom: 4 } }, h)
+              React.createElement("li", { key: i, style: { marginBottom: 3 } }, h)
             )
           ),
           // Navigation Préc/Suiv
           React.createElement("div", {
             style: {
               display: "flex", gap: 10, justifyContent: "space-between",
-              marginTop: "auto", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.1)"
+              marginTop: 4, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.1)"
             }
           },
             React.createElement("button", {
               onClick: goPrev, disabled: !hasPrev,
               style: {
-                padding: "7px 18px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                padding: "6px 16px", borderRadius: 20, fontSize: 12, fontWeight: 600,
                 border: "1px solid rgba(255,255,255,0.25)",
                 background: hasPrev ? "rgba(255,255,255,0.1)" : "transparent",
                 color: hasPrev ? "#fff" : "rgba(255,255,255,0.3)",
@@ -298,7 +480,7 @@
             React.createElement("button", {
               onClick: goNext, disabled: !hasNext,
               style: {
-                padding: "7px 18px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                padding: "6px 16px", borderRadius: 20, fontSize: 12, fontWeight: 600,
                 border: "1px solid rgba(255,255,255,0.25)",
                 background: hasNext ? "rgba(255,255,255,0.1)" : "transparent",
                 color: hasNext ? "#fff" : "rgba(255,255,255,0.3)",
@@ -432,6 +614,7 @@
   }) {
     const [activeTab, setActiveTab] = useState(initialSection);
     const [searchQuery, setSearchQuery] = useState("");
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
     useEffect(() => {
       if (isOpen) {
         setActiveTab(initialSection);
@@ -511,8 +694,9 @@
         background: C?.paper || "#F6F3EC",
         borderRadius: 12,
         width: "100%",
-        maxWidth: activeTab === "videos" ? 1100 : 880,
-        maxHeight: "88vh",
+        maxWidth: activeTab === "videos" ? (isVideoPlaying ? 1280 : 1150) : 880,
+        height: activeTab === "videos" ? (isVideoPlaying ? "96vh" : "92vh") : "auto",
+        maxHeight: isVideoPlaying ? "98vh" : "92vh",
         display: "flex",
         flexDirection: "column",
         boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
@@ -520,7 +704,7 @@
         overflow: "hidden"
       },
       onClick: e => e.stopPropagation()
-    }, /*#__PURE__*/React.createElement("div", {
+    }, (!isVideoPlaying || activeTab !== "videos") && /*#__PURE__*/React.createElement("div", {
       style: {
         background: C?.navy || "#28394A",
         color: "#fff",
@@ -561,7 +745,7 @@
         padding: "0 8px",
         opacity: 0.8
       }
-    }, "✕")), /*#__PURE__*/React.createElement("div", {
+    }, "✕")), (!isVideoPlaying || activeTab !== "videos") && /*#__PURE__*/React.createElement("div", {
       style: {
         background: C?.panelAlt || "#EFEAE0",
         borderBottom: `1px solid ${C?.line || "#DED6C4"}`,
@@ -626,7 +810,7 @@
     activeTab === "videos"
       ? /*#__PURE__*/React.createElement("div", {
           style: { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }
-        }, /*#__PURE__*/React.createElement(VideoLibrary, null))
+        }, /*#__PURE__*/React.createElement(VideoLibrary, { onVideoActiveChange: setIsVideoPlaying }))
       : /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
@@ -695,7 +879,7 @@
           __html: formattedLine
         }
       });
-    }))))), /*#__PURE__*/React.createElement("div", {
+    }))))), activeTab !== "videos" && /*#__PURE__*/React.createElement("div", {
       style: {
         background: C?.panelAlt || "#EFEAE0",
         borderTop: `1px solid ${C?.line || "#DED6C4"}`,
