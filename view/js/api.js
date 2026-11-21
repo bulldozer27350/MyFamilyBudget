@@ -1463,12 +1463,34 @@
     },
 
     /**
-     * Remet une opération rapprochée en circulation (déliaison).
+     * Remet une opération rapprochée en circulation (déliaison), de façon définitive jusqu'à un
+     * nouveau rapprochement : le lien ne doit pas se recréer de lui-même après coup.
      * @param {string} opId Identifiant de l'opération
      * @returns {Promise<Array>} Liste mise à jour des opérations en cours
      */
     async unlinkPendingOperation(opId) {
-      return Promise.resolve(app().PendingOperationsService.unlinkPendingOperation(opId));
+      const localResult = app().PendingOperationsService.unlinkPendingOperation(opId);
+      const url = API_BASE_URL + '/pending-operations/unlink';
+      const body = { id: opId, operationId: opId };
+      try {
+        const res = await safeFetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!res || !res.ok) throw new Error('HTTP ' + (res ? res.status : 'réseau indisponible'));
+      } catch (e) {
+        if (app().SyncStatus) {
+          app().SyncStatus.enqueue({
+            tier: 'auto',
+            method: 'POST',
+            url,
+            body,
+            description: 'Opérations en cours — déliaison d\'une opération'
+          });
+        }
+      }
+      return Promise.resolve(localResult);
     },
 
     /**

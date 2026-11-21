@@ -63,6 +63,14 @@ public class PendingOperationsServiceImpl implements OperationsEnCoursApi {
     }
 
     @Override
+    public ResponseEntity<Void> unlinkPendingOperation(Object body) {
+        Map<String, Object> map = toMap(body);
+        String targetId = String.valueOf(map.getOrDefault("id", map.get("operationId")));
+        bankPointageUseCase.unlinkPendingOperation(targetId);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public ResponseEntity<Object> importPendingCB(Object body) {
         Map<String, Object> map = toMap(body);

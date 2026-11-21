@@ -782,6 +782,19 @@
     const handleAutoMatch = async () => {
       if (api && api.autoMatchPendingOperations) {
         const res = await api.autoMatchPendingOperations();
+        const refreshedOps = Array.isArray(res?.updatedOperations) ? res.updatedOperations : [];
+        if (update && refreshedOps.length > 0) {
+          // Le rapprochement automatique fait passer certaines opérations de "pending" à
+          // "cleared" côté backend. Dans la fusion de sourceData, le store local (data.bankImport)
+          // a priorité sur apiData pour les opérations déjà connues : sans cet alignement, il
+          // continuerait à réafficher sa dernière version locale (encore "pending") par-dessus
+          // l'état désormais rapproché, faisant réapparaître à tort "Non constaté en banque".
+          const refreshedById = new Map(refreshedOps.map(op => [op.id, op]));
+          update("bankImport", b => ({
+            ...b,
+            pendingOperations: (b?.pendingOperations || []).map(op => refreshedById.get(op.id) || op)
+          }));
+        }
         await loadDataFromApi();
         const reviewCount = res?.needsReviewCount || 0;
         if (res && res.matchCount > 0) {

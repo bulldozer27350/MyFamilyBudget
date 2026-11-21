@@ -540,6 +540,28 @@ public class DefaultBankPointageUseCase implements BankPointageUseCase {
     }
 
     @Override
+    public void unlinkPendingOperation(String operationId) {
+        if (operationId == null || operationId.isBlank() || "null".equalsIgnoreCase(operationId)) {
+            return;
+        }
+        bankImportCommandService.modifyBankImport(current -> {
+            List<BankImportModel.PendingOperationModel> updatedOps = current.pendingOperations().stream()
+                    .map(op -> op.id().equals(operationId)
+                            ? new BankImportModel.PendingOperationModel(
+                            op.id(), op.date(), op.expectedDate(), op.type(), op.refNumber(),
+                            op.label(), op.amount(), op.categoryId(), "pending", null,
+                            null, op.notes(), op.splits(), op.budgetLineId())
+                            : op)
+                    .collect(Collectors.toList());
+
+            return BankImportChange.write(new BankImportModel(
+                    current.columnMapping(), current.categories(), current.rules(),
+                    current.transactions(), updatedOps, current.matchings()
+            ), null);
+        });
+    }
+
+    @Override
     public Map<String, Object> importPendingCB(
             List<List<String>> rawRows, List<String> colRoles, String dateFormat, boolean usePurchaseDate) {
         // SILO-213 (lot B, etape b2) : lecture, calcul et ecriture sous le verrou du silo Banque.

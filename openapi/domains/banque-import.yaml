@@ -423,6 +423,26 @@ paths:
           description: Ignoree
 
 
+  /pending-operations/unlink:
+    post:
+      summary: >
+        Remet en circulation une operation en cours precedemment rapprochee (manuellement ou
+        automatiquement) : repasse son statut a "pending" et efface le lien vers la transaction
+        bancaire (linkedTxId, clearedDate), de facon definitive jusqu'a un nouveau rapprochement.
+      operationId: unlinkPendingOperation
+      tags:
+        - Operations en cours
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Deliee
+
+
   /pending-operations/import-cb:
     post:
       summary: Importe des operations CB differees depuis un releve CSV

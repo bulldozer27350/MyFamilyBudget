@@ -113,6 +113,15 @@ public interface BankPointageUseCase {
     /** Marque une opération en attente comme ignorée ; sans effet si l'identifiant est absent ou inconnu. */
     void ignorePendingOperation(String operationId);
 
+    /**
+     * Remet en circulation une opération en attente précédemment rapprochée (manuellement ou
+     * automatiquement) : repasse son statut à {@code "pending"} et efface le lien vers la transaction
+     * bancaire ({@code linkedTxId}, {@code clearedDate}), sans effet si l'identifiant est absent ou
+     * inconnu. Cet état délié est définitif jusqu'à un nouveau rapprochement : aucun processus ne doit
+     * recréer ce lien de lui-même.
+     */
+    void unlinkPendingOperation(String operationId);
+
     /** Importe des opérations CB en attente depuis des lignes brutes déjà découpées en colonnes. */
     Map<String, Object> importPendingCB(List<List<String>> rawRows, List<String> colRoles, String dateFormat, boolean usePurchaseDate);
 
