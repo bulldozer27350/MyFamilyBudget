@@ -4,22 +4,22 @@ Fichier genere automatiquement par `release-orchestrator.yml` (workflow_dispatch
 
 ## Resolution du BOM
 
-_Genere le 2026-11-07 11:32 UTC par release-orchestrator.yml_
+_Genere le 2026-11-22 10:44 UTC par release-orchestrator.yml_
 
 | Satellite | Version resolue | Changee ce run ? |
 |---|---|---|
-| credit | `0.0.1` | non |
+| credit | `0.0.1` | oui (etait `0.0.2-SNAPSHOT`) |
 | market | `0.0.1` | non |
 | notifications | `0.0.1` | non |
 | treasury | `0.0.1` | non |
-| bank-pointage | `0.0.1` | non |
+| bank-pointage | `0.1.0` | oui (etait `0.0.2-SNAPSHOT`) |
 | wealth | `0.0.1` | non |
 | tax | `0.0.1` | non |
 | retirement | `0.0.1` | non |
-| analysis | `0.0.1` | non |
+| analysis | `0.0.1` | oui (etait `0.0.2-SNAPSHOT`) |
 | goals | `0.0.1` | non |
 | settings | `0.0.1` | non |
 
 | Application | Version resolue | Changee ce run ? |
 |---|---|---|
-| MyFamilyBudget | `0.0.1` | oui |
+| MyFamilyBudget | `0.1.0` | oui |

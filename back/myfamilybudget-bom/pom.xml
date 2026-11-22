@@ -6,7 +6,7 @@
 
     <groupId>com.moe.myfamilybudget</groupId>
     <artifactId>myfamilybudget-bom</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.1.0</version>
     <packaging>pom</packaging>
     <name>myfamilybudget-bom</name>
     <description>Bill of Materials (BOM) centralisant les dépendances et versions clés de MyFamilyBudget pour les dépôts autonomes et l'application intégratrice</description>
