@@ -98,3 +98,20 @@ myfamilybudget:
       vapid-public-key: ${MYFAMILYBUDGET_VAPID_PUBLIC_KEY:}
       vapid-private-key: ${MYFAMILYBUDGET_VAPID_PRIVATE_KEY:}
       vapid-subject: ${MYFAMILYBUDGET_VAPID_SUBJECT:}   # ex. mailto:vous@example.com
+
+  # Contrôle de disponibilité d'une nouvelle version, pour la distribution portable (zip autonome)
+  # uniquement : jamais en profil "docker" (voir @Profile("!docker") sur UpdateCheckService /
+  # UpdateCheckScheduler / UpdateCheckController), le conteneur restant à jour par construction de
+  # l'infra qui l'héberge. Lecture seule et sans authentification de l'API publique GitHub
+  # (releases/latest du dépôt principal) : aucune donnée envoyée. Désactivable indépendamment avec
+  # update-check.enabled=false.
+  update-check:
+    enabled: true
+    timeout-seconds: 5
+    github:
+      owner: bulldozer27350
+      repo: MyFamilyBudget
+      api-base-url: https://api.github.com
+    refresh:
+      initial-delay: PT10S  # premier contrôle peu après le démarrage
+      interval: PT24H       # puis un contrôle par jour

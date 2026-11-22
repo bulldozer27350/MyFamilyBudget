@@ -258,6 +258,16 @@
                             <layout>JAR</layout>
                         </configuration>
                     </execution>
+                    <!-- Génère META-INF/build-info.properties (version, heure de build) afin que
+                         Spring Boot expose un bean BuildProperties avec la vraie version packagée :
+                         seule source fiable de "version actuelle" pour le contrôle de mise à jour
+                         de la distribution portable (voir server.internal.updatecheck). -->
+                    <execution>
+                        <id>build-info</id>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
                 </executions>
                 <configuration>
                     <mainClass>com.moe.myfamilybudget.ServerApplication</mainClass>

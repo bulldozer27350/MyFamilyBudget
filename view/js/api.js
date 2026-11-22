@@ -151,6 +151,25 @@
 
   const BudgetApi = {
     /**
+     * État de disponibilité d'une mise à jour pour la distribution portable (voir
+     * UpdateCheckController, back/bootstrap). Renvoie null en profil Docker (endpoint absent,
+     * 404) ou si le serveur est injoignable : l'appelant doit alors simplement ne rien afficher.
+     * @returns {Promise<Object|null>}
+     */
+    async getUpdateStatus() {
+      return fetchJsonOrNull('/update-check');
+    },
+
+    /**
+     * Déclenche la sauvegarde de précaution de la base (BACKUP TO côté H2, voir
+     * PreUpdateBackupService) avant d'ouvrir le lien de téléchargement de la mise à jour.
+     * @returns {Promise<{success: boolean, backupPath?: string}|null>} null si injoignable
+     */
+    async backupBeforeUpdate() {
+      return fetchJsonOrNull('/update-check/backup', { method: 'POST' });
+    },
+
+    /**
      * Vue d'ensemble : KPIs, projections (trésorerie, patrimoine) et jauges FIRE.
      * @param {{useConstantEuros?: boolean}} [options]
      * @returns {Promise<Object>} modèle de lecture de la Vue d'ensemble

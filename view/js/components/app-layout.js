@@ -20,6 +20,9 @@
     SyncStatusBanner,
     SyncReviewModal
   } = exports.SyncStatusBanner ? exports : window.BudgetApp || {};
+  const {
+    UpdateAvailableBanner
+  } = exports.UpdateAvailableBanner ? exports : window.BudgetApp || {};
   const NAV_ITEMS = [{
     key: "overview",
     label: "Vue d'ensemble",
@@ -532,6 +535,7 @@
       className: "app-main"
     },
     React.createElement(SyncStatusBanner, { onOpenReview: () => setSyncReviewOpen(true) }),
+    React.createElement(UpdateAvailableBanner),
     /* ── Bannière première ouverture : vidéos disponibles ── */
     showVideoWelcome && React.createElement("div", {
       style: {
