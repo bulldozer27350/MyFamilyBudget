@@ -35,7 +35,7 @@
 
     <groupId>com.moe.myfamilybudget</groupId>
     <artifactId>myfamilybudget-parent</artifactId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>${revision}</version>
     <packaging>pom</packaging>
     <name>myfamilybudget-parent</name>
     <description>Parent Maven (reactor) du backend MyFamilyBudget</description>
@@ -51,6 +51,20 @@
     </modules>
 
     <properties>
+        <!--
+            REL-010 (back/server/doc/architecture/27-backlog-automatisation-release.md) : version unique du
+            dépôt (CI Friendly Versions). `revision` est la seule valeur à modifier pour faire évoluer la
+            version du reactor complet. Les modules héritant de ce parent (api, application-api, application,
+            web, bootstrap) référencent `${revision}` dans leur <parent>/<version> et le reçoivent donc
+            automatiquement. `infra-jpa` et `myfamilybudget-bom` ne dépendent pas de ce parent (choix
+            architectural antérieur, SILO-200 et BOM autonome) : ils déclarent leur propre propriété
+            `revision` en miroir de celle-ci — à maintenir synchronisée à chaque changement de version, ou à
+            piloter uniformément via `-Drevision=X.Y.Z` sur la ligne de commande (ce que fait l'orchestrateur
+            de release, REL-070). flatten-maven-plugin (ci-dessous) résout `${revision}` dans le pom publié
+            sans jamais modifier le pom.xml source (flattenMode=resolveCiFriendliesOnly, updatePomFile=false).
+        -->
+        <revision>0.2.0-SNAPSHOT</revision>
+
         <java.version>21</java.version>
         
         <!--
@@ -70,6 +84,7 @@
         <node.version>v22.23.3</node.version>
         <moditect-maven-plugin.version>1.0.0.Final</moditect-maven-plugin.version>
         <japicmp-maven-plugin.version>0.23.1</japicmp-maven-plugin.version>
+        <flatten-maven-plugin.version>1.6.0</flatten-maven-plugin.version>
 
         <!-- Versions des dépendances non gérées par le BOM Spring Boot -->
         <jackson-nullable.version>0.2.6</jackson-nullable.version>
@@ -394,5 +409,38 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <!-- REL-010 : résout `${revision}` dans le pom publié de chaque module, sans toucher au pom.xml
+             source (updatePomFile=false). Déclaré ici (plugins actifs, pas pluginManagement) pour être
+             hérité et exécuté automatiquement par api, application-api, application, web et bootstrap.
+             infra-jpa et myfamilybudget-bom, qui n'héritent pas de ce parent, déclarent la même exécution
+             localement dans leur propre pom.xml. -->
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>${flatten-maven-plugin.version}</version>
+                <configuration>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                    <updatePomFile>false</updatePomFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 </project>
