@@ -1,0 +1,76 @@
+# REL-040 (back/server/doc/architecture/27-backlog-automatisation-release.md)
+# Configuration git-cliff : genere CHANGELOG.md a partir des messages de commit
+# (Conventional Commits, voir CONTRIBUTING.md / REL-020).
+#
+# CHANGELOG.md est un journal MECANIQUE et exhaustif des commits, regenere a
+# chaque release (voir .github/workflows/release.yml, job "freeze-and-release").
+# Il ne remplace PAS release-note.md : release-note.md reste la synthese
+# redigee a la main (type de release, resume, retro-compatibilite), qui
+# continue de faire foi pour le corps de la GitHub Release. CHANGELOG.md est
+# une source brute complementaire, utile pour ne rien oublier en redigeant
+# release-note.md et pour quiconque veut le detail commit par commit.
+#
+# Doc : https://git-cliff.org/docs/configuration
+
+[changelog]
+header = """
+# Changelog — MyFamilyBudget
+
+Toutes les évolutions notables de ce dépôt sont documentées dans ce fichier,
+régénéré automatiquement par [git-cliff](https://git-cliff.org/) à partir des
+messages de commit ([Conventional Commits](https://www.conventionalcommits.org/fr/),
+voir `CONTRIBUTING.md`). Pour le résumé rédigé à la main par version
+(type de release, rétro-compatibilité), voir `release-note.md`. Pour les
+versions des 11 silos satellites intégrés dans chaque release, voir
+`release-manifest.yaml` (joint à la GitHub Release) et `VERSIONS.md`.
+
+"""
+body = """
+{% if version %}\
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [Non publié]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group }}
+{% for commit in commits %}
+- {% if commit.breaking %}**[Changement non rétrocompatible]** {% endif %}{{ commit.message | upper_first }} ({{ commit.id | truncate(length=7, end="") }})
+{% endfor %}
+{% endfor %}\n
+"""
+trim = true
+footer = """
+<!-- genere automatiquement par git-cliff, ne pas editer a la main -->
+"""
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+protect_breaking_commits = true
+filter_commits = false
+tag_pattern = "v[0-9]*"
+topo_order = false
+sort_commits = "oldest"
+
+# Ne garde que la premiere ligne (sujet) du message de commit : le corps d'un
+# commit (details, listes a puces...) n'a pas sa place dans une entree de
+# changelog d'une seule ligne.
+commit_preprocessors = [
+    { pattern = '(?s)\n.*', replace = "" },
+]
+
+commit_parsers = [
+    { message = "^Merge", skip = true },
+    { message = "^feat", group = "Ajouté" },
+    { message = "^fix", group = "Corrigé" },
+    { message = "^docs", group = "Documentation" },
+    { message = "^style", group = "Style" },
+    { message = "^refactor", group = "Modifié" },
+    { message = "^perf", group = "Performance" },
+    { message = "^test", group = "Tests" },
+    { message = "^build", group = "Build" },
+    { message = "^ci", group = "Intégration continue" },
+    { message = "^chore", group = "Divers" },
+    { message = "^revert", group = "Annulé" },
+    { message = ".*", group = "Autres" },
+]
