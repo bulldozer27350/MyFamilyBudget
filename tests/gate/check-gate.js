@@ -154,6 +154,50 @@ function checkStatic() {
 }
 
 /**
+ * Extrait la version PROPRE d'un pom (celle du module lui-meme), en ignorant la version de son
+ * <parent> : un module peut n'avoir aucune balise <version> propre et heriter entierement de son
+ * parent (cas de api, application-api, application, web, bootstrap depuis REL-010), auquel cas la
+ * premiere balise <version> du fichier appartient au <parent> et ne doit pas etre confondue avec la
+ * version du module.
+ */
+function extractOwnVersion(pomContent) {
+  const withoutParent = pomContent.replace(/<parent>[\s\S]*?<\/parent>/, '');
+  const ownMatch = /<version>([^<]+)<\/version>/.exec(withoutParent);
+  if (ownMatch) return ownMatch[1].trim();
+  const parentMatch = /<parent>[\s\S]*?<version>([^<]+)<\/version>[\s\S]*?<\/parent>/.exec(pomContent);
+  return parentMatch ? parentMatch[1].trim() : null;
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Resout une version CI-Friendly (REL-010, `${xxx}`) : d'abord via une propriete declaree dans le
+ * pom lui-meme (cas de myfamilybudget-bom et infra-jpa, qui portent leur propre `<revision>` en
+ * miroir faute d'heriter de myfamilybudget-parent), sinon en remontant au pom parent via
+ * <relativePath> (cas des modules qui heritent de `${revision}` sans declarer de propriete locale).
+ * Repli sur la valeur brute si rien n'est resolu (ex. parent externe comme spring-boot-starter-parent),
+ * pour ne jamais masquer un probleme au lieu de le signaler.
+ */
+function resolveVersion(pomPath, pomContent, version, depth) {
+  depth = depth || 0;
+  const placeholder = /^\$\{([\w.-]+)\}$/.exec(version);
+  if (!placeholder || depth > 5) return version;
+  const propertyRe = new RegExp('<' + escapeRegExp(placeholder[1]) + '>([^<]+)</' + escapeRegExp(placeholder[1]) + '>');
+  const local = propertyRe.exec(pomContent);
+  if (local) return resolveVersion(pomPath, pomContent, local[1].trim(), depth + 1);
+
+  const relPath = /<parent>[\s\S]*?<relativePath>([^<]*)<\/relativePath>[\s\S]*?<\/parent>/.exec(pomContent);
+  if (!relPath || !relPath[1]) return version;
+  const parentPomPath = path.resolve(path.dirname(pomPath), relPath[1]);
+  if (!fs.existsSync(parentPomPath)) return version;
+  const parentContent = fs.readFileSync(parentPomPath, 'utf8');
+  const parentVersion = extractOwnVersion(parentContent);
+  return parentVersion ? resolveVersion(parentPomPath, parentContent, parentVersion, depth + 1) : version;
+}
+
+/**
  * Garde-fou SemVer 2.0.0 et release-note.md obligatoire sur chaque publication.
  */
 function checkSemVerAndReleaseNotes() {
@@ -183,12 +227,12 @@ function checkSemVerAndReleaseNotes() {
   POMS.forEach(pom => {
     if (!fs.existsSync(pom)) return;
     const pomContent = fs.readFileSync(pom, 'utf8');
-    const vMatch = /<artifactId>[^<]+<\/artifactId>\s*<version>([^<]+)<\/version>/.exec(pomContent)
-      || /<parent>[\s\S]*?<version>([^<]+)<\/version>/.exec(pomContent);
-    if (vMatch) {
-      const v = vMatch[1].trim();
-      if (!semverRegex.test(v)) {
-        violations.push(rel(pom) + ' -> version invalide "' + v + '" (doit respecter SemVer: X.Y.Z[-SNAPSHOT])');
+    const ownVersion = extractOwnVersion(pomContent);
+    if (ownVersion) {
+      const resolved = resolveVersion(pom, pomContent, ownVersion);
+      if (!semverRegex.test(resolved)) {
+        const origin = resolved !== ownVersion ? ' (resolue depuis "' + ownVersion + '")' : '';
+        violations.push(rel(pom) + ' -> version invalide "' + resolved + '"' + origin + ' (doit respecter SemVer: X.Y.Z[-SNAPSHOT])');
       }
     }
 
