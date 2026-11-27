@@ -191,6 +191,9 @@ paths:
   /pending-operations/ignore:
     $ref: './openapi/domains/banque-import.yaml#/paths/~1pending-operations~1ignore'
 
+  /pending-operations/unlink:
+    $ref: './openapi/domains/banque-import.yaml#/paths/~1pending-operations~1unlink'
+
   /pending-operations/import-cb:
     $ref: './openapi/domains/banque-import.yaml#/paths/~1pending-operations~1import-cb'
 
