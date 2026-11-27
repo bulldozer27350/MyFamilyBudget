@@ -281,6 +281,39 @@ jobs:
             | sed -n 's#.*<version>\(.*\)</version>.*#\1#p' | head -1)"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
+      - name: Recuperation des suggestions de version (REL-050, REL-060)
+        # Depots publics : le GITHUB_TOKEN par defaut suffit en lecture (pas besoin
+        # d'ORCHESTRATOR_PAT, scope a ce seul depot). 404 tolere : normal tant qu'aucun
+        # push post-REL-050 n'a eu lieu sur le satellite concerne, ou s'il n'y a rien
+        # a suggerer (fichier pas encore cree). set -e volontairement absent ici : une
+        # erreur reseau sur un satellite ne doit pas faire echouer tout l'orchestrateur.
+        run: |
+          mkdir -p /tmp/suggestions
+          declare -A REPOS=(
+            [credit]=myfamilybudget-domain-credit
+            [market]=myfamilybudget-domain-market
+            [notifications]=myfamilybudget-domain-notifications
+            [treasury]=myfamilybudget-domain-treasury
+            [bank-pointage]=myfamilybudget-domain-bank-pointage
+            [wealth]=myfamilybudget-domain-wealth
+            [tax]=myfamilybudget-domain-tax
+            [retirement]=myfamilybudget-domain-retirement
+            [analysis]=myfamilybudget-domain-analysis
+            [goals]=myfamilybudget-domain-goals
+            [settings]=myfamilybudget-domain-settings
+          )
+          for name in "${!REPOS[@]}"; do
+            repo="${REPOS[$name]}"
+            url="https://api.github.com/repos/bulldozer27350/${repo}/contents/version-suggestion.json"
+            http_code=$(curl -s -o "/tmp/suggestions/${name}.json" -w "%{http_code}" \
+              -H "Accept: application/vnd.github.raw" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "$url" || echo "000")
+            if [ "$http_code" != "200" ]; then
+              rm -f "/tmp/suggestions/${name}.json"
+            fi
+          done
+
       - name: Generation du resume (Summary du run + VERSIONS.md)
         env:
           APP_VERSION: ${{ steps.app_version_final.outputs.version }}
@@ -295,6 +328,28 @@ jobs:
           with open("/tmp/bom-rows.json", encoding="utf-8") as f:
               rows = json.load(f)
 
+          # REL-060 : suggestion de version (REL-050) recuperee par l'etape precedente,
+          # un fichier manquant (satellite sans push post-REL-050, ou simple echec
+          # reseau tolere) se traduit juste par une cellule "-".
+          suggestions = {}
+          for r in rows:
+              path = f"/tmp/suggestions/{r['name']}.json"
+              if os.path.exists(path):
+                  try:
+                      with open(path, encoding="utf-8") as f:
+                          suggestions[r["name"]] = json.load(f)
+                  except json.JSONDecodeError:
+                      pass
+
+          def suggestion_cell(name):
+              s = suggestions.get(name)
+              if not s or not s.get("suggestion"):
+                  return "—"
+              cell = s["suggestion"]
+              if s.get("mismatch"):
+                  cell += f" ⚠️ (commits : {s.get('commit_based_guess', '?')})"
+              return cell
+
           app_version = os.environ["APP_VERSION"]
           app_changed = os.environ["APP_CHANGED"] == "true"
           now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -304,11 +359,11 @@ jobs:
           lines.append("")
           lines.append(f"_Genere le {now} par release-orchestrator.yml_")
           lines.append("")
-          lines.append("| Satellite | Version resolue | Changee ce run ? |")
-          lines.append("|---|---|---|")
+          lines.append("| Satellite | Version resolue | Changee ce run ? | Suggestion (REL-050) |")
+          lines.append("|---|---|---|---|")
           for r in rows:
               marker = f"oui (etait `{r['before']}`)" if r["changed"] else "non"
-              lines.append(f"| {r['name']} | `{r['after']}` | {marker} |")
+              lines.append(f"| {r['name']} | `{r['after']}` | {marker} | {suggestion_cell(r['name'])} |")
           lines.append("")
           lines.append("| Application | Version resolue | Changee ce run ? |")
           lines.append("|---|---|---|")
