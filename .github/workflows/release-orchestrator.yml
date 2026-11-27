@@ -43,47 +43,47 @@ on:
   workflow_dispatch:
     inputs:
       credit_version:
-        description: "myfamilybudget-domain-credit (vide = inchange)"
+        description: "myfamilybudget-domain-credit (vide = inchange, auto = calcule la prochaine version REL-050 sans l'appliquer)"
         type: string
         default: ''
       market_version:
-        description: "myfamilybudget-domain-market (vide = inchange)"
+        description: "myfamilybudget-domain-market (vide = inchange, auto = calcule la prochaine version REL-050 sans l'appliquer)"
         type: string
         default: ''
       notifications_version:
-        description: "myfamilybudget-domain-notifications (vide = inchange)"
+        description: "myfamilybudget-domain-notifications (vide = inchange, auto = calcule la prochaine version REL-050 sans l'appliquer)"
         type: string
         default: ''
       treasury_version:
-        description: "myfamilybudget-domain-treasury (vide = inchange)"
+        description: "myfamilybudget-domain-treasury (vide = inchange, auto = calcule la prochaine version REL-050 sans l'appliquer)"
         type: string
         default: ''
       bank_pointage_version:
-        description: "myfamilybudget-domain-bank-pointage (vide = inchange)"
+        description: "myfamilybudget-domain-bank-pointage (vide = inchange, auto = calcule la prochaine version REL-050 sans l'appliquer)"
         type: string
         default: ''
       wealth_version:
-        description: "myfamilybudget-domain-wealth (vide = inchange)"
+        description: "myfamilybudget-domain-wealth (vide = inchange, auto = calcule la prochaine version REL-050 sans l'appliquer)"
         type: string
         default: ''
       tax_version:
-        description: "myfamilybudget-domain-tax (vide = inchange)"
+        description: "myfamilybudget-domain-tax (vide = inchange, auto = calcule la prochaine version REL-050 sans l'appliquer)"
         type: string
         default: ''
       retirement_version:
-        description: "myfamilybudget-domain-retirement (vide = inchange)"
+        description: "myfamilybudget-domain-retirement (vide = inchange, auto = calcule la prochaine version REL-050 sans l'appliquer)"
         type: string
         default: ''
       analysis_version:
-        description: "myfamilybudget-domain-analysis (vide = inchange)"
+        description: "myfamilybudget-domain-analysis (vide = inchange, auto = calcule la prochaine version REL-050 sans l'appliquer)"
         type: string
         default: ''
       goals_version:
-        description: "myfamilybudget-domain-goals (vide = inchange)"
+        description: "myfamilybudget-domain-goals (vide = inchange, auto = calcule la prochaine version REL-050 sans l'appliquer)"
         type: string
         default: ''
       settings_version:
-        description: "myfamilybudget-domain-settings (vide = inchange)"
+        description: "myfamilybudget-domain-settings (vide = inchange, auto = calcule la prochaine version REL-050 sans l'appliquer)"
         type: string
         default: ''
       app_version:
@@ -241,16 +241,22 @@ jobs:
               current = match.group(2).strip()
 
               requested = os.environ.get(env_key, "").strip()
-              if requested and requested != current:
+              # REL-070 : "auto" n'est jamais ecrit dans le BOM (le silo n'est pas encore
+              # publie a une version qui n'est pas connue au moment de ce run) ; il demande
+              # seulement, a l'etape suivante, le calcul de la prochaine version a partir de
+              # version-suggestion.json (REL-050), affichee a titre de plan.
+              if requested.lower() == "auto":
+                  rows.append({"name": name, "before": current, "after": current, "changed": False, "auto_requested": True})
+              elif requested and requested != current:
                   content = pattern.sub(
                       lambda m, r=requested: f"{m.group(1)}{r}{m.group(3)}",
                       content,
                       count=1,
                   )
-                  rows.append({"name": name, "before": current, "after": requested, "changed": True})
+                  rows.append({"name": name, "before": current, "after": requested, "changed": True, "auto_requested": False})
                   bom_changed = True
               else:
-                  rows.append({"name": name, "before": current, "after": current, "changed": False})
+                  rows.append({"name": name, "before": current, "after": current, "changed": False, "auto_requested": False})
 
           with open(POM, "w", encoding="utf-8") as f:
               f.write(content)
@@ -350,6 +356,35 @@ jobs:
                   cell += f" ⚠️ (commits : {s.get('commit_based_guess', '?')})"
               return cell
 
+          # REL-070 : calcule la prochaine version (semver) a partir du dernier tag publie
+          # (last_tag, deja present dans version-suggestion.json depuis REL-050) et du type
+          # de montee suggere par japicmp. Simple plan affiche, jamais ecrit dans le BOM ici
+          # (cf. "auto" dans l'etape precedente) : le silo doit d'abord etre reellement
+          # publie a ce numero avant qu'il ait un sens de le referencer dans le BOM.
+          def next_version(name):
+              s = suggestions.get(name)
+              if not s or not s.get("last_tag") or not s.get("suggestion"):
+                  return None
+              tag = s["last_tag"]
+              if tag.startswith("v"):
+                  tag = tag[1:]
+              parts = tag.split(".")
+              if len(parts) != 3 or not all(p.isdigit() for p in parts):
+                  return None
+              major, minor, patch = (int(p) for p in parts)
+              bump = s["suggestion"]
+              if bump == "major":
+                  return f"{major + 1}.0.0"
+              if bump == "minor":
+                  return f"{major}.{minor + 1}.0"
+              return f"{major}.{minor}.{patch + 1}"
+
+          def plan_cell(row):
+              if not row.get("auto_requested"):
+                  return ""
+              nv = next_version(row["name"])
+              return f"**à publier à `{nv}`**" if nv else "_suggestion REL-050 indisponible, impossible de calculer_"
+
           app_version = os.environ["APP_VERSION"]
           app_changed = os.environ["APP_CHANGED"] == "true"
           now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -359,12 +394,20 @@ jobs:
           lines.append("")
           lines.append(f"_Genere le {now} par release-orchestrator.yml_")
           lines.append("")
-          lines.append("| Satellite | Version resolue | Changee ce run ? | Suggestion (REL-050) |")
-          lines.append("|---|---|---|---|")
+          lines.append("| Satellite | Version resolue | Changee ce run ? | Suggestion (REL-050) | Plan (REL-070) |")
+          lines.append("|---|---|---|---|---|")
           for r in rows:
               marker = f"oui (etait `{r['before']}`)" if r["changed"] else "non"
-              lines.append(f"| {r['name']} | `{r['after']}` | {marker} | {suggestion_cell(r['name'])} |")
+              lines.append(f"| {r['name']} | `{r['after']}` | {marker} | {suggestion_cell(r['name'])} | {plan_cell(r)} |")
           lines.append("")
+          if any(r.get("auto_requested") for r in rows):
+              lines.append(
+                  "_\"Plan\" (REL-070) : rien n'est publié ni modifié pour ces silos — publie "
+                  "chaque silo concerné à la version indiquée (README du silo), puis relance ce "
+                  "workflow avec ce numéro exact dans le champ correspondant pour l'appliquer au "
+                  "BOM._"
+              )
+              lines.append("")
           lines.append("| Application | Version resolue | Changee ce run ? |")
           lines.append("|---|---|---|")
           app_marker = "oui" if app_changed else "non"
