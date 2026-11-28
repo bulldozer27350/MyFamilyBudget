@@ -26,6 +26,7 @@
     const [status, setStatus] = useState(null);
     const [dismissed, setDismissed] = useState(false);
     const [expanded, setExpanded] = useState(false);
+    const [notesExpanded, setNotesExpanded] = useState(false);
     // idle | running | done | failed — état de la sauvegarde déclenchée par le clic sur Télécharger
     const [backupState, setBackupState] = useState('idle');
     const [backupPath, setBackupPath] = useState(null);
@@ -115,12 +116,26 @@
               opacity: backupState === 'running' ? 0.6 : 1
             }
           }, backupState === 'running' ? 'Sauvegarde en cours…' : 'Télécharger'),
-          status.releaseUrl && React.createElement('a', {
-            href: status.releaseUrl,
-            target: '_blank',
-            rel: 'noopener noreferrer',
-            style: { color: fg, fontWeight: 600, textDecoration: 'underline' }
-          }, 'Notes de version'),
+          // REL-0xx : le corps de la GitHub Release reprend desormais la section
+          // release-note.md de la version (release.yml), donc status.releaseNotes contient
+          // ce texte - on l'affiche directement dans l'app plutot que de se contenter d'un
+          // lien externe. Repli sur le lien externe si releaseNotes est absent (ancienne
+          // release sans body, ou echec de recuperation cote backend).
+          status.releaseNotes
+            ? React.createElement('button', {
+              type: 'button',
+              onClick: () => setNotesExpanded(e => !e),
+              style: {
+                background: 'none', border: 'none', color: fg, fontWeight: 600,
+                cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 13
+              }
+            }, notesExpanded ? 'Masquer les notes de version' : 'Notes de version')
+            : status.releaseUrl && React.createElement('a', {
+              href: status.releaseUrl,
+              target: '_blank',
+              rel: 'noopener noreferrer',
+              style: { color: fg, fontWeight: 600, textDecoration: 'underline' }
+            }, 'Notes de version'),
           React.createElement('button', {
             type: 'button',
             onClick: () => setExpanded(e => !e),
@@ -146,7 +161,27 @@
         `Échec de la sauvegarde automatique — votre base actuelle n'a pas été modifiée ; vous pouvez tout de même poursuivre la mise à jour.`),
       expanded && React.createElement('ol', {
         style: { margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }
-      }, steps.map((step, i) => React.createElement('li', { key: i }, step)))
+      }, steps.map((step, i) => React.createElement('li', { key: i }, step))),
+      notesExpanded && status.releaseNotes && React.createElement('div', {
+        style: {
+          display: 'flex', flexDirection: 'column', gap: 6,
+          maxHeight: 320, overflowY: 'auto',
+          padding: '8px 10px', background: 'rgba(255,255,255,0.5)', borderRadius: 6
+        }
+      },
+        // Texte source de release-note.md (Markdown non rendu) : pre-wrap suffit a restituer
+        // les sauts de ligne et paragraphes sans ajouter de dependance a un parseur Markdown
+        // pour ce simple affichage en consultation.
+        React.createElement('div', {
+          style: { whiteSpace: 'pre-wrap', fontSize: 12.5, lineHeight: 1.5 }
+        }, status.releaseNotes),
+        status.releaseUrl && React.createElement('a', {
+          href: status.releaseUrl,
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          style: { color: fg, fontSize: 12, alignSelf: 'flex-start' }
+        }, 'Voir sur GitHub')
+      )
     );
   }
 
