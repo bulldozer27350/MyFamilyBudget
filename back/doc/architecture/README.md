@@ -55,6 +55,7 @@ implémentation (patch) sans attendre les autres. Statut affiché en tête de ch
 | [15-backlog-patchs.md](15-backlog-patchs.md) | Liste ordonnée de patchs (avec statut et prérequis) à distribuer à des agents | 🟡 (archivé, non révisé par ce patch) |
 | [21-plan-silotage.md](21-plan-silotage.md) | Plan de travail du silotage complet : suppression de `BudgetDataModel`, persistance par silo, séparation application/web | 🟡 (figé en archive, non révisé par ce patch — voir `22` à `24`) |
 | [27-strategie-multi-depots-bom-semver.md](27-strategie-multi-depots-bom-semver.md) | Stratégie d'isolation multi-dépôts, BOM centralisé, gestion SemVer et contrainte release-note.md | 🟢 |
+| [28-backlog-provisions-lignes-periodiques.md](28-backlog-provisions-lignes-periodiques.md) | Backlog PROV-xx : provisionnement des lignes budgétaires périodiques (pointage, analyse, alertes) | 🟡 |
 
 ## Ce qui a changé par rapport au document source
 
