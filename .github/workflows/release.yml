@@ -157,10 +157,61 @@ jobs:
           PY
           cat "$RUNNER_TEMP/release-manifest.yaml"
 
-      - name: Creation de la GitHub Release (manifeste de tracabilite attache)
+      - name: Extraction de la section release-note.md correspondant a la version taguee
+        id: release_body
+        run: |
+          set -euo pipefail
+          python3 - "$GITHUB_REF_NAME" "release-note.md" "$RUNNER_TEMP/release-body.md" <<'PY'
+          import re
+          import sys
+
+          tag, note_path, out_path = sys.argv[1:4]
+          app_version = tag[1:] if tag.startswith("v") else tag
+
+          with open(note_path, encoding="utf-8") as f:
+              content = f.read()
+
+          # Chaque section de release-note.md commence par "## [x.y.z] - AAAA-MM-JJ" : on isole
+          # celle de la version du tag en cours, jusqu'a la prochaine section "## [" ou la fin
+          # du fichier (meme logique de decoupe que la section unique traitee par le dashboard).
+          pattern = re.compile(r"^##\s*\[" + re.escape(app_version) + r"\]\s*-.*$", re.MULTILINE)
+          match = pattern.search(content)
+          if not match:
+              print(f"Aucune section \"## [{app_version}] - ...\" trouvee dans {note_path}.", file=sys.stderr)
+              sys.exit(1)
+
+          next_header = re.search(r"^##\s*\[", content[match.end():], re.MULTILINE)
+          end = match.end() + next_header.start() if next_header else len(content)
+          section = content[match.start():end].strip() + "\n"
+
+          with open(out_path, "w", encoding="utf-8", newline="\n") as f:
+              f.write(section)
+          PY
+        continue-on-error: true
+
+      - name: Determination du repli si la section n'a pas ete trouvee
+        id: release_body_status
+        run: |
+          if [[ "${{ steps.release_body.outcome }}" == "success" ]]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Section \"## [${GITHUB_REF_NAME#v}] - ...\" introuvable dans release-note.md : repli sur les notes auto-generees par GitHub pour cette Release."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Creation de la GitHub Release (corps = section release-note.md de la version)
+        if: steps.release_body_status.outputs.found == 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ runner.temp }}/release-manifest.yaml
+          body_path: ${{ runner.temp }}/release-body.md
+
+      - name: Creation de la GitHub Release (repli - notes auto-generees par GitHub)
+        if: steps.release_body_status.outputs.found != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ runner.temp }}/release-manifest.yaml
+          generate_release_notes: true
 
       - name: Generation du CHANGELOG.md (git-cliff, REL-040)
         uses: orhun/git-cliff-action@v4
@@ -308,8 +359,11 @@ jobs:
           ( cd "$RUNNER_TEMP/dist" && zip -qr -X "$RUNNER_TEMP/${ZIP_NAME}" MyFamilyBudget )
           echo "PORTABLE_ZIP_PATH=$RUNNER_TEMP/${ZIP_NAME}" >> "$GITHUB_ENV"
 
+      # Ne jamais repasser generate_release_notes ici : ce job ne fait qu'ajouter le zip
+      # a la Release deja creee par freeze-and-release (corps deja fixe par ce premier
+      # job, cf. "Creation de la GitHub Release"), et action-gh-release laisse un champ
+      # intact quand il n'est pas fourni - le re-ecraser effacerait le corps choisi.
       - name: Ajout du zip portable a la GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.PORTABLE_ZIP_PATH }}
-          generate_release_notes: true
