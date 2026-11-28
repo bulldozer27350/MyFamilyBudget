@@ -44,7 +44,7 @@ agents en parallèle. Convention d'identifiants : `PROV-nn`.
 
 | ID | Patch | Dépôt | Dépend de | Bloque | Statut |
 |---|---|---|---|---|---|
-| PROV-00 | Ce document (principes, format des échanges, vocabulaire des statuts de pointage) | MyFamilyBudget | — | PROV-01 à PROV-09 | Fait (ce patch) |
+| PROV-00 | Ce document (principes, format des échanges, vocabulaire des statuts de pointage) | MyFamilyBudget | — | PROV-01 à PROV-10 | Fait (ce patch) |
 | PROV-01 | Trésorerie : `ChargeModel`/`CashflowChargeEntity` + `dueMonths` ; méthode dérivée du montant par échéance ; script Liquibase | myfamilybudget-domain-treasury | PROV-00 | PROV-02, PROV-03 | À faire |
 | PROV-02 | Intégrateur : contrat REST des charges (`openapi/`, mapper Trésorerie) étendu avec `dueMonths` ; validation (mois 1-12, sans doublon) ; vue budget : édition des mois d'échéance avec recalcul en direct du montant par échéance | MyFamilyBudget | PROV-01 | — | À faire |
 | PROV-03 | Transport de `dueMonths` jusqu'aux silos consommateurs : `BudgetLineProjection` (Pointage) et `AnalysisBudgetLine`/`MonthlyBudgetLines` (Analyse) étendus ; `PointageInputFactory`/`AnalyseInputFactory` (intégrateur) adaptées pour le transporter | myfamilybudget-domain-bank-pointage, myfamilybudget-domain-analysis, MyFamilyBudget | PROV-01 | PROV-04, PROV-07 | À faire |
@@ -54,12 +54,15 @@ agents en parallèle. Convention d'identifiants : `PROV-nn`.
 | PROV-07 | Analyse : nouveau calcul de solde de provision par ligne périodique (mois par mois : +1/12e si la case est cochée ce mois-là, −montant par échéance le mois de sortie, cumul) ; nécessite l'état coché/non coché de PROV-04 en entrée du contrat `AnalyseInput` | myfamilybudget-domain-analysis | PROV-03, PROV-04 | PROV-08 | À faire |
 | PROV-08 | Intégrateur + front : nouveau tableau dans la vue Analyse (mois par mois, somme à provisionner, cumul, mois de sortie réelle, visuel coché/non coché par ligne) ; contrat REST de la vue Analyse étendu en conséquence | MyFamilyBudget | PROV-07 | — | À faire |
 | PROV-09 | Notifications : alerte avant un mois d'échéance d'une ligne périodique (M-1 ou M-2, seuil à discuter) ; pré-remplissage du montant par échéance dans les opérations à venir (porté par Bank-Pointage, `PendingOperationsServiceImpl`) | myfamilybudget-domain-notifications, myfamilybudget-domain-bank-pointage, MyFamilyBudget | PROV-04 | — | À faire (optionnel, peut suivre après PROV-08) |
+| PROV-10 | Vidéos de formation (`scripts/videos/`) : relire chaque script impacté par l'écran qu'il montre (au minimum `video-32-charges-recurrentes.js` — saisie des mois d'échéance, `video-26-pointage.js` — case « mis de côté » et attendu recalculé, `video-27-analyse.js` — nouveau tableau de provisions) et ajuster son scénario en conséquence. **Ne pas supprimer ni créer de script sans validation** : l'agent dresse la liste des scripts à ajuster, de ceux qui n'ont plus lieu d'être (à supprimer) et de ceux qui manquent pour un nouvel écran (à créer, avec l'entrée correspondante dans `run.js`), et la soumet à l'utilisateur avant d'agir | MyFamilyBudget | PROV-02, PROV-06, PROV-08 | — | À faire |
 
 ## 4. Ordre conseillé
 
 Chemin critique : PROV-01 → PROV-02 et PROV-03 (parallélisables) → PROV-04 → PROV-05 → PROV-06,
 et séparément PROV-04 → PROV-07 → PROV-08. PROV-09 peut être traité en dernier, indépendamment du
-reste de l'affichage.
+reste de l'affichage. PROV-10 ne peut être traité qu'une fois les écrans concernés stabilisés
+(PROV-02, PROV-06 et PROV-08 livrés), pour ne pas tourner un scénario sur une interface encore
+provisoire.
 
 ## 5. Points ouverts
 
@@ -69,3 +72,7 @@ reste de l'affichage.
 - Nom définitif des deux nouveaux statuts de pointage (`to_provision`/`provisioned` proposés en
   PROV-04) à confirmer avant de l'écrire dans le contrat REST, pour éviter un renommage a
   posteriori.
+- PROV-10 ne présuppose pas de liste définitive de scripts à supprimer ou à créer : par exemple,
+  une vidéo dédiée au provisionnement (illustrée avec l'exemple des impôts de `video-310-impots.js`)
+  pourrait se justifier en plus de l'ajustement des trois scripts existants listés — c'est à l'agent
+  de la proposer, pas de la décider seul.
